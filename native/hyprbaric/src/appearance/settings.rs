@@ -12,12 +12,12 @@ const TABLE: &str = "appearance";
 #[instrument(skip(command), err)]
 pub fn save(command: &Command, current: Configuration) -> Result<Configuration, Error> {
     let next = current.apply(command);
-    config::edit(|document| write_appearance(document, next))?;
+    config::edit(|document| write_appearance(document, &next))?;
 
     Ok(next)
 }
 
-fn write_appearance(document: &mut DocumentMut, config: Configuration) {
+fn write_appearance(document: &mut DocumentMut, config: &Configuration) {
     if !document.as_table().contains_key(TABLE) {
         document[TABLE] = Item::Table(Table::new());
     }
@@ -25,6 +25,7 @@ fn write_appearance(document: &mut DocumentMut, config: Configuration) {
         .as_table_mut()
         .expect("appearance item should be a table");
     table["position"] = value(config.position().as_str());
+    table["monitor"] = value(config.monitor().as_str());
     table["opacity"] = value(config.opacity().as_u8() as i64);
     table["corner_radius"] = value(config.corner_radius().as_u8() as i64);
     table["accent_hue"] = value(config.accent_hue().as_u16() as i64);
@@ -93,6 +94,7 @@ mod tests {
         assert!(source.contains("[network]"));
         assert!(source.contains("[appearance]"));
         assert!(source.contains("position = \"top\""));
+        assert!(source.contains("monitor = \"primary\""));
         assert!(source.contains("opacity = 82"));
         assert!(source.contains("corner_radius = 12"));
         assert!(source.contains("accent_hue = 197"));
@@ -104,17 +106,18 @@ mod tests {
     #[test]
     fn restore_defaults_rewrites_configured_values() {
         let current = toml::from_str::<Configuration>(
-            "position = \"bottom\"\nopacity = 42\ncorner_radius = 4\naccent_hue = 300\n",
+            "position = \"bottom\"\nmonitor = \"all\"\nopacity = 42\ncorner_radius = 4\naccent_hue = 300\n",
         )
         .expect("fixture should parse");
         let next = current.apply(&Command::RestoreDefaults);
-        let mut document = "[appearance]\nposition = \"bottom\"\nopacity = 42\ncorner_radius = 4\naccent_hue = 300\n"
+        let mut document = "[appearance]\nposition = \"bottom\"\nmonitor = \"all\"\nopacity = 42\ncorner_radius = 4\naccent_hue = 300\n"
             .parse::<DocumentMut>()
             .expect("fixture document should parse");
 
-        write_appearance(&mut document, next);
+        write_appearance(&mut document, &next);
         let source = document.to_string();
         assert!(source.contains("position = \"top\""));
+        assert!(source.contains("monitor = \"primary\""));
         assert!(source.contains("opacity = 77"));
         assert!(source.contains("corner_radius = 12"));
         assert!(source.contains("accent_hue = 197"));

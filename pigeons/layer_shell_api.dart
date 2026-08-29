@@ -16,6 +16,19 @@ enum NativeLayerShellKeyboardMode { none, exclusive, onDemand }
 
 enum NativeLayerShellBarEdge { top, bottom }
 
+enum NativeLayerShellMonitorTargetKind { primary, all, named }
+
+class NativeLayerShellMonitorTarget {
+  NativeLayerShellMonitorTargetKind kind;
+  String? name;
+}
+
+class NativeLayerShellMonitor {
+  String name;
+  String label;
+  bool isPrimary;
+}
+
 class NativeLayerShellAnchors {
   bool? top;
   bool? bottom;
@@ -63,10 +76,12 @@ class NativeLayerShellPanelConfig {
   int exclusiveZone;
   bool autoExclusiveZone;
   NativeLayerShellKeyboardMode keyboardMode;
+  NativeLayerShellMonitorTarget monitor;
 }
 
 @HostApi()
 abstract class NativeLayerShellHostApi {
+  List<NativeLayerShellMonitor> listMonitors();
   void configurePanel(NativeLayerShellPanelConfig config);
   void setLayer(NativeLayerShellLayer layer);
   void setNamespace(String appNamespace);

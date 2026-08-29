@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../bindings/bindings.dart';
+import '../layer_shell_controller.dart';
 import 'appearance.dart';
 
 /// Immutable configuration describing core bar characteristics.
@@ -8,6 +9,7 @@ class BarConfig {
   const BarConfig({
     required this.height,
     required this.position,
+    required this.monitor,
     required this.opacity,
     required this.cornerRadius,
     required this.accentHue,
@@ -17,6 +19,7 @@ class BarConfig {
     return BarConfig(
       height: 40,
       position: appearance.position,
+      monitor: _monitorTarget(appearance.monitor),
       opacity: appearance.opacity,
       cornerRadius: appearance.cornerRadius,
       accentHue: appearance.accentHue,
@@ -25,6 +28,7 @@ class BarConfig {
 
   final double height;
   final AppearancePosition position;
+  final LayerShellMonitorTarget monitor;
   final int opacity;
   final int cornerRadius;
   final int accentHue;
@@ -34,6 +38,7 @@ class BarConfig {
   BarConfig copyWith({
     double? height,
     AppearancePosition? position,
+    LayerShellMonitorTarget? monitor,
     int? opacity,
     int? cornerRadius,
     int? accentHue,
@@ -41,11 +46,22 @@ class BarConfig {
     return BarConfig(
       height: height ?? this.height,
       position: position ?? this.position,
+      monitor: monitor ?? this.monitor,
       opacity: opacity ?? this.opacity,
       cornerRadius: cornerRadius ?? this.cornerRadius,
       accentHue: accentHue ?? this.accentHue,
     );
   }
+}
+
+LayerShellMonitorTarget _monitorTarget(AppearanceMonitorTarget monitor) {
+  return switch (monitor) {
+    AppearanceMonitorTargetPrimary() => const LayerShellMonitorTarget.primary(),
+    AppearanceMonitorTargetAll() => const LayerShellMonitorTarget.all(),
+    AppearanceMonitorTargetNamed(:final String name) =>
+      LayerShellMonitorTarget.named(name),
+    _ => const LayerShellMonitorTarget.primary(),
+  };
 }
 
 final barConfigProvider = Provider<BarConfig>((ref) {

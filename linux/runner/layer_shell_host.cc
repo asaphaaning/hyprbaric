@@ -4,6 +4,7 @@
 
 #include "hit_region.h"
 #include "layer_shell_api.g.h"
+#include "monitor.h"
 
 namespace {
 GtkLayerShellLayer native_layer_to_gtk(HyprbaricNativeLayerShellLayer layer) {
@@ -20,8 +21,8 @@ GtkLayerShellLayer native_layer_to_gtk(HyprbaricNativeLayerShellLayer layer) {
   return GTK_LAYER_SHELL_LAYER_TOP;
 }
 
-GtkLayerShellKeyboardMode native_keyboard_mode_to_gtk(
-    HyprbaricNativeLayerShellKeyboardMode mode) {
+GtkLayerShellKeyboardMode
+native_keyboard_mode_to_gtk(HyprbaricNativeLayerShellKeyboardMode mode) {
   switch (mode) {
   case HYPRBARIC_NATIVE_LAYER_SHELL_KEYBOARD_MODE_NONE:
     return GTK_LAYER_SHELL_KEYBOARD_MODE_NONE;
@@ -52,7 +53,8 @@ void maybe_set_margin(GtkWindow *window, GtkLayerShellEdge edge,
   }
 }
 
-void apply_anchors(GtkWindow *window, HyprbaricNativeLayerShellAnchors *anchors) {
+void apply_anchors(GtkWindow *window,
+                   HyprbaricNativeLayerShellAnchors *anchors) {
   if (anchors == nullptr) {
     return;
   }
@@ -66,7 +68,8 @@ void apply_anchors(GtkWindow *window, HyprbaricNativeLayerShellAnchors *anchors)
                    hyprbaric_native_layer_shell_anchors_get_right(anchors));
 }
 
-void apply_margins(GtkWindow *window, HyprbaricNativeLayerShellMargins *margins) {
+void apply_margins(GtkWindow *window,
+                   HyprbaricNativeLayerShellMargins *margins) {
   if (margins == nullptr) {
     return;
   }
@@ -119,10 +122,29 @@ NativeWindowState *state_from_user_data(gpointer user_data) {
   return static_cast<NativeWindowState *>(user_data);
 }
 
-#define LAYER_SHELL_UNAVAILABLE_RESPONSE(method)                            \
-  hyprbaric_native_layer_shell_host_api_##method##_response_new_error(       \
-      "layer-shell-unavailable",                                            \
+void release_borrowed_state(gpointer user_data) { (void)user_data; }
+
+#define LAYER_SHELL_UNAVAILABLE_RESPONSE(method)                               \
+  hyprbaric_native_layer_shell_host_api_##method##_response_new_error(         \
+      "layer-shell-unavailable",                                               \
       "Wayland layer shell is not available on this system.", nullptr)
+
+static HyprbaricNativeLayerShellHostApiListMonitorsResponse *
+native_list_monitors(gpointer user_data) {
+  (void)user_data;
+  g_autoptr(FlValue) values = fl_value_new_list();
+  for (const MonitorDescriptor &monitor : hyprbaric_monitors()) {
+    HyprbaricNativeLayerShellMonitor *value =
+        hyprbaric_native_layer_shell_monitor_new(
+            monitor.name.c_str(), monitor.label.c_str(), monitor.is_primary);
+    fl_value_append_take(
+        values,
+        fl_value_new_custom(hyprbaric_native_layer_shell_monitor_type_id, value,
+                            g_object_unref));
+  }
+  return hyprbaric_native_layer_shell_host_api_list_monitors_response_new(
+      values);
+}
 
 static HyprbaricNativeLayerShellHostApiConfigurePanelResponse *
 native_configure_panel(HyprbaricNativeLayerShellPanelConfig *config,
@@ -142,18 +164,26 @@ native_configure_panel(HyprbaricNativeLayerShellPanelConfig *config,
   apply_anchors(state->window,
                 hyprbaric_native_layer_shell_panel_config_get_anchors(config));
   apply_keyboard_mode(
-      state, hyprbaric_native_layer_shell_panel_config_get_keyboard_mode(config));
+      state,
+      hyprbaric_native_layer_shell_panel_config_get_keyboard_mode(config));
   apply_margins(state->window,
                 hyprbaric_native_layer_shell_panel_config_get_margins(config));
   apply_size(state->window,
              hyprbaric_native_layer_shell_panel_config_get_size(config));
   gtk_layer_set_exclusive_zone(
-      state->window, static_cast<int>(
-                         hyprbaric_native_layer_shell_panel_config_get_exclusive_zone(
-                             config)));
+      state->window,
+      static_cast<int>(
+          hyprbaric_native_layer_shell_panel_config_get_exclusive_zone(
+              config)));
   apply_auto_exclusive_zone(
       state->window,
-      hyprbaric_native_layer_shell_panel_config_get_auto_exclusive_zone(config));
+      hyprbaric_native_layer_shell_panel_config_get_auto_exclusive_zone(
+          config));
+  HyprbaricNativeLayerShellMonitorTarget *monitor =
+      hyprbaric_native_layer_shell_panel_config_get_monitor(config);
+  native_window_state_set_monitor_target(
+      state, hyprbaric_native_layer_shell_monitor_target_get_kind(monitor),
+      hyprbaric_native_layer_shell_monitor_target_get_name(monitor));
 
   return hyprbaric_native_layer_shell_host_api_configure_panel_response_new();
 }
@@ -253,6 +283,7 @@ native_set_region(HyprbaricNativeLayerShellRegionRequest *request,
 }
 
 static const HyprbaricNativeLayerShellHostApiVTable kLayerShellVTable = {
+    .list_monitors = native_list_monitors,
     .configure_panel = native_configure_panel,
     .set_layer = native_set_layer,
     .set_namespace = native_set_namespace,
@@ -267,7 +298,8 @@ static const HyprbaricNativeLayerShellHostApiVTable kLayerShellVTable = {
 } // namespace
 
 void hyprbaric_layer_shell_host_register(FlBinaryMessenger *messenger,
-                                         NativeWindowState *state) {
+                                         NativeWindowState *state,
+                                         const char *suffix) {
   hyprbaric_native_layer_shell_host_api_set_method_handlers(
-      messenger, nullptr, &kLayerShellVTable, state, nullptr);
+      messenger, suffix, &kLayerShellVTable, state, release_borrowed_state);
 }

@@ -471,10 +471,12 @@ ShortcutSettingsSnapshot _shortcutSettingsSnapshot({
 }
 
 Widget _scopedSurface({required Widget child}) {
-  return MaterialApp(
-    home: Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Center(child: child),
+  return ProviderScope(
+    child: MaterialApp(
+      home: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(child: child),
+      ),
     ),
   );
 }
@@ -1973,7 +1975,6 @@ void main() {
     addTearDown(() async {
       await tester.binding.setSurfaceSize(null);
       debugDefaultTargetPlatformOverride = null;
-      LayerShellController.debugResetKeyboardOwners();
       _setRegionMock(null);
       _setKeyboardModeMock(null);
     });
@@ -2276,6 +2277,37 @@ void main() {
     expect(
       dispatcher.intents.map((RustIntent intent) => intent.debugLabel),
       contains('appearance_restore_defaults'),
+    );
+  });
+
+  testWidgets('appearance settings can target every monitor', (
+    WidgetTester tester,
+  ) async {
+    final _RecordingRustDispatcher dispatcher = _RecordingRustDispatcher();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          rustCommandDispatcherProvider.overrideWith((ref) => dispatcher),
+        ],
+        child: _scopedSurface(
+          child: const SizedBox(
+            width: 420,
+            height: 360,
+            child: AppearanceSettingsPanel(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.text('All'));
+    await tester.pump();
+
+    expect(
+      dispatcher.intents.map((RustIntent intent) => intent.debugLabel),
+      contains('appearance_monitor:AppearanceMonitorTargetAll()'),
     );
   });
 

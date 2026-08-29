@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../bindings/bindings.dart';
+import '../layer_shell_controller.dart';
 import '../layer_shell_hit_region.dart';
 import 'bar_config.dart';
 
@@ -11,6 +12,7 @@ final layerShellRegionManagerProvider = Provider<LayerShellRegionManager>((
 ) {
   final manager = LayerShellRegionManager(
     barHeight: ref.read(barHeightProvider),
+    controller: ref.read(layerShellControllerProvider),
     barEdge: _edgeFromPosition(ref.read(barPositionProvider)),
   );
 
@@ -34,3 +36,11 @@ LayerShellBarEdge _edgeFromPosition(AppearancePosition position) {
     AppearancePosition.bottom => LayerShellBarEdge.bottom,
   };
 }
+
+final layerShellControllerProvider = Provider<LayerShellController>(
+  (_) => LayerShellController.defaultView(),
+);
+
+final layerShellMonitorsProvider = FutureProvider<List<LayerShellMonitor>>(
+  (ref) => ref.watch(layerShellControllerProvider).listMonitors(),
+);

@@ -9,7 +9,6 @@ import 'features/rust_commands.dart';
 import 'features/session/session_launcher.dart';
 import 'features/settings/settings_overlay.dart';
 import 'features/setup/setup_guide_host.dart';
-import 'layer_shell_controller.dart';
 import 'layer_shell_hit_region.dart';
 import 'state/providers.dart';
 import 'widgets/center_cluster.dart';
@@ -205,16 +204,19 @@ class _BarViewState extends ConsumerState<_BarView> {
 
   Future<void> _configureLayerShell(BarConfig barConfig) async {
     try {
-      await LayerShellController.configurePanelDefaults(
-        exclusiveZone: barConfig.height.round() + _barTopMargin,
-        autoExclusiveZone: false,
-        anchorTop: !barConfig.isBottom,
-        anchorBottom: barConfig.isBottom,
-        marginTop: barConfig.isBottom ? 0 : _barTopMargin,
-        marginBottom: barConfig.isBottom ? _barTopMargin : 0,
-        marginLeft: 0,
-        marginRight: 0,
-      );
+      await ref
+          .read(layerShellControllerProvider)
+          .configurePanelDefaults(
+            exclusiveZone: barConfig.height.round() + _barTopMargin,
+            autoExclusiveZone: false,
+            anchorTop: !barConfig.isBottom,
+            anchorBottom: barConfig.isBottom,
+            marginTop: barConfig.isBottom ? 0 : _barTopMargin,
+            marginBottom: barConfig.isBottom ? _barTopMargin : 0,
+            marginLeft: 0,
+            marginRight: 0,
+            monitor: barConfig.monitor,
+          );
       if (!mounted) {
         return;
       }

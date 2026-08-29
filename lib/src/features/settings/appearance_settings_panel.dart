@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bindings/bindings.dart';
+import '../../layer_shell_controller.dart';
 import '../../state/providers.dart';
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
@@ -48,6 +49,25 @@ class _AppearanceSettingsPanelState
               () => ref
                   .read(appearanceControllerProvider.notifier)
                   .setPosition(position),
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+        _MonitorRow(
+          value: view.monitor,
+          monitors: ref
+              .watch(layerShellMonitorsProvider)
+              .maybeWhen(
+                data: (List<LayerShellMonitor> monitors) => monitors,
+                orElse: () => const <LayerShellMonitor>[],
+              ),
+          onChanged: (AppearanceMonitorTarget monitor) {
+            final AppearanceStatus next = view.copyWith(monitor: monitor);
+            _preview(next);
+            _commit(
+              () => ref
+                  .read(appearanceControllerProvider.notifier)
+                  .setMonitor(monitor),
             );
           },
         ),
@@ -159,6 +179,51 @@ class _AppearanceSettingsPanelState
 
   bool _isDefault(AppearanceStatus status) {
     return status == defaultAppearanceStatus;
+  }
+}
+
+class _MonitorRow extends StatelessWidget {
+  const _MonitorRow({
+    required this.value,
+    required this.monitors,
+    required this.onChanged,
+  });
+
+  final AppearanceMonitorTarget value;
+  final List<LayerShellMonitor> monitors;
+  final ValueChanged<AppearanceMonitorTarget> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return _AppearanceRow(
+      label: 'Monitors',
+      subtitle: 'Choose one display or mirror the bar across every display.',
+      child: Wrap(
+        spacing: 5,
+        runSpacing: 5,
+        children: <Widget>[
+          _SegmentButton(
+            label: 'Primary',
+            selected: value is AppearanceMonitorTargetPrimary,
+            onPressed: () => onChanged(const AppearanceMonitorTargetPrimary()),
+          ),
+          _SegmentButton(
+            label: 'All',
+            selected: value is AppearanceMonitorTargetAll,
+            onPressed: () => onChanged(const AppearanceMonitorTargetAll()),
+          ),
+          for (final LayerShellMonitor monitor in monitors)
+            _SegmentButton(
+              label: monitor.label,
+              selected:
+                  value is AppearanceMonitorTargetNamed &&
+                  (value as AppearanceMonitorTargetNamed).name == monitor.name,
+              onPressed: () =>
+                  onChanged(AppearanceMonitorTargetNamed(name: monitor.name)),
+            ),
+        ],
+      ),
+    );
   }
 }
 

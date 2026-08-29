@@ -178,6 +178,9 @@ sealed class AppearanceIntent extends RustIntent {
   const factory AppearanceIntent.setPosition(AppearancePosition position) =
       _AppearanceSetPositionIntent;
 
+  const factory AppearanceIntent.setMonitor(AppearanceMonitorTarget monitor) =
+      _AppearanceSetMonitorIntent;
+
   const factory AppearanceIntent.setOpacity(int opacity) =
       _AppearanceSetOpacityIntent;
 
@@ -202,6 +205,20 @@ class _AppearanceSetPositionIntent extends AppearanceIntent {
   @override
   void send() {
     AppearanceCommandSetPosition(position: position).sendSignalToRust();
+  }
+}
+
+class _AppearanceSetMonitorIntent extends AppearanceIntent {
+  const _AppearanceSetMonitorIntent(this.monitor);
+
+  final AppearanceMonitorTarget monitor;
+
+  @override
+  String get debugLabel => 'appearance_monitor:$monitor';
+
+  @override
+  void send() {
+    AppearanceCommandSetMonitor(monitor: monitor).sendSignalToRust();
   }
 }
 

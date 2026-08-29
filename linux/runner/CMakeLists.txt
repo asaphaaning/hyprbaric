@@ -10,6 +10,7 @@ add_executable(${BINARY_NAME}
   "main.cc"
   "hit_region.cc"
   "layer_shell_host.cc"
+  "monitor.cc"
   "my_application.cc"
   "native_window_state.cc"
   "window_bootstrap.cc"

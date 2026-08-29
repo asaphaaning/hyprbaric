@@ -48,6 +48,168 @@ typedef enum {
 } HyprbaricNativeLayerShellBarEdge;
 
 /**
+ * HyprbaricNativeLayerShellMonitorTargetKind:
+ * HYPRBARIC_NATIVE_LAYER_SHELL_MONITOR_TARGET_KIND_PRIMARY:
+ * HYPRBARIC_NATIVE_LAYER_SHELL_MONITOR_TARGET_KIND_ALL:
+ * HYPRBARIC_NATIVE_LAYER_SHELL_MONITOR_TARGET_KIND_NAMED:
+ *
+ */
+typedef enum {
+  HYPRBARIC_NATIVE_LAYER_SHELL_MONITOR_TARGET_KIND_PRIMARY = 0,
+  HYPRBARIC_NATIVE_LAYER_SHELL_MONITOR_TARGET_KIND_ALL = 1,
+  HYPRBARIC_NATIVE_LAYER_SHELL_MONITOR_TARGET_KIND_NAMED = 2
+} HyprbaricNativeLayerShellMonitorTargetKind;
+
+/**
+ * HyprbaricNativeLayerShellMonitorTarget:
+ *
+ */
+
+G_DECLARE_FINAL_TYPE(HyprbaricNativeLayerShellMonitorTarget, hyprbaric_native_layer_shell_monitor_target, HYPRBARIC, NATIVE_LAYER_SHELL_MONITOR_TARGET, GObject)
+
+/**
+ * hyprbaric_native_layer_shell_monitor_target_new:
+ * kind: field in this object.
+ * name: field in this object.
+ *
+ * Creates a new #NativeLayerShellMonitorTarget object.
+ *
+ * Returns: a new #HyprbaricNativeLayerShellMonitorTarget
+ */
+HyprbaricNativeLayerShellMonitorTarget* hyprbaric_native_layer_shell_monitor_target_new(HyprbaricNativeLayerShellMonitorTargetKind kind, const gchar* name);
+
+/**
+ * hyprbaric_native_layer_shell_monitor_target_get_kind
+ * @object: a #HyprbaricNativeLayerShellMonitorTarget.
+ *
+ * Gets the value of the kind field of @object.
+ *
+ * Returns: the field value.
+ */
+HyprbaricNativeLayerShellMonitorTargetKind hyprbaric_native_layer_shell_monitor_target_get_kind(HyprbaricNativeLayerShellMonitorTarget* object);
+
+/**
+ * hyprbaric_native_layer_shell_monitor_target_get_name
+ * @object: a #HyprbaricNativeLayerShellMonitorTarget.
+ *
+ * Gets the value of the name field of @object.
+ *
+ * Returns: the field value.
+ */
+const gchar* hyprbaric_native_layer_shell_monitor_target_get_name(HyprbaricNativeLayerShellMonitorTarget* object);
+
+/**
+ * hyprbaric_native_layer_shell_monitor_target_equals:
+ * @a: a #HyprbaricNativeLayerShellMonitorTarget.
+ * @b: another #HyprbaricNativeLayerShellMonitorTarget.
+ *
+ * Checks if two #HyprbaricNativeLayerShellMonitorTarget objects are equal.
+ *
+ * Returns: TRUE if @a and @b are equal.
+ */
+gboolean hyprbaric_native_layer_shell_monitor_target_equals(HyprbaricNativeLayerShellMonitorTarget* a, HyprbaricNativeLayerShellMonitorTarget* b);
+
+/**
+ * hyprbaric_native_layer_shell_monitor_target_hash:
+ * @object: a #HyprbaricNativeLayerShellMonitorTarget.
+ *
+ * Calculates a hash code for a #HyprbaricNativeLayerShellMonitorTarget object.
+ *
+ * Returns: the hash code.
+ */
+guint hyprbaric_native_layer_shell_monitor_target_hash(HyprbaricNativeLayerShellMonitorTarget* object);
+
+/**
+ * hyprbaric_native_layer_shell_monitor_target_to_string:
+ * @object: a #HyprbaricNativeLayerShellMonitorTarget.
+ *
+ * Returns a string representation of a #HyprbaricNativeLayerShellMonitorTarget object.
+ *
+ * Returns: (transfer full): a new string, free with g_free().
+ */
+gchar* hyprbaric_native_layer_shell_monitor_target_to_string(HyprbaricNativeLayerShellMonitorTarget* object);
+
+/**
+ * HyprbaricNativeLayerShellMonitor:
+ *
+ */
+
+G_DECLARE_FINAL_TYPE(HyprbaricNativeLayerShellMonitor, hyprbaric_native_layer_shell_monitor, HYPRBARIC, NATIVE_LAYER_SHELL_MONITOR, GObject)
+
+/**
+ * hyprbaric_native_layer_shell_monitor_new:
+ * name: field in this object.
+ * label: field in this object.
+ * is_primary: field in this object.
+ *
+ * Creates a new #NativeLayerShellMonitor object.
+ *
+ * Returns: a new #HyprbaricNativeLayerShellMonitor
+ */
+HyprbaricNativeLayerShellMonitor* hyprbaric_native_layer_shell_monitor_new(const gchar* name, const gchar* label, gboolean is_primary);
+
+/**
+ * hyprbaric_native_layer_shell_monitor_get_name
+ * @object: a #HyprbaricNativeLayerShellMonitor.
+ *
+ * Gets the value of the name field of @object.
+ *
+ * Returns: the field value.
+ */
+const gchar* hyprbaric_native_layer_shell_monitor_get_name(HyprbaricNativeLayerShellMonitor* object);
+
+/**
+ * hyprbaric_native_layer_shell_monitor_get_label
+ * @object: a #HyprbaricNativeLayerShellMonitor.
+ *
+ * Gets the value of the label field of @object.
+ *
+ * Returns: the field value.
+ */
+const gchar* hyprbaric_native_layer_shell_monitor_get_label(HyprbaricNativeLayerShellMonitor* object);
+
+/**
+ * hyprbaric_native_layer_shell_monitor_get_is_primary
+ * @object: a #HyprbaricNativeLayerShellMonitor.
+ *
+ * Gets the value of the isPrimary field of @object.
+ *
+ * Returns: the field value.
+ */
+gboolean hyprbaric_native_layer_shell_monitor_get_is_primary(HyprbaricNativeLayerShellMonitor* object);
+
+/**
+ * hyprbaric_native_layer_shell_monitor_equals:
+ * @a: a #HyprbaricNativeLayerShellMonitor.
+ * @b: another #HyprbaricNativeLayerShellMonitor.
+ *
+ * Checks if two #HyprbaricNativeLayerShellMonitor objects are equal.
+ *
+ * Returns: TRUE if @a and @b are equal.
+ */
+gboolean hyprbaric_native_layer_shell_monitor_equals(HyprbaricNativeLayerShellMonitor* a, HyprbaricNativeLayerShellMonitor* b);
+
+/**
+ * hyprbaric_native_layer_shell_monitor_hash:
+ * @object: a #HyprbaricNativeLayerShellMonitor.
+ *
+ * Calculates a hash code for a #HyprbaricNativeLayerShellMonitor object.
+ *
+ * Returns: the hash code.
+ */
+guint hyprbaric_native_layer_shell_monitor_hash(HyprbaricNativeLayerShellMonitor* object);
+
+/**
+ * hyprbaric_native_layer_shell_monitor_to_string:
+ * @object: a #HyprbaricNativeLayerShellMonitor.
+ *
+ * Returns a string representation of a #HyprbaricNativeLayerShellMonitor object.
+ *
+ * Returns: (transfer full): a new string, free with g_free().
+ */
+gchar* hyprbaric_native_layer_shell_monitor_to_string(HyprbaricNativeLayerShellMonitor* object);
+
+/**
  * HyprbaricNativeLayerShellAnchors:
  *
  */
@@ -552,12 +714,13 @@ G_DECLARE_FINAL_TYPE(HyprbaricNativeLayerShellPanelConfig, hyprbaric_native_laye
  * exclusive_zone: field in this object.
  * auto_exclusive_zone: field in this object.
  * keyboard_mode: field in this object.
+ * monitor: field in this object.
  *
  * Creates a new #NativeLayerShellPanelConfig object.
  *
  * Returns: a new #HyprbaricNativeLayerShellPanelConfig
  */
-HyprbaricNativeLayerShellPanelConfig* hyprbaric_native_layer_shell_panel_config_new(const gchar* app_namespace, HyprbaricNativeLayerShellLayer layer, HyprbaricNativeLayerShellAnchors* anchors, HyprbaricNativeLayerShellMargins* margins, HyprbaricNativeLayerShellSize* size, int64_t exclusive_zone, gboolean auto_exclusive_zone, HyprbaricNativeLayerShellKeyboardMode keyboard_mode);
+HyprbaricNativeLayerShellPanelConfig* hyprbaric_native_layer_shell_panel_config_new(const gchar* app_namespace, HyprbaricNativeLayerShellLayer layer, HyprbaricNativeLayerShellAnchors* anchors, HyprbaricNativeLayerShellMargins* margins, HyprbaricNativeLayerShellSize* size, int64_t exclusive_zone, gboolean auto_exclusive_zone, HyprbaricNativeLayerShellKeyboardMode keyboard_mode, HyprbaricNativeLayerShellMonitorTarget* monitor);
 
 /**
  * hyprbaric_native_layer_shell_panel_config_get_app_namespace
@@ -640,6 +803,16 @@ gboolean hyprbaric_native_layer_shell_panel_config_get_auto_exclusive_zone(Hyprb
 HyprbaricNativeLayerShellKeyboardMode hyprbaric_native_layer_shell_panel_config_get_keyboard_mode(HyprbaricNativeLayerShellPanelConfig* object);
 
 /**
+ * hyprbaric_native_layer_shell_panel_config_get_monitor
+ * @object: a #HyprbaricNativeLayerShellPanelConfig.
+ *
+ * Gets the value of the monitor field of @object.
+ *
+ * Returns: the field value.
+ */
+HyprbaricNativeLayerShellMonitorTarget* hyprbaric_native_layer_shell_panel_config_get_monitor(HyprbaricNativeLayerShellPanelConfig* object);
+
+/**
  * hyprbaric_native_layer_shell_panel_config_equals:
  * @a: a #HyprbaricNativeLayerShellPanelConfig.
  * @b: another #HyprbaricNativeLayerShellPanelConfig.
@@ -682,6 +855,9 @@ G_DECLARE_FINAL_TYPE(HyprbaricMessageCodec, hyprbaric_message_codec, HYPRBARIC, 
 extern const int hyprbaric_native_layer_shell_layer_type_id;
 extern const int hyprbaric_native_layer_shell_keyboard_mode_type_id;
 extern const int hyprbaric_native_layer_shell_bar_edge_type_id;
+extern const int hyprbaric_native_layer_shell_monitor_target_kind_type_id;
+extern const int hyprbaric_native_layer_shell_monitor_target_type_id;
+extern const int hyprbaric_native_layer_shell_monitor_type_id;
 extern const int hyprbaric_native_layer_shell_anchors_type_id;
 extern const int hyprbaric_native_layer_shell_margins_type_id;
 extern const int hyprbaric_native_layer_shell_size_type_id;
@@ -690,6 +866,29 @@ extern const int hyprbaric_native_layer_shell_region_request_type_id;
 extern const int hyprbaric_native_layer_shell_panel_config_type_id;
 
 G_DECLARE_FINAL_TYPE(HyprbaricNativeLayerShellHostApi, hyprbaric_native_layer_shell_host_api, HYPRBARIC, NATIVE_LAYER_SHELL_HOST_API, GObject)
+
+G_DECLARE_FINAL_TYPE(HyprbaricNativeLayerShellHostApiListMonitorsResponse, hyprbaric_native_layer_shell_host_api_list_monitors_response, HYPRBARIC, NATIVE_LAYER_SHELL_HOST_API_LIST_MONITORS_RESPONSE, GObject)
+
+/**
+ * hyprbaric_native_layer_shell_host_api_list_monitors_response_new:
+ *
+ * Creates a new response to NativeLayerShellHostApi.listMonitors.
+ *
+ * Returns: a new #HyprbaricNativeLayerShellHostApiListMonitorsResponse
+ */
+HyprbaricNativeLayerShellHostApiListMonitorsResponse* hyprbaric_native_layer_shell_host_api_list_monitors_response_new(FlValue* return_value);
+
+/**
+ * hyprbaric_native_layer_shell_host_api_list_monitors_response_new_error:
+ * @code: error code.
+ * @message: error message.
+ * @details: (allow-none): error details or %NULL.
+ *
+ * Creates a new error response to NativeLayerShellHostApi.listMonitors.
+ *
+ * Returns: a new #HyprbaricNativeLayerShellHostApiListMonitorsResponse
+ */
+HyprbaricNativeLayerShellHostApiListMonitorsResponse* hyprbaric_native_layer_shell_host_api_list_monitors_response_new_error(const gchar* code, const gchar* message, FlValue* details);
 
 G_DECLARE_FINAL_TYPE(HyprbaricNativeLayerShellHostApiConfigurePanelResponse, hyprbaric_native_layer_shell_host_api_configure_panel_response, HYPRBARIC, NATIVE_LAYER_SHELL_HOST_API_CONFIGURE_PANEL_RESPONSE, GObject)
 
@@ -927,6 +1126,7 @@ HyprbaricNativeLayerShellHostApiSetRegionResponse* hyprbaric_native_layer_shell_
  * Table of functions exposed by NativeLayerShellHostApi to be implemented by the API provider.
  */
 typedef struct {
+  HyprbaricNativeLayerShellHostApiListMonitorsResponse* (*list_monitors)(gpointer user_data);
   HyprbaricNativeLayerShellHostApiConfigurePanelResponse* (*configure_panel)(HyprbaricNativeLayerShellPanelConfig* config, gpointer user_data);
   HyprbaricNativeLayerShellHostApiSetLayerResponse* (*set_layer)(HyprbaricNativeLayerShellLayer layer, gpointer user_data);
   HyprbaricNativeLayerShellHostApiSetNamespaceResponse* (*set_namespace)(const gchar* app_namespace, gpointer user_data);

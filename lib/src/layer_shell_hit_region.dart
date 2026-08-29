@@ -1,11 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
+import 'layer_shell_controller.dart';
 import 'native/layer_shell_api.g.dart';
 
 bool _isLinux() => !kIsWeb && defaultTargetPlatform == TargetPlatform.linux;
-
-final NativeLayerShellHostApi _layerShellApi = NativeLayerShellHostApi();
 
 enum LayerShellBarEdge {
   top,
@@ -104,10 +103,13 @@ class _QueuedRegionUpdate {
 class LayerShellRegionManager {
   LayerShellRegionManager({
     required double barHeight,
+    LayerShellController? controller,
     LayerShellBarEdge barEdge = LayerShellBarEdge.top,
   }) : _barHeight = barHeight.round(),
+       _controller = controller ?? LayerShellController.defaultView(),
        _barEdge = barEdge;
 
+  final LayerShellController _controller;
   int _barHeight;
   LayerShellBarEdge _barEdge;
   LayerShellMenuRegion? _menu;
@@ -215,7 +217,7 @@ class LayerShellRegionManager {
         }
 
         try {
-          await _layerShellApi.setRegion(nextUpdate.request.toNative());
+          await _controller.setRegion(nextUpdate.request.toNative());
           _lastAppliedRequest = nextUpdate.request;
         } catch (_) {
           // A dropped region update is recoverable: the next one reapplies it.

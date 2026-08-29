@@ -34,6 +34,7 @@ The **Appearance** tab applies changes live and can restore these values to thei
 ```toml title="config.toml"
 [appearance]
 position = "top"
+monitor = "primary"
 opacity = 77
 corner_radius = 12
 accent_hue = 197
@@ -42,6 +43,7 @@ accent_hue = 197
 | Key | Values | Default | Effect |
 | --- | --- | --- | --- |
 | `position` | `"top"`, `"bottom"` | `"top"` | Edge where hyprbaric reserves space and renders. |
+| `monitor` | `"primary"`, `"all"`, or a monitor name offered by the Appearance tab | `"primary"` | Displays that receive a bar. A missing named monitor temporarily falls back to the primary display. |
 | `opacity` | Integer `20..=100` | `77` | Bar background opacity in percent. |
 | `corner_radius` | Integer `0..=32` | `12` | Radius of the bar’s outer corners, in pixels. |
 | `accent_hue` | Integer `0..=359` | `197` | Hue used for highlights and active states. |

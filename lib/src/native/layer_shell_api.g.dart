@@ -103,6 +103,108 @@ enum NativeLayerShellKeyboardMode { none, exclusive, onDemand }
 
 enum NativeLayerShellBarEdge { top, bottom }
 
+enum NativeLayerShellMonitorTargetKind { primary, all, named }
+
+class NativeLayerShellMonitorTarget {
+  NativeLayerShellMonitorTarget({required this.kind, this.name});
+
+  NativeLayerShellMonitorTargetKind kind;
+
+  String? name;
+
+  List<Object?> _toList() {
+    return <Object?>[kind, name];
+  }
+
+  Object encode() {
+    return _toList();
+  }
+
+  static NativeLayerShellMonitorTarget decode(Object result) {
+    result as List<Object?>;
+    return NativeLayerShellMonitorTarget(
+      kind: result[0]! as NativeLayerShellMonitorTargetKind,
+      name: result[1] as String?,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! NativeLayerShellMonitorTarget ||
+        other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(kind, other.kind) && _deepEquals(name, other.name);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'NativeLayerShellMonitorTarget(kind: $kind, name: $name)';
+  }
+}
+
+class NativeLayerShellMonitor {
+  NativeLayerShellMonitor({
+    required this.name,
+    required this.label,
+    required this.isPrimary,
+  });
+
+  String name;
+
+  String label;
+
+  bool isPrimary;
+
+  List<Object?> _toList() {
+    return <Object?>[name, label, isPrimary];
+  }
+
+  Object encode() {
+    return _toList();
+  }
+
+  static NativeLayerShellMonitor decode(Object result) {
+    result as List<Object?>;
+    return NativeLayerShellMonitor(
+      name: result[0]! as String,
+      label: result[1]! as String,
+      isPrimary: result[2]! as bool,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! NativeLayerShellMonitor || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(name, other.name) &&
+        _deepEquals(label, other.label) &&
+        _deepEquals(isPrimary, other.isPrimary);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'NativeLayerShellMonitor(name: $name, label: $label, isPrimary: $isPrimary)';
+  }
+}
+
 class NativeLayerShellAnchors {
   NativeLayerShellAnchors({this.top, this.bottom, this.left, this.right});
 
@@ -426,6 +528,7 @@ class NativeLayerShellPanelConfig {
     required this.exclusiveZone,
     required this.autoExclusiveZone,
     required this.keyboardMode,
+    required this.monitor,
   });
 
   String appNamespace;
@@ -444,6 +547,8 @@ class NativeLayerShellPanelConfig {
 
   NativeLayerShellKeyboardMode keyboardMode;
 
+  NativeLayerShellMonitorTarget monitor;
+
   List<Object?> _toList() {
     return <Object?>[
       appNamespace,
@@ -454,6 +559,7 @@ class NativeLayerShellPanelConfig {
       exclusiveZone,
       autoExclusiveZone,
       keyboardMode,
+      monitor,
     ];
   }
 
@@ -472,6 +578,7 @@ class NativeLayerShellPanelConfig {
       exclusiveZone: result[5]! as int,
       autoExclusiveZone: result[6]! as bool,
       keyboardMode: result[7]! as NativeLayerShellKeyboardMode,
+      monitor: result[8]! as NativeLayerShellMonitorTarget,
     );
   }
 
@@ -492,7 +599,8 @@ class NativeLayerShellPanelConfig {
         _deepEquals(size, other.size) &&
         _deepEquals(exclusiveZone, other.exclusiveZone) &&
         _deepEquals(autoExclusiveZone, other.autoExclusiveZone) &&
-        _deepEquals(keyboardMode, other.keyboardMode);
+        _deepEquals(keyboardMode, other.keyboardMode) &&
+        _deepEquals(monitor, other.monitor);
   }
 
   @override
@@ -501,7 +609,7 @@ class NativeLayerShellPanelConfig {
 
   @override
   String toString() {
-    return 'NativeLayerShellPanelConfig(appNamespace: $appNamespace, layer: $layer, anchors: $anchors, margins: $margins, size: $size, exclusiveZone: $exclusiveZone, autoExclusiveZone: $autoExclusiveZone, keyboardMode: $keyboardMode)';
+    return 'NativeLayerShellPanelConfig(appNamespace: $appNamespace, layer: $layer, anchors: $anchors, margins: $margins, size: $size, exclusiveZone: $exclusiveZone, autoExclusiveZone: $autoExclusiveZone, keyboardMode: $keyboardMode, monitor: $monitor)';
   }
 }
 
@@ -521,23 +629,32 @@ class _PigeonCodec extends StandardMessageCodec {
     } else if (value is NativeLayerShellBarEdge) {
       buffer.putUint8(131);
       writeValue(buffer, value.index);
-    } else if (value is NativeLayerShellAnchors) {
+    } else if (value is NativeLayerShellMonitorTargetKind) {
       buffer.putUint8(132);
-      writeValue(buffer, value.encode());
-    } else if (value is NativeLayerShellMargins) {
+      writeValue(buffer, value.index);
+    } else if (value is NativeLayerShellMonitorTarget) {
       buffer.putUint8(133);
       writeValue(buffer, value.encode());
-    } else if (value is NativeLayerShellSize) {
+    } else if (value is NativeLayerShellMonitor) {
       buffer.putUint8(134);
       writeValue(buffer, value.encode());
-    } else if (value is NativeLayerShellRegion) {
+    } else if (value is NativeLayerShellAnchors) {
       buffer.putUint8(135);
       writeValue(buffer, value.encode());
-    } else if (value is NativeLayerShellRegionRequest) {
+    } else if (value is NativeLayerShellMargins) {
       buffer.putUint8(136);
       writeValue(buffer, value.encode());
-    } else if (value is NativeLayerShellPanelConfig) {
+    } else if (value is NativeLayerShellSize) {
       buffer.putUint8(137);
+      writeValue(buffer, value.encode());
+    } else if (value is NativeLayerShellRegion) {
+      buffer.putUint8(138);
+      writeValue(buffer, value.encode());
+    } else if (value is NativeLayerShellRegionRequest) {
+      buffer.putUint8(139);
+      writeValue(buffer, value.encode());
+    } else if (value is NativeLayerShellPanelConfig) {
+      buffer.putUint8(140);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -559,16 +676,25 @@ class _PigeonCodec extends StandardMessageCodec {
         final value = readValue(buffer) as int?;
         return value == null ? null : NativeLayerShellBarEdge.values[value];
       case 132:
-        return NativeLayerShellAnchors.decode(readValue(buffer)!);
+        final value = readValue(buffer) as int?;
+        return value == null
+            ? null
+            : NativeLayerShellMonitorTargetKind.values[value];
       case 133:
-        return NativeLayerShellMargins.decode(readValue(buffer)!);
+        return NativeLayerShellMonitorTarget.decode(readValue(buffer)!);
       case 134:
-        return NativeLayerShellSize.decode(readValue(buffer)!);
+        return NativeLayerShellMonitor.decode(readValue(buffer)!);
       case 135:
-        return NativeLayerShellRegion.decode(readValue(buffer)!);
+        return NativeLayerShellAnchors.decode(readValue(buffer)!);
       case 136:
-        return NativeLayerShellRegionRequest.decode(readValue(buffer)!);
+        return NativeLayerShellMargins.decode(readValue(buffer)!);
       case 137:
+        return NativeLayerShellSize.decode(readValue(buffer)!);
+      case 138:
+        return NativeLayerShellRegion.decode(readValue(buffer)!);
+      case 139:
+        return NativeLayerShellRegionRequest.decode(readValue(buffer)!);
+      case 140:
         return NativeLayerShellPanelConfig.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -592,6 +718,26 @@ class NativeLayerShellHostApi {
   static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
 
   final String pigeonVar_messageChannelSuffix;
+
+  Future<List<NativeLayerShellMonitor>> listMonitors() async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.listMonitors$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
+    return (pigeonVar_replyValue! as List<Object?>)
+        .cast<NativeLayerShellMonitor>();
+  }
 
   Future<void> configurePanel(NativeLayerShellPanelConfig config) async {
     final pigeonVar_channelName =

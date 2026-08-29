@@ -10,11 +10,6 @@ constexpr int kInitialBarHeight = 40;
 constexpr int kInitialBarTopMargin = 3;
 constexpr char kTitle[] = "Hyprbaric";
 
-void first_frame_cb(FlView *view, gpointer user_data) {
-  (void)view;
-  gtk_widget_show(GTK_WIDGET(user_data));
-}
-
 void configure_titlebar(GtkWindow *window) {
   gboolean use_header_bar = FALSE;
 #ifdef GDK_WINDOWING_X11
@@ -50,7 +45,8 @@ void configure_transparency(GtkWidget *window_widget) {
 #endif
 }
 
-void configure_initial_layer_shell(GtkWindow *window, GtkWidget *window_widget) {
+void configure_initial_layer_shell(GtkWindow *window, GtkWidget *window_widget,
+                                   GdkMonitor *monitor) {
   gtk_layer_init_for_window(window);
   gtk_layer_set_namespace(window, "hyprbaric");
   gtk_layer_set_layer(window, GTK_LAYER_SHELL_LAYER_TOP);
@@ -61,18 +57,14 @@ void configure_initial_layer_shell(GtkWindow *window, GtkWidget *window_widget) 
   gtk_layer_set_margin(window, GTK_LAYER_SHELL_EDGE_TOP, kInitialBarTopMargin);
   gtk_layer_set_margin(window, GTK_LAYER_SHELL_EDGE_LEFT, 0);
   gtk_layer_set_margin(window, GTK_LAYER_SHELL_EDGE_RIGHT, 0);
-  gtk_layer_set_exclusive_zone(window, kInitialBarHeight + kInitialBarTopMargin);
+  gtk_layer_set_exclusive_zone(window,
+                               kInitialBarHeight + kInitialBarTopMargin);
   gtk_layer_set_keyboard_mode(window, GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
 
-  GdkDisplay *display = gdk_display_get_default();
-  if (display == nullptr) {
-    return;
+  if (monitor != nullptr) {
+    gtk_layer_set_monitor(window, monitor);
   }
 
-  GdkMonitor *monitor = gdk_display_get_primary_monitor(display);
-  if (monitor == nullptr && gdk_display_get_n_monitors(display) > 0) {
-    monitor = gdk_display_get_monitor(display, 0);
-  }
   if (monitor != nullptr) {
     GdkRectangle geometry;
     gdk_monitor_get_geometry(monitor, &geometry);
@@ -82,6 +74,7 @@ void configure_initial_layer_shell(GtkWindow *window, GtkWidget *window_widget) 
 } // namespace
 
 GtkWindow *hyprbaric_create_window(GtkApplication *application,
+                                   GdkMonitor *monitor,
                                    gboolean *layer_shell_available) {
   GtkWindow *window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
@@ -96,7 +89,7 @@ GtkWindow *hyprbaric_create_window(GtkApplication *application,
     *layer_shell_available = supported;
   }
   if (supported) {
-    configure_initial_layer_shell(window, window_widget);
+    configure_initial_layer_shell(window, window_widget, monitor);
   }
 
   gtk_widget_realize(GTK_WIDGET(window));
@@ -110,9 +103,17 @@ FlView *hyprbaric_create_view(GtkWindow *window, char **dart_entrypoint_args) {
   FlView *view = fl_view_new(project);
   GdkRGBA transparent = {0.0, 0.0, 0.0, 0.0};
   fl_view_set_background_color(view, &transparent);
-  g_signal_connect(view, "first-frame", G_CALLBACK(first_frame_cb), window);
   gtk_widget_show(GTK_WIDGET(view));
   gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(view));
   gtk_widget_grab_focus(GTK_WIDGET(view));
+  return view;
+}
+
+FlView *hyprbaric_create_view_for_engine(GtkWindow *window, FlEngine *engine) {
+  FlView *view = fl_view_new_for_engine(engine);
+  GdkRGBA transparent = {0.0, 0.0, 0.0, 0.0};
+  fl_view_set_background_color(view, &transparent);
+  gtk_widget_show(GTK_WIDGET(view));
+  gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(view));
   return view;
 }

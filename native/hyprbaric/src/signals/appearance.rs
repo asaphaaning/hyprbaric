@@ -7,7 +7,6 @@ pub enum AppearancePosition {
     Bottom,
 }
 
-/// Which outputs an appearance setting applies to.
 #[derive(Serialize, Deserialize, SignalPiece, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum AppearanceMonitorTarget {
     Primary,
@@ -18,6 +17,7 @@ pub enum AppearanceMonitorTarget {
 #[derive(Serialize, Deserialize, DartSignal, SignalPiece, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum AppearanceCommand {
     SetPosition { position: AppearancePosition },
+    SetMonitor { monitor: AppearanceMonitorTarget },
     SetOpacity { opacity: u8 },
     SetCornerRadius { corner_radius: u8 },
     SetAccentHue { accent_hue: u16 },

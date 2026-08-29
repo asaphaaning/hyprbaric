@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bindings/bindings.dart';
 import '../../layer_shell_controller.dart';
+import '../../state/layer_shell.dart';
 import '../../state/rust_signals/launcher.dart';
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/modal_command_surface.dart';
@@ -38,6 +39,7 @@ class _AppLauncherState extends ConsumerState<AppLauncher> {
   static const String _keyboardOwner = 'app-launcher';
   final FocusNode _queryFocusNode = FocusNode(debugLabel: 'app-launcher-query');
   final TextEditingController _queryController = TextEditingController();
+  late final LayerShellController _layerShellController;
   bool _muteQueryNotifications = false;
   Timer? _queryDispatchTimer;
 
@@ -47,6 +49,7 @@ class _AppLauncherState extends ConsumerState<AppLauncher> {
   @override
   void initState() {
     super.initState();
+    _layerShellController = ref.read(layerShellControllerProvider);
     _queryController.addListener(_handleQueryTextChanged);
   }
 
@@ -72,21 +75,21 @@ class _AppLauncherState extends ConsumerState<AppLauncher> {
 
   void _handleOpened() {
     _dispatchQueryIfCurrent('');
-    unawaited(LayerShellController.claimKeyboard(_keyboardOwner));
+    unawaited(_layerShellController.claimKeyboard(_keyboardOwner));
   }
 
   void _handleClosing() {
     ref.read(launcherControllerProvider.notifier).closed();
     _setQuery('');
     _queryDispatchTimer?.cancel();
-    unawaited(LayerShellController.releaseKeyboard(_keyboardOwner));
+    unawaited(_layerShellController.releaseKeyboard(_keyboardOwner));
   }
 
   void _handleDismissed() {
     ref.read(launcherControllerProvider.notifier).closed();
     _setQuery('');
     _queryDispatchTimer?.cancel();
-    unawaited(LayerShellController.releaseKeyboard(_keyboardOwner));
+    unawaited(_layerShellController.releaseKeyboard(_keyboardOwner));
   }
 
   void _handleQueryTextChanged() {
