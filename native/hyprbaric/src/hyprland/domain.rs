@@ -20,16 +20,23 @@ pub enum WorkspaceTarget {
 }
 
 /// The active workspace state consumed by the bar.
-#[derive(Clone, Debug, PartialEq, Eq)]
+///
+/// The top-level fields describe the compositor-wide focus. `monitors`
+/// additionally carries what each output is displaying, because a bar rendered
+/// on an unfocused output must show that output's workspace rather than the
+/// focused one.
+#[derive(Clone, Debug, PartialEq)]
 pub struct WorkspaceSnapshot {
-    /// Numeric Hyprland workspace identifier.
+    /// Numeric Hyprland workspace identifier of the focused workspace.
     pub id: WorkspaceId,
-    /// User-visible workspace name.
+    /// User-visible name of the focused workspace.
     pub name: String,
-    /// Whether the active workspace is a special workspace.
+    /// Whether the focused workspace is a special workspace.
     pub is_special: bool,
     /// The regular workspaces that currently contain one or more windows.
     pub occupied: WorkspaceOccupancy,
+    /// What each connected output is currently displaying.
+    pub monitors: Vec<MonitorWorkspace>,
 }
 
 impl WorkspaceSnapshot {
@@ -38,12 +45,59 @@ impl WorkspaceSnapshot {
         name: String,
         is_special: bool,
         occupied: WorkspaceOccupancy,
+        monitors: Vec<MonitorWorkspace>,
     ) -> Self {
         Self {
             id: WorkspaceId::observed(id),
             name,
             is_special,
             occupied,
+            monitors,
+        }
+    }
+}
+
+/// What a single Hyprland output is displaying.
+///
+/// Geometry is carried so the Dart side can match a bar's Flutter display to
+/// the compositor output it occupies; Hyprland's connector names are not
+/// visible to GTK, which reports monitor models instead.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MonitorWorkspace {
+    /// Hyprland connector name, such as `DP-2`.
+    pub name: String,
+    /// The workspace this output currently displays.
+    pub active_workspace: WorkspaceId,
+    /// Whether this output holds the compositor focus.
+    pub is_focused: bool,
+    /// Output width in physical pixels.
+    pub width: i32,
+    /// Output height in physical pixels.
+    pub height: i32,
+    /// Refresh rate in Hz, rounded to the nearest whole frame.
+    pub refresh_hz: i32,
+    /// Output scale, needed to derive the logical size a client observes.
+    pub scale: f32,
+}
+
+impl MonitorWorkspace {
+    pub(super) fn new(
+        name: String,
+        active_workspace: i32,
+        is_focused: bool,
+        width: i32,
+        height: i32,
+        refresh_hz: f32,
+        scale: f32,
+    ) -> Self {
+        Self {
+            name,
+            active_workspace: WorkspaceId::observed(active_workspace),
+            is_focused,
+            width,
+            height,
+            refresh_hz: refresh_hz.round() as i32,
+            scale,
         }
     }
 }
@@ -125,8 +179,8 @@ fn normalize(value: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        FocusedWindowSnapshot, WorkspaceId, WorkspaceOccupancy, WorkspaceTarget,
-        normalize_app_name, normalize_title,
+        FocusedWindowSnapshot, MonitorWorkspace, WorkspaceId, WorkspaceOccupancy, WorkspaceSnapshot,
+        WorkspaceTarget, normalize_app_name, normalize_title,
     };
 
     #[test]
@@ -159,6 +213,36 @@ mod tests {
         assert_eq!(WorkspaceTarget::absolute(0), None);
         assert_eq!(WorkspaceTarget::absolute(-1), None);
         assert!(WorkspaceTarget::absolute(1).is_some());
+    }
+
+    #[test]
+    fn monitor_workspace_rounds_refresh_rate_to_whole_frames() {
+        let monitor = MonitorWorkspace::new("DP-2".to_owned(), 3, true, 3840, 2160, 240.016, 1.2);
+
+        assert_eq!(monitor.name, "DP-2");
+        assert_eq!(monitor.active_workspace.get(), 3);
+        assert!(monitor.is_focused);
+        assert_eq!(monitor.refresh_hz, 240);
+    }
+
+    #[test]
+    fn snapshot_carries_each_output_alongside_the_focused_workspace() {
+        let snapshot = WorkspaceSnapshot::new(
+            4,
+            "4".to_owned(),
+            false,
+            WorkspaceOccupancy::from_occupied_ids([3]),
+            vec![
+                MonitorWorkspace::new("DP-2".to_owned(), 3, false, 3840, 2160, 240.0, 1.2),
+                MonitorWorkspace::new("MACBOOK".to_owned(), 4, true, 2560, 1600, 60.0, 1.0),
+            ],
+        );
+
+        // Focus is on workspace 4, but DP-2 is still displaying workspace 3.
+        assert_eq!(snapshot.id.get(), 4);
+        assert_eq!(snapshot.monitors[0].active_workspace.get(), 3);
+        assert!(!snapshot.monitors[0].is_focused);
+        assert!(snapshot.monitors[1].is_focused);
     }
 
     #[test]

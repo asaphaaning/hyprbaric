@@ -16,7 +16,10 @@ use tokio::{
     time::sleep,
 };
 
-use super::{WorkspaceOccupancy, WorkspaceSnapshot, is_special_workspace, workspace_occupancy};
+use super::{
+    WorkspaceOccupancy, WorkspaceSnapshot, is_special_workspace, monitor_workspaces,
+    workspace_occupancy,
+};
 
 /// How long a burst of window events is allowed to settle before one refresh.
 ///
@@ -91,11 +94,16 @@ impl Occupancy {
         };
 
         let is_special = is_special_workspace(workspace.id, &workspace.name);
+        let monitors = monitor_workspaces().await.unwrap_or_else(|error| {
+            tracing::warn!(?error, 'Failed to refresh Hyprland monitor workspaces');
+            Vec::new()
+        });
         drop(sender.send(WorkspaceSnapshot::new(
             workspace.id,
             workspace.name,
             is_special,
             occupancy,
+            monitors,
         )));
     }
 }

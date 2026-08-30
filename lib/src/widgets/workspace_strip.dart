@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../bindings/bindings.dart';
+import '../state/monitor_workspace.dart';
 import 'hypr_surface.dart';
 import 'primitives/primitives.dart';
 
@@ -14,6 +15,7 @@ class WorkspaceStrip extends StatelessWidget {
     required this.onPrevious,
     required this.onNext,
     required this.onSelect,
+    required this.resolution,
   });
 
   final WorkspaceStatus status;
@@ -22,9 +24,13 @@ class WorkspaceStrip extends StatelessWidget {
   final VoidCallback onNext;
   final ValueChanged<int> onSelect;
 
+  /// The workspace this bar's own output is displaying, which differs from the
+  /// compositor-wide focus whenever another output holds focus.
+  final MonitorWorkspaceResolution resolution;
+
   @override
   Widget build(BuildContext context) {
-    final int active = status.id;
+    final int active = resolution.activeWorkspaceId;
     final List<int> visibleWorkspaces = _visibleWorkspaceRange(
       active,
       settings.visibleCount,
@@ -42,8 +48,13 @@ class WorkspaceStrip extends StatelessWidget {
         for (final int index in visibleWorkspaces) ...<Widget>[
           WorkspaceButton(
             key: ValueKey<String>('workspace-indicator-$index'),
-            label: _workspaceIndicatorLabel(index, status, settings),
-            active: !status.isSpecial && index == active,
+            label: _workspaceIndicatorLabel(
+              index,
+              status,
+              settings,
+              resolution,
+            ),
+            active: !resolution.isSpecial && index == active,
             occupied: status.occupiedWorkspaceIds.contains(index),
             onPressed: settings.clickable ? () => onSelect(index) : null,
           ),
@@ -236,9 +247,14 @@ String _workspaceIndicatorLabel(
   int index,
   WorkspaceStatus status,
   WorkspaceSettingsStatus settings,
+  MonitorWorkspaceResolution resolution,
 ) {
-  if (status.isSpecial && index == 1) {
-    final String name = status.name.trim();
+  if (resolution.isSpecial && index == 1) {
+    // Only the focused output reports a special workspace name; elsewhere the
+    // generic badge is the best available label.
+    final String name = resolution.isFallback || status.isSpecial
+        ? status.name.trim()
+        : '';
     return name.isEmpty ? 'S' : name;
   }
   if (settings.indicatorStyle == WorkspaceIndicatorStyle.numeric) {

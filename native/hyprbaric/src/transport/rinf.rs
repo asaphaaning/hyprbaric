@@ -15,10 +15,18 @@ use crate::signals::{
     RecordingStatus, ScheduleCommand, ScheduleCommandResult, ScheduleStatus,
     ScreenshotCaptureRequest, ScreenshotCommandResult, SessionActionAvailability, SessionCommand,
     SessionCommandResult, SetupCommand, SetupCommandResult, SetupStatus,
-    ShortcutSettingsCommandResult, ShortcutSettingsRequest, ShortcutSettingsSnapshot,
-    TrayActivateRequest, TrayMenuItemActivateRequest, TrayMenuStatus, TrayStatus,
-    WorkspaceSettingsCommand, WorkspaceSettingsCommandResult, WorkspaceSettingsStatus,
-    WorkspaceStatus, WorkspaceSwitch, WorkspaceSwitchKind,
+    ShortcutSettingsCommandResult,
+    ShortcutSettingsRequest, ShortcutSettingsSnapshot, TrayActivateRequest,
+    TrayMenuItemActivateRequest, TrayMenuStatus, TrayStatus, WorkspaceSettingsCommand,
+    WorkspaceSettingsCommandResult, WorkspaceSettingsStatus, WorkspaceStatus, WorkspaceSwitch,
+    WorkspaceSwitchKind,
+=======
+    MonitorWorkspaceStatus, SessionCommandResult, SetupCommand, SetupCommandResult, SetupStatus,
+    ShortcutSettingsCommandResult,
+    ShortcutSettingsRequest, ShortcutSettingsSnapshot, TrayActivateRequest,
+    TrayMenuItemActivateRequest, TrayMenuStatus, TrayStatus, WorkspaceSettingsCommand,
+    WorkspaceSettingsCommandResult, WorkspaceSettingsStatus, WorkspaceStatus, WorkspaceSwitch,
+    WorkspaceSwitchKind,
 };
 use crate::{
     app::{
@@ -96,9 +104,20 @@ pub(crate) fn send_workspace_signal(snapshot: &WorkspaceSnapshot) {
         name: snapshot.name.clone(),
         is_special: snapshot.is_special,
         occupied_workspace_ids: snapshot.occupied.ids().map(|id| id.get()).collect(),
-        // Per-output state arrives with the multi-monitor work. Until then a
-        // single bar renders from the compositor-wide fields above.
-        monitors: Vec::new(),
+=======
+        monitors: snapshot
+            .monitors
+            .iter()
+            .map(|monitor| MonitorWorkspaceStatus {
+                name: monitor.name.clone(),
+                active_workspace_id: monitor.active_workspace.get(),
+                is_focused: monitor.is_focused,
+                width: monitor.width,
+                height: monitor.height,
+                refresh_hz: monitor.refresh_hz,
+                scale: monitor.scale,
+            })
+            .collect(),
     }
     .send_signal_to_dart();
 }

@@ -1,7 +1,7 @@
 use std::{fs, path::Path};
 
 use hyprland::{
-    data::{Client, Workspace, Workspaces},
+    data::{Client, Monitors, Workspace, Workspaces},
     dispatch::{Dispatch, DispatchType, WorkspaceIdentifierWithSpecial},
     error::HyprError,
     prelude::*,
@@ -14,7 +14,8 @@ mod listener;
 mod occupancy;
 
 pub use domain::{
-    Command, FocusedWindowSnapshot, WorkspaceOccupancy, WorkspaceSnapshot, WorkspaceTarget,
+    Command, FocusedWindowSnapshot, MonitorWorkspace, WorkspaceOccupancy, WorkspaceSnapshot,
+    WorkspaceTarget,
 };
 
 /// Live Hyprland desktop observation.
@@ -103,9 +104,9 @@ impl Desktop {
 
 /// Reads one workspace projection, degrading rather than failing.
 ///
-/// Occupancy is decoration on the workspace strip. A compositor that cannot
-/// answer the query must not be able to abort startup, so an unreadable set
-/// becomes an empty one.
+/// Occupancy and per-output state are decoration on the workspace strip. A
+/// compositor that cannot answer either query must not be able to abort
+/// startup, so unreadable sets become empty ones.
 async fn workspace_snapshot(workspace: Workspace) -> WorkspaceSnapshot {
     let occupancy = workspace_occupancy().await.unwrap_or_else(|error| {
         tracing::warn!(
@@ -114,9 +115,22 @@ async fn workspace_snapshot(workspace: Workspace) -> WorkspaceSnapshot {
         );
         WorkspaceOccupancy::default()
     });
+    let monitors = monitor_workspaces().await.unwrap_or_else(|error| {
+        tracing::warn!(
+            ?error,
+            "Failed to read Hyprland monitor workspaces; starting without them"
+        );
+        Vec::new()
+    });
     let is_special = is_special_workspace(workspace.id, &workspace.name);
 
-    WorkspaceSnapshot::new(workspace.id, workspace.name, is_special, occupancy)
+    WorkspaceSnapshot::new(
+        workspace.id,
+        workspace.name,
+        is_special,
+        occupancy,
+        monitors,
+    )
 }
 
 /// Decides whether a workspace is a special workspace.
@@ -127,6 +141,25 @@ async fn workspace_snapshot(workspace: Workspace) -> WorkspaceSnapshot {
 /// arrive flagged differently depending on which event produced it.
 pub(super) fn is_special_workspace(id: i32, name: &str) -> bool {
     id < 0 || name.starts_with("special")
+}
+
+/// Reads what each connected output is currently displaying.
+pub(super) async fn monitor_workspaces() -> Result<Vec<MonitorWorkspace>, HyprError> {
+    Ok(Monitors::get_async()
+        .await?
+        .into_iter()
+        .map(|monitor| {
+            MonitorWorkspace::new(
+                monitor.name,
+                monitor.active_workspace.id,
+                monitor.focused,
+                monitor.width.into(),
+                monitor.height.into(),
+                monitor.refresh_rate,
+                monitor.scale,
+            )
+        })
+        .collect())
 }
 
 pub(super) async fn workspace_occupancy() -> Result<WorkspaceOccupancy, HyprError> {
