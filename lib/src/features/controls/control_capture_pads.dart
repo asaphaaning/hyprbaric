@@ -4,7 +4,7 @@ import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
 import 'controls_chrome.dart';
 
-class ControlCapturePad extends StatefulWidget {
+class ControlCapturePad extends StatelessWidget {
   const ControlCapturePad({
     super.key,
     required this.label,
@@ -19,84 +19,51 @@ class ControlCapturePad extends StatefulWidget {
   final VoidCallback onPressed;
 
   @override
-  State<ControlCapturePad> createState() => ControlCapturePadState();
-}
-
-class ControlCapturePadState extends State<ControlCapturePad> {
-  @override
   Widget build(BuildContext context) {
-    return HyprIconTile(
-      onPressed: widget.onPressed,
-      color: ControlColors.tile,
-      hoverColor: ControlColors.tileHover,
-      borderColor: ControlColors.stroke,
-      hoverBorderColor: ControlColors.strokeHover,
-      borderRadius: BorderRadius.circular(10),
-      builder:
-          (
-            BuildContext context, {
-            required bool hovered,
-            required bool pressed,
-          }) {
-            return Stack(
-              children: <Widget>[
-                Positioned(
-                  top: 7,
-                  right: 8,
-                  child: Text(
-                    widget.shortcut,
-                    style: HyprTypography.compactMono.copyWith(
-                      color: HyprColors.textFaint,
-                      fontSize: HyprTypography.size(8.5),
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.16,
+    return _CapturePlate(
+      semanticLabel: 'Capture $label',
+      onPressed: onPressed,
+      child: Stack(
+        children: <Widget>[
+          Positioned(top: 7, right: 7, child: _ShortcutBadge(shortcut)),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 15),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  _CaptureIcon(icon),
+                  const SizedBox(height: 8),
+                  Text(
+                    label.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
+                    style: HyprTypography.compactMonoStrong.copyWith(
+                      color: ControlColors.textMuted,
+                      fontSize: HyprTypography.size(9),
+                      fontWeight: FontWeight.w700,
+                      height: 1,
+                      letterSpacing: 1.5,
                     ),
                   ),
-                ),
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 7),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        Icon(
-                          widget.icon,
-                          size: 22,
-                          color: hovered
-                              ? HyprColors.text
-                              : const Color(0xFFEBC7A8),
-                        ),
-                        const SizedBox(height: 11),
-                        Text(
-                          widget.label.toUpperCase(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: HyprTypography.compactMonoStrong.copyWith(
-                            color: hovered
-                                ? HyprColors.text
-                                : HyprColors.textMuted,
-                            fontSize: HyprTypography.size(10),
-                            letterSpacing: 2.0,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class ControlRecordPad extends StatefulWidget {
+class ControlRecordPad extends StatelessWidget {
   const ControlRecordPad({
     super.key,
     required this.active,
     required this.enabled,
     required this.phase,
     required this.elapsed,
+    required this.shortcut,
     required this.onPressed,
   });
 
@@ -104,83 +71,183 @@ class ControlRecordPad extends StatefulWidget {
   final bool enabled;
   final String phase;
   final String elapsed;
+  final String shortcut;
   final VoidCallback? onPressed;
 
   @override
-  State<ControlRecordPad> createState() => ControlRecordPadState();
-}
-
-class ControlRecordPadState extends State<ControlRecordPad> {
-  @override
   Widget build(BuildContext context) {
-    return HyprIconTile(
-      onPressed: widget.onPressed,
-      enabled: widget.enabled,
-      active: widget.active,
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
-      color: ControlColors.tile,
-      hoverColor: ControlColors.tileHover,
-      activeColor: ControlColors.danger.withValues(alpha: 0.15),
-      borderColor: ControlColors.stroke,
-      hoverBorderColor: ControlColors.strokeHover,
-      activeBorderColor: ControlColors.danger.withValues(alpha: 0.45),
-      borderRadius: BorderRadius.circular(10),
-      builder:
-          (
-            BuildContext context, {
-            required bool hovered,
-            required bool pressed,
-          }) {
-            return Column(
+    return _CapturePlate(
+      semanticLabel: active ? 'Stop recording' : 'Start recording',
+      onPressed: onPressed,
+      enabled: enabled,
+      active: active,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 10, 10, 9),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
               children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        widget.phase,
-                        maxLines: 1,
-                        overflow: TextOverflow.clip,
-                        style: HyprTypography.compactMonoStrong.copyWith(
-                          color: widget.active
-                              ? ControlColors.danger
-                              : HyprColors.textMuted.withValues(
-                                  alpha: widget.enabled ? 1 : 0.45,
-                                ),
-                          fontSize: HyprTypography.size(8.5),
-                          letterSpacing: 2.0,
-                        ),
-                      ),
+                Expanded(
+                  child: Text(
+                    phase,
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
+                    style: HyprTypography.compactMonoStrong.copyWith(
+                      color: active
+                          ? ControlColors.danger
+                          : ControlColors.textMuted,
+                      fontSize: HyprTypography.size(9),
+                      fontWeight: FontWeight.w700,
+                      height: 1,
+                      letterSpacing: 1.8,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '⇧⌘R',
-                      style: HyprTypography.compactMono.copyWith(
-                        color: HyprColors.textFaint,
-                        fontSize: HyprTypography.size(8.5),
-                      ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Text(
-                  widget.elapsed,
-                  style: HyprTypography.compactMonoStrong.copyWith(
-                    color: !widget.enabled
-                        ? HyprColors.textFaint.withValues(alpha: 0.45)
-                        : widget.active
-                        ? ControlColors.danger
-                        : ControlColors.amber,
-                    fontSize: HyprTypography.size(16.5),
-                    letterSpacing: 1.3,
-                    fontFeatures: HyprTypography.tabularNumbers,
-                    shadows: const <Shadow>[
-                      Shadow(color: Color(0x99FFC08F), blurRadius: 12),
-                    ],
                   ),
                 ),
+                _ShortcutBadge(shortcut),
               ],
-            );
-          },
+            ),
+            const Spacer(),
+            DecoratedBox(
+              decoration: ShapeDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: <Color>[ControlColors.well, ControlColors.wellBottom],
+                ),
+                shape: RoundedSuperellipseBorder(
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Text(
+                  elapsed,
+                  textAlign: TextAlign.center,
+                  style: HyprTypography.compactMonoStrong.copyWith(
+                    color: !enabled
+                        ? ControlColors.textFaint
+                        : active
+                        ? ControlColors.danger
+                        : ControlColors.textMuted,
+                    fontSize: HyprTypography.size(16),
+                    fontWeight: FontWeight.w600,
+                    height: 1,
+                    letterSpacing: 0.65,
+                    fontFeatures: HyprTypography.tabularNumbers,
+                    shadows: active
+                        ? const <Shadow>[
+                            Shadow(color: Color(0x66E16658), blurRadius: 8),
+                          ]
+                        : null,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CapturePlate extends StatelessWidget {
+  const _CapturePlate({
+    required this.semanticLabel,
+    required this.onPressed,
+    required this.child,
+    this.enabled = true,
+    this.active = false,
+  });
+
+  final String semanticLabel;
+  final VoidCallback? onPressed;
+  final Widget child;
+  final bool enabled;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return HyprInteractionRegion(
+      semanticLabel: semanticLabel,
+      enabled: enabled,
+      onPressed: onPressed,
+      builder: (BuildContext context, HyprInteractionState state) {
+        final Color color = active
+            ? ControlColors.danger.withValues(alpha: 0.16)
+            : state.pressed
+            ? ControlColors.tilePressed
+            : state.hovered
+            ? ControlColors.tileHover
+            : ControlColors.tile;
+
+        return AnimatedContainer(
+          duration: HyprMotion.hover,
+          curve: HyprMotion.hoverCurve,
+          transform: Matrix4.translationValues(0, state.pressed ? 1 : 0, 0),
+          decoration: ShapeDecoration(
+            color: color,
+            shape: RoundedSuperellipseBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          child: Opacity(opacity: enabled ? 1 : 0.48, child: child),
+        );
+      },
+    );
+  }
+}
+
+class _ShortcutBadge extends StatelessWidget {
+  const _ShortcutBadge(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        color: const Color(0xA6000000),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: const BorderSide(color: Color(0x66000000)),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        child: Text(
+          label,
+          style: HyprTypography.compactMonoStrong.copyWith(
+            color: ControlColors.textFaint,
+            fontSize: HyprTypography.size(8),
+            fontWeight: FontWeight.w600,
+            height: 1,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CaptureIcon extends StatelessWidget {
+  const _CaptureIcon(this.icon);
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        color: ControlColors.well,
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.circular(6),
+        ),
+      ),
+      child: SizedBox.square(
+        dimension: 28,
+        child: Icon(icon, size: 21, color: ControlColors.textFaint),
+      ),
     );
   }
 }

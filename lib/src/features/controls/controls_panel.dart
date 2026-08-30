@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 import '../../bindings/bindings.dart';
 import '../../widgets/primitives/primitives.dart';
@@ -87,129 +88,173 @@ class ControlsPanelState extends State<ControlsPanel> {
     return HyprPopoverPanel(
       borderRadius: widget.borderRadius,
       constraints: const BoxConstraints(minWidth: 432, maxWidth: 432),
-      padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
+      padding: const EdgeInsets.all(17),
+      color: ControlColors.chassis,
+      borderColor: ControlColors.trayBorder,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          const ControlSectionLabel('Capture'),
-          const SizedBox(height: 11),
-          SizedBox(
-            height: 84,
+          ControlSectionTray(
+            label: 'Capture',
+            child: SizedBox(
+              height: 92,
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    flex: 10,
+                    child: ControlCapturePad(
+                      label: 'Region',
+                      shortcut: '⇧ Mod 4',
+                      icon: Iconsax.maximize_3_copy,
+                      onPressed: () =>
+                          widget.onCaptureScreenshot(ScreenshotMode.region),
+                    ),
+                  ),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    flex: 10,
+                    child: ControlCapturePad(
+                      label: 'Window',
+                      shortcut: 'Mod W',
+                      icon: Iconsax.monitor_copy,
+                      onPressed: () =>
+                          widget.onCaptureScreenshot(ScreenshotMode.window),
+                    ),
+                  ),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    flex: 10,
+                    child: ControlCapturePad(
+                      label: 'Full',
+                      shortcut: 'PrtSc',
+                      icon: Iconsax.maximize_2_copy,
+                      onPressed: () =>
+                          widget.onCaptureScreenshot(ScreenshotMode.fullScreen),
+                    ),
+                  ),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    flex: 14,
+                    child: ControlRecordPad(
+                      active: widget.recordingStatus.active,
+                      enabled: widget.recordingStatus.isAvailable,
+                      phase: widget.recordingStatus.phase,
+                      elapsed: widget.recordingStatus.elapsed,
+                      shortcut: 'Mod R',
+                      onPressed: widget.recordingStatus.isAvailable
+                          ? widget.onToggleRecording
+                          : null,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ControlSectionTray(
+            label: 'Inspect',
             child: Row(
               children: <Widget>[
                 Expanded(
-                  child: ControlCapturePad(
-                    label: 'Region',
-                    shortcut: '⇧⌘S',
-                    icon: Icons.center_focus_strong_rounded,
-                    onPressed: () =>
-                        widget.onCaptureScreenshot(ScreenshotMode.region),
+                  child: ControlInspectButton(
+                    label: 'Color Pick',
+                    shortcut: 'Mod P',
+                    icon: Iconsax.colorfilter_copy,
+                    onPressed: widget.onPickColor,
                   ),
                 ),
                 const SizedBox(width: 7),
                 Expanded(
-                  child: ControlCapturePad(
-                    label: 'Window',
-                    shortcut: '⌘Prt',
-                    icon: Icons.web_asset_rounded,
-                    onPressed: () =>
-                        widget.onCaptureScreenshot(ScreenshotMode.window),
-                  ),
-                ),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: ControlCapturePad(
-                    label: 'Full',
-                    shortcut: 'Prt',
-                    icon: Icons.desktop_windows_rounded,
-                    onPressed: () =>
-                        widget.onCaptureScreenshot(ScreenshotMode.fullScreen),
-                  ),
-                ),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: ControlRecordPad(
-                    active: widget.recordingStatus.active,
-                    enabled: widget.recordingStatus.isAvailable,
-                    phase: widget.recordingStatus.phase,
-                    elapsed: widget.recordingStatus.elapsed,
-                    onPressed: widget.recordingStatus.isAvailable
-                        ? widget.onToggleRecording
-                        : null,
+                  child: ControlInspectButton(
+                    label: 'Magnify',
+                    shortcut: 'Mod M',
+                    icon: Iconsax.search_zoom_in_1_copy,
+                    onPressed: () => widget.onToast(
+                      'Magnifier support is not available yet',
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const HyprSectionBreak(before: 14, after: 13),
-          const ControlSectionLabel('Inspect'),
-          const SizedBox(height: 11),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: ControlInspectButton(
-                  label: 'Color Pick',
-                  shortcut: '⇧⌘P',
-                  icon: Icons.colorize_rounded,
-                  onPressed: widget.onPickColor,
+          const SizedBox(height: 10),
+          ControlSectionTray(
+            label: 'Toggles',
+            child: SizedBox(
+              height: 90,
+              child: DecoratedBox(
+                decoration: ShapeDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[
+                      ControlColors.well,
+                      ControlColors.wellBottom,
+                    ],
+                  ),
+                  shape: RoundedSuperellipseBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(5),
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: ControlRocker(
+                          key: const ValueKey<String>('controls-dnd-rocker'),
+                          label: 'DND',
+                          icon: Iconsax.minus_cirlce_copy,
+                          value: widget.dndEnabled,
+                          onChanged: widget.onSetDoNotDisturb,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: ControlRocker(
+                          key: const ValueKey<String>(
+                            'controls-night-light-rocker',
+                          ),
+                          label: 'Night',
+                          icon: Iconsax.moon_copy,
+                          value: widget.nightLightStatus.enabled,
+                          enabled: widget.nightLightStatus.isAvailable,
+                          onChanged: widget.onSetNightLight,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: ControlRocker(
+                          key: const ValueKey<String>('controls-kbd-rocker'),
+                          label: 'Kbd',
+                          icon: Iconsax.keyboard_copy,
+                          value: false,
+                          onChanged: (_) => widget.onToast(
+                            'Keyboard lock support is not available yet',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: ControlRocker(
+                          key: const ValueKey<String>(
+                            'controls-caffeine-rocker',
+                          ),
+                          label: 'Caffeine',
+                          icon: Iconsax.coffee_copy,
+                          value: widget.caffeineStatus.enabled,
+                          enabled: widget.caffeineStatus.isAvailable,
+                          onChanged: widget.onSetCaffeine,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(width: 9),
-              const Expanded(
-                child: ControlInspectButton(
-                  label: 'Magnify',
-                  shortcut: '⌘M',
-                  icon: Icons.zoom_in_rounded,
-                ),
-              ),
-            ],
-          ),
-          const HyprSectionBreak(before: 14, after: 13),
-          const ControlSectionLabel('Toggles'),
-          const SizedBox(height: 11),
-          SizedBox(
-            height: 100,
-            child: Row(
-              children: <Widget>[
-                Expanded(
-                  child: ControlRocker(
-                    key: const ValueKey<String>('controls-dnd-rocker'),
-                    label: 'DND',
-                    shortcut: '⇧⌘D',
-                    icon: Icons.do_not_disturb_on_outlined,
-                    value: widget.dndEnabled,
-                    onChanged: widget.onSetDoNotDisturb,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: ControlRocker(
-                    key: const ValueKey<String>('controls-night-light-rocker'),
-                    label: 'Night',
-                    shortcut: '⇧⌘N',
-                    icon: Icons.nights_stay_rounded,
-                    value: widget.nightLightStatus.enabled,
-                    enabled: widget.nightLightStatus.isAvailable,
-                    onChanged: widget.onSetNightLight,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: ControlRocker(
-                    key: const ValueKey<String>('controls-caffeine-rocker'),
-                    label: 'Caffeine',
-                    shortcut: '⇧⌘F12',
-                    icon: Icons.local_cafe_rounded,
-                    value: widget.caffeineStatus.enabled,
-                    enabled: widget.caffeineStatus.isAvailable,
-                    onChanged: widget.onSetCaffeine,
-                  ),
-                ),
-              ],
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           ControlSettingsRow(onPressed: widget.onOpenSettings),
         ],
       ),

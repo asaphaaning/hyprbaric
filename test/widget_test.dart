@@ -19,6 +19,8 @@ import 'package:hyprbaric/src/features/audio/audio_fader.dart';
 import 'package:hyprbaric/src/features/audio/audio_panel.dart';
 import 'package:hyprbaric/src/features/audio/brightness_control.dart';
 import 'package:hyprbaric/src/features/controls/control_rocker.dart';
+import 'package:hyprbaric/src/features/controls/control_settings_row.dart';
+import 'package:hyprbaric/src/features/controls/controls_chrome.dart';
 import 'package:hyprbaric/src/features/controls/controls_panel.dart';
 import 'package:hyprbaric/src/features/launcher/app_launcher_results.dart';
 import 'package:hyprbaric/src/features/network/network_panel.dart';
@@ -1934,7 +1936,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Settings'));
+    await tester.tap(find.text('BAR SETTINGS'));
     await tester.pump();
     await tester.pumpAndSettle();
 
@@ -1991,7 +1993,7 @@ void main() {
 
     await tester.tap(find.bySemanticsLabel('Controls'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Settings'));
+    await tester.tap(find.text('BAR SETTINGS'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('About').first);
     await tester.pumpAndSettle();
@@ -3695,6 +3697,7 @@ void main() {
     WidgetTester tester,
   ) async {
     ScreenshotMode? capturedMode;
+    bool settingsOpened = false;
     final List<String> toasts = <String>[];
 
     await tester.pumpWidget(
@@ -3704,7 +3707,7 @@ void main() {
           onCaptureScreenshot: (ScreenshotMode mode) => capturedMode = mode,
           onPickColor: () => toasts.add('pick color'),
           onToggleRecording: () => toasts.add('toggle recording'),
-          onOpenSettings: () {},
+          onOpenSettings: () => settingsOpened = true,
           onToast: toasts.add,
           dndEnabled: false,
           onSetDoNotDisturb: (_) {},
@@ -3723,7 +3726,14 @@ void main() {
 
     expect(find.text('CAPTURE'), findsOneWidget);
     expect(find.text('REGION'), findsOneWidget);
-    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('BAR SETTINGS'), findsOneWidget);
+    expect(find.text('KBD'), findsOneWidget);
+    expect(find.byType(ControlSectionTray), findsNWidgets(3));
+    expect(find.byType(ControlRocker), findsNWidgets(4));
+    expect(
+      tester.getSize(find.byType(ControlSettingsRow)),
+      const Size(398, 62),
+    );
 
     await tester.tap(find.text('REGION'));
     await tester.pump();
@@ -3743,7 +3753,17 @@ void main() {
     await tester.tap(find.text('MAGNIFY'));
     await tester.pump();
 
-    expect(toasts, isNot(contains('Magnifier enabled')));
+    expect(toasts, contains('Magnifier support is not available yet'));
+
+    await tester.tap(find.text('KBD'));
+    await tester.pump();
+
+    expect(toasts, contains('Keyboard lock support is not available yet'));
+
+    await tester.tap(find.text('BAR SETTINGS'));
+    await tester.pump();
+
+    expect(settingsOpened, true);
   });
 
   testWidgets('controls panel disables recording when unavailable', (

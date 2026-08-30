@@ -8,7 +8,6 @@ class ControlRocker extends StatelessWidget {
   const ControlRocker({
     super.key,
     required this.label,
-    required this.shortcut,
     required this.icon,
     required this.value,
     required this.onChanged,
@@ -16,7 +15,6 @@ class ControlRocker extends StatelessWidget {
   });
 
   final String label;
-  final String shortcut;
   final IconData icon;
   final bool value;
   final ValueChanged<bool> onChanged;
@@ -24,88 +22,60 @@ class ControlRocker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool active = value;
     return HyprInteractionRegion(
+      semanticLabel: label,
       enabled: enabled,
-      onPressed: () => onChanged(!active),
+      onPressed: () => onChanged(!value),
       builder: (BuildContext context, HyprInteractionState state) {
-        final bool interactive = state.enabled;
-        return Material(
-          color: Colors.transparent,
-          shape: RoundedSuperellipseBorder(
-            borderRadius: BorderRadius.circular(7),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: AnimatedContainer(
-            duration: HyprMotion.hover,
-            curve: HyprMotion.hoverCurve,
-            padding: const EdgeInsets.fromLTRB(8, 10, 8, 9),
-            decoration: ShapeDecoration(
-              color: active
-                  ? Colors.black.withValues(alpha: 0.28)
-                  : (!interactive
-                        ? Colors.black.withValues(alpha: 0.08)
-                        : state.hovered
-                        ? ControlColors.tileHover
-                        : ControlColors.tile),
-              shape: RoundedSuperellipseBorder(
-                borderRadius: BorderRadius.circular(7),
-                side: BorderSide(
-                  color: state.hovered && interactive
-                      ? ControlColors.strokeHover
-                      : HyprColors.borderSoft,
-                ),
-              ),
+        final Color accent = context.hyprPalette.accent;
+        final Color color = value
+            ? Color.alphaBlend(
+                accent.withValues(alpha: 0.12),
+                const Color(0xFF131318),
+              )
+            : state.pressed
+            ? ControlColors.tilePressed
+            : state.hovered
+            ? ControlColors.tileHover
+            : const Color(0xFF131318);
+
+        return AnimatedContainer(
+          duration: HyprMotion.hover,
+          curve: HyprMotion.hoverCurve,
+          transform: Matrix4.translationValues(0, state.pressed ? 1 : 0, 0),
+          padding: const EdgeInsets.fromLTRB(5, 9, 5, 8),
+          decoration: ShapeDecoration(
+            color: color,
+            shape: RoundedSuperellipseBorder(
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Stack(
+          ),
+          child: Opacity(
+            opacity: enabled ? 1 : 0.46,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Text(
-                    shortcut,
-                    maxLines: 1,
-                    overflow: TextOverflow.clip,
-                    style: HyprTypography.compactMonoStrong.copyWith(
-                      color: HyprColors.textFaint.withValues(
-                        alpha: interactive ? 0.55 : 0.28,
-                      ),
-                      fontSize: HyprTypography.size(8.5),
-                    ),
-                  ),
+                Icon(
+                  icon,
+                  size: 21,
+                  color: value
+                      ? context.hyprPalette.accentSoft
+                      : ControlColors.textFaint,
                 ),
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        Icon(
-                          icon,
-                          size: 20,
-                          color: !interactive
-                              ? HyprColors.textFaint.withValues(alpha: 0.45)
-                              : active
-                              ? HyprColors.accent
-                              : HyprColors.textFaint,
-                        ),
-                        const SizedBox(height: 10),
-                        _RockerSwitch(value: active, enabled: interactive),
-                        const SizedBox(height: 8),
-                        Text(
-                          label.toUpperCase(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: HyprTypography.compactMonoStrong.copyWith(
-                            color: active
-                                ? HyprColors.text
-                                : HyprColors.textFaint,
-                            fontSize: HyprTypography.size(9.5),
-                            letterSpacing: 1.7,
-                          ),
-                        ),
-                      ],
-                    ),
+                const SizedBox(height: 8),
+                _RockerSwitch(value: value, enabled: enabled),
+                const SizedBox(height: 8),
+                Text(
+                  label.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.clip,
+                  textAlign: TextAlign.center,
+                  style: HyprTypography.compactMonoStrong.copyWith(
+                    color: value ? ControlColors.text : ControlColors.textFaint,
+                    fontSize: HyprTypography.size(8),
+                    fontWeight: FontWeight.w700,
+                    height: 1,
+                    letterSpacing: 1.05,
                   ),
                 ),
               ],
@@ -125,27 +95,89 @@ class _RockerSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HyprToggleSwitch(
-      value: value,
-      width: 20,
-      height: 10,
-      padding: EdgeInsets.zero,
-      thumbSize: 0,
-      trackColor: const Color(0xFF333B44).withValues(alpha: 0.95),
-      activeTrackColor: enabled
-          ? HyprColors.accent
-          : HyprColors.textFaint.withValues(alpha: 0.35),
-      borderColor: Colors.white.withValues(alpha: 0.10),
-      activeBorderColor: HyprColors.accent.withValues(alpha: 0.6),
-      activeShadow: const <BoxShadow>[
-        BoxShadow(color: Color(0x9953D870), blurRadius: 9),
-      ],
-      inactiveShadow: const <BoxShadow>[
-        BoxShadow(color: Color(0x99000000), blurRadius: 5),
-      ],
-      borderRadius: BorderRadius.circular(2),
+    final Color accent = context.hyprPalette.accent;
+
+    return AnimatedContainer(
       duration: HyprMotion.switcher,
       curve: HyprMotion.switchInCurve,
+      width: 36,
+      height: 18,
+      padding: const EdgeInsets.all(1.5),
+      decoration: ShapeDecoration(
+        gradient: value
+            ? LinearGradient(
+                colors: <Color>[
+                  accent.withValues(alpha: enabled ? 0.38 : 0.18),
+                  accent.withValues(alpha: enabled ? 0.22 : 0.12),
+                ],
+              )
+            : const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[Color(0xFF101116), Color(0xFF08090D)],
+              ),
+        shadows: <BoxShadow>[
+          const BoxShadow(
+            color: Color(0xC8000000),
+            blurRadius: 3,
+            offset: Offset(0, 1),
+          ),
+          if (value && enabled)
+            BoxShadow(
+              color: accent.withValues(alpha: 0.38),
+              blurRadius: 10,
+              spreadRadius: -2,
+            ),
+        ],
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.circular(7),
+          side: const BorderSide(color: Color(0x66000000)),
+        ),
+      ),
+      child: AnimatedAlign(
+        duration: HyprMotion.switcher,
+        curve: HyprMotion.switchInCurve,
+        alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          width: 16,
+          height: 15,
+          decoration: ShapeDecoration(
+            gradient: value
+                ? LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[
+                      Color.lerp(accent, Colors.white, 0.44)!,
+                      Color.lerp(accent, Colors.white, 0.12)!,
+                      Color.lerp(accent, Colors.black, 0.14)!,
+                    ],
+                    stops: const <double>[0, 0.5, 1],
+                  )
+                : const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[
+                      Color(0xFFABADB1),
+                      Color(0xFF74767C),
+                      Color(0xFF4A4C51),
+                    ],
+                    stops: <double>[0, 0.5, 1],
+                  ),
+            shadows: <BoxShadow>[
+              const BoxShadow(
+                color: Color(0xB8000000),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+              if (value && enabled)
+                BoxShadow(color: accent.withValues(alpha: 0.52), blurRadius: 8),
+            ],
+            shape: RoundedSuperellipseBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
