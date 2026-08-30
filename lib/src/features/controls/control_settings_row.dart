@@ -37,7 +37,7 @@ class ControlSettingsRow extends StatelessWidget {
           ),
           child: DecoratedBox(
             decoration: ShapeDecoration(
-              color: const Color(0xFF27292E),
+              color: const Color(0xFF1A1C20),
               shape: RoundedSuperellipseBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
