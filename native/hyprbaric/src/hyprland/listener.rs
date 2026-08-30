@@ -3,7 +3,8 @@
 use hyprland::{
     data::Client,
     event_listener::{
-        AsyncEventListener, WindowEventData, WindowTitleEventData, WorkspaceEventData,
+        AsyncEventListener, MonitorEventData, WindowEventData, WindowTitleEventData,
+        WorkspaceEventData,
     },
     prelude::*,
     shared::WorkspaceType,
@@ -57,8 +58,21 @@ pub(super) async fn run(
         Box::pin(async move { occupancy.poke() })
     });
 
+    let monitor_sender = workspace_sender.clone();
     listener.add_window_moved_handler(move |_| {
         let occupancy = occupancy.clone();
+        Box::pin(async move { occupancy.poke() })
+    });
+
+    // Focusing a workspace that is already visible on another monitor moves the
+    // compositor's focus instead of changing a workspace, so Hyprland emits only
+    // `focusedmon`. Without this handler the bar keeps showing the previous
+    // workspace until the next switch that lands on a hidden one. The poke
+    // re-reads the active workspace off the event loop, like every other
+    // occupancy refresh.
+    let monitor_occupancy = occupancy.clone();
+    listener.add_active_monitor_changed_handler(move |_event: MonitorEventData| {
+        let occupancy = monitor_occupancy.clone();
         Box::pin(async move { occupancy.poke() })
     });
 
