@@ -6,7 +6,9 @@ namespace {
 constexpr char kNativeWindowStateKey[] = "hyprbaric-native-window-state";
 
 void native_window_state_free(gpointer data) {
-  delete static_cast<NativeWindowState *>(data);
+  auto *state = static_cast<NativeWindowState *>(data);
+  g_clear_object(&state->monitor);
+  delete state;
 }
 
 gboolean should_show(const NativeWindowState *state) {
@@ -38,12 +40,16 @@ void apply_visibility(NativeWindowState *state) {
 
 NativeWindowState *native_window_state_attach(GtkWindow *window,
                                               GtkWidget *view,
+                                              GdkMonitor *monitor,
                                               gboolean layer_shell_available,
                                               const char *monitor_name,
                                               gboolean monitor_is_primary) {
   auto *state = new NativeWindowState();
   state->window = window;
   state->view = view;
+  state->monitor = monitor != nullptr
+                       ? GDK_MONITOR(g_object_ref(monitor))
+                       : nullptr;
   state->layer_shell_available = layer_shell_available;
   state->monitor_name = monitor_name != nullptr ? monitor_name : "Primary";
   state->monitor_is_primary = monitor_is_primary;

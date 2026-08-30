@@ -10,9 +10,9 @@ import 'package:flutter/services.dart';
 import 'package:meta/meta.dart' show immutable, protected, visibleForTesting;
 
 Object? _extractReplyValueOrThrow(
-  List<Object?>? replyList,
-  String channelName, {
-  required bool isNullValid,
+    List<Object?>? replyList,
+    String channelName, {
+    required bool isNullValid,
 }) {
   if (replyList == null) {
     throw PlatformException(
@@ -46,9 +46,8 @@ bool _deepEquals(Object? a, Object? b) {
   }
   if (a is List && b is List) {
     return a.length == b.length &&
-        a.indexed.every(
-          ((int, dynamic) item) => _deepEquals(item.$2, b[item.$1]),
-        );
+        a.indexed
+            .every(((int, dynamic) item) => _deepEquals(item.$2, b[item.$1]));
   }
   if (a is Map && b is Map) {
     if (a.length != b.length) {
@@ -97,28 +96,50 @@ int _deepHash(Object? value) {
   return value.hashCode;
 }
 
-enum NativeLayerShellLayer { background, bottom, top, overlay }
 
-enum NativeLayerShellKeyboardMode { none, exclusive, onDemand }
+enum NativeLayerShellLayer {
+  background,
+  bottom,
+  top,
+  overlay,
+}
 
-enum NativeLayerShellBarEdge { top, bottom }
+enum NativeLayerShellKeyboardMode {
+  none,
+  exclusive,
+  onDemand,
+}
 
-enum NativeLayerShellMonitorTargetKind { primary, all, named }
+enum NativeLayerShellBarEdge {
+  top,
+  bottom,
+}
+
+enum NativeLayerShellMonitorTargetKind {
+  primary,
+  all,
+  named,
+}
 
 class NativeLayerShellMonitorTarget {
-  NativeLayerShellMonitorTarget({required this.kind, this.name});
+  NativeLayerShellMonitorTarget({
+    required this.kind,
+    this.name,
+  });
 
   NativeLayerShellMonitorTargetKind kind;
 
   String? name;
 
   List<Object?> _toList() {
-    return <Object?>[kind, name];
+    return <Object?>[
+      kind,
+      name,
+    ];
   }
 
   Object encode() {
-    return _toList();
-  }
+    return _toList();  }
 
   static NativeLayerShellMonitorTarget decode(Object result) {
     result as List<Object?>;
@@ -131,8 +152,7 @@ class NativeLayerShellMonitorTarget {
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
   bool operator ==(Object other) {
-    if (other is! NativeLayerShellMonitorTarget ||
-        other.runtimeType != runtimeType) {
+    if (other is! NativeLayerShellMonitorTarget || other.runtimeType != runtimeType) {
       return false;
     }
     if (identical(this, other)) {
@@ -156,6 +176,11 @@ class NativeLayerShellMonitor {
     required this.name,
     required this.label,
     required this.isPrimary,
+    required this.x,
+    required this.y,
+    required this.width,
+    required this.height,
+    required this.refreshRateMillihertz,
   });
 
   String name;
@@ -164,13 +189,31 @@ class NativeLayerShellMonitor {
 
   bool isPrimary;
 
+  int x;
+
+  int y;
+
+  int width;
+
+  int height;
+
+  int refreshRateMillihertz;
+
   List<Object?> _toList() {
-    return <Object?>[name, label, isPrimary];
+    return <Object?>[
+      name,
+      label,
+      isPrimary,
+      x,
+      y,
+      width,
+      height,
+      refreshRateMillihertz,
+    ];
   }
 
   Object encode() {
-    return _toList();
-  }
+    return _toList();  }
 
   static NativeLayerShellMonitor decode(Object result) {
     result as List<Object?>;
@@ -178,6 +221,11 @@ class NativeLayerShellMonitor {
       name: result[0]! as String,
       label: result[1]! as String,
       isPrimary: result[2]! as bool,
+      x: result[3]! as int,
+      y: result[4]! as int,
+      width: result[5]! as int,
+      height: result[6]! as int,
+      refreshRateMillihertz: result[7]! as int,
     );
   }
 
@@ -190,9 +238,7 @@ class NativeLayerShellMonitor {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(name, other.name) &&
-        _deepEquals(label, other.label) &&
-        _deepEquals(isPrimary, other.isPrimary);
+    return _deepEquals(name, other.name) && _deepEquals(label, other.label) && _deepEquals(isPrimary, other.isPrimary) && _deepEquals(x, other.x) && _deepEquals(y, other.y) && _deepEquals(width, other.width) && _deepEquals(height, other.height) && _deepEquals(refreshRateMillihertz, other.refreshRateMillihertz);
   }
 
   @override
@@ -201,12 +247,17 @@ class NativeLayerShellMonitor {
 
   @override
   String toString() {
-    return 'NativeLayerShellMonitor(name: $name, label: $label, isPrimary: $isPrimary)';
+    return 'NativeLayerShellMonitor(name: $name, label: $label, isPrimary: $isPrimary, x: $x, y: $y, width: $width, height: $height, refreshRateMillihertz: $refreshRateMillihertz)';
   }
 }
 
 class NativeLayerShellAnchors {
-  NativeLayerShellAnchors({this.top, this.bottom, this.left, this.right});
+  NativeLayerShellAnchors({
+    this.top,
+    this.bottom,
+    this.left,
+    this.right,
+  });
 
   bool? top;
 
@@ -217,12 +268,16 @@ class NativeLayerShellAnchors {
   bool? right;
 
   List<Object?> _toList() {
-    return <Object?>[top, bottom, left, right];
+    return <Object?>[
+      top,
+      bottom,
+      left,
+      right,
+    ];
   }
 
   Object encode() {
-    return _toList();
-  }
+    return _toList();  }
 
   static NativeLayerShellAnchors decode(Object result) {
     result as List<Object?>;
@@ -243,10 +298,7 @@ class NativeLayerShellAnchors {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(top, other.top) &&
-        _deepEquals(bottom, other.bottom) &&
-        _deepEquals(left, other.left) &&
-        _deepEquals(right, other.right);
+    return _deepEquals(top, other.top) && _deepEquals(bottom, other.bottom) && _deepEquals(left, other.left) && _deepEquals(right, other.right);
   }
 
   @override
@@ -260,7 +312,12 @@ class NativeLayerShellAnchors {
 }
 
 class NativeLayerShellMargins {
-  NativeLayerShellMargins({this.top, this.bottom, this.left, this.right});
+  NativeLayerShellMargins({
+    this.top,
+    this.bottom,
+    this.left,
+    this.right,
+  });
 
   int? top;
 
@@ -271,12 +328,16 @@ class NativeLayerShellMargins {
   int? right;
 
   List<Object?> _toList() {
-    return <Object?>[top, bottom, left, right];
+    return <Object?>[
+      top,
+      bottom,
+      left,
+      right,
+    ];
   }
 
   Object encode() {
-    return _toList();
-  }
+    return _toList();  }
 
   static NativeLayerShellMargins decode(Object result) {
     result as List<Object?>;
@@ -297,10 +358,7 @@ class NativeLayerShellMargins {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(top, other.top) &&
-        _deepEquals(bottom, other.bottom) &&
-        _deepEquals(left, other.left) &&
-        _deepEquals(right, other.right);
+    return _deepEquals(top, other.top) && _deepEquals(bottom, other.bottom) && _deepEquals(left, other.left) && _deepEquals(right, other.right);
   }
 
   @override
@@ -314,19 +372,24 @@ class NativeLayerShellMargins {
 }
 
 class NativeLayerShellSize {
-  NativeLayerShellSize({this.width, this.height});
+  NativeLayerShellSize({
+    this.width,
+    this.height,
+  });
 
   int? width;
 
   int? height;
 
   List<Object?> _toList() {
-    return <Object?>[width, height];
+    return <Object?>[
+      width,
+      height,
+    ];
   }
 
   Object encode() {
-    return _toList();
-  }
+    return _toList();  }
 
   static NativeLayerShellSize decode(Object result) {
     result as List<Object?>;
@@ -400,8 +463,7 @@ class NativeLayerShellRegion {
   }
 
   Object encode() {
-    return _toList();
-  }
+    return _toList();  }
 
   static NativeLayerShellRegion decode(Object result) {
     result as List<Object?>;
@@ -426,14 +488,7 @@ class NativeLayerShellRegion {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(x, other.x) &&
-        _deepEquals(y, other.y) &&
-        _deepEquals(width, other.width) &&
-        _deepEquals(height, other.height) &&
-        _deepEquals(radiusTopLeft, other.radiusTopLeft) &&
-        _deepEquals(radiusTopRight, other.radiusTopRight) &&
-        _deepEquals(radiusBottomRight, other.radiusBottomRight) &&
-        _deepEquals(radiusBottomLeft, other.radiusBottomLeft);
+    return _deepEquals(x, other.x) && _deepEquals(y, other.y) && _deepEquals(width, other.width) && _deepEquals(height, other.height) && _deepEquals(radiusTopLeft, other.radiusTopLeft) && _deepEquals(radiusTopRight, other.radiusTopRight) && _deepEquals(radiusBottomRight, other.radiusBottomRight) && _deepEquals(radiusBottomLeft, other.radiusBottomLeft);
   }
 
   @override
@@ -476,8 +531,7 @@ class NativeLayerShellRegionRequest {
   }
 
   Object encode() {
-    return _toList();
-  }
+    return _toList();  }
 
   static NativeLayerShellRegionRequest decode(Object result) {
     result as List<Object?>;
@@ -485,8 +539,7 @@ class NativeLayerShellRegionRequest {
       barHeight: result[0]! as int,
       barEdge: result[1]! as NativeLayerShellBarEdge,
       menu: result[2] as NativeLayerShellRegion?,
-      passiveRegions: (result[3]! as List<Object?>)
-          .cast<NativeLayerShellRegion>(),
+      passiveRegions: (result[3]! as List<Object?>).cast<NativeLayerShellRegion>(),
       captureAllClicks: result[4]! as bool,
     );
   }
@@ -494,18 +547,13 @@ class NativeLayerShellRegionRequest {
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
   bool operator ==(Object other) {
-    if (other is! NativeLayerShellRegionRequest ||
-        other.runtimeType != runtimeType) {
+    if (other is! NativeLayerShellRegionRequest || other.runtimeType != runtimeType) {
       return false;
     }
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(barHeight, other.barHeight) &&
-        _deepEquals(barEdge, other.barEdge) &&
-        _deepEquals(menu, other.menu) &&
-        _deepEquals(passiveRegions, other.passiveRegions) &&
-        _deepEquals(captureAllClicks, other.captureAllClicks);
+    return _deepEquals(barHeight, other.barHeight) && _deepEquals(barEdge, other.barEdge) && _deepEquals(menu, other.menu) && _deepEquals(passiveRegions, other.passiveRegions) && _deepEquals(captureAllClicks, other.captureAllClicks);
   }
 
   @override
@@ -564,8 +612,7 @@ class NativeLayerShellPanelConfig {
   }
 
   Object encode() {
-    return _toList();
-  }
+    return _toList();  }
 
   static NativeLayerShellPanelConfig decode(Object result) {
     result as List<Object?>;
@@ -585,22 +632,13 @@ class NativeLayerShellPanelConfig {
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
   bool operator ==(Object other) {
-    if (other is! NativeLayerShellPanelConfig ||
-        other.runtimeType != runtimeType) {
+    if (other is! NativeLayerShellPanelConfig || other.runtimeType != runtimeType) {
       return false;
     }
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(appNamespace, other.appNamespace) &&
-        _deepEquals(layer, other.layer) &&
-        _deepEquals(anchors, other.anchors) &&
-        _deepEquals(margins, other.margins) &&
-        _deepEquals(size, other.size) &&
-        _deepEquals(exclusiveZone, other.exclusiveZone) &&
-        _deepEquals(autoExclusiveZone, other.autoExclusiveZone) &&
-        _deepEquals(keyboardMode, other.keyboardMode) &&
-        _deepEquals(monitor, other.monitor);
+    return _deepEquals(appNamespace, other.appNamespace) && _deepEquals(layer, other.layer) && _deepEquals(anchors, other.anchors) && _deepEquals(margins, other.margins) && _deepEquals(size, other.size) && _deepEquals(exclusiveZone, other.exclusiveZone) && _deepEquals(autoExclusiveZone, other.autoExclusiveZone) && _deepEquals(keyboardMode, other.keyboardMode) && _deepEquals(monitor, other.monitor);
   }
 
   @override
@@ -613,6 +651,7 @@ class NativeLayerShellPanelConfig {
   }
 }
 
+
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
   @override
@@ -620,40 +659,40 @@ class _PigeonCodec extends StandardMessageCodec {
     if (value is int) {
       buffer.putUint8(4);
       buffer.putInt64(value);
-    } else if (value is NativeLayerShellLayer) {
+    }    else if (value is NativeLayerShellLayer) {
       buffer.putUint8(129);
       writeValue(buffer, value.index);
-    } else if (value is NativeLayerShellKeyboardMode) {
+    }    else if (value is NativeLayerShellKeyboardMode) {
       buffer.putUint8(130);
       writeValue(buffer, value.index);
-    } else if (value is NativeLayerShellBarEdge) {
+    }    else if (value is NativeLayerShellBarEdge) {
       buffer.putUint8(131);
       writeValue(buffer, value.index);
-    } else if (value is NativeLayerShellMonitorTargetKind) {
+    }    else if (value is NativeLayerShellMonitorTargetKind) {
       buffer.putUint8(132);
       writeValue(buffer, value.index);
-    } else if (value is NativeLayerShellMonitorTarget) {
+    }    else if (value is NativeLayerShellMonitorTarget) {
       buffer.putUint8(133);
       writeValue(buffer, value.encode());
-    } else if (value is NativeLayerShellMonitor) {
+    }    else if (value is NativeLayerShellMonitor) {
       buffer.putUint8(134);
       writeValue(buffer, value.encode());
-    } else if (value is NativeLayerShellAnchors) {
+    }    else if (value is NativeLayerShellAnchors) {
       buffer.putUint8(135);
       writeValue(buffer, value.encode());
-    } else if (value is NativeLayerShellMargins) {
+    }    else if (value is NativeLayerShellMargins) {
       buffer.putUint8(136);
       writeValue(buffer, value.encode());
-    } else if (value is NativeLayerShellSize) {
+    }    else if (value is NativeLayerShellSize) {
       buffer.putUint8(137);
       writeValue(buffer, value.encode());
-    } else if (value is NativeLayerShellRegion) {
+    }    else if (value is NativeLayerShellRegion) {
       buffer.putUint8(138);
       writeValue(buffer, value.encode());
-    } else if (value is NativeLayerShellRegionRequest) {
+    }    else if (value is NativeLayerShellRegionRequest) {
       buffer.putUint8(139);
       writeValue(buffer, value.encode());
-    } else if (value is NativeLayerShellPanelConfig) {
+    }    else if (value is NativeLayerShellPanelConfig) {
       buffer.putUint8(140);
       writeValue(buffer, value.encode());
     } else {
@@ -669,17 +708,13 @@ class _PigeonCodec extends StandardMessageCodec {
         return value == null ? null : NativeLayerShellLayer.values[value];
       case 130:
         final value = readValue(buffer) as int?;
-        return value == null
-            ? null
-            : NativeLayerShellKeyboardMode.values[value];
+        return value == null ? null : NativeLayerShellKeyboardMode.values[value];
       case 131:
         final value = readValue(buffer) as int?;
         return value == null ? null : NativeLayerShellBarEdge.values[value];
       case 132:
         final value = readValue(buffer) as int?;
-        return value == null
-            ? null
-            : NativeLayerShellMonitorTargetKind.values[value];
+        return value == null ? null : NativeLayerShellMonitorTargetKind.values[value];
       case 133:
         return NativeLayerShellMonitorTarget.decode(readValue(buffer)!);
       case 134:
@@ -706,13 +741,9 @@ class NativeLayerShellHostApi {
   /// Constructor for [NativeLayerShellHostApi]. The [binaryMessenger] named argument is
   /// available for dependency injection. If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
-  NativeLayerShellHostApi({
-    BinaryMessenger? binaryMessenger,
-    String messageChannelSuffix = '',
-  }) : pigeonVar_binaryMessenger = binaryMessenger,
-       pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty
-           ? '.$messageChannelSuffix'
-           : '';
+  NativeLayerShellHostApi({BinaryMessenger? binaryMessenger, String messageChannelSuffix = ''})
+      : pigeonVar_binaryMessenger = binaryMessenger,
+        pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
   final BinaryMessenger? pigeonVar_binaryMessenger;
 
   static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
@@ -720,8 +751,7 @@ class NativeLayerShellHostApi {
   final String pigeonVar_messageChannelSuffix;
 
   Future<List<NativeLayerShellMonitor>> listMonitors() async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.listMonitors$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.listMonitors$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -731,211 +761,210 @@ class NativeLayerShellHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-      pigeonVar_replyList,
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return (pigeonVar_replyValue! as List<Object?>).cast<NativeLayerShellMonitor>();
+  }
+
+  Future<NativeLayerShellMonitor?> currentMonitor() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.currentMonitor$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
-      isNullValid: false,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
     );
-    return (pigeonVar_replyValue! as List<Object?>)
-        .cast<NativeLayerShellMonitor>();
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+    return pigeonVar_replyValue as NativeLayerShellMonitor?;
   }
 
   Future<void> configurePanel(NativeLayerShellPanelConfig config) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.configurePanel$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.configurePanel$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[config],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[config]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: true,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 
   Future<void> setLayer(NativeLayerShellLayer layer) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setLayer$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setLayer$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[layer],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[layer]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: true,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 
   Future<void> setNamespace(String appNamespace) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setNamespace$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setNamespace$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[appNamespace],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[appNamespace]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: true,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 
   Future<void> setAnchors(NativeLayerShellAnchors anchors) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setAnchors$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setAnchors$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[anchors],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[anchors]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: true,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 
   Future<void> setMargins(NativeLayerShellMargins margins) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setMargins$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setMargins$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[margins],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[margins]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: true,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 
   Future<void> setExclusiveZone(int zone) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setExclusiveZone$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setExclusiveZone$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[zone],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[zone]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: true,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 
   Future<void> setAutoExclusiveZone(bool enabled) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setAutoExclusiveZone$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setAutoExclusiveZone$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[enabled],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[enabled]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: true,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 
   Future<void> setKeyboardMode(NativeLayerShellKeyboardMode mode) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setKeyboardMode$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setKeyboardMode$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[mode],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[mode]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: true,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 
   Future<void> setSize(NativeLayerShellSize size) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setSize$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setSize$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[size],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[size]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: true,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 
   Future<void> setRegion(NativeLayerShellRegionRequest request) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setRegion$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setRegion$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[request],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[request]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: true,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 }

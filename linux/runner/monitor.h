@@ -11,6 +11,8 @@ struct MonitorDescriptor {
   std::string name;
   std::string label;
   gboolean is_primary = FALSE;
+  GdkRectangle geometry = {0, 0, 0, 0};
+  int refresh_rate_millihertz = 0;
 };
 
 std::vector<MonitorDescriptor> hyprbaric_monitors();

@@ -67,11 +67,16 @@ std::vector<MonitorDescriptor> hyprbaric_monitors() {
       label += " #" + std::to_string(occurrence);
     }
 
+    GdkRectangle geometry = {0, 0, 0, 0};
+    gdk_monitor_get_geometry(monitor, &geometry);
+
     monitors.push_back(MonitorDescriptor{
         .monitor = monitor,
         .name = std::move(name),
         .label = std::move(label),
         .is_primary = monitor == primary,
+        .geometry = geometry,
+        .refresh_rate_millihertz = gdk_monitor_get_refresh_rate(monitor),
     });
   }
   return monitors;
@@ -91,6 +96,8 @@ MonitorDescriptor hyprbaric_monitor_descriptor(GdkMonitor *monitor) {
       .name = "Primary",
       .label = "Primary monitor",
       .is_primary = TRUE,
+      .geometry = {0, 0, 0, 0},
+      .refresh_rate_millihertz = 0,
   };
 }
 

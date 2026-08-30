@@ -1,9 +1,8 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../bindings/bindings.dart';
+import '../layer_shell_controller.dart';
 import '../state/monitor_workspace.dart';
 import '../state/providers.dart';
 import 'hypr_surface.dart';
@@ -30,13 +29,14 @@ class LeftCluster extends ConsumerWidget {
     final WorkspaceSettingsStatus workspaceSettings = ref.watch(
       currentWorkspaceSettingsProvider,
     );
-    // Each bar is its own Flutter view, so this resolves to the output this
-    // bar is rendered on rather than whichever output holds focus.
-    final ui.Display? display = View.maybeOf(context)?.display;
+    final LayerShellMonitor? output = ref
+        .watch(layerShellCurrentMonitorProvider)
+        .asData
+        ?.value;
     final Widget workspaceWidget = workspaceStatus.when(
       data: (WorkspaceStatus status) => WorkspaceStrip(
         status: status,
-        resolution: resolveMonitorWorkspace(status, display),
+        resolution: resolveMonitorWorkspace(status, output),
         settings: workspaceSettings,
         onPrevious: () =>
             ref.read(workspaceControllerProvider.notifier).previous(),

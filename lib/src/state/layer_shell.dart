@@ -44,3 +44,14 @@ final layerShellControllerProvider = Provider<LayerShellController>(
 final layerShellMonitorsProvider = FutureProvider<List<LayerShellMonitor>>(
   (ref) => ref.watch(layerShellControllerProvider).listMonitors(),
 );
+
+/// Native output occupied by this provider scope's Flutter view.
+final layerShellCurrentMonitorProvider = FutureProvider<LayerShellMonitor?>((
+  ref,
+) {
+  ref.watch(layerShellMetricsRevisionProvider);
+  return ref.watch(layerShellControllerProvider).currentMonitor();
+});
+
+/// Changes whenever Flutter reports output metrics changing.
+final layerShellMetricsRevisionProvider = Provider<int>((_) => 0);

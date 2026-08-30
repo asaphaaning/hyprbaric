@@ -101,8 +101,8 @@ void create_window_for_monitor(MyApplication *self, GdkMonitor *monitor) {
   }
 
   NativeWindowState *state = native_window_state_attach(
-      window, GTK_WIDGET(view), layer_shell_available, descriptor.name.c_str(),
-      descriptor.is_primary);
+      window, GTK_WIDGET(view), monitor, layer_shell_available,
+      descriptor.name.c_str(), descriptor.is_primary);
   g_signal_connect(view, "first-frame", G_CALLBACK(first_frame_cb), state);
 
   gchar *suffix = g_strdup_printf("%" G_GINT64_FORMAT, fl_view_get_id(view));

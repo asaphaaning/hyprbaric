@@ -14,15 +14,8 @@ use crate::signals::{
     PowerCommandResult, PowerSetProfile, PowerStatus, RecordingCommandResult, RecordingRequest,
     RecordingStatus, ScheduleCommand, ScheduleCommandResult, ScheduleStatus,
     ScreenshotCaptureRequest, ScreenshotCommandResult, SessionActionAvailability, SessionCommand,
-    SessionCommandResult, SetupCommand, SetupCommandResult, SetupStatus,
-    ShortcutSettingsCommandResult,
-    ShortcutSettingsRequest, ShortcutSettingsSnapshot, TrayActivateRequest,
-    TrayMenuItemActivateRequest, TrayMenuStatus, TrayStatus, WorkspaceSettingsCommand,
-    WorkspaceSettingsCommandResult, WorkspaceSettingsStatus, WorkspaceStatus, WorkspaceSwitch,
-    WorkspaceSwitchKind,
-=======
-    MonitorWorkspaceStatus, SessionCommandResult, SetupCommand, SetupCommandResult, SetupStatus,
-    ShortcutSettingsCommandResult,
+    MonitorFocusedWindowStatus, MonitorWorkspaceStatus, SessionCommandResult,
+    SetupCommand, SetupCommandResult, SetupStatus, ShortcutSettingsCommandResult,
     ShortcutSettingsRequest, ShortcutSettingsSnapshot, TrayActivateRequest,
     TrayMenuItemActivateRequest, TrayMenuStatus, TrayStatus, WorkspaceSettingsCommand,
     WorkspaceSettingsCommandResult, WorkspaceSettingsStatus, WorkspaceStatus, WorkspaceSwitch,
@@ -104,18 +97,20 @@ pub(crate) fn send_workspace_signal(snapshot: &WorkspaceSnapshot) {
         name: snapshot.name.clone(),
         is_special: snapshot.is_special,
         occupied_workspace_ids: snapshot.occupied.ids().map(|id| id.get()).collect(),
-=======
         monitors: snapshot
             .monitors
             .iter()
             .map(|monitor| MonitorWorkspaceStatus {
                 name: monitor.name.clone(),
-                active_workspace_id: monitor.active_workspace.get(),
+                active_workspace_id: monitor.workspace.id.get(),
+                active_workspace_name: monitor.workspace.name.clone(),
+                is_special: monitor.workspace.is_special(),
                 is_focused: monitor.is_focused,
-                width: monitor.width,
-                height: monitor.height,
-                refresh_hz: monitor.refresh_hz,
-                scale: monitor.scale,
+                x: monitor.geometry.x,
+                y: monitor.geometry.y,
+                width: monitor.geometry.width,
+                height: monitor.geometry.height,
+                refresh_rate_millihertz: monitor.refresh_rate_millihertz,
             })
             .collect(),
     }
@@ -127,7 +122,15 @@ pub(crate) fn send_focused_window_signal(snapshot: &FocusedWindowSnapshot) {
         app_name: snapshot.app_name.clone(),
         title: snapshot.title.clone(),
         hostname: snapshot.hostname.clone(),
-        monitors: Vec::new(),
+        monitors: snapshot
+            .monitors
+            .iter()
+            .map(|monitor| MonitorFocusedWindowStatus {
+                monitor_name: monitor.monitor_name.clone(),
+                app_name: monitor.app_name.clone(),
+                title: monitor.title.clone(),
+            })
+            .collect(),
     }
     .send_signal_to_dart();
 }

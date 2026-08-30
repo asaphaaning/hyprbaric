@@ -27,6 +27,11 @@ class NativeLayerShellMonitor {
   String name;
   String label;
   bool isPrimary;
+  int x;
+  int y;
+  int width;
+  int height;
+  int refreshRateMillihertz;
 }
 
 class NativeLayerShellAnchors {
@@ -82,6 +87,7 @@ class NativeLayerShellPanelConfig {
 @HostApi()
 abstract class NativeLayerShellHostApi {
   List<NativeLayerShellMonitor> listMonitors();
+  NativeLayerShellMonitor? currentMonitor();
   void configurePanel(NativeLayerShellPanelConfig config);
   void setLayer(NativeLayerShellLayer layer);
   void setNamespace(String appNamespace);

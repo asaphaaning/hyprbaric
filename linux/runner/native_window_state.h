@@ -30,6 +30,7 @@ struct HitRegionState {
 struct NativeWindowState {
   GtkWindow *window = nullptr;
   GtkWidget *view = nullptr;
+  GdkMonitor *monitor = nullptr;
   gboolean layer_shell_available = FALSE;
   std::string monitor_name;
   gboolean monitor_is_primary = FALSE;
@@ -46,6 +47,7 @@ struct NativeWindowState {
 
 NativeWindowState *native_window_state_attach(GtkWindow *window,
                                               GtkWidget *view,
+                                              GdkMonitor *monitor,
                                               gboolean layer_shell_available,
                                               const char *monitor_name,
                                               gboolean monitor_is_primary);

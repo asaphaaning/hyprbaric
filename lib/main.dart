@@ -26,6 +26,7 @@ class _HyprbaricViewsState extends State<_HyprbaricViews>
     with WidgetsBindingObserver {
   final Map<int, LayerShellController> _controllers =
       <int, LayerShellController>{};
+  int _metricsRevision = 0;
 
   @override
   void initState() {
@@ -42,7 +43,7 @@ class _HyprbaricViewsState extends State<_HyprbaricViews>
   @override
   void didChangeMetrics() {
     if (mounted) {
-      setState(() {});
+      setState(() => _metricsRevision += 1);
     }
   }
 
@@ -70,6 +71,9 @@ class _HyprbaricViewsState extends State<_HyprbaricViews>
                       view.viewId,
                       () => LayerShellController.forView(view.viewId),
                     ),
+                  ),
+                  layerShellMetricsRevisionProvider.overrideWithValue(
+                    _metricsRevision,
                   ),
                 ],
                 child: const Hyprbaric(),

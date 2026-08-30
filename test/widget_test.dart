@@ -1062,7 +1062,7 @@ void main() {
         ),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Zed'), findsOneWidget);
     expect(find.text('bar.tsx'), findsOneWidget);
@@ -1645,7 +1645,7 @@ void main() {
         child: const Hyprbaric(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Neovim - hyprbaric'), findsOneWidget);
     expect(find.text('workstation'), findsNothing);
@@ -1671,7 +1671,7 @@ void main() {
         child: const Hyprbaric(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Zed'), findsOneWidget);
     expect(find.text('ZE'), findsOneWidget);
@@ -1699,7 +1699,7 @@ void main() {
         child: const Hyprbaric(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Firefox'), findsOneWidget);
     expect(find.text('firefox'), findsNothing);
@@ -1726,7 +1726,7 @@ void main() {
         child: const Hyprbaric(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Alacritty'), findsOneWidget);
     expect(find.text('AL'), findsOneWidget);
@@ -1753,7 +1753,7 @@ void main() {
         child: const Hyprbaric(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Foot'), findsOneWidget);
     expect(find.text('FO'), findsOneWidget);
@@ -1780,7 +1780,7 @@ void main() {
         child: const Hyprbaric(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Hyprbaric'), findsNothing);
     expect(find.text('Desktop'), findsNothing);
@@ -1808,7 +1808,7 @@ void main() {
         child: const Hyprbaric(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Hyprbaric'), findsNothing);
     expect(find.text('desktop'), findsNothing);
@@ -1834,7 +1834,7 @@ void main() {
         child: const Hyprbaric(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Hyprbaric'), findsNothing);
     expect(find.text('desktop'), findsNothing);
@@ -1860,7 +1860,7 @@ void main() {
         child: const Hyprbaric(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Some Browser'), findsOneWidget);
     expect(find.text('org.example.some-browser.desktop'), findsNothing);
@@ -1886,7 +1886,7 @@ void main() {
         child: const Hyprbaric(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('workstation'), findsOneWidget);
   });

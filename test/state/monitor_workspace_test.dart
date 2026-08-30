@@ -1,55 +1,67 @@
-import 'dart:ui' as ui;
+import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hyprbaric/src/bindings/bindings.dart';
+import 'package:hyprbaric/src/layer_shell_controller.dart';
 import 'package:hyprbaric/src/state/monitor_workspace.dart';
-
-/// Stands in for `ui.Display`, which cannot be constructed directly in tests.
-class _FakeDisplay implements ui.Display {
-  const _FakeDisplay({
-    required this.size,
-    required this.refreshRate,
-    this.devicePixelRatio = 1.0,
-  });
-
-  @override
-  final int id = 0;
-  @override
-  final double devicePixelRatio;
-  @override
-  final ui.Size size;
-  @override
-  final double refreshRate;
-}
 
 MonitorWorkspaceStatus _monitor(
   String name,
   int workspace, {
+  String? workspaceName,
+  bool special = false,
   bool focused = false,
+  int x = 0,
+  int y = 0,
   int width = 3840,
   int height = 2160,
-  int refreshHz = 240,
-  double scale = 1.0,
+  int refreshRateMillihertz = 240000,
 }) {
   return MonitorWorkspaceStatus(
     name: name,
     activeWorkspaceId: workspace,
+    activeWorkspaceName: workspaceName ?? '$workspace',
+    isSpecial: special,
     isFocused: focused,
+    x: x,
+    y: y,
     width: width,
     height: height,
-    refreshHz: refreshHz,
-    scale: scale,
+    refreshRateMillihertz: refreshRateMillihertz,
+  );
+}
+
+LayerShellMonitor _output({
+  String name = 'GTK output',
+  int x = 0,
+  int y = 0,
+  int width = 3840,
+  int height = 2160,
+  int refreshRateMillihertz = 240000,
+}) {
+  return LayerShellMonitor(
+    name: name,
+    label: name,
+    isPrimary: false,
+    geometry: Rect.fromLTWH(
+      x.toDouble(),
+      y.toDouble(),
+      width.toDouble(),
+      height.toDouble(),
+    ),
+    refreshRateMillihertz: refreshRateMillihertz,
   );
 }
 
 WorkspaceStatus _status({
   required int focusedId,
+  String? focusedName,
   bool isSpecial = false,
   List<MonitorWorkspaceStatus> monitors = const <MonitorWorkspaceStatus>[],
 }) {
   return WorkspaceStatus(
     id: focusedId,
-    name: '$focusedId',
+    name: focusedName ?? '$focusedId',
     isSpecial: isSpecial,
     occupiedWorkspaceIds: const <int>[],
     monitors: monitors,
@@ -57,20 +69,26 @@ WorkspaceStatus _status({
 }
 
 void main() {
-  test('unfocused output reports its own workspace, not the focused one', () {
-    // Focus sits on workspace 4 (MACBOOK) while DP-2 still displays 3.
+  test('unfocused output reports its own workspace', () {
     final WorkspaceStatus status = _status(
       focusedId: 4,
       monitors: <MonitorWorkspaceStatus>[
         _monitor('DP-2', 3),
-        _monitor('MACBOOK', 4,
-            focused: true, width: 2560, height: 1600, refreshHz: 60),
+        _monitor(
+          'MACBOOK',
+          4,
+          focused: true,
+          x: 3840,
+          width: 1920,
+          height: 1200,
+          refreshRateMillihertz: 60000,
+        ),
       ],
     );
 
     final MonitorWorkspaceResolution resolution = resolveMonitorWorkspace(
       status,
-      const _FakeDisplay(size: ui.Size(3840, 2160), refreshRate: 240),
+      _output(),
     );
 
     expect(resolution.activeWorkspaceId, 3);
@@ -78,51 +96,116 @@ void main() {
     expect(resolution.isFallback, isFalse);
   });
 
-  test('focused output reports the focused workspace', () {
+  test('position distinguishes identical output modes', () {
     final WorkspaceStatus status = _status(
-      focusedId: 4,
+      focusedId: 7,
       monitors: <MonitorWorkspaceStatus>[
-        _monitor('DP-2', 3),
-        _monitor('MACBOOK', 4,
-            focused: true, width: 2560, height: 1600, refreshHz: 60),
+        _monitor('DP-1', 5),
+        _monitor('DP-2', 7, focused: true, x: 3840),
       ],
     );
 
     final MonitorWorkspaceResolution resolution = resolveMonitorWorkspace(
       status,
-      const _FakeDisplay(size: ui.Size(2560, 1600), refreshRate: 60),
+      _output(x: 0),
+    );
+
+    expect(resolution.activeWorkspaceId, 5);
+    expect(resolution.monitorName, 'DP-1');
+  });
+
+  test('focused output reports the focused workspace', () {
+    final WorkspaceStatus status = _status(
+      focusedId: 4,
+      monitors: <MonitorWorkspaceStatus>[
+        _monitor('DP-2', 3),
+        _monitor(
+          'MACBOOK',
+          4,
+          focused: true,
+          x: 3840,
+          width: 1920,
+          height: 1200,
+          refreshRateMillihertz: 60000,
+        ),
+      ],
+    );
+
+    final MonitorWorkspaceResolution resolution = resolveMonitorWorkspace(
+      status,
+      _output(x: 3840, width: 1920, height: 1200, refreshRateMillihertz: 60000),
     );
 
     expect(resolution.activeWorkspaceId, 4);
     expect(resolution.monitorName, 'MACBOOK');
   });
 
-  test('a scaled output matches on logical display size', () {
-    // A 3840x2160 output at scale 1.2 reaches Flutter as 3200x1800 logical.
+  test('logical geometry matches a fractionally scaled output', () {
     final WorkspaceStatus status = _status(
       focusedId: 4,
       monitors: <MonitorWorkspaceStatus>[
-        _monitor('DP-2', 3, scale: 1.2),
-        _monitor('MACBOOK', 4,
-            focused: true, width: 2560, height: 1600, refreshHz: 60),
+        _monitor('DP-2', 3, width: 3200, height: 1800),
+        _monitor(
+          'MACBOOK',
+          4,
+          focused: true,
+          x: 3200,
+          width: 1920,
+          height: 1200,
+          refreshRateMillihertz: 60000,
+        ),
       ],
     );
 
     final MonitorWorkspaceResolution resolution = resolveMonitorWorkspace(
       status,
-      // The embedder reports logical pixels and an unrelated ratio of 2.0.
-      const _FakeDisplay(
-        size: ui.Size(3200, 1800),
-        refreshRate: 240,
-        devicePixelRatio: 2.0,
-      ),
+      _output(width: 3200, height: 1800),
     );
 
     expect(resolution.activeWorkspaceId, 3);
     expect(resolution.monitorName, 'DP-2');
   });
 
-  test('a single output needs no display metrics', () {
+  test(
+    'rotated logical geometry matches without physical-axis assumptions',
+    () {
+      final WorkspaceStatus status = _status(
+        focusedId: 2,
+        monitors: <MonitorWorkspaceStatus>[
+          _monitor('DP-1', 6, x: -1080, width: 1080, height: 1920),
+          _monitor('DP-2', 2, focused: true),
+        ],
+      );
+
+      final MonitorWorkspaceResolution resolution = resolveMonitorWorkspace(
+        status,
+        _output(x: -1080, width: 1080, height: 1920),
+      );
+
+      expect(resolution.activeWorkspaceId, 6);
+      expect(resolution.monitorName, 'DP-1');
+    },
+  );
+
+  test('one-pixel geometry rounding still matches a unique origin', () {
+    final WorkspaceStatus status = _status(
+      focusedId: 2,
+      monitors: <MonitorWorkspaceStatus>[
+        _monitor('DP-1', 6, width: 2560, height: 1440),
+        _monitor('DP-2', 2, focused: true, x: 2560),
+      ],
+    );
+
+    final MonitorWorkspaceResolution resolution = resolveMonitorWorkspace(
+      status,
+      _output(width: 2559, height: 1441),
+    );
+
+    expect(resolution.activeWorkspaceId, 6);
+    expect(resolution.monitorName, 'DP-1');
+  });
+
+  test('a single output needs no native monitor facts', () {
     final WorkspaceStatus status = _status(
       focusedId: 2,
       monitors: <MonitorWorkspaceStatus>[_monitor('DP-2', 2, focused: true)],
@@ -137,26 +220,25 @@ void main() {
     expect(resolution.monitorName, 'DP-2');
   });
 
-  test('identical resolutions are separated by refresh rate', () {
+  test('refresh rate separates size-only fallback candidates', () {
     final WorkspaceStatus status = _status(
       focusedId: 1,
       monitors: <MonitorWorkspaceStatus>[
-        _monitor('DP-1', 5, refreshHz: 60),
-        _monitor('DP-2', 1, focused: true, refreshHz: 240),
+        _monitor('DP-1', 5, x: 100, refreshRateMillihertz: 60000),
+        _monitor('DP-2', 1, focused: true, x: 200),
       ],
     );
 
     final MonitorWorkspaceResolution resolution = resolveMonitorWorkspace(
       status,
-      const _FakeDisplay(size: ui.Size(3840, 2160), refreshRate: 60),
+      _output(x: 999, refreshRateMillihertz: 59940),
     );
 
     expect(resolution.activeWorkspaceId, 5);
     expect(resolution.monitorName, 'DP-1');
   });
 
-  test('indistinguishable outputs fall back to compositor focus', () {
-    // Same size and refresh rate: nothing left to tell them apart.
+  test('mirrored indistinguishable outputs fall back to compositor focus', () {
     final WorkspaceStatus status = _status(
       focusedId: 7,
       monitors: <MonitorWorkspaceStatus>[
@@ -167,62 +249,60 @@ void main() {
 
     final MonitorWorkspaceResolution resolution = resolveMonitorWorkspace(
       status,
-      const _FakeDisplay(size: ui.Size(3840, 2160), refreshRate: 240),
+      _output(),
     );
 
     expect(resolution.activeWorkspaceId, 7);
     expect(resolution.isFallback, isTrue);
   });
 
-  test('an unmatched display falls back to compositor focus', () {
+  test('an unmatched output falls back to compositor focus', () {
     final WorkspaceStatus status = _status(
       focusedId: 9,
       monitors: <MonitorWorkspaceStatus>[
         _monitor('DP-1', 5),
-        _monitor('DP-2', 9, focused: true, width: 2560, height: 1600),
+        _monitor('DP-2', 9, focused: true, x: 3840),
       ],
     );
 
     final MonitorWorkspaceResolution resolution = resolveMonitorWorkspace(
       status,
-      const _FakeDisplay(size: ui.Size(1920, 1080), refreshRate: 60),
+      _output(x: 999, width: 1920, height: 1080),
     );
 
     expect(resolution.activeWorkspaceId, 9);
     expect(resolution.isFallback, isTrue);
   });
 
-  test('an empty monitor list preserves the previous global behaviour', () {
+  test('an empty monitor list preserves compositor focus', () {
     final MonitorWorkspaceResolution resolution = resolveMonitorWorkspace(
-      _status(focusedId: 3, isSpecial: true),
-      const _FakeDisplay(size: ui.Size(3840, 2160), refreshRate: 240),
+      _status(focusedId: -3, focusedName: 'special:notes', isSpecial: true),
+      _output(),
     );
 
-    expect(resolution.activeWorkspaceId, 3);
+    expect(resolution.activeWorkspaceId, -3);
+    expect(resolution.activeWorkspaceName, 'special:notes');
     expect(resolution.isSpecial, isTrue);
     expect(resolution.isFallback, isTrue);
   });
 
-  test('special state applies only to the focused output', () {
+  test('an unfocused output carries its own special workspace', () {
     final WorkspaceStatus status = _status(
-      focusedId: -99,
-      isSpecial: true,
+      focusedId: 4,
       monitors: <MonitorWorkspaceStatus>[
-        _monitor('DP-1', 5, width: 2560, height: 1600, refreshHz: 60),
-        _monitor('DP-2', -99, focused: true),
+        _monitor('DP-1', -99, workspaceName: 'special:notes', special: true),
+        _monitor('DP-2', 4, focused: true, x: 3840),
       ],
     );
 
-    final MonitorWorkspaceResolution unfocused = resolveMonitorWorkspace(
+    final MonitorWorkspaceResolution resolution = resolveMonitorWorkspace(
       status,
-      const _FakeDisplay(size: ui.Size(2560, 1600), refreshRate: 60),
-    );
-    final MonitorWorkspaceResolution focused = resolveMonitorWorkspace(
-      status,
-      const _FakeDisplay(size: ui.Size(3840, 2160), refreshRate: 240),
+      _output(),
     );
 
-    expect(unfocused.isSpecial, isFalse);
-    expect(focused.isSpecial, isTrue);
+    expect(resolution.activeWorkspaceId, -99);
+    expect(resolution.activeWorkspaceName, 'special:notes');
+    expect(resolution.isSpecial, isTrue);
+    expect(resolution.monitorName, 'DP-1');
   });
 }

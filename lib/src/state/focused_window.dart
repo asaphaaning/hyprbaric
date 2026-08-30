@@ -1,7 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../bindings/bindings.dart';
+import '../layer_shell_controller.dart';
+import 'layer_shell.dart';
+import 'monitor_workspace.dart';
 import 'rust_signals.dart';
+import 'workspaces.dart';
 
 class FocusedWindowDisplay {
   const FocusedWindowDisplay({
@@ -51,28 +55,81 @@ String? _trimmed(String? value) {
 }
 
 String _displayTitle(FocusedWindowStatus status) {
-  return _display(status).title;
+  return focusedWindowDisplay(status).title;
 }
 
-FocusedWindowDisplay _display(FocusedWindowStatus status) {
-  final String? appName = _displayAppName(status.appName);
-  final String? title = _trimmed(status.title);
-  final String hostname = _trimmed(status.hostname) ?? 'Hyprbaric';
-  if (_isEmptyDesktopStatus(status)) {
+/// Resolves the focused-window label for one Hyprland output.
+///
+/// When [monitorName] cannot be resolved, compositor-wide focus is retained as
+/// a conservative fallback. An explicitly empty per-monitor entry represents a
+/// visible workspace with no focused client and therefore hides the label.
+FocusedWindowDisplay focusedWindowDisplay(
+  FocusedWindowStatus status, {
+  String? monitorName,
+}) {
+  final MonitorFocusedWindowStatus? monitor = _monitorWindow(
+    status.monitors,
+    monitorName,
+  );
+  return _displayValues(
+    appName: monitor == null ? status.appName : monitor.appName,
+    title: monitor == null ? status.title : monitor.title,
+    hostname: status.hostname,
+    emptyDesktop:
+        monitor != null &&
+        _trimmed(monitor.appName) == null &&
+        _trimmed(monitor.title) == null,
+  );
+}
+
+FocusedWindowDisplay _displayValues({
+  required String? appName,
+  required String? title,
+  required String hostname,
+  required bool emptyDesktop,
+}) {
+  final String? displayAppName = _displayAppName(appName);
+  final String? displayTitle = _trimmed(title);
+  final String displayHostname = _trimmed(hostname) ?? 'Hyprbaric';
+  if (emptyDesktop || _isEmptyDesktopStatus(appName, title, displayHostname)) {
     return const FocusedWindowDisplay.hidden();
   }
-  if (title == null) {
-    if (appName != null) {
-      return FocusedWindowDisplay(appName: appName, title: appName);
+  if (displayTitle == null) {
+    if (displayAppName != null) {
+      return FocusedWindowDisplay(
+        appName: displayAppName,
+        title: displayAppName,
+      );
     }
-    return FocusedWindowDisplay(title: hostname, isFallback: true);
+    return FocusedWindowDisplay(title: displayHostname, isFallback: true);
   }
-  return FocusedWindowDisplay(appName: appName, title: title);
+  return FocusedWindowDisplay(appName: displayAppName, title: displayTitle);
 }
 
-bool _isEmptyDesktopStatus(FocusedWindowStatus status) {
-  final String? title = _trimmed(status.title);
-  final String? appName = _trimmed(status.appName);
+MonitorFocusedWindowStatus? _monitorWindow(
+  List<MonitorFocusedWindowStatus> monitors,
+  String? monitorName,
+) {
+  if (monitorName == null) {
+    return null;
+  }
+
+  for (final MonitorFocusedWindowStatus monitor in monitors) {
+    if (monitor.monitorName == monitorName) {
+      return monitor;
+    }
+  }
+
+  return null;
+}
+
+bool _isEmptyDesktopStatus(
+  String? appNameValue,
+  String? titleValue,
+  String hostname,
+) {
+  final String? title = _trimmed(titleValue);
+  final String? appName = _trimmed(appNameValue);
   if (_isDesktopToken(title)) {
     return true;
   }
@@ -80,7 +137,7 @@ bool _isEmptyDesktopStatus(FocusedWindowStatus status) {
     return false;
   }
   return _isDesktopToken(appName) ||
-      (appName == null && _isDesktopToken(status.hostname));
+      (appName == null && _isDesktopToken(hostname));
 }
 
 bool _isDesktopToken(String? value) {
@@ -160,8 +217,23 @@ final currentWindowDisplayProvider = Provider<FocusedWindowDisplay>((ref) {
   final AsyncValue<FocusedWindowStatus> status = ref.watch(
     currentFocusedWindowStatusProvider,
   );
+  final AsyncValue<WorkspaceStatus> workspace = ref.watch(
+    currentWorkspaceStatusProvider,
+  );
+  final LayerShellMonitor? output = ref
+      .watch(layerShellCurrentMonitorProvider)
+      .asData
+      ?.value;
   return status.maybeWhen(
-    data: _display,
+    data: (FocusedWindowStatus value) {
+      final String? monitorName = workspace.asData == null
+          ? null
+          : resolveMonitorWorkspace(
+              workspace.asData!.value,
+              output,
+            ).monitorName;
+      return focusedWindowDisplay(value, monitorName: monitorName);
+    },
     orElse: () =>
         const FocusedWindowDisplay(title: 'Hyprbaric', isFallback: true),
   );

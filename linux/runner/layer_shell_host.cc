@@ -124,6 +124,14 @@ NativeWindowState *state_from_user_data(gpointer user_data) {
 
 void release_borrowed_state(gpointer user_data) { (void)user_data; }
 
+HyprbaricNativeLayerShellMonitor *native_monitor(
+    const MonitorDescriptor &monitor) {
+  return hyprbaric_native_layer_shell_monitor_new(
+      monitor.name.c_str(), monitor.label.c_str(), monitor.is_primary,
+      monitor.geometry.x, monitor.geometry.y, monitor.geometry.width,
+      monitor.geometry.height, monitor.refresh_rate_millihertz);
+}
+
 #define LAYER_SHELL_UNAVAILABLE_RESPONSE(method)                               \
   hyprbaric_native_layer_shell_host_api_##method##_response_new_error(         \
       "layer-shell-unavailable",                                               \
@@ -134,9 +142,7 @@ native_list_monitors(gpointer user_data) {
   (void)user_data;
   g_autoptr(FlValue) values = fl_value_new_list();
   for (const MonitorDescriptor &monitor : hyprbaric_monitors()) {
-    HyprbaricNativeLayerShellMonitor *value =
-        hyprbaric_native_layer_shell_monitor_new(
-            monitor.name.c_str(), monitor.label.c_str(), monitor.is_primary);
+    HyprbaricNativeLayerShellMonitor *value = native_monitor(monitor);
     fl_value_append_take(
         values,
         fl_value_new_custom(hyprbaric_native_layer_shell_monitor_type_id, value,
@@ -144,6 +150,22 @@ native_list_monitors(gpointer user_data) {
   }
   return hyprbaric_native_layer_shell_host_api_list_monitors_response_new(
       values);
+}
+
+static HyprbaricNativeLayerShellHostApiCurrentMonitorResponse *
+native_current_monitor(gpointer user_data) {
+  NativeWindowState *state = state_from_user_data(user_data);
+  if (state == nullptr || state->monitor == nullptr) {
+    return hyprbaric_native_layer_shell_host_api_current_monitor_response_new(
+        nullptr);
+  }
+
+  const MonitorDescriptor descriptor =
+      hyprbaric_monitor_descriptor(state->monitor);
+  g_autoptr(HyprbaricNativeLayerShellMonitor) monitor =
+      native_monitor(descriptor);
+  return hyprbaric_native_layer_shell_host_api_current_monitor_response_new(
+      monitor);
 }
 
 static HyprbaricNativeLayerShellHostApiConfigurePanelResponse *
@@ -284,6 +306,7 @@ native_set_region(HyprbaricNativeLayerShellRegionRequest *request,
 
 static const HyprbaricNativeLayerShellHostApiVTable kLayerShellVTable = {
     .list_monitors = native_list_monitors,
+    .current_monitor = native_current_monitor,
     .configure_panel = native_configure_panel,
     .set_layer = native_set_layer,
     .set_namespace = native_set_namespace,

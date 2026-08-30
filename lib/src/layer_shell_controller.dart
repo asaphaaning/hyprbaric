@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/foundation.dart';
 
 import 'native/layer_shell_api.g.dart';
@@ -69,11 +71,17 @@ class LayerShellMonitor {
     required this.name,
     required this.label,
     required this.isPrimary,
+    required this.geometry,
+    required this.refreshRateMillihertz,
   });
 
   final String name;
   final String label;
   final bool isPrimary;
+  final Rect geometry;
+  final int refreshRateMillihertz;
+
+  double get refreshRate => refreshRateMillihertz / 1000;
 }
 
 class LayerShellController {
@@ -172,15 +180,16 @@ class LayerShellController {
       return const <LayerShellMonitor>[];
     }
     final List<NativeLayerShellMonitor> monitors = await _api.listMonitors();
-    return monitors
-        .map(
-          (NativeLayerShellMonitor monitor) => LayerShellMonitor(
-            name: monitor.name,
-            label: monitor.label,
-            isPrimary: monitor.isPrimary,
-          ),
-        )
-        .toList(growable: false);
+    return monitors.map(_monitorFromNative).toList(growable: false);
+  }
+
+  Future<LayerShellMonitor?> currentMonitor() async {
+    if (!_isSupported) {
+      return null;
+    }
+
+    final NativeLayerShellMonitor? monitor = await _api.currentMonitor();
+    return monitor == null ? null : _monitorFromNative(monitor);
   }
 
   Future<void> configurePanelDefaults({
@@ -242,4 +251,19 @@ class LayerShellController {
       debugPrint('$stackTrace');
     });
   }
+}
+
+LayerShellMonitor _monitorFromNative(NativeLayerShellMonitor monitor) {
+  return LayerShellMonitor(
+    name: monitor.name,
+    label: monitor.label,
+    isPrimary: monitor.isPrimary,
+    geometry: Rect.fromLTWH(
+      monitor.x.toDouble(),
+      monitor.y.toDouble(),
+      monitor.width.toDouble(),
+      monitor.height.toDouble(),
+    ),
+    refreshRateMillihertz: monitor.refreshRateMillihertz,
+  );
 }

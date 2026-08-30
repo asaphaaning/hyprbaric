@@ -394,6 +394,11 @@ struct _HyprbaricNativeLayerShellMonitor {
   gchar* name;
   gchar* label;
   gboolean is_primary;
+  int64_t x;
+  int64_t y;
+  int64_t width;
+  int64_t height;
+  int64_t refresh_rate_millihertz;
 };
 
 G_DEFINE_TYPE(HyprbaricNativeLayerShellMonitor, hyprbaric_native_layer_shell_monitor, G_TYPE_OBJECT)
@@ -412,11 +417,16 @@ static void hyprbaric_native_layer_shell_monitor_class_init(HyprbaricNativeLayer
   G_OBJECT_CLASS(klass)->dispose = hyprbaric_native_layer_shell_monitor_dispose;
 }
 
-HyprbaricNativeLayerShellMonitor* hyprbaric_native_layer_shell_monitor_new(const gchar* name, const gchar* label, gboolean is_primary) {
+HyprbaricNativeLayerShellMonitor* hyprbaric_native_layer_shell_monitor_new(const gchar* name, const gchar* label, gboolean is_primary, int64_t x, int64_t y, int64_t width, int64_t height, int64_t refresh_rate_millihertz) {
   HyprbaricNativeLayerShellMonitor* self = HYPRBARIC_NATIVE_LAYER_SHELL_MONITOR(g_object_new(hyprbaric_native_layer_shell_monitor_get_type(), nullptr));
   self->name = g_strdup(name);
   self->label = g_strdup(label);
   self->is_primary = is_primary;
+  self->x = x;
+  self->y = y;
+  self->width = width;
+  self->height = height;
+  self->refresh_rate_millihertz = refresh_rate_millihertz;
   return self;
 }
 
@@ -435,11 +445,41 @@ gboolean hyprbaric_native_layer_shell_monitor_get_is_primary(HyprbaricNativeLaye
   return self->is_primary;
 }
 
+int64_t hyprbaric_native_layer_shell_monitor_get_x(HyprbaricNativeLayerShellMonitor* self) {
+  g_return_val_if_fail(HYPRBARIC_IS_NATIVE_LAYER_SHELL_MONITOR(self), 0);
+  return self->x;
+}
+
+int64_t hyprbaric_native_layer_shell_monitor_get_y(HyprbaricNativeLayerShellMonitor* self) {
+  g_return_val_if_fail(HYPRBARIC_IS_NATIVE_LAYER_SHELL_MONITOR(self), 0);
+  return self->y;
+}
+
+int64_t hyprbaric_native_layer_shell_monitor_get_width(HyprbaricNativeLayerShellMonitor* self) {
+  g_return_val_if_fail(HYPRBARIC_IS_NATIVE_LAYER_SHELL_MONITOR(self), 0);
+  return self->width;
+}
+
+int64_t hyprbaric_native_layer_shell_monitor_get_height(HyprbaricNativeLayerShellMonitor* self) {
+  g_return_val_if_fail(HYPRBARIC_IS_NATIVE_LAYER_SHELL_MONITOR(self), 0);
+  return self->height;
+}
+
+int64_t hyprbaric_native_layer_shell_monitor_get_refresh_rate_millihertz(HyprbaricNativeLayerShellMonitor* self) {
+  g_return_val_if_fail(HYPRBARIC_IS_NATIVE_LAYER_SHELL_MONITOR(self), 0);
+  return self->refresh_rate_millihertz;
+}
+
 static FlValue* hyprbaric_native_layer_shell_monitor_to_list(HyprbaricNativeLayerShellMonitor* self) {
   FlValue* values = fl_value_new_list();
   fl_value_append_take(values, fl_value_new_string(self->name));
   fl_value_append_take(values, fl_value_new_string(self->label));
   fl_value_append_take(values, fl_value_new_bool(self->is_primary));
+  fl_value_append_take(values, fl_value_new_int(self->x));
+  fl_value_append_take(values, fl_value_new_int(self->y));
+  fl_value_append_take(values, fl_value_new_int(self->width));
+  fl_value_append_take(values, fl_value_new_int(self->height));
+  fl_value_append_take(values, fl_value_new_int(self->refresh_rate_millihertz));
   return values;
 }
 
@@ -450,7 +490,17 @@ static HyprbaricNativeLayerShellMonitor* hyprbaric_native_layer_shell_monitor_ne
   const gchar* label = fl_value_get_string(value1);
   FlValue* value2 = fl_value_get_list_value(values, 2);
   gboolean is_primary = fl_value_get_bool(value2);
-  return hyprbaric_native_layer_shell_monitor_new(name, label, is_primary);
+  FlValue* value3 = fl_value_get_list_value(values, 3);
+  int64_t x = fl_value_get_int(value3);
+  FlValue* value4 = fl_value_get_list_value(values, 4);
+  int64_t y = fl_value_get_int(value4);
+  FlValue* value5 = fl_value_get_list_value(values, 5);
+  int64_t width = fl_value_get_int(value5);
+  FlValue* value6 = fl_value_get_list_value(values, 6);
+  int64_t height = fl_value_get_int(value6);
+  FlValue* value7 = fl_value_get_list_value(values, 7);
+  int64_t refresh_rate_millihertz = fl_value_get_int(value7);
+  return hyprbaric_native_layer_shell_monitor_new(name, label, is_primary, x, y, width, height, refresh_rate_millihertz);
 }
 
 gboolean hyprbaric_native_layer_shell_monitor_equals(HyprbaricNativeLayerShellMonitor* a, HyprbaricNativeLayerShellMonitor* b) {
@@ -469,6 +519,21 @@ gboolean hyprbaric_native_layer_shell_monitor_equals(HyprbaricNativeLayerShellMo
   if (a->is_primary != b->is_primary) {
     return FALSE;
   }
+  if (a->x != b->x) {
+    return FALSE;
+  }
+  if (a->y != b->y) {
+    return FALSE;
+  }
+  if (a->width != b->width) {
+    return FALSE;
+  }
+  if (a->height != b->height) {
+    return FALSE;
+  }
+  if (a->refresh_rate_millihertz != b->refresh_rate_millihertz) {
+    return FALSE;
+  }
   return TRUE;
 }
 
@@ -478,6 +543,11 @@ guint hyprbaric_native_layer_shell_monitor_hash(HyprbaricNativeLayerShellMonitor
   result = result * 31 + (self->name != nullptr ? g_str_hash(self->name) : 0);
   result = result * 31 + (self->label != nullptr ? g_str_hash(self->label) : 0);
   result = result * 31 + static_cast<guint>(self->is_primary);
+  result = result * 31 + static_cast<guint>(self->x);
+  result = result * 31 + static_cast<guint>(self->y);
+  result = result * 31 + static_cast<guint>(self->width);
+  result = result * 31 + static_cast<guint>(self->height);
+  result = result * 31 + static_cast<guint>(self->refresh_rate_millihertz);
   return result;
 }
 
@@ -500,6 +570,16 @@ gchar* hyprbaric_native_layer_shell_monitor_to_string(HyprbaricNativeLayerShellM
   }
   g_string_append(str, ", is_primary: ");
   g_string_append(str, self->is_primary ? "true" : "false");
+  g_string_append(str, ", x: ");
+  g_string_append_printf(str, "%" G_GINT64_FORMAT, self->x);
+  g_string_append(str, ", y: ");
+  g_string_append_printf(str, "%" G_GINT64_FORMAT, self->y);
+  g_string_append(str, ", width: ");
+  g_string_append_printf(str, "%" G_GINT64_FORMAT, self->width);
+  g_string_append(str, ", height: ");
+  g_string_append_printf(str, "%" G_GINT64_FORMAT, self->height);
+  g_string_append(str, ", refresh_rate_millihertz: ");
+  g_string_append_printf(str, "%" G_GINT64_FORMAT, self->refresh_rate_millihertz);
   g_string_append(str, ")");
   return g_string_free(str, FALSE);
 }
@@ -1963,6 +2043,43 @@ HyprbaricNativeLayerShellHostApiListMonitorsResponse* hyprbaric_native_layer_she
   return self;
 }
 
+struct _HyprbaricNativeLayerShellHostApiCurrentMonitorResponse {
+  GObject parent_instance;
+
+  FlValue* value;
+};
+
+G_DEFINE_TYPE(HyprbaricNativeLayerShellHostApiCurrentMonitorResponse, hyprbaric_native_layer_shell_host_api_current_monitor_response, G_TYPE_OBJECT)
+
+static void hyprbaric_native_layer_shell_host_api_current_monitor_response_dispose(GObject* object) {
+  HyprbaricNativeLayerShellHostApiCurrentMonitorResponse* self = HYPRBARIC_NATIVE_LAYER_SHELL_HOST_API_CURRENT_MONITOR_RESPONSE(object);
+  g_clear_pointer(&self->value, fl_value_unref);
+  G_OBJECT_CLASS(hyprbaric_native_layer_shell_host_api_current_monitor_response_parent_class)->dispose(object);
+}
+
+static void hyprbaric_native_layer_shell_host_api_current_monitor_response_init(HyprbaricNativeLayerShellHostApiCurrentMonitorResponse* self) {
+}
+
+static void hyprbaric_native_layer_shell_host_api_current_monitor_response_class_init(HyprbaricNativeLayerShellHostApiCurrentMonitorResponseClass* klass) {
+  G_OBJECT_CLASS(klass)->dispose = hyprbaric_native_layer_shell_host_api_current_monitor_response_dispose;
+}
+
+HyprbaricNativeLayerShellHostApiCurrentMonitorResponse* hyprbaric_native_layer_shell_host_api_current_monitor_response_new(HyprbaricNativeLayerShellMonitor* return_value) {
+  HyprbaricNativeLayerShellHostApiCurrentMonitorResponse* self = HYPRBARIC_NATIVE_LAYER_SHELL_HOST_API_CURRENT_MONITOR_RESPONSE(g_object_new(hyprbaric_native_layer_shell_host_api_current_monitor_response_get_type(), nullptr));
+  self->value = fl_value_new_list();
+  fl_value_append_take(self->value, return_value != nullptr ? fl_value_new_custom_object(hyprbaric_native_layer_shell_monitor_type_id, G_OBJECT(return_value)) : fl_value_new_null());
+  return self;
+}
+
+HyprbaricNativeLayerShellHostApiCurrentMonitorResponse* hyprbaric_native_layer_shell_host_api_current_monitor_response_new_error(const gchar* code, const gchar* message, FlValue* details) {
+  HyprbaricNativeLayerShellHostApiCurrentMonitorResponse* self = HYPRBARIC_NATIVE_LAYER_SHELL_HOST_API_CURRENT_MONITOR_RESPONSE(g_object_new(hyprbaric_native_layer_shell_host_api_current_monitor_response_get_type(), nullptr));
+  self->value = fl_value_new_list();
+  fl_value_append_take(self->value, fl_value_new_string(code));
+  fl_value_append_take(self->value, fl_value_new_string(message != nullptr ? message : ""));
+  fl_value_append_take(self->value, details != nullptr ? fl_value_ref(details) : fl_value_new_null());
+  return self;
+}
+
 struct _HyprbaricNativeLayerShellHostApiConfigurePanelResponse {
   GObject parent_instance;
 
@@ -2386,6 +2503,25 @@ static void hyprbaric_native_layer_shell_host_api_list_monitors_cb(FlBasicMessag
   }
 }
 
+static void hyprbaric_native_layer_shell_host_api_current_monitor_cb(FlBasicMessageChannel* channel, FlValue* message_, FlBasicMessageChannelResponseHandle* response_handle, gpointer user_data) {
+  HyprbaricNativeLayerShellHostApi* self = HYPRBARIC_NATIVE_LAYER_SHELL_HOST_API(user_data);
+
+  if (self->vtable == nullptr || self->vtable->current_monitor == nullptr) {
+    return;
+  }
+
+  g_autoptr(HyprbaricNativeLayerShellHostApiCurrentMonitorResponse) response = self->vtable->current_monitor(self->user_data);
+  if (response == nullptr) {
+    g_warning("No response returned to %s.%s", "NativeLayerShellHostApi", "currentMonitor");
+    return;
+  }
+
+  g_autoptr(GError) error = NULL;
+  if (!fl_basic_message_channel_respond(channel, response_handle, response->value, &error)) {
+    g_warning("Failed to send response to %s.%s: %s", "NativeLayerShellHostApi", "currentMonitor", error->message);
+  }
+}
+
 static void hyprbaric_native_layer_shell_host_api_configure_panel_cb(FlBasicMessageChannel* channel, FlValue* message_, FlBasicMessageChannelResponseHandle* response_handle, gpointer user_data) {
   HyprbaricNativeLayerShellHostApi* self = HYPRBARIC_NATIVE_LAYER_SHELL_HOST_API(user_data);
 
@@ -2604,6 +2740,9 @@ void hyprbaric_native_layer_shell_host_api_set_method_handlers(FlBinaryMessenger
   g_autofree gchar* list_monitors_channel_name = g_strdup_printf("dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.listMonitors%s", dot_suffix);
   g_autoptr(FlBasicMessageChannel) list_monitors_channel = fl_basic_message_channel_new(messenger, list_monitors_channel_name, FL_MESSAGE_CODEC(codec));
   fl_basic_message_channel_set_message_handler(list_monitors_channel, hyprbaric_native_layer_shell_host_api_list_monitors_cb, g_object_ref(api_data), g_object_unref);
+  g_autofree gchar* current_monitor_channel_name = g_strdup_printf("dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.currentMonitor%s", dot_suffix);
+  g_autoptr(FlBasicMessageChannel) current_monitor_channel = fl_basic_message_channel_new(messenger, current_monitor_channel_name, FL_MESSAGE_CODEC(codec));
+  fl_basic_message_channel_set_message_handler(current_monitor_channel, hyprbaric_native_layer_shell_host_api_current_monitor_cb, g_object_ref(api_data), g_object_unref);
   g_autofree gchar* configure_panel_channel_name = g_strdup_printf("dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.configurePanel%s", dot_suffix);
   g_autoptr(FlBasicMessageChannel) configure_panel_channel = fl_basic_message_channel_new(messenger, configure_panel_channel_name, FL_MESSAGE_CODEC(codec));
   fl_basic_message_channel_set_message_handler(configure_panel_channel, hyprbaric_native_layer_shell_host_api_configure_panel_cb, g_object_ref(api_data), g_object_unref);
@@ -2643,6 +2782,9 @@ void hyprbaric_native_layer_shell_host_api_clear_method_handlers(FlBinaryMesseng
   g_autofree gchar* list_monitors_channel_name = g_strdup_printf("dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.listMonitors%s", dot_suffix);
   g_autoptr(FlBasicMessageChannel) list_monitors_channel = fl_basic_message_channel_new(messenger, list_monitors_channel_name, FL_MESSAGE_CODEC(codec));
   fl_basic_message_channel_set_message_handler(list_monitors_channel, nullptr, nullptr, nullptr);
+  g_autofree gchar* current_monitor_channel_name = g_strdup_printf("dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.currentMonitor%s", dot_suffix);
+  g_autoptr(FlBasicMessageChannel) current_monitor_channel = fl_basic_message_channel_new(messenger, current_monitor_channel_name, FL_MESSAGE_CODEC(codec));
+  fl_basic_message_channel_set_message_handler(current_monitor_channel, nullptr, nullptr, nullptr);
   g_autofree gchar* configure_panel_channel_name = g_strdup_printf("dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.configurePanel%s", dot_suffix);
   g_autoptr(FlBasicMessageChannel) configure_panel_channel = fl_basic_message_channel_new(messenger, configure_panel_channel_name, FL_MESSAGE_CODEC(codec));
   fl_basic_message_channel_set_message_handler(configure_panel_channel, nullptr, nullptr, nullptr);

@@ -1,7 +1,7 @@
 use std::{fs, path::Path};
 
 use hyprland::{
-    data::{Client, Monitors, Workspace, Workspaces},
+    data::{Client, Clients, Monitors, Transforms, Workspace, Workspaces},
     dispatch::{Dispatch, DispatchType, WorkspaceIdentifierWithSpecial},
     error::HyprError,
     prelude::*,
@@ -14,8 +14,8 @@ mod listener;
 mod occupancy;
 
 pub use domain::{
-    Command, FocusedWindowSnapshot, MonitorWorkspace, WorkspaceOccupancy, WorkspaceSnapshot,
-    WorkspaceTarget,
+    Command, DisplayedWorkspace, FocusedWindowSnapshot, MonitorFocusedWindow, MonitorWorkspace,
+    OutputGeometry, OutputTransform, WorkspaceOccupancy, WorkspaceSnapshot, WorkspaceTarget,
 };
 
 /// Live Hyprland desktop observation.
@@ -38,7 +38,7 @@ impl Desktop {
         let initial_client = Client::get_active_async()
             .await
             .map_err(Error::ActiveClient)?;
-        let focused_window = focused_window(initial_client.as_ref(), &hostname);
+        let focused_window = focused_window_snapshot(initial_client.as_ref(), &hostname).await;
         let (workspace_tx, _) = broadcast::channel(32);
         let (focused_window_tx, _) = broadcast::channel(32);
 
@@ -149,17 +149,48 @@ pub(super) async fn monitor_workspaces() -> Result<Vec<MonitorWorkspace>, HyprEr
         .await?
         .into_iter()
         .map(|monitor| {
-            MonitorWorkspace::new(
-                monitor.name,
-                monitor.active_workspace.id,
-                monitor.focused,
+            let workspace = if monitor.special_workspace.id < 0 {
+                DisplayedWorkspace::special(
+                    monitor.special_workspace.id,
+                    monitor.special_workspace.name,
+                )
+            } else {
+                DisplayedWorkspace::regular(
+                    monitor.active_workspace.id,
+                    monitor.active_workspace.name,
+                )
+            };
+            let geometry = OutputGeometry::from_physical(
+                monitor.x,
+                monitor.y,
                 monitor.width.into(),
                 monitor.height.into(),
-                monitor.refresh_rate,
                 monitor.scale,
+                output_transform(monitor.transform),
+            );
+
+            MonitorWorkspace::new(
+                monitor.name,
+                workspace,
+                monitor.focused,
+                geometry,
+                monitor.refresh_rate,
             )
         })
         .collect())
+}
+
+fn output_transform(transform: Transforms) -> OutputTransform {
+    match transform {
+        Transforms::Normal => OutputTransform::Normal,
+        Transforms::Normal90 => OutputTransform::Rotated90,
+        Transforms::Normal180 => OutputTransform::Rotated180,
+        Transforms::Normal270 => OutputTransform::Rotated270,
+        Transforms::Flipped => OutputTransform::Flipped,
+        Transforms::Flipped90 => OutputTransform::Flipped90,
+        Transforms::Flipped180 => OutputTransform::Flipped180,
+        Transforms::Flipped270 => OutputTransform::Flipped270,
+    }
 }
 
 pub(super) async fn workspace_occupancy() -> Result<WorkspaceOccupancy, HyprError> {
@@ -182,12 +213,57 @@ fn requires_lua_dispatch(error: &HyprError) -> bool {
     matches!(error, HyprError::NotOkDispatch(message) if message.contains("dispatch in lua"))
 }
 
-fn focused_window(client: Option<&Client>, hostname: &str) -> FocusedWindowSnapshot {
+pub(super) async fn focused_window_snapshot(
+    client: Option<&Client>,
+    hostname: &str,
+) -> FocusedWindowSnapshot {
+    let monitors = match monitor_focused_windows().await {
+        Ok(monitors) => monitors,
+        Err(error) => {
+            tracing::warn!(
+                ?error,
+                "Failed to project focused clients per Hyprland monitor"
+            );
+            Vec::new()
+        }
+    };
+
     FocusedWindowSnapshot::new(
         client.map(|value| value.class.as_str()),
         client.map(|value| value.title.as_str()),
         hostname,
+        monitors,
     )
+}
+
+async fn monitor_focused_windows() -> Result<Vec<MonitorFocusedWindow>, HyprError> {
+    let monitors = Monitors::get_async().await?;
+    let clients = Clients::get_async().await?;
+
+    Ok(monitors
+        .into_iter()
+        .map(|monitor| {
+            let workspace_id = if monitor.special_workspace.id < 0 {
+                monitor.special_workspace.id
+            } else {
+                monitor.active_workspace.id
+            };
+            let client = clients
+                .iter()
+                .filter(|client| {
+                    client.mapped
+                        && client.monitor == Some(monitor.id)
+                        && client.workspace.id == workspace_id
+                })
+                .min_by_key(|client| client.focus_history_id);
+
+            MonitorFocusedWindow::new(
+                monitor.name,
+                client.map(|client| client.class.as_str()),
+                client.map(|client| client.title.as_str()),
+            )
+        })
+        .collect())
 }
 
 fn resolve_hostname() -> String {

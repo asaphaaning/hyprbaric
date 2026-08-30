@@ -250,11 +250,7 @@ String _workspaceIndicatorLabel(
   MonitorWorkspaceResolution resolution,
 ) {
   if (resolution.isSpecial && index == 1) {
-    // Only the focused output reports a special workspace name; elsewhere the
-    // generic badge is the best available label.
-    final String name = resolution.isFallback || status.isSpecial
-        ? status.name.trim()
-        : '';
+    final String name = resolution.activeWorkspaceName.trim();
     return name.isEmpty ? 'S' : name;
   }
   if (settings.indicatorStyle == WorkspaceIndicatorStyle.numeric) {

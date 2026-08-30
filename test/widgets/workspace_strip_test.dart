@@ -27,6 +27,7 @@ void main() {
             ),
             resolution: const MonitorWorkspaceResolution(
               activeWorkspaceId: 2,
+              activeWorkspaceName: '2',
               isSpecial: false,
               monitorName: null,
             ),

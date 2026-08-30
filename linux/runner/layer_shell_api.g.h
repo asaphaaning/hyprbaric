@@ -141,12 +141,17 @@ G_DECLARE_FINAL_TYPE(HyprbaricNativeLayerShellMonitor, hyprbaric_native_layer_sh
  * name: field in this object.
  * label: field in this object.
  * is_primary: field in this object.
+ * x: field in this object.
+ * y: field in this object.
+ * width: field in this object.
+ * height: field in this object.
+ * refresh_rate_millihertz: field in this object.
  *
  * Creates a new #NativeLayerShellMonitor object.
  *
  * Returns: a new #HyprbaricNativeLayerShellMonitor
  */
-HyprbaricNativeLayerShellMonitor* hyprbaric_native_layer_shell_monitor_new(const gchar* name, const gchar* label, gboolean is_primary);
+HyprbaricNativeLayerShellMonitor* hyprbaric_native_layer_shell_monitor_new(const gchar* name, const gchar* label, gboolean is_primary, int64_t x, int64_t y, int64_t width, int64_t height, int64_t refresh_rate_millihertz);
 
 /**
  * hyprbaric_native_layer_shell_monitor_get_name
@@ -177,6 +182,56 @@ const gchar* hyprbaric_native_layer_shell_monitor_get_label(HyprbaricNativeLayer
  * Returns: the field value.
  */
 gboolean hyprbaric_native_layer_shell_monitor_get_is_primary(HyprbaricNativeLayerShellMonitor* object);
+
+/**
+ * hyprbaric_native_layer_shell_monitor_get_x
+ * @object: a #HyprbaricNativeLayerShellMonitor.
+ *
+ * Gets the value of the x field of @object.
+ *
+ * Returns: the field value.
+ */
+int64_t hyprbaric_native_layer_shell_monitor_get_x(HyprbaricNativeLayerShellMonitor* object);
+
+/**
+ * hyprbaric_native_layer_shell_monitor_get_y
+ * @object: a #HyprbaricNativeLayerShellMonitor.
+ *
+ * Gets the value of the y field of @object.
+ *
+ * Returns: the field value.
+ */
+int64_t hyprbaric_native_layer_shell_monitor_get_y(HyprbaricNativeLayerShellMonitor* object);
+
+/**
+ * hyprbaric_native_layer_shell_monitor_get_width
+ * @object: a #HyprbaricNativeLayerShellMonitor.
+ *
+ * Gets the value of the width field of @object.
+ *
+ * Returns: the field value.
+ */
+int64_t hyprbaric_native_layer_shell_monitor_get_width(HyprbaricNativeLayerShellMonitor* object);
+
+/**
+ * hyprbaric_native_layer_shell_monitor_get_height
+ * @object: a #HyprbaricNativeLayerShellMonitor.
+ *
+ * Gets the value of the height field of @object.
+ *
+ * Returns: the field value.
+ */
+int64_t hyprbaric_native_layer_shell_monitor_get_height(HyprbaricNativeLayerShellMonitor* object);
+
+/**
+ * hyprbaric_native_layer_shell_monitor_get_refresh_rate_millihertz
+ * @object: a #HyprbaricNativeLayerShellMonitor.
+ *
+ * Gets the value of the refreshRateMillihertz field of @object.
+ *
+ * Returns: the field value.
+ */
+int64_t hyprbaric_native_layer_shell_monitor_get_refresh_rate_millihertz(HyprbaricNativeLayerShellMonitor* object);
 
 /**
  * hyprbaric_native_layer_shell_monitor_equals:
@@ -890,6 +945,29 @@ HyprbaricNativeLayerShellHostApiListMonitorsResponse* hyprbaric_native_layer_she
  */
 HyprbaricNativeLayerShellHostApiListMonitorsResponse* hyprbaric_native_layer_shell_host_api_list_monitors_response_new_error(const gchar* code, const gchar* message, FlValue* details);
 
+G_DECLARE_FINAL_TYPE(HyprbaricNativeLayerShellHostApiCurrentMonitorResponse, hyprbaric_native_layer_shell_host_api_current_monitor_response, HYPRBARIC, NATIVE_LAYER_SHELL_HOST_API_CURRENT_MONITOR_RESPONSE, GObject)
+
+/**
+ * hyprbaric_native_layer_shell_host_api_current_monitor_response_new:
+ *
+ * Creates a new response to NativeLayerShellHostApi.currentMonitor.
+ *
+ * Returns: a new #HyprbaricNativeLayerShellHostApiCurrentMonitorResponse
+ */
+HyprbaricNativeLayerShellHostApiCurrentMonitorResponse* hyprbaric_native_layer_shell_host_api_current_monitor_response_new(HyprbaricNativeLayerShellMonitor* return_value);
+
+/**
+ * hyprbaric_native_layer_shell_host_api_current_monitor_response_new_error:
+ * @code: error code.
+ * @message: error message.
+ * @details: (allow-none): error details or %NULL.
+ *
+ * Creates a new error response to NativeLayerShellHostApi.currentMonitor.
+ *
+ * Returns: a new #HyprbaricNativeLayerShellHostApiCurrentMonitorResponse
+ */
+HyprbaricNativeLayerShellHostApiCurrentMonitorResponse* hyprbaric_native_layer_shell_host_api_current_monitor_response_new_error(const gchar* code, const gchar* message, FlValue* details);
+
 G_DECLARE_FINAL_TYPE(HyprbaricNativeLayerShellHostApiConfigurePanelResponse, hyprbaric_native_layer_shell_host_api_configure_panel_response, HYPRBARIC, NATIVE_LAYER_SHELL_HOST_API_CONFIGURE_PANEL_RESPONSE, GObject)
 
 /**
@@ -1127,6 +1205,7 @@ HyprbaricNativeLayerShellHostApiSetRegionResponse* hyprbaric_native_layer_shell_
  */
 typedef struct {
   HyprbaricNativeLayerShellHostApiListMonitorsResponse* (*list_monitors)(gpointer user_data);
+  HyprbaricNativeLayerShellHostApiCurrentMonitorResponse* (*current_monitor)(gpointer user_data);
   HyprbaricNativeLayerShellHostApiConfigurePanelResponse* (*configure_panel)(HyprbaricNativeLayerShellPanelConfig* config, gpointer user_data);
   HyprbaricNativeLayerShellHostApiSetLayerResponse* (*set_layer)(HyprbaricNativeLayerShellLayer layer, gpointer user_data);
   HyprbaricNativeLayerShellHostApiSetNamespaceResponse* (*set_namespace)(const gchar* app_namespace, gpointer user_data);

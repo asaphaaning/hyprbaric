@@ -95,7 +95,7 @@ impl Occupancy {
 
         let is_special = is_special_workspace(workspace.id, &workspace.name);
         let monitors = monitor_workspaces().await.unwrap_or_else(|error| {
-            tracing::warn!(?error, 'Failed to refresh Hyprland monitor workspaces');
+            tracing::warn!(?error, "Failed to refresh Hyprland monitor workspaces");
             Vec::new()
         });
         drop(sender.send(WorkspaceSnapshot::new(
