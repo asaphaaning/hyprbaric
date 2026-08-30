@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import '../../widgets/hypr_surface.dart';
 
 abstract final class ControlColors {
-  static const Color chassis = Color(0xEE03050B);
+  static const Color chassisTop = Color(0x570B0D12);
+  static const Color chassisBottom = Color(0x6B07090D);
   static const Color tray = Color(0xFF121216);
   static const Color trayBorder = Color(0x182E3036);
   static const Color trayHighlight = Color(0x10FFFFFF);
@@ -17,6 +18,46 @@ abstract final class ControlColors {
   static const Color textMuted = Color(0xFF898B93);
   static const Color textFaint = Color(0xFF555760);
   static const Color danger = Color(0xFFE16658);
+}
+
+/// The translucent outer instrument shell shared by the controls panel.
+class ControlChassis extends StatelessWidget {
+  const ControlChassis({
+    super.key,
+    required this.borderRadius,
+    required this.constraints,
+    required this.padding,
+    required this.child,
+  });
+
+  final BorderRadius borderRadius;
+  final BoxConstraints constraints;
+  final EdgeInsetsGeometry padding;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return HyprPopoverSurface(
+      borderRadius: borderRadius,
+      color: Colors.transparent,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: <Color>[
+              ControlColors.chassisTop,
+              ControlColors.chassisBottom,
+            ],
+          ),
+        ),
+        child: ConstrainedBox(
+          constraints: constraints,
+          child: Padding(padding: padding, child: child),
+        ),
+      ),
+    );
+  }
 }
 
 class ControlSectionTray extends StatelessWidget {

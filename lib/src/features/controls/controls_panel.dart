@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 import '../../bindings/bindings.dart';
-import '../../widgets/primitives/primitives.dart';
 import 'control_capture_pads.dart';
 import 'control_inspect_button.dart';
 import 'control_rocker.dart';
@@ -85,12 +84,10 @@ class ControlsPanelState extends State<ControlsPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return HyprPopoverPanel(
+    return ControlChassis(
       borderRadius: widget.borderRadius,
       constraints: const BoxConstraints(minWidth: 432, maxWidth: 432),
       padding: const EdgeInsets.all(17),
-      color: ControlColors.chassis,
-      borderColor: ControlColors.trayBorder,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
