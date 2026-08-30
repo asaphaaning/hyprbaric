@@ -69,7 +69,7 @@ void main() {
     expect(find.byType(NotificationCountPill), findsOneWidget);
   });
 
-  testWidgets('empty notification panel renders the patch-jack copy', (
+  testWidgets('empty notification panel renders only the empty label', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -91,7 +91,7 @@ void main() {
     );
 
     expect(find.text('No notifications'), findsOneWidget);
-    expect(find.text("you're all caught up"), findsOneWidget);
+    expect(find.text("you're all caught up"), findsNothing);
     expect(find.text('clear all'), findsNothing);
     expect(find.byType(NotificationCountPill), findsNothing);
   });

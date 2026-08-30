@@ -108,8 +108,8 @@ class NotificationEmptyState extends StatelessWidget {
     final String label = available
         ? 'No notifications'
         : 'Notifications unavailable';
-    final String subtitle = available
-        ? "you're all caught up"
+    final String? subtitle = available
+        ? null
         : (message ?? 'notification service is offline');
 
     return DecoratedBox(
@@ -128,12 +128,10 @@ class NotificationEmptyState extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const _PatchJack(),
-            const SizedBox(height: 12),
             Text(
               label,
               style: HyprTypography.compactMonoStrong.copyWith(
@@ -143,80 +141,21 @@ class NotificationEmptyState extends StatelessWidget {
                 letterSpacing: 0.44,
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              subtitle,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: HyprTypography.compactMono.copyWith(
-                color: NotificationPalette.fg3,
-                fontSize: HyprTypography.size(10),
-                letterSpacing: 0.2,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PatchJack extends StatelessWidget {
-  const _PatchJack();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          center: Alignment(-0.30, -0.44),
-          radius: 0.90,
-          colors: <Color>[
-            Color(0xFF34383E),
-            Color(0xFF080B10),
-            Color(0xFF010203),
-          ],
-          stops: <double>[0, 0.60, 1],
-        ),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: Color(0x80000000),
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(7),
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            center: Alignment(-0.30, -0.40),
-            radius: 0.90,
-            colors: <Color>[Color(0xFF04060A), Color(0xFF000001)],
-            stops: <double>[0, 0.80],
-          ),
-        ),
-        child: Center(
-          child: Container(
-            width: 8,
-            height: 8,
-            decoration: const BoxDecoration(
-              color: Color(0xFF000000),
-              shape: BoxShape.circle,
-              boxShadow: <BoxShadow>[
-                BoxShadow(
-                  color: Color(0xE6000000),
-                  blurRadius: 2,
-                  offset: Offset(0, 1),
+            if (subtitle != null) ...<Widget>[
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: HyprTypography.compactMono.copyWith(
+                  color: NotificationPalette.fg3,
+                  fontSize: HyprTypography.size(10),
+                  letterSpacing: 0.2,
                 ),
-              ],
-            ),
-          ),
+              ),
+            ],
+          ],
         ),
       ),
     );
