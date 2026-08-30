@@ -55,6 +55,20 @@ flutter run -d linux
 
 For a release bundle, use `flutter build linux --release`. The Linux build output is relocatable; consult the [installation guide](https://asaphaaning.github.io/hyprbaric/docs/installation) for package-build and hyprland autostart guidance.
 
+## Widget catalog
+
+The standalone `widgetbook/` Flutter app renders production widgets without
+starting the bar, native layer shell, or Rust services:
+
+```sh
+cd widgetbook
+flutter pub get
+dart run build_runner build
+flutter run -d linux
+```
+
+The same catalog can run in a browser with `flutter run -d chrome`.
+
 ## Architecture
 
 - Flutter owns rendering, interaction, and shared UI state.
