@@ -18,97 +18,105 @@ class ControlSettingsRow extends StatelessWidget {
       builder: (BuildContext context, HyprInteractionState state) {
         return SizedBox(
           height: 62,
-          child: Padding(
-            padding: const EdgeInsets.all(5),
-            child: AnimatedContainer(
-              duration: HyprMotion.hover,
-              curve: HyprMotion.hoverCurve,
-              transform: Matrix4.translationValues(0, state.pressed ? 1 : 0, 0),
-              padding: const EdgeInsets.symmetric(horizontal: 13),
-              decoration: ShapeDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: _faceColors(state),
-                ),
-                shadows: const <BoxShadow>[
-                  BoxShadow(
-                    color: Color(0xB3000000),
-                    blurRadius: 7,
-                    offset: Offset(0, 3),
-                  ),
-                  BoxShadow(color: Color(0x80000000), spreadRadius: 4),
-                  BoxShadow(color: Color(0xFF1A1C20), spreadRadius: 3),
-                  BoxShadow(
-                    color: Color(0x1AFFFFFF),
-                    offset: Offset(0, 1),
-                    blurStyle: BlurStyle.inner,
-                  ),
-                  BoxShadow(
-                    color: Color(0x73000000),
-                    offset: Offset(0, -1),
-                    blurStyle: BlurStyle.inner,
-                  ),
-                ],
-                shape: RoundedSuperellipseBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  side: const BorderSide(color: Color(0x99000000)),
-                ),
+          child: DecoratedBox(
+            key: const ValueKey<String>('control-settings-frame'),
+            decoration: ShapeDecoration(
+              color: const Color(0xFF24262A),
+              shape: RoundedSuperellipseBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: const BorderSide(color: Color(0xA6000000)),
               ),
-              child: Row(
-                children: <Widget>[
-                  const DecoratedBox(
-                    decoration: ShapeDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: <Color>[Color(0xFF141519), Color(0xFF0D0E12)],
-                      ),
-                      shadows: <BoxShadow>[
-                        BoxShadow(
-                          color: Color(0xB8000000),
-                          blurRadius: 2,
-                          offset: Offset(0, 1),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(5),
+              child: AnimatedContainer(
+                key: const ValueKey<String>('control-settings-face'),
+                duration: HyprMotion.hover,
+                curve: HyprMotion.hoverCurve,
+                transform: Matrix4.translationValues(
+                  0,
+                  state.pressed ? 1 : 0,
+                  0,
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 13),
+                decoration: ShapeDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: _faceColors(state),
+                  ),
+                  shadows: const <BoxShadow>[
+                    BoxShadow(
+                      color: Color(0x1AFFFFFF),
+                      offset: Offset(0, 1),
+                      blurStyle: BlurStyle.inner,
+                    ),
+                    BoxShadow(
+                      color: Color(0x73000000),
+                      offset: Offset(0, -1),
+                      blurStyle: BlurStyle.inner,
+                    ),
+                  ],
+                  shape: RoundedSuperellipseBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: const BorderSide(color: Color(0x99000000)),
+                  ),
+                ),
+                child: Row(
+                  children: <Widget>[
+                    const DecoratedBox(
+                      decoration: ShapeDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: <Color>[Color(0xFF141519), Color(0xFF0D0E12)],
                         ),
-                        BoxShadow(
-                          color: Color(0x12FFFFFF),
-                          offset: Offset(0, 1),
+                        shadows: <BoxShadow>[
+                          BoxShadow(
+                            color: Color(0xB8000000),
+                            blurRadius: 2,
+                            offset: Offset(0, 1),
+                          ),
+                          BoxShadow(
+                            color: Color(0x12FFFFFF),
+                            offset: Offset(0, 1),
+                          ),
+                        ],
+                        shape: RoundedSuperellipseBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(8)),
                         ),
-                      ],
-                      shape: RoundedSuperellipseBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(8)),
+                      ),
+                      child: SizedBox.square(
+                        dimension: 31,
+                        child: Icon(
+                          Iconsax.setting_2_copy,
+                          size: 16,
+                          color: ControlColors.textMuted,
+                        ),
                       ),
                     ),
-                    child: SizedBox.square(
-                      dimension: 31,
-                      child: Icon(
-                        Iconsax.setting_2_copy,
-                        size: 16,
-                        color: ControlColors.textMuted,
+                    const SizedBox(width: 13),
+                    Text(
+                      'BAR SETTINGS',
+                      style: HyprTypography.compactMonoStrong.copyWith(
+                        color: ControlColors.text,
+                        fontSize: HyprTypography.size(10.5),
+                        fontWeight: FontWeight.w700,
+                        height: 1,
+                        letterSpacing: 1.25,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 13),
-                  Text(
-                    'BAR SETTINGS',
-                    style: HyprTypography.compactMonoStrong.copyWith(
-                      color: ControlColors.text,
-                      fontSize: HyprTypography.size(10.5),
-                      fontWeight: FontWeight.w700,
-                      height: 1,
-                      letterSpacing: 1.25,
+                    const Spacer(),
+                    Text(
+                      '›',
+                      style: HyprTypography.compactMono.copyWith(
+                        color: ControlColors.textFaint,
+                        fontSize: HyprTypography.size(14),
+                        height: 1,
+                      ),
                     ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '›',
-                    style: HyprTypography.compactMono.copyWith(
-                      color: ControlColors.textFaint,
-                      fontSize: HyprTypography.size(14),
-                      height: 1,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
