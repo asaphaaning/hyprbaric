@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../bindings/bindings.dart';
+import 'hypr_surface.dart';
 import 'notification_panel_parts.dart';
-import 'primitives/primitives.dart';
+import 'notification_panel_style.dart';
 
 class NotificationPanel extends StatelessWidget {
   const NotificationPanel({
@@ -23,38 +24,55 @@ class NotificationPanel extends StatelessWidget {
     final NotificationStatus? snapshot = status;
     final List<NotificationEntry> entries = snapshot?.entries ?? const [];
     final bool available = snapshot?.available ?? true;
-    final String? message = snapshot?.message;
-    final bool canClear = entries.isNotEmpty;
 
-    return HyprPopoverPanel(
+    return HyprPopoverSurface(
       borderRadius: borderRadius,
-      constraints: const BoxConstraints(
-        minWidth: 360,
-        maxWidth: 360,
-        maxHeight: 384,
-      ),
-      padding: const EdgeInsets.fromLTRB(16, 17, 16, 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          NotificationHeader(
-            count: entries.length,
-            canClear: canClear,
-            onClearAll: onClearAll,
+      color: const Color(0xE6070E17),
+      borderColor: HyprColors.popupStroke,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: <Color>[
+              NotificationPalette.chassisTop,
+              NotificationPalette.chassisBottom,
+            ],
           ),
-          const SizedBox(height: 12),
-          if (entries.isEmpty)
-            NotificationEmptyState(
-              message: available
-                  ? 'No new notifications'
-                  : (message ?? 'Notifications are unavailable.'),
-            )
-          else
-            Flexible(
-              child: NotificationList(entries: entries, onDismiss: onDismiss),
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            minWidth: 380,
+            maxWidth: 380,
+            maxHeight: 388,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                NotificationHeader(
+                  count: entries.length,
+                  onClearAll: onClearAll,
+                ),
+                const SizedBox(height: 10),
+                if (entries.isEmpty)
+                  NotificationEmptyState(
+                    available: available,
+                    message: snapshot?.message,
+                  )
+                else
+                  Flexible(
+                    child: NotificationList(
+                      entries: entries,
+                      onDismiss: onDismiss,
+                    ),
+                  ),
+              ],
             ),
-        ],
+          ),
+        ),
       ),
     );
   }

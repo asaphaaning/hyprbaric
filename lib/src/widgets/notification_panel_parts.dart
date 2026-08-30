@@ -10,12 +10,10 @@ class NotificationHeader extends StatelessWidget {
   const NotificationHeader({
     super.key,
     required this.count,
-    required this.canClear,
     required this.onClearAll,
   });
 
   final int count;
-  final bool canClear;
   final VoidCallback onClearAll;
 
   @override
@@ -25,14 +23,14 @@ class NotificationHeader extends StatelessWidget {
       uppercaseTitle: true,
       titleTrailing: count > 0 ? NotificationCountPill(count: count) : null,
       actionKey: const ValueKey<String>('notifications-clear-all'),
-      actionLabel: 'clear all',
-      actionEnabled: canClear,
-      onAction: onClearAll,
+      actionLabel: count > 0 ? 'clear all' : null,
+      onAction: count > 0 ? onClearAll : null,
+      titleTrailingGap: 8,
       titleStyle: HyprTypography.popTitle.copyWith(
-        color: HyprColors.textFaint,
+        color: NotificationPalette.fg3,
         fontSize: HyprTypography.size(10.5),
-        letterSpacing: 2.0,
-        fontWeight: FontWeight.w700,
+        letterSpacing: 0.84,
+        fontWeight: FontWeight.w600,
       ),
       actionColor: NotificationPalette.fg3,
       actionStyle: HyprTypography.compactMono.copyWith(
@@ -53,13 +51,13 @@ class NotificationCountPill extends StatelessWidget {
       key: const ValueKey<String>('notifications-count-pill'),
       child: HyprBadge.text(
         label: '$count',
-        color: HyprColors.accentSoft.withValues(alpha: 0.34),
-        borderColor: HyprColors.accent.withValues(alpha: 0.22),
+        color: HyprColors.accentSoft,
+        borderColor: Colors.white.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(4),
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         textColor: HyprColors.accent,
         style: HyprTypography.compactMonoStrong.copyWith(
-          fontSize: HyprTypography.size(9.5),
+          fontSize: HyprTypography.size(10),
           height: 1,
         ),
       ),
@@ -79,63 +77,147 @@ class NotificationList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return ListView.separated(
+      shrinkWrap: true,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      itemCount: entries.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 14),
+      itemBuilder: (BuildContext context, int index) {
+        final NotificationEntry entry = entries[index];
+        return NotificationRow(
+          entry: entry,
+          onDismiss: () => onDismiss(entry.id),
+        );
+      },
+    );
+  }
+}
+
+class NotificationEmptyState extends StatelessWidget {
+  const NotificationEmptyState({
+    super.key,
+    required this.available,
+    this.message,
+  });
+
+  final bool available;
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) {
+    final String label = available
+        ? 'No notifications'
+        : 'Notifications unavailable';
+    final String subtitle = available
+        ? "you're all caught up"
+        : (message ?? 'notification service is offline');
+
     return DecoratedBox(
       decoration: ShapeDecoration(
-        color: Colors.black.withValues(alpha: 0.18),
+        color: Colors.black.withValues(alpha: 0.40),
         shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(7),
-          side: BorderSide(
-            color: HyprColors.popupStroke.withValues(alpha: 0.65),
-          ),
+          borderRadius: BorderRadius.circular(6),
+          side: BorderSide(color: Colors.black.withValues(alpha: 0.55)),
         ),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(7),
-        child: ListView.separated(
-          shrinkWrap: true,
-          padding: EdgeInsets.zero,
-          itemCount: entries.length,
-          separatorBuilder: (_, _) => DecoratedBox(
-            decoration: BoxDecoration(
-              color: HyprColors.borderSoft.withValues(alpha: 0.55),
-            ),
-            child: const SizedBox(height: 1),
+        shadows: <BoxShadow>[
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.50),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
-          itemBuilder: (BuildContext context, int index) {
-            final NotificationEntry entry = entries[index];
-            return NotificationRow(
-              entry: entry,
-              onDismiss: () => onDismiss(entry.id),
-            );
-          },
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const _PatchJack(),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: HyprTypography.compactMonoStrong.copyWith(
+                color: NotificationPalette.fg2,
+                fontSize: HyprTypography.size(11),
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.44,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: HyprTypography.compactMono.copyWith(
+                color: NotificationPalette.fg3,
+                fontSize: HyprTypography.size(10),
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class NotificationEmptyState extends StatelessWidget {
-  const NotificationEmptyState({super.key, required this.message});
-
-  final String message;
+class _PatchJack extends StatelessWidget {
+  const _PatchJack();
 
   @override
   Widget build(BuildContext context) {
-    return HyprEmptyState(
-      message: message,
-      symbol: '◎',
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
-      messageTransform: (String value) => value.toLowerCase(),
-      borderColor: HyprColors.popupStroke,
-      borderRadius: BorderRadius.circular(9),
-      symbolStyle: HyprTypography.compactMono.copyWith(
-        color: NotificationPalette.fg3.withValues(alpha: 0.45),
-        fontSize: HyprTypography.size(22),
-        height: 1,
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          center: Alignment(-0.30, -0.44),
+          radius: 0.90,
+          colors: <Color>[
+            Color(0xFF34383E),
+            Color(0xFF080B10),
+            Color(0xFF010203),
+          ],
+          stops: <double>[0, 0.60, 1],
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Color(0x80000000),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
-      messageStyle: HyprTypography.popRow.copyWith(
-        color: NotificationPalette.fg3,
-        fontSize: HyprTypography.size(11.5),
+      padding: const EdgeInsets.all(7),
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            center: Alignment(-0.30, -0.40),
+            radius: 0.90,
+            colors: <Color>[Color(0xFF04060A), Color(0xFF000001)],
+            stops: <double>[0, 0.80],
+          ),
+        ),
+        child: Center(
+          child: Container(
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(
+              color: Color(0xFF000000),
+              shape: BoxShape.circle,
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: Color(0xE6000000),
+                  blurRadius: 2,
+                  offset: Offset(0, 1),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -18,16 +18,35 @@ class NotificationRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color accent = notificationAccent(entry);
+
     return HyprInteractionRegion(
       builder: (BuildContext context, HyprInteractionState state) {
-        final bool hovered = state.hovered;
+        final NotificationTilePhase phase = state.pressed
+            ? NotificationTilePhase.pressed
+            : state.hovered
+            ? NotificationTilePhase.hovered
+            : NotificationTilePhase.idle;
+        final NotificationTileStyle style = NotificationTileStyle.forPhase(
+          phase,
+        );
+
         return AnimatedContainer(
           duration: HyprMotion.hover,
           curve: HyprMotion.hoverCurve,
-          transform: Matrix4.translationValues(hovered ? 2 : 0, 0, 0),
-          constraints: const BoxConstraints(minHeight: 51),
-          decoration: BoxDecoration(
-            color: hovered ? const Color(0xD0141A22) : const Color(0x8F0C1118),
+          constraints: const BoxConstraints(minHeight: 40),
+          decoration: ShapeDecoration(
+            color: style.base,
+            shape: RoundedSuperellipseBorder(
+              borderRadius: BorderRadius.circular(14),
+              side: BorderSide(color: style.border),
+            ),
+            shadows: <BoxShadow>[
+              BoxShadow(
+                color: style.shadow,
+                blurRadius: phase == NotificationTilePhase.pressed ? 3 : 2,
+                offset: const Offset(0, 1),
+              ),
+            ],
           ),
           clipBehavior: Clip.antiAlias,
           child: Stack(
@@ -36,78 +55,65 @@ class NotificationRow extends StatelessWidget {
                 child: IgnorePointer(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: accent.withValues(alpha: hovered ? 0.07 : 0.04),
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 0,
-                top: 10,
-                bottom: 10,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: accent,
-                    borderRadius: const BorderRadius.horizontal(
-                      right: Radius.circular(2),
-                    ),
-                    boxShadow: <BoxShadow>[
-                      BoxShadow(
-                        color: accent.withValues(alpha: 0.80),
-                        blurRadius: 8,
-                      ),
-                    ],
-                  ),
-                  child: const SizedBox(width: 3),
-                ),
-              ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: <Widget>[
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Row(
-                        children: <Widget>[
-                          _NotificationAppChip(app: entry.app, accent: accent),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              entry.message,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: HyprTypography.notificationText.copyWith(
-                                color: NotificationPalette.fg1,
-                                fontSize: HyprTypography.size(12.5),
-                                height: 1.2,
-                              ),
-                            ),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        stops: const <double>[0, 0.42, 1],
+                        colors: <Color>[
+                          style.topLight,
+                          style.topLight.withValues(
+                            alpha: style.topLight.a * 0.22,
                           ),
-                          const SizedBox(width: 10),
-                          _NotificationTimePill(
-                            label: notificationAgeLabel(entry.createdAtMs),
-                          ),
+                          Colors.transparent,
                         ],
                       ),
                     ),
                   ),
-                  SizedBox(
-                    width: 28,
-                    child: IgnorePointer(
-                      ignoring: !hovered,
-                      child: AnimatedOpacity(
-                        duration: HyprMotion.hover,
-                        opacity: hovered ? 1 : 0,
-                        child: Center(
-                          child: _NotificationDismissButton(
-                            onPressed: onDismiss,
-                          ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 9,
+                ),
+                child: Row(
+                  children: <Widget>[
+                    SizedBox(
+                      width: 62,
+                      child: _NotificationAppLabel(
+                        app: entry.app,
+                        accent: accent,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        entry.message,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: HyprTypography.notificationText.copyWith(
+                          color: NotificationPalette.fg1,
+                          fontSize: HyprTypography.size(12),
+                          height: 1.15,
+                          letterSpacing: -0.06,
                         ),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 10),
+                    _NotificationTimeLabel(
+                      label: notificationAgeLabel(entry.createdAtMs),
+                    ),
+                    const SizedBox(width: 10),
+                    IgnorePointer(
+                      ignoring: !state.hovered,
+                      child: AnimatedOpacity(
+                        duration: HyprMotion.hover,
+                        opacity: state.hovered ? 0.8 : 0,
+                        child: _NotificationDismissButton(onPressed: onDismiss),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -117,24 +123,52 @@ class NotificationRow extends StatelessWidget {
   }
 }
 
-class _NotificationAppChip extends StatelessWidget {
-  const _NotificationAppChip({required this.app, required this.accent});
+class _NotificationAppLabel extends StatelessWidget {
+  const _NotificationAppLabel({required this.app, required this.accent});
 
   final String app;
   final Color accent;
 
   @override
   Widget build(BuildContext context) {
-    return HyprInlineTag(
-      label: app,
-      color: accent.withValues(alpha: 0.12),
-      textColor: accent,
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      borderRadius: BorderRadius.circular(3),
+    return Text(
+      app.toUpperCase(),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
       style: HyprTypography.compactMonoStrong.copyWith(
+        color: accent,
         fontSize: HyprTypography.size(9),
-        letterSpacing: 2.0,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.26,
         height: 1,
+        shadows: <Shadow>[
+          Shadow(color: accent.withValues(alpha: 0.42), blurRadius: 4),
+        ],
+      ),
+    );
+  }
+}
+
+class _NotificationTimeLabel extends StatelessWidget {
+  const _NotificationTimeLabel({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label.toUpperCase(),
+      maxLines: 1,
+      style: HyprTypography.compactMono.copyWith(
+        color: NotificationPalette.warmTime,
+        fontSize: HyprTypography.size(9),
+        letterSpacing: 0.54,
+        height: 1,
+        fontFeatures: HyprTypography.tabularNumbers,
+        shadows: const <Shadow>[
+          Shadow(color: Color(0x668F765E), blurRadius: 4),
+        ],
       ),
     );
   }
@@ -148,76 +182,63 @@ class _NotificationDismissButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
+      tooltip: 'Dismiss',
       onPressed: onPressed,
       style: ButtonStyle(
         visualDensity: VisualDensity.compact,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        minimumSize: const WidgetStatePropertyAll<Size>(Size(20, 20)),
-        fixedSize: const WidgetStatePropertyAll<Size>(Size(20, 20)),
+        minimumSize: const WidgetStatePropertyAll<Size>(Size(22, 22)),
+        fixedSize: const WidgetStatePropertyAll<Size>(Size(22, 22)),
         padding: const WidgetStatePropertyAll<EdgeInsetsGeometry>(
           EdgeInsets.zero,
         ),
         shape: WidgetStatePropertyAll<OutlinedBorder>(
-          RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(5)),
+          RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(6)),
         ),
         overlayColor: const WidgetStatePropertyAll<Color>(Colors.transparent),
+        side: WidgetStateProperty.resolveWith<BorderSide>((states) {
+          if (states.contains(WidgetState.hovered) ||
+              states.contains(WidgetState.pressed)) {
+            return BorderSide(color: HyprColors.danger.withValues(alpha: 0.45));
+          }
+          return BorderSide.none;
+        }),
         backgroundColor: WidgetStateProperty.resolveWith<Color?>((states) {
           if (states.contains(WidgetState.hovered) ||
               states.contains(WidgetState.pressed)) {
-            return HyprColors.dangerHover;
+            return HyprColors.danger.withValues(alpha: 0.15);
           }
           return Colors.transparent;
         }),
         foregroundColor: WidgetStateProperty.resolveWith<Color>((states) {
           if (states.contains(WidgetState.hovered) ||
               states.contains(WidgetState.pressed)) {
-            return const Color(0xFFE6A095);
+            return const Color(0xFFE19A8E);
           }
           return NotificationPalette.fg3;
         }),
       ),
-      icon: Builder(
-        builder: (BuildContext context) {
-          return CustomPaint(
-            size: const Size(13, 13),
-            painter: _NotificationEjectPainter(
-              color: IconTheme.of(context).color ?? NotificationPalette.fg3,
-            ),
-          );
-        },
-      ),
+      icon: const _CloseSquareIcon(),
     );
   }
 }
 
-class _NotificationTimePill extends StatelessWidget {
-  const _NotificationTimePill({required this.label});
-
-  final String label;
+class _CloseSquareIcon extends StatelessWidget {
+  const _CloseSquareIcon();
 
   @override
   Widget build(BuildContext context) {
-    final String timeText = label.toLowerCase() == 'now'
-        ? 'NOW'
-        : '${label.toUpperCase()} AGO';
-    return HyprBadge.text(
-      label: timeText,
-      color: Colors.black.withValues(alpha: 0.34),
-      borderRadius: BorderRadius.circular(3),
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-      textColor: const Color(0xFFC9B89A),
-      style: HyprTypography.compactMonoStrong.copyWith(
-        fontSize: HyprTypography.size(9),
-        letterSpacing: 1.0,
-        height: 1,
-        fontFeatures: HyprTypography.tabularNumbers,
+    return CustomPaint(
+      size: const Size.square(11),
+      painter: _CloseSquarePainter(
+        color: IconTheme.of(context).color ?? NotificationPalette.fg3,
       ),
     );
   }
 }
 
-class _NotificationEjectPainter extends CustomPainter {
-  const _NotificationEjectPainter({required this.color});
+class _CloseSquarePainter extends CustomPainter {
+  const _CloseSquarePainter({required this.color});
 
   final Color color;
 
@@ -226,24 +247,28 @@ class _NotificationEjectPainter extends CustomPainter {
     final Paint paint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
+      ..strokeWidth = 1.25
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
-    final Path triangle = Path()
-      ..moveTo(size.width * 0.18, size.height * 0.62)
-      ..lineTo(size.width * 0.5, size.height * 0.22)
-      ..lineTo(size.width * 0.82, size.height * 0.62)
-      ..close();
+    final RRect frame = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      const Radius.circular(2.25),
+    );
+    canvas.drawRRect(frame, paint);
     canvas.drawLine(
-      Offset(size.width * 0.16, size.height * 0.86),
-      Offset(size.width * 0.84, size.height * 0.86),
+      Offset(size.width * 0.32, size.height * 0.32),
+      Offset(size.width * 0.68, size.height * 0.68),
       paint,
     );
-    canvas.drawPath(triangle, paint);
+    canvas.drawLine(
+      Offset(size.width * 0.68, size.height * 0.32),
+      Offset(size.width * 0.32, size.height * 0.68),
+      paint,
+    );
   }
 
   @override
-  bool shouldRepaint(covariant _NotificationEjectPainter oldDelegate) {
+  bool shouldRepaint(covariant _CloseSquarePainter oldDelegate) {
     return oldDelegate.color != color;
   }
 }

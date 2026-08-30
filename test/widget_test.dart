@@ -3613,7 +3613,8 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
 
-      expect(find.text('no new notifications'), findsOneWidget);
+      expect(find.text('No notifications'), findsOneWidget);
+      expect(find.text("you're all caught up"), findsOneWidget);
     },
   );
 
@@ -3658,7 +3659,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('SLACK'), findsNothing);
-    expect(find.text('no new notifications'), findsOneWidget);
+    expect(find.text('No notifications'), findsOneWidget);
+    expect(find.text("you're all caught up"), findsOneWidget);
   });
 
   testWidgets('output mute control shows the volume OSD', (
