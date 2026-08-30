@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="1024"
+  height="1024"
+  viewBox="0 0 1024 1024"
+  role="img"
+  aria-labelledby="title description"
+>
+  <title id="title">Hyprbaric illustrated app icon</title>
+  <desc id="description">
+    A dark teal pressure chamber with cyan and magenta rim lighting, reconstructed as editable vector geometry.
+  </desc>
+
+  <defs>
+    <linearGradient id="background" x1="186" y1="139" x2="830" y2="873" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#063E49"/>
+      <stop offset="0.54" stop-color="#00313E"/>
+      <stop offset="1" stop-color="#062B37"/>
+    </linearGradient>
+    <linearGradient id="background-edge" x1="174" y1="147" x2="858" y2="859" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B7581" stop-opacity="0.4"/>
+      <stop offset="0.5" stop-color="#023541" stop-opacity="0"/>
+      <stop offset="1" stop-color="#005565" stop-opacity="0.55"/>
+    </linearGradient>
+    <radialGradient id="background-light" cx="0" cy="0" r="1" gradientTransform="translate(692 305) rotate(127) scale(628 517)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#08727B" stop-opacity="0.45"/>
+      <stop offset="0.44" stop-color="#00505E" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#001A28" stop-opacity="0.48"/>
+    </radialGradient>
+
+    <linearGradient id="base-top" x1="262" y1="584" x2="747" y2="760" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#07384A"/>
+      <stop offset="0.52" stop-color="#052A39"/>
+      <stop offset="1" stop-color="#0B4855"/>
+    </linearGradient>
+    <linearGradient id="base-front" x1="237" y1="630" x2="706" y2="822" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#05263A"/>
+      <stop offset="0.55" stop-color="#001B2E"/>
+      <stop offset="1" stop-color="#03293C"/>
+    </linearGradient>
+    <linearGradient id="base-rim" x1="232" y1="600" x2="789" y2="714" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#087A9B"/>
+      <stop offset="0.55" stop-color="#00C8C8"/>
+      <stop offset="0.9" stop-color="#11778F"/>
+      <stop offset="1" stop-color="#E63A86"/>
+    </linearGradient>
+
+    <linearGradient id="body" x1="277" y1="285" x2="579" y2="680" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#075569"/>
+      <stop offset="0.42" stop-color="#064454"/>
+      <stop offset="1" stop-color="#022A3C"/>
+    </linearGradient>
+    <linearGradient id="body-shade" x1="366" y1="325" x2="510" y2="679" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#064151" stop-opacity="0"/>
+      <stop offset="1" stop-color="#00172B" stop-opacity="0.75"/>
+    </linearGradient>
+    <linearGradient id="rear-rim" x1="205" y1="317" x2="322" y2="584" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#CA267E"/>
+      <stop offset="0.27" stop-color="#065C84"/>
+      <stop offset="1" stop-color="#079ABA"/>
+    </linearGradient>
+
+    <linearGradient id="front-edge" x1="527" y1="347" x2="804" y2="676" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#06D8D3"/>
+      <stop offset="0.18" stop-color="#4CE5D8"/>
+      <stop offset="0.43" stop-color="#B74B8C"/>
+      <stop offset="0.58" stop-color="#F23D78"/>
+      <stop offset="0.8" stop-color="#0CA5B2"/>
+      <stop offset="1" stop-color="#087C95"/>
+    </linearGradient>
+    <linearGradient id="front-face" x1="542" y1="346" x2="747" y2="694" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A7581"/>
+      <stop offset="0.43" stop-color="#075B69"/>
+      <stop offset="1" stop-color="#034050"/>
+    </linearGradient>
+    <linearGradient id="inner-ring" x1="609" y1="400" x2="731" y2="655" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A8B90"/>
+      <stop offset="0.48" stop-color="#08717A"/>
+      <stop offset="1" stop-color="#075464"/>
+    </linearGradient>
+    <linearGradient id="inner-rim" x1="608" y1="409" x2="762" y2="591" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22E0D7"/>
+      <stop offset="0.26" stop-color="#6EE5D9"/>
+      <stop offset="0.51" stop-color="#F35C87"/>
+      <stop offset="0.72" stop-color="#CB317C"/>
+      <stop offset="1" stop-color="#00C8C7"/>
+    </linearGradient>
+    <linearGradient id="cap" x1="649" y1="453" x2="713" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#075168"/>
+      <stop offset="1" stop-color="#02384B"/>
+    </linearGradient>
+
+    <linearGradient id="top-side" x1="325" y1="247" x2="641" y2="383" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#06465B"/>
+      <stop offset="0.55" stop-color="#001D33"/>
+      <stop offset="1" stop-color="#033A4C"/>
+    </linearGradient>
+    <linearGradient id="top-face" x1="345" y1="200" x2="629" y2="327" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B6578"/>
+      <stop offset="0.47" stop-color="#0A5D71"/>
+      <stop offset="1" stop-color="#087780"/>
+    </linearGradient>
+    <linearGradient id="top-rim" x1="304" y1="252" x2="695" y2="277" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#049DC1"/>
+      <stop offset="0.22" stop-color="#05BEC5"/>
+      <stop offset="0.66" stop-color="#0DE2D2"/>
+      <stop offset="0.92" stop-color="#CF3E91"/>
+      <stop offset="1" stop-color="#F34783"/>
+    </linearGradient>
+    <linearGradient id="status-light" x1="575" y1="353" x2="689" y2="335" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#08D8E1"/>
+      <stop offset="0.58" stop-color="#17F3EA"/>
+      <stop offset="1" stop-color="#32E5D9"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="621" y1="546" x2="649" y2="588" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#12D3C9"/>
+      <stop offset="0.18" stop-color="#F45A83"/>
+      <stop offset="1" stop-color="#A72A72"/>
+    </linearGradient>
+
+    <filter id="icon-shadow" x="0" y="0" width="1024" height="1024" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="28" stdDeviation="27" flood-color="#000817" flood-opacity="0.72"/>
+    </filter>
+    <filter id="object-shadow" x="0" y="0" width="1024" height="1024" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="15" stdDeviation="14" flood-color="#000817" flood-opacity="0.72"/>
+    </filter>
+    <filter id="cyan-glow" x="-60%" y="-250%" width="220%" height="600%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feFlood flood-color="#00F6EA" flood-opacity="0.65"/>
+      <feComposite in2="blur" operator="in"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="soft-glow" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="11"/>
+    </filter>
+    <clipPath id="background-clip">
+      <rect x="135" y="123" width="757" height="768" rx="158"/>
+    </clipPath>
+  </defs>
+
+  <g id="background" filter="url(#icon-shadow)">
+    <rect x="135" y="123" width="757" height="768" rx="158" fill="url(#background)"/>
+    <rect x="135" y="123" width="757" height="768" rx="158" fill="url(#background-light)"/>
+    <rect x="136" y="124" width="755" height="766" rx="157" fill="none" stroke="url(#background-edge)" stroke-width="2"/>
+    <ellipse cx="497" cy="823" rx="287" ry="43" fill="#001625" opacity="0.36" filter="url(#soft-glow)" clip-path="url(#background-clip)"/>
+  </g>
+
+  <g id="machine" filter="url(#object-shadow)">
+    <g id="base">
+      <path
+        d="M220 622C220 607 231 594 249 585L396 521C414 513 437 512 457 520L771 647C788 654 799 665 799 677V714C799 727 789 739 772 748L606 831C589 840 564 842 544 836L243 714C227 708 217 697 217 685Z"
+        fill="url(#base-front)"
+      />
+      <path
+        d="M218 623C218 611 228 600 244 592L406 518C425 509 448 508 468 516L774 643C791 650 801 661 801 674C801 686 791 698 774 706L608 786C590 795 565 797 545 790L246 666C228 659 218 647 218 634Z"
+        fill="url(#base-top)"
+        stroke="url(#base-rim)"
+        stroke-width="6"
+      />
+      <path d="M222 646L545 779C565 786 589 784 607 776L799 684V713C799 726 789 738 772 747L606 829C589 838 565 840 545 833L244 711C227 705 217 695 217 682V638C217 641 219 644 222 646Z" fill="url(#base-front)"/>
+      <path d="M238 691L546 814C568 822 588 819 607 810L782 724" fill="none" stroke="#087289" stroke-opacity="0.42" stroke-width="4"/>
+      <path d="M754 652C782 661 796 669 798 681V718" fill="none" stroke="#F33C81" stroke-opacity="0.65" stroke-width="5"/>
+    </g>
+
+    <g id="rear-ring">
+      <path d="M312 264C247 282 201 347 191 421C181 496 204 560 263 584L316 603L356 282Z" fill="#032B3E"/>
+      <path d="M314 264C250 280 203 347 192 420C182 493 204 558 262 583" fill="none" stroke="url(#rear-rim)" stroke-width="7"/>
+      <path d="M320 290C271 306 236 360 229 422C222 482 239 537 278 557" fill="none" stroke="#001C31" stroke-width="12"/>
+    </g>
+
+    <g id="body-shell">
+      <path
+        d="M316 287C287 306 269 344 263 388L257 472C253 530 271 573 309 594L519 697C543 709 568 704 586 684C605 663 615 629 615 590L616 430C616 392 600 364 571 351L356 277C341 272 327 276 316 287Z"
+        fill="url(#body)"
+      />
+      <path
+        d="M316 287C287 306 269 344 263 388L257 472C253 530 271 573 309 594L519 697C543 709 568 704 586 684C605 663 615 629 615 590L616 430C616 392 600 364 571 351L356 277C341 272 327 276 316 287Z"
+        fill="url(#body-shade)"
+      />
+      <path d="M314 293C330 278 344 278 360 284L568 356C589 363 602 383 608 405" fill="none" stroke="#0B6A76" stroke-opacity="0.64" stroke-width="5"/>
+      <path d="M310 594L519 697C543 709 567 705 585 685" fill="none" stroke="#00192B" stroke-width="7"/>
+    </g>
+
+    <g id="side-control">
+      <ellipse cx="292" cy="435" rx="33" ry="39" transform="rotate(8 292 435)" fill="#00182D"/>
+      <ellipse cx="286" cy="431" rx="27" ry="33" transform="rotate(8 286 431)" fill="#04364B" stroke="#07516A" stroke-width="4"/>
+      <ellipse cx="282" cy="429" rx="18" ry="25" transform="rotate(8 282 429)" fill="#07758A"/>
+      <ellipse cx="276" cy="428" rx="12" ry="18" transform="rotate(8 276 428)" fill="#001C35"/>
+      <path d="M292 404C305 409 313 420 314 436" fill="none" stroke="#0AC4C1" stroke-opacity="0.46" stroke-width="5"/>
+    </g>
+
+    <g id="front-assembly">
+      <ellipse cx="640" cy="530" rx="159" ry="202" transform="rotate(10 640 530)" fill="#00182A"/>
+      <ellipse cx="660" cy="520" rx="166" ry="202" transform="rotate(10 660 520)" fill="url(#front-face)" stroke="url(#front-edge)" stroke-width="7"/>
+      <path d="M552 352C585 323 631 312 674 321C733 334 779 390 797 461" fill="none" stroke="#66F0DE" stroke-opacity="0.72" stroke-width="8" stroke-linecap="round"/>
+      <path d="M774 376C805 414 823 468 822 523C822 572 809 618 786 653" fill="none" stroke="#F23F7D" stroke-opacity="0.84" stroke-width="7" stroke-linecap="round"/>
+      <ellipse cx="667" cy="526" rx="122" ry="152" transform="rotate(10 667 526)" fill="#00172A"/>
+      <ellipse cx="678" cy="521" rx="109" ry="136" transform="rotate(10 678 521)" fill="url(#inner-ring)" stroke="url(#inner-rim)" stroke-width="7"/>
+      <ellipse cx="685" cy="526" rx="81" ry="105" transform="rotate(10 685 526)" fill="#00182C"/>
+      <ellipse cx="691" cy="529" rx="66" ry="87" transform="rotate(10 691 529)" fill="url(#cap)" stroke="#07576A" stroke-width="4"/>
+      <path d="M650 459C675 442 710 449 730 474C750 500 757 543 744 579" fill="none" stroke="#08778A" stroke-opacity="0.46" stroke-width="6" stroke-linecap="round"/>
+
+      <g id="front-latch">
+        <rect x="621" y="546" width="24" height="68" rx="11" transform="rotate(1 621 546)" fill="#00192C"/>
+        <path d="M629 547C637 548 642 554 642 562V596C642 604 637 610 630 612Z" fill="url(#accent)"/>
+      </g>
+    </g>
+
+    <g id="top-module">
+      <path
+        d="M292 243C292 229 303 218 321 212L414 185C433 180 456 180 475 186L671 247C692 253 704 264 704 277V320C704 333 694 345 677 352L570 382C551 388 528 387 508 381L323 313C303 306 291 294 291 280Z"
+        fill="url(#top-side)"
+      />
+      <path d="M293 276C294 288 304 299 322 306L510 373C530 380 551 381 570 375L676 344C694 338 702 327 703 316V329C703 342 693 353 676 360L569 390C550 396 528 395 508 388L322 320C302 313 291 301 291 287Z" fill="#00192D"/>
+      <path
+        d="M292 239C292 225 304 214 323 208L415 181C434 176 457 176 476 182L672 242C693 249 704 260 704 273C704 287 692 299 673 305L571 329C550 334 527 333 507 326L322 268C303 262 292 252 292 239Z"
+        fill="url(#top-face)"
+        stroke="url(#top-rim)"
+        stroke-width="5"
+      />
+      <path d="M316 217L417 188C435 183 456 183 474 189L670 248C683 252 692 259 696 267" fill="none" stroke="#216E8A" stroke-opacity="0.55" stroke-width="4" stroke-linecap="round"/>
+      <path d="M301 252C306 258 314 263 324 267L507 325C528 332 550 333 570 328L672 303C684 300 693 295 699 288" fill="none" stroke="url(#top-rim)" stroke-width="6" stroke-linecap="round"/>
+      <path d="M582 352L682 326" fill="none" stroke="#00182C" stroke-width="18" stroke-linecap="round"/>
+      <path d="M581 354L683 329" fill="none" stroke="url(#status-light)" stroke-width="12" stroke-linecap="round" filter="url(#cyan-glow)"/>
+    </g>
+  </g>
+
+  <g id="finishing-light" clip-path="url(#background-clip)" pointer-events="none">
+    <path d="M722 317C778 334 822 383 844 443" fill="none" stroke="#F13E7A" stroke-opacity="0.12" stroke-width="28" filter="url(#soft-glow)"/>
+    <path d="M528 715C567 736 616 735 658 716" fill="none" stroke="#00E1D0" stroke-opacity="0.09" stroke-width="24" filter="url(#soft-glow)"/>
+  </g>
+</svg>

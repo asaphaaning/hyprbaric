@@ -66,22 +66,9 @@ class _BatteryMeter extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool batteryPresent = status?.batteryPresent ?? false;
     final int percentage = status?.percentage?.clamp(0, 100) ?? 0;
-    return DecoratedBox(
-      decoration: ShapeDecoration(
-        color: Colors.black.withValues(alpha: 0.40),
-        shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(6),
-          side: BorderSide(color: Colors.black.withValues(alpha: 0.55)),
-        ),
-        shadows: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.56),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-            blurStyle: BlurStyle.inner,
-          ),
-        ],
-      ),
+    return HyprGlassFrame(
+      fill: const Color(0xEB07080A),
+      vignette: true,
       child: Padding(
         padding: const EdgeInsets.all(HyprSpacing.section),
         child: Column(

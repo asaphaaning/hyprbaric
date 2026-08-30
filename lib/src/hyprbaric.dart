@@ -56,7 +56,6 @@ class _BarView extends ConsumerStatefulWidget {
 class _BarViewState extends ConsumerState<_BarView> {
   static const int _barTopMargin = 3;
   static const int _brightnessShortcutStep = 5;
-  static const int _volumeShortcutStep = 10;
   static const double _centerClusterMaxWidth = 680;
   static const BorderRadius _clockCardRadius = HyprRadii.clockCardRadius;
   static const BorderRadius _networkRadius = HyprRadii.popoverRadius;
@@ -247,10 +246,10 @@ class _BarViewState extends ConsumerState<_BarView> {
         _openSettingsModal();
       case HotkeyEventToggleSessionLauncher():
         _toggleSessionLauncher();
-      case HotkeyEventVolumeUp():
-        _changeOutputVolume(_volumeShortcutStep);
-      case HotkeyEventVolumeDown():
-        _changeOutputVolume(-_volumeShortcutStep);
+      case HotkeyEventVolumeUp(:final step):
+        _changeOutputVolume(step);
+      case HotkeyEventVolumeDown(:final step):
+        _changeOutputVolume(-step);
       case HotkeyEventToggleMute():
         _toggleOutputMute();
       case HotkeyEventBrightnessUp():

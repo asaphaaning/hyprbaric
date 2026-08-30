@@ -262,7 +262,10 @@ class NetworkPanelState extends State<NetworkPanel> {
       constraints: const BoxConstraints(
         minWidth: 340,
         maxWidth: 340,
-        maxHeight: 640,
+        // Only a safety net for short screens: it has to clear the fixed
+        // sections plus four Wi-Fi rows, or it, rather than the list's own
+        // cap, decides how many rows are visible.
+        maxHeight: 900,
       ),
       padding: const EdgeInsets.all(10),
       child: Column(
@@ -270,30 +273,36 @@ class NetworkPanelState extends State<NetworkPanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           NetworkSpectrumPanel(
-            traffic: traffic,
             uploadHistory: _uploadHistory,
             downloadHistory: _downloadHistory,
           ),
-          NetworkPingRow(pingMs: traffic.pingMs),
+          const SizedBox(height: 10),
+          NetworkParameterBank(
+            traffic: traffic,
+            interface: interfaces.isEmpty ? null : interfaces.first,
+          ),
           const HyprSectionBreak(),
-          NetworkWifiSection(
-            devicePresent: devicePresent,
-            wifiEnabled: wifiEnabled,
-            scanning: scanning,
-            networks: networks,
-            expandedSsid: _expandedSsid,
-            selectedSsid: _selectedSsid,
-            passwordController: _passwordController,
-            passwordFocusNode: _passwordFocusNode,
-            showPassword: _showPassword,
-            inlineError: _inlineError,
-            onToggleWifiEnabled: () => _setWifiEnabled(!wifiEnabled),
-            onToggleEntry: _toggleEntry,
-            onTogglePasswordVisibility: () {
-              setState(() => _showPassword = !_showPassword);
-            },
-            onCancelPasswordPrompt: _cancelPasswordPrompt,
-            onSubmit: _submit,
+          // The Wi-Fi section is what gives way when the popover is short.
+          Flexible(
+            child: NetworkWifiSection(
+              devicePresent: devicePresent,
+              wifiEnabled: wifiEnabled,
+              scanning: scanning,
+              networks: networks,
+              expandedSsid: _expandedSsid,
+              selectedSsid: _selectedSsid,
+              passwordController: _passwordController,
+              passwordFocusNode: _passwordFocusNode,
+              showPassword: _showPassword,
+              inlineError: _inlineError,
+              onToggleWifiEnabled: () => _setWifiEnabled(!wifiEnabled),
+              onToggleEntry: _toggleEntry,
+              onTogglePasswordVisibility: () {
+                setState(() => _showPassword = !_showPassword);
+              },
+              onCancelPasswordPrompt: _cancelPasswordPrompt,
+              onSubmit: _submit,
+            ),
           ),
           const HyprSectionBreak(),
           NetworkInterfacesSection(interfaces: interfaces),

@@ -39,8 +39,15 @@ class HyprGlassSurface extends StatelessWidget {
         : BorderSide(color: borderColor);
 
     return DecoratedBox(
+      // The popover's outer ring is painted out here, outside the clip, so it
+      // is not sliced in half along the corner arcs.
       decoration: ShapeDecoration(
-        shape: RoundedSuperellipseBorder(borderRadius: borderRadius),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: borderRadius,
+          side: frame == HyprSurfaceFrame.popover
+              ? const BorderSide(color: HyprColors.popupOuterRing)
+              : BorderSide.none,
+        ),
         shadows: frameShadows,
       ),
       child: ClipRSuperellipse(

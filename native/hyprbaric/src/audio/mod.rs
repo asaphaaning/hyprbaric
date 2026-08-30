@@ -9,6 +9,7 @@ mod signal;
 
 use std::{process::Stdio, sync::Arc, time::Duration};
 
+use serde::Deserialize;
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command as ProcessCommand,
@@ -23,13 +24,40 @@ use self::{
 };
 
 pub use domain::EndpointKind as Kind;
-pub use domain::{Command, Endpoint, Percent, Report, Snapshot};
+pub use domain::{Command, Endpoint, Percent, Report, Snapshot, VolumeStep};
 
 /// Shared audio runtime handle.
 pub type Handle = Arc<Control>;
 
 const REFRESH_INTERVAL: Duration = Duration::from_secs(10);
 const EVENT_DEBOUNCE: Duration = Duration::from_millis(140);
+
+/// Audio interaction policy loaded from Hyprbaric configuration.
+///
+/// ```toml
+/// [audio]
+/// volume_step = 5
+/// ```
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[serde(default)]
+pub struct Configuration {
+    volume_step: VolumeStep,
+}
+
+impl Default for Configuration {
+    fn default() -> Self {
+        Self {
+            volume_step: VolumeStep::DEFAULT,
+        }
+    }
+}
+
+impl Configuration {
+    /// Returns the normalized volume shortcut step.
+    pub const fn volume_step(self) -> VolumeStep {
+        self.volume_step
+    }
+}
 
 /// Live audio state and command delivery.
 ///
@@ -216,4 +244,33 @@ pub enum Error {
         /// Raw output that failed to parse.
         output: String,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Configuration, VolumeStep};
+
+    #[test]
+    fn config_defaults_volume_step_to_five_percent() {
+        assert_eq!(Configuration::default().volume_step().as_u8(), 5);
+    }
+
+    #[test]
+    fn config_accepts_custom_volume_step() {
+        let config =
+            toml::from_str::<Configuration>("volume_step = 17").expect("volume step should parse");
+
+        assert_eq!(config.volume_step().as_u8(), 17);
+    }
+
+    #[test]
+    fn volume_step_clamps_to_percentage_bounds() {
+        let below = toml::from_str::<Configuration>("volume_step = -1")
+            .expect("negative volume step should clamp");
+        let above = toml::from_str::<Configuration>("volume_step = 101")
+            .expect("large volume step should clamp");
+
+        assert_eq!(below.volume_step(), VolumeStep::new(0));
+        assert_eq!(above.volume_step(), VolumeStep::new(100));
+    }
 }

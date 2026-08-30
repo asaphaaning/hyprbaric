@@ -1,7 +1,9 @@
 export 'hypr_action_row.dart';
 export 'hypr_badge.dart';
 export 'hypr_command_button.dart';
+export 'hypr_glass_frame.dart';
 export 'hypr_glyph_badge.dart';
+export 'hypr_hardware_toggle.dart';
 export 'hypr_hover_plate.dart';
 export 'hypr_icon_button_style.dart';
 export 'hypr_inline_tag.dart';
@@ -10,6 +12,7 @@ export 'hypr_interactive_tile.dart';
 export 'hypr_live_value.dart';
 export 'hypr_metric_card.dart';
 export 'hypr_panel_chrome.dart';
+export 'hypr_plate_button.dart';
 export 'hypr_preview_value.dart';
 export 'hypr_segmented_meter.dart';
 export 'hypr_text_field_chrome.dart';

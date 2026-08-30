@@ -7,7 +7,10 @@ import 'network_chrome.dart';
 import 'network_entry_state.dart';
 import 'network_entry_tile.dart';
 
-class NetworkWifiSection extends StatelessWidget {
+/// SSIDs shown before the list starts scrolling.
+const int _visibleEntries = 4;
+
+class NetworkWifiSection extends StatefulWidget {
   const NetworkWifiSection({
     super.key,
     required this.devicePresent,
@@ -44,8 +47,58 @@ class NetworkWifiSection extends StatelessWidget {
   final ValueChanged<NetworkEntry> onSubmit;
 
   @override
+  State<NetworkWifiSection> createState() => _NetworkWifiSectionState();
+}
+
+class _NetworkWifiSectionState extends State<NetworkWifiSection> {
+  /// Measured from the first rendered tile rather than assumed: the tile's
+  /// height follows the real font metrics, which differ from the estimate.
+  double _entryExtent = NetworkEntryTile.collapsedExtent;
+  final GlobalKey _firstEntryKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(_measureEntry);
+  }
+
+  @override
+  void didUpdateWidget(NetworkWifiSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    WidgetsBinding.instance.addPostFrameCallback(_measureEntry);
+  }
+
+  void _measureEntry(Duration _) {
+    if (!mounted) {
+      return;
+    }
+    // An expanded tile carries the password prompt, so it cannot stand in for
+    // a collapsed row's height.
+    final List<NetworkEntry> networks = widget.networks;
+    if (networks.isEmpty || widget.expandedSsid == networks.first.ssid) {
+      return;
+    }
+    final RenderObject? box = _firstEntryKey.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) {
+      return;
+    }
+    final double extent = box.size.height;
+    if (extent <= 0 || (extent - _entryExtent).abs() < 0.5) {
+      return;
+    }
+    setState(() => _entryExtent = extent);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final bool devicePresent = widget.devicePresent;
+    final bool wifiEnabled = widget.wifiEnabled;
+    final bool scanning = widget.scanning;
+    final List<NetworkEntry> networks = widget.networks;
+    final String? expandedSsid = widget.expandedSsid;
+    final String? selectedSsid = widget.selectedSsid;
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Row(
@@ -59,7 +112,7 @@ class NetworkWifiSection extends StatelessWidget {
               ),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
-                onTap: devicePresent ? onToggleWifiEnabled : null,
+                onTap: devicePresent ? widget.onToggleWifiEnabled : null,
                 hoverColor: HyprColors.hover,
                 splashColor: Colors.transparent,
                 highlightColor: Colors.transparent,
@@ -89,44 +142,53 @@ class NetworkWifiSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 6),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 154),
+        // Only the SSID list scrolls; everything around it stays put.
+        Flexible(
           child: _NetworkWifiList(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              shrinkWrap: true,
-              children: <Widget>[
-                if (!devicePresent)
-                  const NetworkEmptyState(message: 'No Wi-Fi device found.')
-                else if (!wifiEnabled)
-                  const NetworkEmptyState(message: 'Wi-Fi is turned off.')
-                else if (networks.isEmpty)
-                  NetworkEmptyState(
-                    message: scanning
-                        ? 'Scanning for networks...'
-                        : 'No networks found.',
-                  )
-                else
-                  for (final NetworkEntry entry in networks)
-                    NetworkEntryTile(
-                      entry: entry,
-                      expanded: expandedSsid == entry.ssid,
-                      selected:
-                          selectedSsid == entry.ssid &&
-                          !entry.isActive &&
-                          !entry.isConnecting,
-                      passwordController: passwordController,
-                      passwordFocusNode: passwordFocusNode,
-                      showPassword: showPassword,
-                      errorMessage: expandedSsid == entry.ssid
-                          ? inlineError
-                          : null,
-                      onTap: () => onToggleEntry(entry),
-                      onTogglePasswordVisibility: onTogglePasswordVisibility,
-                      onCancel: onCancelPasswordPrompt,
-                      onSubmit: () => onSubmit(entry),
-                    ),
-              ],
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: _entryExtent * _visibleEntries,
+              ),
+              child: ListView(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                children: <Widget>[
+                  if (!devicePresent)
+                    const NetworkEmptyState(message: 'No Wi-Fi device found.')
+                  else if (!wifiEnabled)
+                    const NetworkEmptyState(message: 'Wi-Fi is turned off.')
+                  else if (networks.isEmpty)
+                    NetworkEmptyState(
+                      message: scanning
+                          ? 'Scanning for networks...'
+                          : 'No networks found.',
+                    )
+                  else
+                    for (final NetworkEntry entry in networks)
+                      NetworkEntryTile(
+                        key: entry.ssid == networks.first.ssid
+                            ? _firstEntryKey
+                            : null,
+                        entry: entry,
+                        expanded: expandedSsid == entry.ssid,
+                        selected:
+                            selectedSsid == entry.ssid &&
+                            !entry.isActive &&
+                            !entry.isConnecting,
+                        passwordController: widget.passwordController,
+                        passwordFocusNode: widget.passwordFocusNode,
+                        showPassword: widget.showPassword,
+                        errorMessage: expandedSsid == entry.ssid
+                            ? widget.inlineError
+                            : null,
+                        onTap: () => widget.onToggleEntry(entry),
+                        onTogglePasswordVisibility:
+                            widget.onTogglePasswordVisibility,
+                        onCancel: widget.onCancelPasswordPrompt,
+                        onSubmit: () => widget.onSubmit(entry),
+                      ),
+                ],
+              ),
             ),
           ),
         ),
@@ -142,21 +204,7 @@ class _NetworkWifiSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HyprToggleSwitch(
-      value: value,
-      width: 26,
-      height: 14,
-      padding: const EdgeInsets.all(1),
-      thumbSize: 10,
-      trackColor: const Color(0xFF252C36),
-      activeTrackColor: HyprColors.accent.withValues(alpha: 0.40),
-      borderColor: const Color(0xFF3B4652),
-      activeBorderColor: HyprColors.accent,
-      thumbColor: NetworkMenuColors.fg2,
-      activeThumbColor: const Color(0xFFE8F5FF),
-      duration: HyprMotion.switcher,
-      curve: HyprMotion.switchInCurve,
-    );
+    return HyprHardwareToggle(value: value);
   }
 }
 
@@ -167,21 +215,10 @@ class _NetworkWifiList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x99000000),
-            blurRadius: 2,
-            offset: Offset(0, 1),
-            blurStyle: BlurStyle.inner,
-          ),
-        ],
-      ),
-      child: Padding(padding: const EdgeInsets.all(4), child: child),
+    // The list itself is bare: each tile carries its own glass frame.
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: child,
     );
   }
 }

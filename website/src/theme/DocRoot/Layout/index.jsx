@@ -10,6 +10,10 @@ export default function DocRootLayout({children}) {
   const [hiddenSidebarContainer, setHiddenSidebarContainer] = useState(false);
   const [isNavigationOpen, setNavigationOpen] = useState(false);
 
+  const closeAfterNavigation = (event) => {
+    if (event.target.closest('a')) setNavigationOpen(false);
+  };
+
   return (
     <div className="hyprDocsWrapper">
       <BackToTopButton />
@@ -28,12 +32,13 @@ export default function DocRootLayout({children}) {
             <div
               className={clsx('hyprDocSidebar', isNavigationOpen && 'hyprDocSidebarOpen')}
               id="hypr-docs-navigation"
-              onClickCapture={() => setNavigationOpen(false)}>
+              onClickCapture={closeAfterNavigation}>
               <DocRootLayoutSidebar
                 sidebar={sidebar.items}
                 hiddenSidebarContainer={hiddenSidebarContainer}
                 setHiddenSidebarContainer={setHiddenSidebarContainer}
               />
+              <div className="hyprDocMenuToc" id="hypr-doc-menu-toc" />
             </div>
           </>
         )}

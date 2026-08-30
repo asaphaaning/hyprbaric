@@ -722,6 +722,47 @@ html[data-theme] .hyprNavbar .hyprNavbarSearch [class*='dropdownMenu'] {
   .hyprDocSidebar .theme-doc-sidebar-menu::before {
     margin-top: 2px;
   }
+
+  .hyprDocMenuToc {
+    border-top: 1px solid #24272d;
+    margin: 12px 12px 0;
+    padding-top: 12px;
+  }
+
+  .hyprDocMenuToc:empty {
+    display: none;
+  }
+
+  .hyprDocMenuToc .theme-doc-toc-mobile {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    margin: 0;
+  }
+
+  .hyprDocMenuToc .theme-doc-toc-mobile button {
+    color: #8b8f96;
+    font-family: var(--ifm-font-family-monospace);
+    font-size: 10.5px;
+    letter-spacing: .14em;
+    padding: 8px 0;
+    text-transform: uppercase;
+  }
+
+  .hyprDocMenuToc .theme-doc-toc-mobile > div > ul {
+    border-color: #24272d;
+  }
+
+  .hyprDocMenuToc .theme-doc-toc-mobile a {
+    color: #b8bdc4;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .hyprDocMenuToc .theme-doc-toc-mobile a:hover {
+    color: #ff8a7c;
+    text-decoration: none;
+  }
 }
 
 @media (max-width: 640px) {

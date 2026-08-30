@@ -64,7 +64,7 @@ These destinations are not configurable in TOML. Point the XDG user directories 
 
 ## Session services
 
-- **Notifications**: hyprbaric observes `org.freedesktop.Notifications` traffic on the session bus as a D-Bus monitor. It reads the notifications your existing daemon receives rather than claiming the name itself.
+- **Notifications**: hyprbaric normally claims `org.freedesktop.Notifications` and serves desktop notifications itself. If another server already owns the name, hyprbaric leaves it in place and automatically observes its notifications instead. Sandboxed applications additionally need a selected XDG Notification portal backend.
 - **System tray**: StatusNotifier/AppIndicator items are discovered over D-Bus, and no configuration is required.
 - **Network**: status and connection changes go through NetworkManager’s D-Bus API. The popup’s settings action opens the first available system editor: `nm-connection-editor`, then `gnome-control-center wifi`, then `systemsettings kcm_networkmanagement`.
 - **Audio**: volume, mute, and endpoint state come from PipeWire through `wpctl`.

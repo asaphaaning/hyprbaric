@@ -17,6 +17,8 @@ class HyprTextFieldChrome extends StatelessWidget {
     this.enabled = true,
     this.constraints,
     this.clipBehavior = Clip.antiAlias,
+    this.shadows,
+    this.focusedShadows,
   });
 
   final Widget child;
@@ -31,6 +33,10 @@ class HyprTextFieldChrome extends StatelessWidget {
   final bool enabled;
   final BoxConstraints? constraints;
   final Clip clipBehavior;
+
+  /// Outer rings drawn around the field, e.g. a focus halo.
+  final List<BoxShadow>? shadows;
+  final List<BoxShadow>? focusedShadows;
 
   @override
   Widget build(BuildContext context) {
@@ -66,6 +72,7 @@ class HyprTextFieldChrome extends StatelessWidget {
           borderRadius: borderRadius,
           side: BorderSide(color: effectiveBorder),
         ),
+        shadows: focused ? focusedShadows ?? shadows : shadows,
       ),
       clipBehavior: clipBehavior,
       child: child,

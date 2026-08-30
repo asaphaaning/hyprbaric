@@ -38,6 +38,18 @@ Hyprbaric should keep the UI visible but disable or degrade only that feature.
 | Power status and profiles | `systemd`, `power-profiles-daemon`, `upower` | `systemd`, `power-profiles-daemon`, `upower` | `systemd`, `power-profiles-daemon`, `upower` |
 | User directory resolution | `xdg-user-dirs` | `xdg-user-dirs` | `xdg-user-dirs` |
 
+## Notifications
+
+Hyprbaric includes its own Freedesktop notification server and normally claims
+`org.freedesktop.Notifications` on the user session bus. No separate
+notification daemon is required. If another server already owns that name,
+Hyprbaric leaves it in place and falls back to observing its notifications.
+
+Sandboxed applications commonly send notifications through XDG Desktop Portal.
+Those applications also need a selected portal backend that implements the
+Notification portal; this is separate from the desktop notification server
+itself.
+
 ## Package Policy
 
 AppImage, DEB, RPM, Pacman, and AUR packaging should all install the core and

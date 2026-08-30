@@ -122,6 +122,7 @@ pub enum Outcome {
 #[derive(Clone)]
 pub struct App {
     components: Components,
+    audio_volume_step: audio::VolumeStep,
     shortcut_configuration: shortcuts::Configuration,
     inner: Arc<Inner>,
 }
@@ -139,10 +140,12 @@ impl App {
         initial_workspace: WorkspaceSnapshot,
         initial_focused_window: FocusedWindowSnapshot,
         initial_color_scheme: Option<portals::ColorScheme>,
+        audio_volume_step: audio::VolumeStep,
         shortcut_configuration: shortcuts::Configuration,
     ) -> Self {
         Self {
             components,
+            audio_volume_step,
             shortcut_configuration,
             inner: Arc::new(Inner {
                 workspace: RwLock::new(initial_workspace),
@@ -170,6 +173,11 @@ impl App {
     /// Returns the shortcut configuration loaded for initial reconciliation.
     pub fn shortcut_configuration(&self) -> shortcuts::Configuration {
         self.shortcut_configuration.clone()
+    }
+
+    /// Returns the configured percentage applied by volume shortcuts.
+    pub const fn audio_volume_step(&self) -> audio::VolumeStep {
+        self.audio_volume_step
     }
 
     /// Dispatches one typed request into the owning feature.

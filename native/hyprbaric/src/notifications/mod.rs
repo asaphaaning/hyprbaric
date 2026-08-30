@@ -1,12 +1,14 @@
 //! Freedesktop notification center.
 //!
 //! [`Center`] owns the live notification model exposed to Flutter. The domain
-//! module owns notification state transitions, monitor owns D-Bus observation,
-//! backend owns notification-daemon commands, and signal owns RINF projection.
+//! module owns notification state transitions, server owns the preferred D-Bus
+//! service, monitor and backend own compatibility with an existing service,
+//! and signal owns RINF projection.
 
 mod backend;
 mod domain;
 mod monitor;
+mod server;
 mod signal;
 
 use std::sync::{Arc, Mutex, RwLock};
@@ -24,10 +26,24 @@ pub struct Center {
     events: broadcast::Sender<Snapshot>,
     snapshot: Arc<RwLock<Snapshot>>,
     model: Arc<Mutex<domain::Model>>,
+    runtime: Arc<RwLock<Runtime>>,
+}
+
+/// Active notification integration selected during bootstrap.
+#[derive(Clone)]
+enum Runtime {
+    /// Notification integration is being selected during bootstrap.
+    Starting,
+    /// Hyprbaric owns and serves `org.freedesktop.Notifications`.
+    Server(server::Handle),
+    /// Hyprbaric observes a notification server already owned by another process.
+    Observer,
+    /// Neither the built-in server nor compatibility observation is usable.
+    Unavailable,
 }
 
 impl Center {
-    /// Starts the notification monitor and returns the first snapshot.
+    /// Selects a notification integration and returns the first snapshot.
     #[instrument(skip_all)]
     pub async fn bootstrap() -> (Handle, Snapshot) {
         let (events, _) = broadcast::channel(32);
@@ -36,16 +52,19 @@ impl Center {
             events,
             snapshot: Arc::new(RwLock::new(initial_snapshot.clone())),
             model: Arc::new(Mutex::new(domain::Model::default())),
+            runtime: Arc::new(RwLock::new(Runtime::Starting)),
         });
 
-        let center_for_monitor = Arc::clone(&center);
-        match monitor::spawn(move |event| center_for_monitor.accept(event)) {
-            Ok(()) => (center, initial_snapshot),
+        let center_for_server = Arc::clone(&center);
+        match server::start(move |event| center_for_server.accept(event)).await {
+            Ok(server::Started::Server(server)) => {
+                center.set_runtime(Runtime::Server(server));
+                (center, initial_snapshot)
+            }
+            Ok(server::Started::Occupied) => center.start_observer(initial_snapshot),
             Err(error) => {
-                tracing::warn!("Notification bootstrap failed: {error}");
-                let snapshot = Snapshot::unavailable(error.to_string());
-                center.publish(snapshot.clone());
-                (center, snapshot)
+                tracing::warn!(%error, "Built-in notification server failed; trying observer mode");
+                center.start_observer(initial_snapshot)
             }
         }
     }
@@ -68,8 +87,23 @@ impl Center {
     /// Dismisses one notification optimistically.
     #[instrument(skip(self), fields(notification_id = id.as_u32()))]
     pub async fn dismiss(&self, id: NotificationId) {
-        if let Err(error) = backend::close(id).await {
-            tracing::warn!("Notification dismiss failed for {}: {error}", id.as_u32());
+        match self.read_runtime() {
+            Runtime::Server(server) => {
+                if let Err(error) = server.dismiss(id).await {
+                    tracing::warn!("Notification dismiss failed for {}: {error}", id.as_u32());
+                }
+            }
+            Runtime::Observer => {
+                if let Err(error) = backend::close(id).await {
+                    tracing::warn!("Notification dismiss failed for {}: {error}", id.as_u32());
+                }
+            }
+            Runtime::Starting | Runtime::Unavailable => {
+                tracing::warn!(
+                    notification_id = id.as_u32(),
+                    "Notification integration is unavailable; dismissing locally"
+                );
+            }
         }
         self.forget(id);
     }
@@ -122,7 +156,33 @@ impl Center {
 
     fn publish(&self, snapshot: Snapshot) {
         write_lock(&self.snapshot).clone_from(&snapshot);
-        let _ = self.events.send(snapshot);
+        drop(self.events.send(snapshot));
+    }
+
+    fn start_observer(self: &Arc<Self>, initial_snapshot: Snapshot) -> (Handle, Snapshot) {
+        let center_for_monitor = Arc::clone(self);
+        match monitor::spawn(move |event| center_for_monitor.accept(event)) {
+            Ok(()) => {
+                tracing::info!("Observing the existing desktop notification server");
+                self.set_runtime(Runtime::Observer);
+                (Arc::clone(self), initial_snapshot)
+            }
+            Err(error) => {
+                tracing::warn!("Notification bootstrap failed: {error}");
+                self.set_runtime(Runtime::Unavailable);
+                let snapshot = Snapshot::unavailable(error.to_string());
+                self.publish(snapshot.clone());
+                (Arc::clone(self), snapshot)
+            }
+        }
+    }
+
+    fn set_runtime(&self, runtime: Runtime) {
+        *write_lock(&self.runtime) = runtime;
+    }
+
+    fn read_runtime(&self) -> Runtime {
+        read_lock(&self.runtime).clone()
     }
 
     fn read_snapshot(&self) -> Snapshot {
@@ -163,4 +223,10 @@ pub enum Error {
     /// The notification-daemon close command failed.
     #[error("failed to close notification {0}")]
     CloseNotification(#[source] zbus::Error),
+    /// Hyprbaric could not host the Freedesktop notification interface.
+    #[error("failed to start Hyprbaric's notification server")]
+    StartNotificationServer(#[source] zbus::Error),
+    /// Hyprbaric could not publish a notification closure signal.
+    #[error("failed to emit NotificationClosed")]
+    EmitNotificationClosed(#[source] zbus::Error),
 }

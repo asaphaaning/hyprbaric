@@ -18,11 +18,12 @@ This is the complete configuration surface read by hyprbaric. Every table and fi
 | `[night_light]` | Desired night light state and temperature. | Display |
 | `[schedules.night_light]` | Daily night light time window. | Display |
 | `[shortcuts.*]` | Built-in global action bindings. | Keybinds |
+| `[audio]` | Volume shortcut adjustment policy. | No |
 | `[network]` | NetworkManager and traffic refresh cadence. | No |
 | `[brightness]` | Backlight polling and DDC discovery/write policy. | No |
 | `[power]` | Battery and power-profile refresh cadence. | No |
 
-Nothing outside these nine tables is read from `config.toml`. An unknown table or key is ignored. A known key with an invalid value stops startup and is logged with the offending path.
+Nothing outside these ten tables is read from `config.toml`. An unknown table or key is ignored. A known key with an invalid value stops startup and is logged with the offending path.
 
 For file locations, precedence, and when changes are applied, see [Configuration](./configuration). For the environment variables, capture destinations, and host capabilities that are configured outside TOML, see [Environment and files](./environment) and [Dependencies and capabilities](./dependencies).
 
@@ -116,9 +117,12 @@ The filter is applied at the hour boundary itself rather than on a polling delay
 
 ## Runtime policy
 
-These tables are TOML-only. Each value is a non-zero, human-readable duration such as `"300ms"`, `"1s"`, or `"60s"`. Every key except `ddc_discovery_interval` has a default, so omitting it keeps that default.
+These tables are TOML-only. Audio uses a bounded percentage step; polling and command policies use non-zero, human-readable durations such as `"300ms"`, `"1s"`, or `"60s"`. Every key except `ddc_discovery_interval` has a default, so omitting it keeps that default.
 
 ```toml title="config.toml"
+[audio]
+volume_step = 5
+
 [network]
 traffic_refresh_interval = "1s"
 full_refresh_interval = "8s"
@@ -138,6 +142,7 @@ refresh_interval = "15s"
 
 | Table | Key | Default | Effect |
 | --- | --- | --- | --- |
+| `[audio]` | `volume_step` | `5` | Percentage points added or removed by volume-up/down shortcuts. Values outside `0..=100` are clamped. |
 | `[network]` | `traffic_refresh_interval` | `"1s"` | Refreshes inexpensive `/proc/net/dev` traffic counters. |
 | `[network]` | `full_refresh_interval` | `"8s"` | Refreshes NetworkManager state, access points, and interfaces, and measures latency. |
 | `[brightness]` | `backlight_refresh_interval` | `"1s"` | Polls Linux backlight devices. |
@@ -195,6 +200,8 @@ Spelling is exact and lowercase. A value outside the accepted set is rejected.
 ### Bounded integers
 
 Bounds are inclusive on both ends.
+
+`audio.volume_step` is the exception to rejection: values below `0` become `0`, and values above `100` become `100`.
 
 | Keys | Accepted | Rejected |
 | --- | --- | --- |

@@ -1,10 +1,10 @@
 //! Notification domain vocabulary and state transitions.
 //!
 //! Raw D-Bus traffic is converted into [`Event`] values before it reaches this
-//! module. The model only owns notification concepts: pending calls, visible
-//! entries, replacement, dismissal, and daemon availability.
+//! module. The model only owns notification concepts: visible entries,
+//! replacement, dismissal, and invalidation.
 
-use std::collections::HashMap;
+use std::time::Duration;
 
 const MAX_ENTRIES: usize = 24;
 
@@ -19,28 +19,26 @@ pub enum Command {
     SetDoNotDisturb(bool),
 }
 
-/// One typed notification-monitor event.
+/// One typed notification integration event.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Event {
-    /// A client called `Notify`.
-    NotifyRequested { serial: u32, pending: Pending },
-    /// The notification daemon assigned a final ID to a pending call.
-    NotifyAssigned {
-        reply_serial: u32,
+    /// A notification integration accepted one notification.
+    Received {
+        /// Notification-server-assigned ID.
         id: NotificationId,
+        /// Notification content normalized at the D-Bus boundary.
+        pending: Pending,
     },
-    /// The daemon reported that a notification closed.
+    /// The active integration reported that a notification closed.
     Closed(NotificationId),
-    /// The notification daemon disappeared from the session bus.
-    DaemonLost,
-    /// A notification daemon appeared on the session bus.
-    DaemonAvailable,
+    /// Every visible notification became invalid at once.
+    Invalidated,
 }
 
 /// UI-facing notification snapshot.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Snapshot {
-    /// Whether the notification monitor is available.
+    /// Whether notification integration is available.
     pub available: bool,
     /// Visible notifications, newest first.
     pub entries: Vec<Entry>,
@@ -83,7 +81,7 @@ pub enum Urgency {
     Critical,
 }
 
-/// Pending notification data before the daemon returns the final ID.
+/// Normalized notification data before it becomes a visible entry.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Pending {
     app: String,
@@ -93,10 +91,20 @@ pub struct Pending {
     urgency: Urgency,
 }
 
+/// Lifetime requested by a notification client.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Lifetime {
+    /// Let the server choose when the notification expires.
+    ServerDefault,
+    /// Keep the notification until it is explicitly closed.
+    Persistent,
+    /// Expire the notification after the requested duration.
+    After(Duration),
+}
+
 /// The notification center model.
 #[derive(Clone, Debug, Default)]
 pub(super) struct Model {
-    pending: HashMap<u32, Pending>,
     entries: Vec<Entry>,
     dnd_enabled: bool,
 }
@@ -168,32 +176,41 @@ impl Pending {
     }
 }
 
+impl Lifetime {
+    /// Parses the Freedesktop `expire_timeout` value.
+    pub(super) fn from_milliseconds(value: i32) -> Self {
+        match value {
+            value if value > 0 => Self::After(Duration::from_millis(value as u64)),
+            0 => Self::Persistent,
+            _ => Self::ServerDefault,
+        }
+    }
+
+    /// Returns the explicit expiry duration, if the client supplied one.
+    pub(super) const fn duration(self) -> Option<Duration> {
+        match self {
+            Self::After(duration) => Some(duration),
+            Self::ServerDefault | Self::Persistent => None,
+        }
+    }
+}
+
 impl Model {
-    /// Applies one monitor event and returns a changed snapshot.
+    /// Applies one notification event and returns a changed snapshot.
     pub(super) fn apply(&mut self, event: Event) -> Option<Snapshot> {
         match event {
-            Event::NotifyRequested { serial, pending } => {
-                self.pending.insert(serial, pending);
-                None
-            }
-            Event::NotifyAssigned { reply_serial, id } => {
-                let pending = self.pending.remove(&reply_serial)?;
+            Event::Received { id, pending } => {
                 self.insert(id, pending);
                 Some(self.snapshot())
             }
             Event::Closed(id) => self.dismiss(id),
-            Event::DaemonLost => {
-                if self.entries.is_empty() && self.pending.is_empty() {
+            Event::Invalidated => {
+                if self.entries.is_empty() {
                     None
                 } else {
                     self.entries.clear();
-                    self.pending.clear();
                     Some(self.snapshot())
                 }
-            }
-            Event::DaemonAvailable => {
-                self.pending.clear();
-                None
             }
         }
     }
@@ -313,7 +330,37 @@ fn html_unescape(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{Event, Model, NotificationId, Pending, Urgency, compose_message, normalize_text};
+    use std::time::Duration;
+
+    use super::{
+        Event, Lifetime, Model, NotificationId, Pending, Urgency, compose_message, normalize_text,
+    };
+
+    #[test]
+    fn lifetime_preserves_freedesktop_timeout_meaning() {
+        assert_eq!(Lifetime::from_milliseconds(-1), Lifetime::ServerDefault);
+        assert_eq!(Lifetime::from_milliseconds(0), Lifetime::Persistent);
+        assert_eq!(
+            Lifetime::from_milliseconds(2500),
+            Lifetime::After(Duration::from_millis(2500))
+        );
+    }
+
+    #[test]
+    fn hosted_notifications_enter_the_model_without_reply_correlation() {
+        let mut model = Model::default();
+
+        let snapshot = model
+            .apply(Event::Received {
+                id: NotificationId::new(4),
+                pending: Pending::new("Mail", "New message", "", None, 1, Urgency::Normal),
+            })
+            .unwrap();
+
+        assert_eq!(snapshot.entries.len(), 1);
+        assert_eq!(snapshot.entries[0].id, NotificationId::new(4));
+        assert_eq!(snapshot.entries[0].app, "Mail");
+    }
 
     #[test]
     fn compose_message_prefers_a_single_line_payload() {
@@ -339,24 +386,16 @@ mod tests {
     #[test]
     fn replacement_keeps_newest_notification_first() {
         let mut model = Model::default();
-        model.apply(requested(1, "Slack", "One", None, 1, Urgency::Normal));
-        model.apply(Event::NotifyAssigned {
-            reply_serial: 1,
-            id: NotificationId::new(7),
-        });
-        model.apply(requested(
-            2,
-            "Slack",
-            "Two",
-            Some(NotificationId::new(7)),
-            2,
-            Urgency::Critical,
-        ));
+        model.apply(received(7, "Slack", "One", None, 1, Urgency::Normal));
         let snapshot = model
-            .apply(Event::NotifyAssigned {
-                reply_serial: 2,
-                id: NotificationId::new(8),
-            })
+            .apply(received(
+                8,
+                "Slack",
+                "Two",
+                Some(NotificationId::new(7)),
+                2,
+                Urgency::Critical,
+            ))
             .unwrap();
 
         assert_eq!(snapshot.entries.len(), 1);
@@ -369,7 +408,7 @@ mod tests {
     fn model_truncates_to_max_entries() {
         let mut model = Model::default();
         for index in 0..30 {
-            model.apply(requested(
+            model.apply(received(
                 index,
                 "App",
                 &format!("Notification {index}"),
@@ -377,10 +416,6 @@ mod tests {
                 u64::from(index),
                 Urgency::Normal,
             ));
-            model.apply(Event::NotifyAssigned {
-                reply_serial: index,
-                id: NotificationId::new(index),
-            });
         }
 
         let snapshot = model.snapshot();
@@ -391,41 +426,22 @@ mod tests {
     }
 
     #[test]
-    fn daemon_lost_clears_pending_and_visible_entries() {
+    fn invalidation_clears_visible_entries() {
         let mut model = Model::default();
-        model.apply(requested(1, "App", "Message", None, 1, Urgency::Normal));
-        model.apply(Event::NotifyAssigned {
-            reply_serial: 1,
-            id: NotificationId::new(1),
-        });
-        model.apply(requested(2, "App", "Pending", None, 2, Urgency::Normal));
+        model.apply(received(1, "App", "Message", None, 1, Urgency::Normal));
 
-        let snapshot = model.apply(Event::DaemonLost).unwrap();
+        let snapshot = model.apply(Event::Invalidated).unwrap();
 
         assert!(snapshot.entries.is_empty());
         assert_eq!(snapshot.unread_count, 0);
-        assert_eq!(
-            model.apply(Event::NotifyAssigned {
-                reply_serial: 2,
-                id: NotificationId::new(2),
-            }),
-            None
-        );
+        assert_eq!(model.apply(Event::Invalidated), None);
     }
 
     #[test]
     fn close_removes_one_entry_and_ignores_unknown_ids() {
         let mut model = Model::default();
-        model.apply(requested(1, "App", "One", None, 1, Urgency::Normal));
-        model.apply(Event::NotifyAssigned {
-            reply_serial: 1,
-            id: NotificationId::new(1),
-        });
-        model.apply(requested(2, "App", "Two", None, 2, Urgency::Normal));
-        model.apply(Event::NotifyAssigned {
-            reply_serial: 2,
-            id: NotificationId::new(2),
-        });
+        model.apply(received(1, "App", "One", None, 1, Urgency::Normal));
+        model.apply(received(2, "App", "Two", None, 2, Urgency::Normal));
 
         let snapshot = model.dismiss(NotificationId::new(1)).unwrap();
 
@@ -437,11 +453,7 @@ mod tests {
     #[test]
     fn dnd_drops_visible_notifications_and_hides_status() {
         let mut model = Model::default();
-        model.apply(requested(1, "App", "One", None, 1, Urgency::Normal));
-        model.apply(Event::NotifyAssigned {
-            reply_serial: 1,
-            id: NotificationId::new(1),
-        });
+        model.apply(received(1, "App", "One", None, 1, Urgency::Normal));
 
         let snapshot = model.set_dnd(true).unwrap();
 
@@ -455,12 +467,8 @@ mod tests {
     fn dnd_discards_notifications_received_while_enabled() {
         let mut model = Model::default();
         model.set_dnd(true);
-        model.apply(requested(1, "App", "Suppressed", None, 1, Urgency::Normal));
         let suppressed = model
-            .apply(Event::NotifyAssigned {
-                reply_serial: 1,
-                id: NotificationId::new(1),
-            })
+            .apply(received(1, "App", "Suppressed", None, 1, Urgency::Normal))
             .unwrap();
 
         assert!(suppressed.entries.is_empty());
@@ -471,12 +479,8 @@ mod tests {
         assert!(!resumed.dnd_enabled);
         assert!(resumed.entries.is_empty());
 
-        model.apply(requested(2, "App", "Visible", None, 2, Urgency::Normal));
         let visible = model
-            .apply(Event::NotifyAssigned {
-                reply_serial: 2,
-                id: NotificationId::new(2),
-            })
+            .apply(received(2, "App", "Visible", None, 2, Urgency::Normal))
             .unwrap();
 
         assert_eq!(visible.entries.len(), 1);
@@ -484,16 +488,16 @@ mod tests {
         assert_eq!(visible.unread_count, 1);
     }
 
-    fn requested(
-        serial: u32,
+    fn received(
+        id: u32,
         app: &str,
         body: &str,
         replaces_id: Option<NotificationId>,
         created_at_ms: u64,
         urgency: Urgency,
     ) -> Event {
-        Event::NotifyRequested {
-            serial,
+        Event::Received {
+            id: NotificationId::new(id),
             pending: Pending::new(app, body, "", replaces_id, created_at_ms, urgency),
         }
     }

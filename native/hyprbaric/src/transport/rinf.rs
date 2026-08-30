@@ -35,11 +35,6 @@ use crate::{
 };
 use rinf::RustSignal;
 
-/// Volume adjustment carried by a hotkey event, in percent.
-///
-/// Fixed here until the configurable step arrives with the multi-monitor work,
-/// which replaces this with the value from audio settings.
-const DEFAULT_VOLUME_STEP: u8 = 5;
 use rinf_router::State;
 
 pub(crate) fn send_app_signal() {
@@ -528,17 +523,14 @@ pub(crate) async fn activate_shortcut(context: App, shortcut: shortcuts::Shortcu
 
     match shortcut.action() {
         Action::Ui(action) => {
+            let volume_step = context.audio_volume_step().as_u8();
             match action {
                 UiAction::ToggleAppLauncher => HotkeyEvent::ToggleAppLauncher {},
                 UiAction::ToggleControls => HotkeyEvent::ToggleControls {},
                 UiAction::OpenBarSettings => HotkeyEvent::OpenBarSettings {},
                 UiAction::ToggleSessionLauncher => HotkeyEvent::ToggleSessionLauncher {},
-                UiAction::VolumeUp => HotkeyEvent::VolumeUp {
-                    step: DEFAULT_VOLUME_STEP,
-                },
-                UiAction::VolumeDown => HotkeyEvent::VolumeDown {
-                    step: DEFAULT_VOLUME_STEP,
-                },
+                UiAction::VolumeUp => HotkeyEvent::VolumeUp { step: volume_step },
+                UiAction::VolumeDown => HotkeyEvent::VolumeDown { step: volume_step },
                 UiAction::ToggleMute => HotkeyEvent::ToggleMute {},
                 UiAction::BrightnessUp => HotkeyEvent::BrightnessUp {},
                 UiAction::BrightnessDown => HotkeyEvent::BrightnessDown {},

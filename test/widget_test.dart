@@ -22,7 +22,9 @@ import 'package:hyprbaric/src/features/controls/control_rocker.dart';
 import 'package:hyprbaric/src/features/controls/control_settings_row.dart';
 import 'package:hyprbaric/src/features/controls/controls_panel.dart';
 import 'package:hyprbaric/src/features/launcher/app_launcher_results.dart';
+import 'package:hyprbaric/src/features/network/network_interfaces.dart';
 import 'package:hyprbaric/src/features/network/network_panel.dart';
+import 'package:hyprbaric/src/features/network/network_wifi_section.dart';
 import 'package:hyprbaric/src/features/power/battery_chip.dart';
 import 'package:hyprbaric/src/features/power/power_panel.dart';
 import 'package:hyprbaric/src/features/rust_commands.dart';
@@ -2843,11 +2845,23 @@ void main() {
     await tester.pump();
 
     expect(find.text('Fiber_5G'), findsOneWidget);
-    expect(find.text('wlo1'), findsOneWidget);
-    expect(find.text('192.168.1.42'), findsOneWidget);
-    expect(find.text('Network settings…'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(NetworkInterfacesSection),
+        matching: find.text('wlo1'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(NetworkInterfacesSection),
+        matching: find.text('192.168.1.42'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('NETWORK SETTINGS'), findsOneWidget);
 
-    await tester.tap(find.text('Network settings…'));
+    await tester.tap(find.text('NETWORK SETTINGS'));
     await tester.pump();
 
     expect(openedSettings, true);
@@ -3005,7 +3019,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('INTERFACES'), findsOneWidget);
-    expect(find.text('wlo1'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(NetworkInterfacesSection),
+        matching: find.text('wlo1'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('lo'), findsOneWidget);
   });
 
@@ -4142,11 +4162,23 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
+    // The SSID list scrolls inside its own fixed height.
+    await tester.scrollUntilVisible(
+      find.text('Fiber_2.4G'),
+      60,
+      scrollable: find
+          .descendant(
+            of: find.byType(NetworkWifiSection),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Fiber_2.4G'));
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(TextField, 'enter password'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Enter password'), findsOneWidget);
     expect(find.text('JOIN'), findsOneWidget);
     final InkWell networkRow = tester.widget<InkWell>(
       find
@@ -4155,6 +4187,10 @@ void main() {
     );
     expect(networkRow.onTap, isNotNull);
 
+    await tester.ensureVisible(
+      find.byKey(const ValueKey<String>('network-connect-submit')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const ValueKey<String>('network-connect-submit')),
     );
@@ -4182,13 +4218,25 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
+    // The SSID list scrolls inside its own fixed height.
+    await tester.scrollUntilVisible(
+      find.text('Fiber_2.4G'),
+      60,
+      scrollable: find
+          .descendant(
+            of: find.byType(NetworkWifiSection),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Fiber_2.4G'));
     await tester.pump();
     await tester.pumpAndSettle();
 
     final Finder passwordField = find.widgetWithText(
       TextField,
-      'enter password',
+      'Enter password',
     );
     await tester.enterText(passwordField, 'pass1234');
     await tester.pump();
@@ -4217,6 +4265,18 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
+    // The SSID list scrolls inside its own fixed height.
+    await tester.scrollUntilVisible(
+      find.text('starbucks-guest'),
+      60,
+      scrollable: find
+          .descendant(
+            of: find.byType(NetworkWifiSection),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('starbucks-guest'));
     await tester.pump();
 
@@ -4362,12 +4422,14 @@ void main() {
   ) async {
     final StreamController<ShortcutEvent> hotkeys =
         StreamController<ShortcutEvent>();
+    final _RecordingRustDispatcher dispatcher = _RecordingRustDispatcher();
     addTearDown(hotkeys.close);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           shortcutEventProvider.overrideWith((ref) => hotkeys.stream),
+          rustCommandDispatcherProvider.overrideWith((ref) => dispatcher),
           audioStatusProvider.overrideWith(
             (ref) => Stream<AudioStatus>.value(_audioStatus()),
           ),
