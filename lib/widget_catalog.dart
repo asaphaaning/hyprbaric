@@ -5,6 +5,9 @@ export 'src/bindings/bindings.dart'
     show
         AudioEndpoint,
         AudioEndpointKind,
+        AppLauncherEntry,
+        AppLauncherPhase,
+        AppLauncherResults,
         AudioStatus,
         AudioStatusAvailable,
         AudioStatusUnavailable,
@@ -74,6 +77,8 @@ export 'src/features/controls/controls_panel.dart' show ControlsPanel;
 export 'src/features/power/battery_chip.dart' show BatteryChip;
 export 'src/features/power/power_panel.dart' show PowerPanel;
 export 'src/features/power/power_profile_pad.dart' show PowerProfilePad;
+export 'src/features/launcher/app_launcher_console.dart'
+    show AppLauncherConsole;
 export 'src/features/settings/settings_overlay_content.dart'
     show SettingsOverlayContent;
 export 'src/features/settings/settings_tab_body.dart'

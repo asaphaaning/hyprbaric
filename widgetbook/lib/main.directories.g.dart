@@ -21,6 +21,8 @@ import 'package:hyprbaric_widgetbook/use_cases/controls/control_atom_use_cases.d
     as _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/controls/controls_panel_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_controls_controls_panel_use_cases;
+import 'package:hyprbaric_widgetbook/use_cases/launcher/app_launcher_use_cases.dart'
+    as _hyprbaric_widgetbook_use_cases_launcher_app_launcher_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/notifications/notification_atom_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_notifications_notification_atom_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/notifications/notification_panel_use_cases.dart'
@@ -539,6 +541,22 @@ final directories = <_widgetbook.WidgetbookNode>[
                 builder:
                     _hyprbaric_widgetbook_use_cases_controls_controls_panel_use_cases
                         .buildUnavailableControlsPanel,
+              ),
+            ],
+          ),
+        ],
+      ),
+      _widgetbook.WidgetbookFolder(
+        name: 'Launcher',
+        children: [
+          _widgetbook.WidgetbookComponent(
+            name: 'AppLauncherConsole',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Populated',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_launcher_app_launcher_use_cases
+                        .buildAppLauncher,
               ),
             ],
           ),
