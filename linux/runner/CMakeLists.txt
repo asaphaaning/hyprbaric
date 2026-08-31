@@ -32,3 +32,14 @@ target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::GTK_LAYER_SHELL)
 target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::WAYLAND_CLIENT)
 
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
+
+if(BUILD_TESTING)
+  add_executable(native_window_visibility_test
+    "native_window_visibility_test.cc"
+  )
+  apply_standard_settings(native_window_visibility_test)
+  add_test(
+    NAME native_window_visibility_test
+    COMMAND native_window_visibility_test
+  )
+endif()

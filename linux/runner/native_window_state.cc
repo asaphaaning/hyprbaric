@@ -1,6 +1,7 @@
 #include "native_window_state.h"
 
 #include "monitor.h"
+#include "native_window_visibility.h"
 
 namespace {
 constexpr char kNativeWindowStateKey[] = "hyprbaric-native-window-state";
@@ -26,14 +27,30 @@ gboolean should_show(const NativeWindowState *state) {
 }
 
 void apply_visibility(NativeWindowState *state) {
-  if (state == nullptr || state->window == nullptr ||
-      !state->first_frame_rendered) {
+  if (state == nullptr || state->window == nullptr) {
     return;
   }
-  if (should_show(state)) {
-    gtk_widget_show(GTK_WIDGET(state->window));
-  } else {
-    gtk_widget_hide(GTK_WIDGET(state->window));
+
+  GtkWidget *window = GTK_WIDGET(state->window);
+  switch (native_window_visibility(should_show(state),
+                                   state->first_frame_rendered)) {
+  case NativeWindowVisibility::kHidden:
+    g_debug("Hiding Hyprbaric window on monitor '%s'",
+            state->monitor_name.c_str());
+    gtk_widget_hide(window);
+    return;
+  case NativeWindowVisibility::kPriming:
+    g_debug("Priming Hyprbaric window on monitor '%s' for its first frame",
+            state->monitor_name.c_str());
+    gtk_widget_set_opacity(window, 0.0);
+    gtk_widget_show(window);
+    return;
+  case NativeWindowVisibility::kVisible:
+    g_debug("Showing Hyprbaric window on monitor '%s'",
+            state->monitor_name.c_str());
+    gtk_widget_set_opacity(window, 1.0);
+    gtk_widget_show(window);
+    return;
   }
 }
 } // namespace
@@ -47,9 +64,8 @@ NativeWindowState *native_window_state_attach(GtkWindow *window,
   auto *state = new NativeWindowState();
   state->window = window;
   state->view = view;
-  state->monitor = monitor != nullptr
-                       ? GDK_MONITOR(g_object_ref(monitor))
-                       : nullptr;
+  state->monitor =
+      monitor != nullptr ? GDK_MONITOR(g_object_ref(monitor)) : nullptr;
   state->layer_shell_available = layer_shell_available;
   state->monitor_name = monitor_name != nullptr ? monitor_name : "Primary";
   state->monitor_is_primary = monitor_is_primary;
