@@ -15,3 +15,8 @@ flutter run -d linux
 
 Use `flutter run -d chrome` for the web catalog. After adding or renaming an
 annotated use case, rerun the generator command.
+
+The first catalog slice includes shared badges, toggles, and action rows;
+bar-level battery states, profile pads, and the fully composed power panel; and
+the notification button, header, count pill, row, list, empty state, and fully
+composed notification panel.

@@ -26,16 +26,6 @@ class HyprbaricWidgetbook extends StatelessWidget {
             ),
           ],
         ),
-        ViewportAddon(<ViewportData>[
-          LinuxViewports.desktop,
-          const ViewportData(
-            name: 'Compact desktop',
-            width: 1280,
-            height: 720,
-            pixelRatio: 1,
-            platform: TargetPlatform.linux,
-          ),
-        ]),
       ],
       darkTheme: ThemeData.dark(useMaterial3: true),
       themeMode: ThemeMode.dark,
