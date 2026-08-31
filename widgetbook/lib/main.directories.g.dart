@@ -17,6 +17,8 @@ import 'package:hyprbaric_widgetbook/use_cases/audio/audio_panel_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_audio_audio_panel_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/bar/bar_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_bar_bar_use_cases;
+import 'package:hyprbaric_widgetbook/use_cases/clock/clock_use_cases.dart'
+    as _hyprbaric_widgetbook_use_cases_clock_clock_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/controls/control_atom_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/controls/controls_panel_use_cases.dart'
@@ -501,6 +503,21 @@ final directories = <_widgetbook.WidgetbookNode>[
                 name: 'Laptop — active',
                 builder: _hyprbaric_widgetbook_use_cases_bar_bar_use_cases
                     .buildLaptopBar,
+              ),
+            ],
+          ),
+        ],
+      ),
+      _widgetbook.WidgetbookFolder(
+        name: 'Calendar',
+        children: [
+          _widgetbook.WidgetbookComponent(
+            name: 'ClockPanel',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Interactive calendar',
+                builder: _hyprbaric_widgetbook_use_cases_clock_clock_use_cases
+                    .buildInteractiveCalendar,
               ),
             ],
           ),

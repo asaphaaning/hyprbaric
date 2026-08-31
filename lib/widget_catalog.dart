@@ -15,6 +15,7 @@ export 'src/bindings/bindings.dart'
         BrightnessStatusAvailable,
         BrightnessStatusDiscovering,
         BrightnessStatusUnavailable,
+        CalendarCommand,
         CaffeineStatus,
         CaffeineStatusAvailable,
         CaffeineStatusUnavailable,
@@ -74,6 +75,8 @@ export 'src/features/controls/control_settings_row.dart'
 export 'src/features/controls/controls_chrome.dart'
     show ControlChassis, ControlSectionLabel, ControlSectionTray;
 export 'src/features/controls/controls_panel.dart' show ControlsPanel;
+export 'src/features/clock/clock_controller.dart' show ClockViewState;
+export 'src/features/clock/clock_panel.dart' show ClockPanel;
 export 'src/features/power/battery_chip.dart' show BatteryChip;
 export 'src/features/power/power_panel.dart' show PowerPanel;
 export 'src/features/power/power_profile_pad.dart' show PowerProfilePad;
