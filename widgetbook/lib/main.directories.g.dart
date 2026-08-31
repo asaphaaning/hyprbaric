@@ -29,6 +29,8 @@ import 'package:hyprbaric_widgetbook/use_cases/notifications/notification_atom_u
     as _hyprbaric_widgetbook_use_cases_notifications_notification_atom_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/notifications/notification_panel_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_notifications_notification_panel_use_cases;
+import 'package:hyprbaric_widgetbook/use_cases/notifications/toast_use_cases.dart'
+    as _hyprbaric_widgetbook_use_cases_notifications_toast_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/osd/osd_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_osd_osd_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/power/battery_chip_use_cases.dart'
@@ -798,6 +800,34 @@ final directories = <_widgetbook.WidgetbookNode>[
                 builder:
                     _hyprbaric_widgetbook_use_cases_settings_settings_use_cases
                         .buildSettingsMenu,
+              ),
+            ],
+          ),
+        ],
+      ),
+      _widgetbook.WidgetbookFolder(
+        name: 'Toasts',
+        children: [
+          _widgetbook.WidgetbookComponent(
+            name: 'ToastPill',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Critical',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_notifications_toast_use_cases
+                        .buildCriticalToast,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Interactive stack',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_notifications_toast_use_cases
+                        .buildInteractiveToasts,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Normal',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_notifications_toast_use_cases
+                        .buildNormalToast,
               ),
             ],
           ),
