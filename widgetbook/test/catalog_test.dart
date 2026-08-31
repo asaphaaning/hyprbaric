@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hyprbaric/widget_catalog.dart';
 import 'package:hyprbaric_widgetbook/catalog/catalog_theme.dart';
-import 'package:hyprbaric_widgetbook/main.dart';
+import 'package:hyprbaric_widgetbook/main.directories.g.dart'
+    as generated_catalog;
+import 'package:hyprbaric_widgetbook/use_cases/audio/audio_atom_use_cases.dart';
+import 'package:hyprbaric_widgetbook/use_cases/audio/audio_fixtures.dart';
+import 'package:hyprbaric_widgetbook/use_cases/audio/audio_panel_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/controls/control_atom_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/controls/controls_fixtures.dart';
 import 'package:hyprbaric_widgetbook/use_cases/controls/controls_panel_use_cases.dart';
@@ -12,8 +16,137 @@ import 'package:hyprbaric_widgetbook/use_cases/notifications/notification_panel_
 import 'package:hyprbaric_widgetbook/use_cases/power/battery_chip_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/power/power_fixtures.dart';
 import 'package:hyprbaric_widgetbook/use_cases/power/power_panel_use_cases.dart';
+import 'package:widgetbook/widgetbook.dart';
 
 void main() {
+  test('audio fixtures preserve endpoint availability and identity', () {
+    expect(AudioFixtures.ready.output, AudioFixtures.output);
+    expect(AudioFixtures.ready.input, AudioFixtures.input);
+    expect(AudioFixtures.unavailable, isA<AudioStatusUnavailable>());
+    expect(AudioFixtures.brightness.value, 75);
+  });
+
+  testWidgets('audio atoms use their production components', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildAudioChannelStripStates),
+      ),
+    );
+    expect(find.byType(AudioChannelStrip), findsNWidgets(3));
+    expect(find.byType(AudioFader), findsNWidgets(2));
+    expect(find.byType(AudioDisabledFader), findsOneWidget);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildAudioDbReadoutStates),
+      ),
+    );
+    expect(find.byType(AudioDbReadout), findsNWidgets(3));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildAudioMuteButtonStates),
+      ),
+    );
+    expect(find.byType(AudioMuteButton), findsNWidgets(3));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildAudioDisabledFader),
+      ),
+    );
+    expect(find.byType(AudioDisabledFader), findsOneWidget);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildBrightnessControlStates),
+      ),
+    );
+    expect(find.byType(BrightnessControl), findsNWidgets(2));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildAudioMixerStage),
+      ),
+    );
+    expect(find.byType(AudioMixerStage), findsOneWidget);
+    expect(find.byType(AudioMasterRail), findsNothing);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildAudioChromeAtoms),
+      ),
+    );
+    expect(find.byType(AudioMixerDivider), findsOneWidget);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildAudioMessageStates),
+      ),
+    );
+    expect(find.byType(AudioMessage), findsNWidgets(2));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildAudioMixerFooter),
+      ),
+    );
+    expect(find.byType(AudioMixerFooter), findsOneWidget);
+  });
+
+  testWidgets('composed audio story uses the complete production panel', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildReadyAudioPanel),
+      ),
+    );
+
+    expect(find.byType(AudioPanel), findsOneWidget);
+    expect(find.byType(AudioMixerHeader), findsOneWidget);
+    expect(find.byType(AudioMixerStage), findsOneWidget);
+    expect(find.byType(AudioMasterRail), findsOneWidget);
+    expect(find.byType(AudioMixerFooter), findsOneWidget);
+    expect(find.byType(AudioChannelStrip), findsNWidgets(2));
+    expect(tester.getSize(find.byType(AudioPanel)).width, 336);
+  });
+
+  testWidgets('interactive audio story toggles a production mute control', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildInteractiveAudioPanel),
+      ),
+    );
+
+    await tester.tap(find.bySemanticsLabel('Mute Built-in · Analog Stereo'));
+    await tester.pumpAndSettle();
+
+    final AudioChannelStrip output = tester.widget<AudioChannelStrip>(
+      find.byWidgetPredicate(
+        (Widget widget) =>
+            widget is AudioChannelStrip &&
+            widget.channel == AudioMixerChannel.output,
+      ),
+    );
+    expect(output.endpoint!.muted, isTrue);
+  });
+
   test('controls fixtures preserve distinct operational states', () {
     expect(ControlsFixtures.ready.dndEnabled, isFalse);
     expect(ControlsFixtures.active.dndEnabled, isTrue);
@@ -253,19 +386,53 @@ void main() {
     },
   );
 
-  testWidgets('Widgetbook exposes the generated catalog navigation', (
-    WidgetTester tester,
-  ) async {
-    tester.view.physicalSize = const Size(1440, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+  test('generated catalog navigation includes component and panel groups', () {
+    final List<WidgetbookCategory> categories = generated_catalog.directories
+        .whereType<WidgetbookCategory>()
+        .toList();
+    final WidgetbookCategory buildingBlocks = categories.singleWhere(
+      (WidgetbookCategory category) => category.name == 'Building blocks',
+    );
+    final WidgetbookCategory widgets = categories.singleWhere(
+      (WidgetbookCategory category) => category.name == 'Widgets',
+    );
 
-    await tester.pumpWidget(const HyprbaricWidgetbook());
-    await tester.pumpAndSettle();
+    expect(
+      buildingBlocks.children!.whereType<WidgetbookFolder>().map(
+        (WidgetbookFolder folder) => folder.name,
+      ),
+      containsAll(<String>['Audio', 'Controls', 'Notifications']),
+    );
+    expect(
+      widgets.children!.whereType<WidgetbookFolder>().map(
+        (WidgetbookFolder folder) => folder.name,
+      ),
+      containsAll(<String>['Audio', 'Controls', 'Notifications', 'Power']),
+    );
 
-    expect(find.text('Building blocks'), findsOneWidget);
-    expect(find.text('Widgets'), findsOneWidget);
-    expect(find.text('Notifications'), findsNWidgets(2));
+    final WidgetbookFolder audioAtoms = buildingBlocks.children!
+        .whereType<WidgetbookFolder>()
+        .singleWhere((WidgetbookFolder folder) => folder.name == 'Audio');
+    expect(
+      audioAtoms.children!.whereType<WidgetbookComponent>().map(
+        (WidgetbookComponent component) => component.name,
+      ),
+      containsAll(<String>[
+        'AudioChannelStrip',
+        'AudioDbReadout',
+        'AudioDisabledFader',
+        'AudioFader',
+        'AudioMasterRail',
+        'AudioMessage',
+        'AudioMixerDivider',
+        'AudioMixerFooter',
+        'AudioMixerHeader',
+        'AudioMixerStage',
+        'AudioMuteButton',
+        'BrightnessControl',
+        'BrightnessKnob',
+        'BrightnessKnobReadout',
+      ]),
+    );
   });
 }

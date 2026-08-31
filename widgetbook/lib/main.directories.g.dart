@@ -11,6 +11,10 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
+import 'package:hyprbaric_widgetbook/use_cases/audio/audio_atom_use_cases.dart'
+    as _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases;
+import 'package:hyprbaric_widgetbook/use_cases/audio/audio_panel_use_cases.dart'
+    as _hyprbaric_widgetbook_use_cases_audio_audio_panel_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/controls/control_atom_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/controls/controls_panel_use_cases.dart'
@@ -37,6 +41,165 @@ final directories = <_widgetbook.WidgetbookNode>[
   _widgetbook.WidgetbookCategory(
     name: 'Building blocks',
     children: [
+      _widgetbook.WidgetbookFolder(
+        name: 'Audio',
+        children: [
+          _widgetbook.WidgetbookComponent(
+            name: 'AudioChannelStrip',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Endpoint strips',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
+                        .buildAudioChannelStripStates,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'AudioDbReadout',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Decibel states',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
+                        .buildAudioDbReadoutStates,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'AudioDisabledFader',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Unavailable',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
+                        .buildAudioDisabledFader,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'AudioFader',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Fader states',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
+                        .buildAudioFaderStates,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'AudioMasterRail',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'States',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
+                        .buildAudioMasterRailStates,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'AudioMessage',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Unavailable message',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
+                        .buildAudioMessageStates,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'AudioMixerDivider',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Vertical divider',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
+                        .buildAudioChromeAtoms,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'AudioMixerFooter',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'External mixer',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
+                        .buildAudioMixerFooter,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'AudioMixerHeader',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Mixer header',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
+                        .buildAudioMixerHeaderStates,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'AudioMixerStage',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Mixer stage',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
+                        .buildAudioMixerStage,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'AudioMuteButton',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Mute states',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
+                        .buildAudioMuteButtonStates,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'BrightnessControl',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Brightness control',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
+                        .buildBrightnessControlStates,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'BrightnessKnob',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Console knob',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
+                        .buildBrightnessKnobStates,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'BrightnessKnobReadout',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Brightness readout',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
+                        .buildBrightnessKnobReadoutStates,
+              ),
+            ],
+          ),
+        ],
+      ),
       _widgetbook.WidgetbookFolder(
         name: 'Controls',
         children: [
@@ -271,6 +434,52 @@ final directories = <_widgetbook.WidgetbookNode>[
   _widgetbook.WidgetbookCategory(
     name: 'Widgets',
     children: [
+      _widgetbook.WidgetbookFolder(
+        name: 'Audio',
+        children: [
+          _widgetbook.WidgetbookComponent(
+            name: 'AudioPanel',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Interactive',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_panel_use_cases
+                        .buildInteractiveAudioPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Loading',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_panel_use_cases
+                        .buildLoadingAudioPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Muted output',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_panel_use_cases
+                        .buildMutedAudioPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Output only',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_panel_use_cases
+                        .buildOutputOnlyAudioPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Ready',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_panel_use_cases
+                        .buildReadyAudioPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Unavailable',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_panel_use_cases
+                        .buildUnavailableAudioPanel,
+              ),
+            ],
+          ),
+        ],
+      ),
       _widgetbook.WidgetbookFolder(
         name: 'Controls',
         children: [

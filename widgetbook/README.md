@@ -21,3 +21,6 @@ bar-level battery states, profile pads, and the fully composed power panel; the
 notification button, header, count pill, row, list, empty state, and fully
 composed notification panel; and the full controls console with its capture,
 recording, inspect, rocker, tray, and settings atoms.
+The audio catalog similarly covers the complete mixer panel, its output and
+input strips, faders, readouts, mute controls, brightness deck, and supporting
+header, rail, footer, divider, and unavailable message atoms.

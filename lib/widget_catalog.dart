@@ -3,6 +3,15 @@ library;
 
 export 'src/bindings/bindings.dart'
     show
+        AudioEndpoint,
+        AudioEndpointKind,
+        AudioStatus,
+        AudioStatusAvailable,
+        AudioStatusUnavailable,
+        BrightnessStatus,
+        BrightnessStatusAvailable,
+        BrightnessStatusDiscovering,
+        BrightnessStatusUnavailable,
         CaffeineStatus,
         CaffeineStatusAvailable,
         CaffeineStatusUnavailable,
@@ -25,6 +34,21 @@ export 'src/bindings/bindings.dart'
         RecordingStatusUnavailable,
         ScreenshotMode,
         Uint64;
+export 'src/features/audio/audio_channel_strip.dart'
+    show AudioChannelStrip, AudioDbReadout, AudioMixerChannel, AudioMuteButton;
+export 'src/features/audio/audio_chrome.dart'
+    show AudioMessage, AudioMixerDivider, audioDecibelReadout;
+export 'src/features/audio/audio_fader.dart'
+    show AudioDisabledFader, AudioFader;
+export 'src/features/audio/audio_mixer_layout.dart'
+    show AudioMasterRail, AudioMixerFooter, AudioMixerHeader, AudioMixerStage;
+export 'src/features/audio/audio_panel.dart' show AudioPanel;
+export 'src/features/audio/brightness_control.dart'
+    show BrightnessControl, BrightnessControlPresentation;
+export 'src/features/audio/brightness_knob.dart'
+    show BrightnessKnob, BrightnessKnobPresentation;
+export 'src/features/audio/brightness_knob_readout.dart'
+    show BrightnessKnobReadout;
 export 'src/features/controls/control_capture_pads.dart'
     show ControlCapturePad, ControlRecordPad;
 export 'src/features/controls/control_inspect_button.dart'
