@@ -56,7 +56,7 @@ class _MixerEmbed extends StatelessWidget {
       theme: catalogTheme.copyWith(scaffoldBackgroundColor: Colors.transparent),
       home: Scaffold(
         backgroundColor: Colors.transparent,
-        body: Center(
+        body: SizedBox.expand(
           child: FittedBox(
             fit: BoxFit.contain,
             child: const SizedBox(
