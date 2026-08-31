@@ -69,6 +69,10 @@ flutter run -d linux
 
 The same catalog can run in a browser with `flutter run -d chrome`.
 
+The documentation landing page embeds its interactive audio mixer directly
+from this catalog. Running `npm run build` in `website/` compiles the Flutter
+preview first, including the shared responsive layout and animated meters.
+
 ## Architecture
 
 - Flutter owns rendering, interaction, and shared UI state.

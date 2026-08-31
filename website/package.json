@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "start": "docusaurus start",
-    "build": "docusaurus build",
+    "build": "npm run build:flutter-embed && docusaurus build",
+    "build:flutter-embed": "node scripts/build-flutter-embed.mjs",
     "serve": "docusaurus serve",
     "clear": "docusaurus clear"
   },

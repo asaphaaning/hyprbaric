@@ -11,6 +11,7 @@ export 'hypr_interaction_region.dart';
 export 'hypr_interactive_tile.dart';
 export 'hypr_interval_rebuild.dart';
 export 'hypr_live_value.dart';
+export 'hypr_local_svg.dart';
 export 'hypr_metric_card.dart';
 export 'hypr_panel_chrome.dart';
 export 'hypr_panel_divider.dart';

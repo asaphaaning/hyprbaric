@@ -35,6 +35,7 @@ migrate_working_dir/
 /website/.docusaurus/
 /website/build/
 /website/node_modules/
+/website/static/flutter/
 
 # Symbolication related
 app.*.symbols

@@ -5,6 +5,7 @@ import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
 import 'audio_channel_strip.dart';
 import 'audio_chrome.dart';
+import 'audio_meter_levels.dart';
 import 'brightness_control.dart';
 
 /// Mixer title and the currently selected output endpoint.
@@ -62,6 +63,10 @@ class AudioMixerStage extends StatelessWidget {
     required this.onSetVolume,
     required this.onSetMuted,
     required this.onSetBrightness,
+
+    /// Live signal levels for the channel ladders and master rail. Null in
+    /// the bar, where every meter follows its endpoint volume.
+    this.meterLevels,
   });
 
   final AudioEndpoint? output;
@@ -71,6 +76,7 @@ class AudioMixerStage extends StatelessWidget {
   final void Function(AudioEndpointKind kind, int volume) onSetVolume;
   final void Function(AudioEndpointKind kind, {required bool muted}) onSetMuted;
   final ValueChanged<int> onSetBrightness;
+  final AudioMeterLevels? meterLevels;
 
   /// Where the console begins, below the brightness deck.
   static const double _consoleTop = 117;
@@ -279,9 +285,12 @@ class _ConsoleNotchClipper extends CustomClipper<Path> {
 
 /// Compact aggregate meter for the output endpoint.
 class AudioMasterRail extends StatelessWidget {
-  const AudioMasterRail({super.key, required this.output});
+  const AudioMasterRail({super.key, required this.output, this.meterLevel});
 
   final AudioEndpoint? output;
+
+  /// Live output signal for the aggregate meter. See [AudioFader.meterLevel].
+  final double? meterLevel;
 
   @override
   Widget build(BuildContext context) {
@@ -305,7 +314,7 @@ class AudioMasterRail extends StatelessWidget {
                   height: HyprSpacing.xl,
                   child: CustomPaint(
                     painter: HyprSegmentedMeterPainter(
-                      value: muted ? 0 : volume / 100,
+                      value: muted ? 0 : (meterLevel ?? volume / 100),
                       ramp: HyprLevelRamp.audio,
                       trackColor: AudioMixerColors.rail,
                     ),

@@ -707,6 +707,12 @@
   width: auto;
 }
 
+.flutterPreview {
+  aspect-ratio: .6;
+  margin-bottom: auto;
+  margin-top: clamp(16px, 4vw, 64px);
+}
+
 .stack {
   display: flex;
   flex-direction: column;
@@ -1005,6 +1011,12 @@
     aspect-ratio: auto;
     height: min(70vw, 360px);
     padding: 16px;
+  }
+
+  .flutterPreview {
+    aspect-ratio: .6;
+    height: auto;
+    padding-block: 4px 12px;
   }
 
   .configuration {

@@ -4,6 +4,7 @@ import 'package:hyprbaric/widget_catalog.dart';
 import 'package:hyprbaric_widgetbook/catalog/catalog_theme.dart';
 import 'package:hyprbaric_widgetbook/main.directories.g.dart'
     as generated_catalog;
+import 'package:hyprbaric_widgetbook/stories/audio_mixer_preview.dart';
 import 'package:hyprbaric_widgetbook/use_cases/audio/audio_atom_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/audio/audio_fixtures.dart';
 import 'package:hyprbaric_widgetbook/use_cases/audio/audio_panel_use_cases.dart';
@@ -43,6 +44,22 @@ void main() {
     expect(AudioFixtures.ready.input, AudioFixtures.input);
     expect(AudioFixtures.unavailable, isA<AudioStatusUnavailable>());
     expect(AudioFixtures.brightness.value, 75);
+  });
+
+  test('audio meter dance remains normalized and changes by channel', () {
+    final AudioMeterDance first = AudioMeterDance.sample(0);
+    final AudioMeterDance later = AudioMeterDance.sample(.42);
+
+    for (final double level in <double>[
+      first.output,
+      first.input,
+      later.output,
+      later.input,
+    ]) {
+      expect(level, inInclusiveRange(0, 1));
+    }
+    expect(later.output, isNot(later.input));
+    expect(later.output, isNot(first.output));
   });
 
   testWidgets('audio atoms use their production components', (
@@ -210,7 +227,7 @@ void main() {
     );
 
     await tester.tap(find.bySemanticsLabel('Mute Built-in · Analog Stereo'));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     final AudioChannelStrip output = tester.widget<AudioChannelStrip>(
       find.byWidgetPredicate(

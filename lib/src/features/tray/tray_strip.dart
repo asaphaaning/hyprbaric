@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
@@ -174,6 +173,7 @@ class _ThemedTrayIcon extends StatelessWidget {
         file,
         width: 13,
         height: 13,
+        fallback: Icon(Icons.apps_rounded, size: 13, color: tint),
         colorFilter: ColorFilter.mode(tint, BlendMode.srcIn),
       );
     }

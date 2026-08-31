@@ -1,6 +1,5 @@
 import 'dart:io' show File;
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
@@ -361,8 +360,7 @@ class AppLauncherIconFile extends StatelessWidget {
           width: dimension,
           height: dimension,
           fit: BoxFit.contain,
-          placeholderBuilder: (_) => fallback,
-          errorBuilder: (_, _, _) => fallback,
+          fallback: fallback,
         ),
       );
     }

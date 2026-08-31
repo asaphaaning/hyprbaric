@@ -3,6 +3,7 @@ import Link from '@docusaurus/Link';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import Layout from '@theme/Layout';
 
+import FlutterDemo from '../components/FlutterDemo';
 import styles from './index.module.css';
 
 const installOptions = [
@@ -196,7 +197,11 @@ function ModuleCard({module}) {
       <span className={styles.cardLabel}>{module.label}</span>
       <h3>{module.title}</h3>
       <p>{module.text}</p>
-      <div className={styles.panelPreview}><img src={imageUrl} alt={`${module.label} panel`} /></div>
+      {module.label === 'Volume' ? (
+        <FlutterDemo className={styles.flutterPreview} />
+      ) : (
+        <div className={styles.panelPreview}><img src={imageUrl} alt={`${module.label} panel`} /></div>
+      )}
     </article>
   );
 }

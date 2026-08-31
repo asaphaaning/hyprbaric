@@ -4,6 +4,7 @@ import 'package:hyprbaric/widget_catalog.dart';
 import 'package:widgetbook_annotation/widgetbook_annotation.dart';
 
 import '../../catalog/catalog_frame.dart';
+import '../../stories/audio_mixer_preview.dart';
 import 'audio_fixtures.dart';
 
 @UseCase(name: 'Ready', type: AudioPanel, path: '[Widgets]/Audio')
@@ -50,7 +51,7 @@ Widget buildUnavailableAudioPanel(BuildContext context) {
 
 @UseCase(name: 'Interactive', type: AudioPanel, path: '[Widgets]/Audio')
 Widget buildInteractiveAudioPanel(BuildContext context) {
-  return const _InteractiveAudioPanelStory();
+  return const CatalogCanvas(child: AudioMixerPreview());
 }
 
 class _AudioPanelStory extends StatelessWidget {
@@ -73,87 +74,6 @@ class _AudioPanelStory extends StatelessWidget {
       ),
     );
   }
-}
-
-class _InteractiveAudioPanelStory extends StatefulWidget {
-  const _InteractiveAudioPanelStory();
-
-  @override
-  State<_InteractiveAudioPanelStory> createState() =>
-      _InteractiveAudioPanelStoryState();
-}
-
-class _InteractiveAudioPanelStoryState
-    extends State<_InteractiveAudioPanelStory> {
-  late AudioStatusAvailable audio;
-  late BrightnessStatusAvailable brightness;
-
-  @override
-  void initState() {
-    super.initState();
-    audio = AudioFixtures.ready;
-    brightness = AudioFixtures.brightness;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return CatalogCanvas(
-      child: AudioPanel(
-        borderRadius: const BorderRadius.all(Radius.circular(18)),
-        status: AudioFixtures.status(audio),
-        brightnessStatus: AudioFixtures.brightnessStatus(brightness),
-        onSetVolume: (AudioEndpointKind kind, int volume) {
-          setState(() {
-            audio = _withEndpoint(audio, kind, volume: volume);
-          });
-        },
-        onSetMuted: (AudioEndpointKind kind, {required bool muted}) {
-          setState(() {
-            audio = _withEndpoint(audio, kind, muted: muted);
-          });
-        },
-        onSetBrightness: (int value) {
-          setState(() {
-            brightness = BrightnessStatusAvailable(
-              device: brightness.device,
-              value: value,
-            );
-          });
-        },
-        onOpenMixer: _noop,
-      ),
-    );
-  }
-}
-
-AudioStatusAvailable _withEndpoint(
-  AudioStatusAvailable status,
-  AudioEndpointKind kind, {
-  int? volume,
-  bool? muted,
-}) {
-  return switch (kind) {
-    AudioEndpointKind.output => AudioStatusAvailable(
-      output: status.output == null
-          ? null
-          : AudioFixtures.updateEndpoint(
-              status.output!,
-              volume: volume,
-              muted: muted,
-            ),
-      input: status.input,
-    ),
-    AudioEndpointKind.input => AudioStatusAvailable(
-      output: status.output,
-      input: status.input == null
-          ? null
-          : AudioFixtures.updateEndpoint(
-              status.input!,
-              volume: volume,
-              muted: muted,
-            ),
-    ),
-  };
 }
 
 void _noop() {}
