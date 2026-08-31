@@ -17,6 +17,7 @@ import 'package:hyprbaric_widgetbook/use_cases/notifications/notification_panel_
 import 'package:hyprbaric_widgetbook/use_cases/power/battery_chip_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/power/power_fixtures.dart';
 import 'package:hyprbaric_widgetbook/use_cases/power/power_panel_use_cases.dart';
+import 'package:hyprbaric_widgetbook/use_cases/settings/settings_use_cases.dart';
 import 'package:widgetbook/widgetbook.dart';
 
 void main() {
@@ -138,6 +139,27 @@ void main() {
     expect(find.text('widget_catalog.dart — Hyprbaric'), findsOneWidget);
     expect(find.text('72%', findRichText: true), findsOneWidget);
     expect(find.text('Sun, Aug 30'), findsOneWidget);
+  });
+
+  testWidgets('settings story uses the complete production menu', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildSettingsMenu),
+      ),
+    );
+
+    expect(find.byType(SettingsOverlayContent), findsOneWidget);
+    expect(find.byType(SettingsSidebar), findsOneWidget);
+    expect(find.byType(SettingsContentHeader), findsOneWidget);
+    expect(find.text('Appearance'), findsNWidgets(2));
+
+    await tester.tap(find.text('Modules'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Show and hide bar modules.'), findsOneWidget);
   });
 
   testWidgets('interactive audio story toggles a production mute control', (
@@ -429,6 +451,7 @@ void main() {
         'Controls',
         'Notifications',
         'Power',
+        'Settings',
       ]),
     );
 

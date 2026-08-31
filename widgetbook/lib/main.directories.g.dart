@@ -37,6 +37,8 @@ import 'package:hyprbaric_widgetbook/use_cases/primitives/hypr_badge_use_cases.d
     as _hyprbaric_widgetbook_use_cases_primitives_hypr_badge_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/primitives/hypr_toggle_switch_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_primitives_hypr_toggle_switch_use_cases;
+import 'package:hyprbaric_widgetbook/use_cases/settings/settings_use_cases.dart'
+    as _hyprbaric_widgetbook_use_cases_settings_settings_use_cases;
 import 'package:widgetbook/widgetbook.dart' as _widgetbook;
 
 final directories = <_widgetbook.WidgetbookNode>[
@@ -688,6 +690,22 @@ final directories = <_widgetbook.WidgetbookNode>[
                 builder:
                     _hyprbaric_widgetbook_use_cases_power_power_panel_use_cases
                         .buildFailedPowerPanel,
+              ),
+            ],
+          ),
+        ],
+      ),
+      _widgetbook.WidgetbookFolder(
+        name: 'Settings',
+        children: [
+          _widgetbook.WidgetbookComponent(
+            name: 'SettingsOverlayContent',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Interactive menu',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_settings_settings_use_cases
+                        .buildSettingsMenu,
               ),
             ],
           ),
