@@ -48,6 +48,7 @@ export 'src/bindings/bindings.dart'
         RecordingStatusSelecting,
         RecordingStatusUnavailable,
         ScreenshotMode,
+        SessionAction,
         Uint64,
         WorkspaceStatus;
 export 'src/features/audio/audio_channel_strip.dart'
@@ -77,6 +78,9 @@ export 'src/features/controls/controls_chrome.dart'
 export 'src/features/controls/controls_panel.dart' show ControlsPanel;
 export 'src/features/clock/clock_controller.dart' show ClockViewState;
 export 'src/features/clock/clock_panel.dart' show ClockPanel;
+export 'src/features/session/session_controller.dart' show SessionConfirmChoice;
+export 'src/features/session/session_launcher_content.dart'
+    show SessionLauncherCard;
 export 'src/features/power/battery_chip.dart' show BatteryChip;
 export 'src/features/power/power_panel.dart' show PowerPanel;
 export 'src/features/power/power_profile_pad.dart' show PowerProfilePad;
