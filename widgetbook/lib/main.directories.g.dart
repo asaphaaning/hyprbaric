@@ -15,6 +15,8 @@ import 'package:hyprbaric_widgetbook/use_cases/audio/audio_atom_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/audio/audio_panel_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_audio_audio_panel_use_cases;
+import 'package:hyprbaric_widgetbook/use_cases/bar/bar_use_cases.dart'
+    as _hyprbaric_widgetbook_use_cases_bar_bar_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/controls/control_atom_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/controls/controls_panel_use_cases.dart'
@@ -475,6 +477,26 @@ final directories = <_widgetbook.WidgetbookNode>[
                 builder:
                     _hyprbaric_widgetbook_use_cases_audio_audio_panel_use_cases
                         .buildUnavailableAudioPanel,
+              ),
+            ],
+          ),
+        ],
+      ),
+      _widgetbook.WidgetbookFolder(
+        name: 'Bar',
+        children: [
+          _widgetbook.WidgetbookComponent(
+            name: 'Hyprbaric',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Desktop — active',
+                builder: _hyprbaric_widgetbook_use_cases_bar_bar_use_cases
+                    .buildDesktopBar,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Laptop — active',
+                builder: _hyprbaric_widgetbook_use_cases_bar_bar_use_cases
+                    .buildLaptopBar,
               ),
             ],
           ),

@@ -7,6 +7,7 @@ import 'package:hyprbaric_widgetbook/main.directories.g.dart'
 import 'package:hyprbaric_widgetbook/use_cases/audio/audio_atom_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/audio/audio_fixtures.dart';
 import 'package:hyprbaric_widgetbook/use_cases/audio/audio_panel_use_cases.dart';
+import 'package:hyprbaric_widgetbook/use_cases/bar/bar_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/controls/control_atom_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/controls/controls_fixtures.dart';
 import 'package:hyprbaric_widgetbook/use_cases/controls/controls_panel_use_cases.dart';
@@ -122,6 +123,21 @@ void main() {
     expect(find.byType(AudioMixerFooter), findsOneWidget);
     expect(find.byType(AudioChannelStrip), findsNWidgets(2));
     expect(tester.getSize(find.byType(AudioPanel)).width, 336);
+  });
+
+  testWidgets('full bar story is the production composition', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(Builder(builder: buildLaptopBar));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byType(Hyprbaric), findsOneWidget);
+    expect(find.text('II'), findsOneWidget);
+    expect(find.text('Zed'), findsOneWidget);
+    expect(find.text('widget_catalog.dart — Hyprbaric'), findsOneWidget);
+    expect(find.text('72%', findRichText: true), findsOneWidget);
+    expect(find.text('Sun, Aug 30'), findsOneWidget);
   });
 
   testWidgets('interactive audio story toggles a production mute control', (
@@ -407,7 +423,13 @@ void main() {
       widgets.children!.whereType<WidgetbookFolder>().map(
         (WidgetbookFolder folder) => folder.name,
       ),
-      containsAll(<String>['Audio', 'Controls', 'Notifications', 'Power']),
+      containsAll(<String>[
+        'Audio',
+        'Bar',
+        'Controls',
+        'Notifications',
+        'Power',
+      ]),
     );
 
     final WidgetbookFolder audioAtoms = buildingBlocks.children!

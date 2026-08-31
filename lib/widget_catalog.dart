@@ -15,6 +15,17 @@ export 'src/bindings/bindings.dart'
         CaffeineStatus,
         CaffeineStatusAvailable,
         CaffeineStatusUnavailable,
+        CalendarDay,
+        ClockStatus,
+        FocusedWindowStatus,
+        MonitorFocusedWindowStatus,
+        MonitorWorkspaceStatus,
+        NetworkEntry,
+        NetworkEntryState,
+        NetworkInterface,
+        NetworkStatus,
+        NetworkTraffic,
+        NetworkTransfer,
         NightLightStatus,
         NightLightStatusAvailable,
         NightLightStatusUnavailable,
@@ -33,7 +44,8 @@ export 'src/bindings/bindings.dart'
         RecordingStatusSelecting,
         RecordingStatusUnavailable,
         ScreenshotMode,
-        Uint64;
+        Uint64,
+        WorkspaceStatus;
 export 'src/features/audio/audio_channel_strip.dart'
     show AudioChannelStrip, AudioDbReadout, AudioMixerChannel, AudioMuteButton;
 export 'src/features/audio/audio_chrome.dart'
@@ -62,6 +74,18 @@ export 'src/features/controls/controls_panel.dart' show ControlsPanel;
 export 'src/features/power/battery_chip.dart' show BatteryChip;
 export 'src/features/power/power_panel.dart' show PowerPanel;
 export 'src/features/power/power_profile_pad.dart' show PowerProfilePad;
+export 'src/features/setup/setup_guide_state.dart'
+    show setupGuideAutomaticHostProvider;
+export 'src/hyprbaric.dart' show Hyprbaric;
+export 'src/state/rust_signals/audio.dart'
+    show audioStatusProvider, brightnessStatusProvider;
+export 'src/state/rust_signals/clock.dart' show clockStatusProvider;
+export 'src/state/rust_signals/compositor.dart'
+    show focusedWindowStatusProvider, workspaceStatusProvider;
+export 'src/state/rust_signals/network.dart' show networkStatusProvider;
+export 'src/state/rust_signals/notifications.dart'
+    show notificationStatusProvider;
+export 'src/state/rust_signals/power.dart' show powerStatusProvider;
 export 'src/theme/hypr_palette.dart' show HyprPalette;
 export 'src/widgets/hypr_surface.dart';
 export 'src/widgets/notification_panel.dart' show NotificationPanel;
