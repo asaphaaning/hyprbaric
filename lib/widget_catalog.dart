@@ -81,6 +81,16 @@ export 'src/features/clock/clock_panel.dart' show ClockPanel;
 export 'src/features/session/session_controller.dart' show SessionConfirmChoice;
 export 'src/features/session/session_launcher_content.dart'
     show SessionLauncherCard;
+export 'src/state/transient_overlays.dart' show OsdEvent, OsdKind;
+export 'src/widgets/osd_overlay.dart'
+    show
+        OsdHeader,
+        OsdMeter,
+        OsdPanel,
+        OsdReadout,
+        OsdReadoutView,
+        OsdScale,
+        OsdSegment;
 export 'src/features/power/battery_chip.dart' show BatteryChip;
 export 'src/features/power/power_panel.dart' show PowerPanel;
 export 'src/features/power/power_profile_pad.dart' show PowerProfilePad;

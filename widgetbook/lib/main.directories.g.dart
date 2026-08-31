@@ -29,6 +29,8 @@ import 'package:hyprbaric_widgetbook/use_cases/notifications/notification_atom_u
     as _hyprbaric_widgetbook_use_cases_notifications_notification_atom_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/notifications/notification_panel_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_notifications_notification_panel_use_cases;
+import 'package:hyprbaric_widgetbook/use_cases/osd/osd_use_cases.dart'
+    as _hyprbaric_widgetbook_use_cases_osd_osd_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/power/battery_chip_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_power_battery_chip_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/power/power_panel_use_cases.dart'
@@ -622,6 +624,31 @@ final directories = <_widgetbook.WidgetbookNode>[
                 builder:
                     _hyprbaric_widgetbook_use_cases_notifications_notification_panel_use_cases
                         .buildUnavailableNotificationPanel,
+              ),
+            ],
+          ),
+        ],
+      ),
+      _widgetbook.WidgetbookFolder(
+        name: 'OSD',
+        children: [
+          _widgetbook.WidgetbookComponent(
+            name: 'OsdPanel',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Brightness',
+                builder: _hyprbaric_widgetbook_use_cases_osd_osd_use_cases
+                    .buildBrightnessOsd,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Muted volume',
+                builder: _hyprbaric_widgetbook_use_cases_osd_osd_use_cases
+                    .buildMutedVolumeOsd,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Volume',
+                builder: _hyprbaric_widgetbook_use_cases_osd_osd_use_cases
+                    .buildVolumeOsd,
               ),
             ],
           ),
