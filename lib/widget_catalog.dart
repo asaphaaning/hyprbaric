@@ -3,6 +3,12 @@ library;
 
 export 'src/bindings/bindings.dart'
     show
+        CaffeineStatus,
+        CaffeineStatusAvailable,
+        CaffeineStatusUnavailable,
+        NightLightStatus,
+        NightLightStatusAvailable,
+        NightLightStatusUnavailable,
         NotificationEntry,
         NotificationStatus,
         NotificationUrgency,
@@ -12,7 +18,23 @@ export 'src/bindings/bindings.dart'
         PowerCommandSetProfile,
         PowerProfile,
         PowerStatus,
+        RecordingMode,
+        RecordingStatus,
+        RecordingStatusIdle,
+        RecordingStatusSelecting,
+        RecordingStatusUnavailable,
+        ScreenshotMode,
         Uint64;
+export 'src/features/controls/control_capture_pads.dart'
+    show ControlCapturePad, ControlRecordPad;
+export 'src/features/controls/control_inspect_button.dart'
+    show ControlInspectButton;
+export 'src/features/controls/control_rocker.dart' show ControlRocker;
+export 'src/features/controls/control_settings_row.dart'
+    show ControlSettingsRow;
+export 'src/features/controls/controls_chrome.dart'
+    show ControlChassis, ControlSectionLabel, ControlSectionTray;
+export 'src/features/controls/controls_panel.dart' show ControlsPanel;
 export 'src/features/power/battery_chip.dart' show BatteryChip;
 export 'src/features/power/power_panel.dart' show PowerPanel;
 export 'src/features/power/power_profile_pad.dart' show PowerProfilePad;

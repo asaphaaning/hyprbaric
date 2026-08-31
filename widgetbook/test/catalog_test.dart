@@ -3,6 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hyprbaric/widget_catalog.dart';
 import 'package:hyprbaric_widgetbook/catalog/catalog_theme.dart';
 import 'package:hyprbaric_widgetbook/main.dart';
+import 'package:hyprbaric_widgetbook/use_cases/controls/control_atom_use_cases.dart';
+import 'package:hyprbaric_widgetbook/use_cases/controls/controls_fixtures.dart';
+import 'package:hyprbaric_widgetbook/use_cases/controls/controls_panel_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/notifications/notification_atom_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/notifications/notification_fixtures.dart';
 import 'package:hyprbaric_widgetbook/use_cases/notifications/notification_panel_use_cases.dart';
@@ -11,6 +14,129 @@ import 'package:hyprbaric_widgetbook/use_cases/power/power_fixtures.dart';
 import 'package:hyprbaric_widgetbook/use_cases/power/power_panel_use_cases.dart';
 
 void main() {
+  test('controls fixtures preserve distinct operational states', () {
+    expect(ControlsFixtures.ready.dndEnabled, isFalse);
+    expect(ControlsFixtures.active.dndEnabled, isTrue);
+    expect(
+      ControlsFixtures.unavailable.recordingStatus,
+      isA<RecordingStatusUnavailable>(),
+    );
+    expect(
+      ControlsFixtures.unavailable.nightLightStatus,
+      isA<NightLightStatusUnavailable>(),
+    );
+  });
+
+  testWidgets('controls atoms use their production components', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildControlCapturePadStates),
+      ),
+    );
+
+    expect(find.byType(ControlCapturePad), findsNWidgets(3));
+    expect(find.text('REGION'), findsOneWidget);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildControlRecordPadStates),
+      ),
+    );
+    expect(find.byType(ControlRecordPad), findsNWidgets(4));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildControlInspectButtonStates),
+      ),
+    );
+    expect(find.byType(ControlInspectButton), findsNWidgets(2));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildControlRockerStates),
+      ),
+    );
+    expect(find.byType(ControlRocker), findsNWidgets(3));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildControlSettingsRow),
+      ),
+    );
+    expect(find.byType(ControlSettingsRow), findsOneWidget);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildControlSectionTray),
+      ),
+    );
+    expect(find.byType(ControlSectionTray), findsOneWidget);
+    expect(find.byType(ControlSectionLabel), findsOneWidget);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildControlChassis),
+      ),
+    );
+    expect(find.byType(ControlChassis), findsOneWidget);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildControlSectionLabel),
+      ),
+    );
+    expect(find.byType(ControlSectionLabel), findsOneWidget);
+  });
+
+  testWidgets('composed controls story uses the complete production panel', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildReadyControlsPanel),
+      ),
+    );
+
+    expect(find.byType(ControlsPanel), findsOneWidget);
+    expect(find.byType(ControlSectionTray), findsNWidgets(3));
+    expect(find.byType(ControlCapturePad), findsNWidgets(3));
+    expect(find.byType(ControlRecordPad), findsOneWidget);
+    expect(find.byType(ControlInspectButton), findsNWidgets(2));
+    expect(find.byType(ControlRocker), findsNWidgets(4));
+    expect(find.byType(ControlSettingsRow), findsOneWidget);
+    expect(tester.getSize(find.byType(ControlsPanel)).width, 432);
+  });
+
+  testWidgets('interactive controls story updates a production rocker', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildInteractiveControlsPanel),
+      ),
+    );
+
+    await tester.tap(find.text('NIGHT'));
+    await tester.pumpAndSettle();
+
+    final ControlRocker night = tester.widget<ControlRocker>(
+      find.byKey(const ValueKey<String>('controls-night-light-rocker')),
+    );
+    expect(night.value, isTrue);
+  });
+
   test('power fixtures distinguish desktops from battery-powered systems', () {
     expect(PowerFixtures.desktop.batteryPresent, isFalse);
     expect(PowerFixtures.desktop.percentage, isNull);

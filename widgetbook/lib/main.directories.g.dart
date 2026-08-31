@@ -11,6 +11,10 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
+import 'package:hyprbaric_widgetbook/use_cases/controls/control_atom_use_cases.dart'
+    as _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases;
+import 'package:hyprbaric_widgetbook/use_cases/controls/controls_panel_use_cases.dart'
+    as _hyprbaric_widgetbook_use_cases_controls_controls_panel_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/notifications/notification_atom_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_notifications_notification_atom_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/notifications/notification_panel_use_cases.dart'
@@ -36,6 +40,94 @@ final directories = <_widgetbook.WidgetbookNode>[
       _widgetbook.WidgetbookFolder(
         name: 'Controls',
         children: [
+          _widgetbook.WidgetbookComponent(
+            name: 'ControlCapturePad',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Capture modes',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases
+                        .buildControlCapturePadStates,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'ControlChassis',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Translucent chassis',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases
+                        .buildControlChassis,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'ControlInspectButton',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Inspect actions',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases
+                        .buildControlInspectButtonStates,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'ControlRecordPad',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Recording phases',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases
+                        .buildControlRecordPadStates,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'ControlRocker',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Rocker states',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases
+                        .buildControlRockerStates,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'ControlSectionLabel',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Section label',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases
+                        .buildControlSectionLabel,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'ControlSectionTray',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Tray and label',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases
+                        .buildControlSectionTray,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'ControlSettingsRow',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Settings row',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases
+                        .buildControlSettingsRow,
+              ),
+            ],
+          ),
           _widgetbook.WidgetbookComponent(
             name: 'HyprToggleSwitch',
             useCases: [
@@ -179,6 +271,46 @@ final directories = <_widgetbook.WidgetbookNode>[
   _widgetbook.WidgetbookCategory(
     name: 'Widgets',
     children: [
+      _widgetbook.WidgetbookFolder(
+        name: 'Controls',
+        children: [
+          _widgetbook.WidgetbookComponent(
+            name: 'ControlsPanel',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Active toggles',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_controls_controls_panel_use_cases
+                        .buildActiveControlsPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Interactive toggles',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_controls_controls_panel_use_cases
+                        .buildInteractiveControlsPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Ready',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_controls_controls_panel_use_cases
+                        .buildReadyControlsPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Selecting recording region',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_controls_controls_panel_use_cases
+                        .buildSelectingRecordingControlsPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Services unavailable',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_controls_controls_panel_use_cases
+                        .buildUnavailableControlsPanel,
+              ),
+            ],
+          ),
+        ],
+      ),
       _widgetbook.WidgetbookFolder(
         name: 'Notifications',
         children: [
