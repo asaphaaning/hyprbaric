@@ -707,8 +707,14 @@
   width: auto;
 }
 
-.flutterPreview {
+.mixerPreview {
   aspect-ratio: .6;
+  margin-bottom: auto;
+  margin-top: clamp(12px, 1.6vw, 24px);
+}
+
+.controlsPreview {
+  aspect-ratio: 1.12;
   margin-bottom: auto;
   margin-top: clamp(12px, 1.6vw, 24px);
 }
@@ -886,7 +892,8 @@
 }
 
 @media (min-width: 997px) {
-  .flutterPreview {
+  .mixerPreview,
+  .controlsPreview {
     align-self: center;
     width: calc(100% - 8px);
   }
@@ -1020,12 +1027,20 @@
     padding: 16px;
   }
 
-  .flutterPreview {
+  .mixerPreview {
     aspect-ratio: .6;
     height: auto;
     margin-inline: auto;
     margin-top: 12px;
     max-width: 336px;
+    padding-block: 4px 12px;
+  }
+
+  .controlsPreview {
+    height: auto;
+    margin-inline: auto;
+    margin-top: 12px;
+    max-width: 432px;
     padding-block: 4px 12px;
   }
 

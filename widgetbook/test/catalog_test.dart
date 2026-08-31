@@ -5,6 +5,7 @@ import 'package:hyprbaric_widgetbook/catalog/catalog_theme.dart';
 import 'package:hyprbaric_widgetbook/main.directories.g.dart'
     as generated_catalog;
 import 'package:hyprbaric_widgetbook/audio/audio_fixtures.dart';
+import 'package:hyprbaric_widgetbook/audio/controls_panel_preview.dart';
 import 'package:hyprbaric_widgetbook/use_cases/audio/audio_atom_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/audio/audio_panel_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/bar/bar_cluster_button_use_cases.dart';
@@ -220,6 +221,31 @@ void main() {
       ),
     );
     expect(output.endpoint!.muted, isTrue);
+  });
+
+  testWidgets('controls preview toggles the production night-light rocker', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: const Scaffold(body: ControlsPanelPreview()),
+      ),
+    );
+
+    expect(find.byType(ControlsPanel), findsOneWidget);
+    ControlRocker night = tester.widget<ControlRocker>(
+      find.byKey(const ValueKey<String>('controls-night-light-rocker')),
+    );
+    expect(night.value, isFalse);
+
+    await tester.tap(find.text('NIGHT'));
+    await tester.pumpAndSettle();
+
+    night = tester.widget<ControlRocker>(
+      find.byKey(const ValueKey<String>('controls-night-light-rocker')),
+    );
+    expect(night.value, isTrue);
   });
 
   test('controls fixtures preserve distinct operational states', () {

@@ -10,7 +10,7 @@
     entrypointBaseUrl: assetRoot,
   };
 
-  window.hyprbaricMixerReady = new Promise((resolve, reject) => {
+  window.hyprbaricEmbedsReady = new Promise((resolve, reject) => {
     _flutter.loader.load({
       config,
       onEntrypointLoaded: async (engineInitializer) => {
@@ -20,7 +20,7 @@
             multiViewEnabled: true,
           });
           const app = await runner.runApp();
-          window.hyprbaricMixerApp = app;
+          window.hyprbaricEmbedsApp = app;
           resolve(app);
         } catch (error) {
           reject(error);

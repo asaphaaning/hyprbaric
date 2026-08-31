@@ -18,8 +18,19 @@ function MixerSkeleton() {
   );
 }
 
-export default function FlutterDemo({className = ''}) {
-  const source = useBaseUrl('flutter/mixer/flutter_bootstrap.js');
+function ControlsSkeleton() {
+  return (
+    <div aria-hidden="true" className={`${styles.skeleton} ${styles.controlsSkeleton}`}>
+      <span className={styles.controlsCapture} />
+      <span className={styles.controlsInspect} />
+      <span className={styles.controlsToggles} />
+      <span className={styles.controlsSettings} />
+    </div>
+  );
+}
+
+export default function FlutterDemo({className = '', preview = 'mixer'}) {
+  const source = useBaseUrl('flutter/previews/flutter_bootstrap.js');
   const host = useRef(null);
   const [ready, setReady] = useState(false);
 
@@ -36,7 +47,7 @@ export default function FlutterDemo({className = ''}) {
         loadFlutterRuntime(source)
           .then((app) => {
             if (cancelled) return;
-            viewId = app.addView({hostElement: element});
+            viewId = app.addView({hostElement: element, initialData: {preview}});
             requestAnimationFrame(() => setReady(true));
           })
           .catch(() => setReady(false));
@@ -48,15 +59,15 @@ export default function FlutterDemo({className = ''}) {
     return () => {
       cancelled = true;
       observer.disconnect();
-      if (viewId !== undefined && window.hyprbaricMixerApp) {
-        window.hyprbaricMixerApp.removeView(viewId);
+      if (viewId !== undefined && window.hyprbaricEmbedsApp) {
+        window.hyprbaricEmbedsApp.removeView(viewId);
       }
     };
-  }, [source]);
+  }, [preview, source]);
 
   return (
     <div className={`${styles.frame} ${className}`}>
-      {!ready && <MixerSkeleton />}
+      {!ready && (preview === 'controls' ? <ControlsSkeleton /> : <MixerSkeleton />)}
       <div className={ready ? styles.hostReady : styles.host} ref={host} />
     </div>
   );

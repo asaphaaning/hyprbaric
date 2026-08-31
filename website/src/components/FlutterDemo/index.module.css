@@ -63,6 +63,21 @@
 .skeletonRailRight {right: 29%;}
 .skeletonMaster {border-radius: 4px; bottom: 8%; height: 2%; left: 22%; right: 18%;}
 
+.controlsSkeleton {
+  padding: 4%;
+}
+
+.controlsSkeleton span {
+  border-radius: 10px;
+  left: 4%;
+  right: 4%;
+}
+
+.controlsCapture {height: 26%; top: 7%;}
+.controlsInspect {height: 14%; top: 39%;}
+.controlsToggles {height: 27%; top: 59%;}
+.controlsSettings {bottom: 5%; height: 7%;}
+
 @keyframes shimmer {
   to {transform: translateX(100%);}
 }

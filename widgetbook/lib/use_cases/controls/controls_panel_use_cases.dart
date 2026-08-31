@@ -3,6 +3,7 @@ import 'package:hyprbaric/widget_catalog.dart';
 import 'package:widgetbook_annotation/widgetbook_annotation.dart';
 
 import '../../catalog/catalog_frame.dart';
+import '../../stories/controls_panel_preview.dart';
 import 'controls_fixtures.dart';
 
 @UseCase(name: 'Ready', type: ControlsPanel, path: '[Widgets]/Controls')
@@ -45,7 +46,7 @@ Widget buildUnavailableControlsPanel(BuildContext context) {
   path: '[Widgets]/Controls',
 )
 Widget buildInteractiveControlsPanel(BuildContext context) {
-  return const _InteractiveControlsPanelStory();
+  return const CatalogCanvas(child: ControlsPanelPreview());
 }
 
 class _ControlsPanelStory extends StatelessWidget {
@@ -69,65 +70,6 @@ class _ControlsPanelStory extends StatelessWidget {
         onSetNightLight: _ignoreToggle,
         caffeineStatus: scenario.caffeineStatus,
         onSetCaffeine: _ignoreToggle,
-        recordingStatus: scenario.recordingStatus,
-      ),
-    );
-  }
-}
-
-class _InteractiveControlsPanelStory extends StatefulWidget {
-  const _InteractiveControlsPanelStory();
-
-  @override
-  State<_InteractiveControlsPanelStory> createState() =>
-      _InteractiveControlsPanelStoryState();
-}
-
-class _InteractiveControlsPanelStoryState
-    extends State<_InteractiveControlsPanelStory> {
-  late ControlsScenario scenario;
-
-  @override
-  void initState() {
-    super.initState();
-    scenario = ControlsFixtures.ready;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return CatalogCanvas(
-      child: ControlsPanel(
-        borderRadius: const BorderRadius.all(Radius.circular(18)),
-        onCaptureScreenshot: _ignoreScreenshot,
-        onPickColor: _noop,
-        onToggleRecording: _noop,
-        onOpenSettings: _noop,
-        onToast: _ignoreToast,
-        dndEnabled: scenario.dndEnabled,
-        onSetDoNotDisturb: (bool enabled) {
-          setState(() {
-            scenario = scenario.copyWith(dndEnabled: enabled);
-          });
-        },
-        nightLightStatus: scenario.nightLightStatus,
-        onSetNightLight: (bool enabled) {
-          setState(() {
-            scenario = scenario.copyWith(
-              nightLightStatus: NightLightStatusAvailable(
-                enabled: enabled,
-                temperature: 3500,
-              ),
-            );
-          });
-        },
-        caffeineStatus: scenario.caffeineStatus,
-        onSetCaffeine: (bool enabled) {
-          setState(() {
-            scenario = scenario.copyWith(
-              caffeineStatus: CaffeineStatusAvailable(enabled: enabled),
-            );
-          });
-        },
         recordingStatus: scenario.recordingStatus,
       ),
     );

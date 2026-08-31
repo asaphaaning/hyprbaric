@@ -198,7 +198,9 @@ function ModuleCard({module}) {
       <h3>{module.title}</h3>
       <p>{module.text}</p>
       {module.label === 'Volume' ? (
-        <FlutterDemo className={styles.flutterPreview} />
+        <FlutterDemo className={styles.mixerPreview} />
+      ) : module.label === 'Controls' ? (
+        <FlutterDemo className={styles.controlsPreview} preview="controls" />
       ) : (
         <div className={styles.panelPreview}><img src={imageUrl} alt={`${module.label} panel`} /></div>
       )}

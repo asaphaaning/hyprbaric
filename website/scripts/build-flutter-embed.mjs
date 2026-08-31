@@ -5,7 +5,7 @@ import path from 'node:path';
 const website = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const project = path.dirname(website);
 const widgetbook = path.join(project, 'widgetbook');
-const output = path.join(website, 'static', 'flutter', 'mixer');
+const output = path.join(website, 'static', 'flutter', 'previews');
 
 const result = spawnSync(
   'flutter',
