@@ -576,6 +576,30 @@ final directories = <_widgetbook.WidgetbookNode>[
             name: 'AppLauncherConsole',
             useCases: [
               _widgetbook.WidgetbookUseCase(
+                name: 'Empty',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_launcher_app_launcher_use_cases
+                        .buildEmptyAppLauncher,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Error',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_launcher_app_launcher_use_cases
+                        .buildErrorAppLauncher,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Filtered',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_launcher_app_launcher_use_cases
+                        .buildFilteredAppLauncher,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Loading',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_launcher_app_launcher_use_cases
+                        .buildLoadingAppLauncher,
+              ),
+              _widgetbook.WidgetbookUseCase(
                 name: 'Populated',
                 builder:
                     _hyprbaric_widgetbook_use_cases_launcher_app_launcher_use_cases
