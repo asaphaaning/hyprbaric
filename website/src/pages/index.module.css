@@ -1016,6 +1016,9 @@
   .flutterPreview {
     aspect-ratio: .6;
     height: auto;
+    margin-inline: auto;
+    margin-top: 12px;
+    max-width: 336px;
     padding-block: 4px 12px;
   }
 
