@@ -20,8 +20,9 @@
     <div id="preview"></div>
     <script>
       const hostElement = document.querySelector('#preview');
-      const preview = new URLSearchParams(window.location.search).get('preview') === 'controls'
-        ? 'controls'
+      const requestedPreview = new URLSearchParams(window.location.search).get('preview');
+      const preview = ['mixer', 'controls', 'network', 'power', 'notifications', 'workspaces'].includes(requestedPreview)
+        ? requestedPreview
         : 'mixer';
       const script = document.createElement('script');
 

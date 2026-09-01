@@ -83,6 +83,66 @@
 .controlsToggles {height: 27%; top: 59%;}
 .controlsSettings {bottom: 5%; height: 7%;}
 
+.networkSkeleton {
+  padding: 4%;
+}
+
+.networkSkeleton span {
+  border-radius: 9px;
+  left: 5%;
+  right: 5%;
+}
+
+.networkScope {height: 18%; top: 4%;}
+.networkParameters {height: 15%; top: 25%;}
+.networkWifi {height: 28%; top: 45%;}
+.networkInterfaces {height: 16%; top: 77%;}
+.networkSettings {bottom: 3%; height: 3%;}
+
+.powerSkeleton {
+  padding: 5%;
+}
+
+.powerSkeleton span {
+  border-radius: 8px;
+  left: 6%;
+  right: 6%;
+}
+
+.powerMeter {height: 25%; top: 9%;}
+.powerReadouts {height: 19%; top: 38%;}
+.powerTelemetry {height: 7%; top: 61%;}
+.powerProfiles {bottom: 8%; height: 18%;}
+
+.notificationsSkeleton {
+  padding: 4%;
+}
+
+.notificationsSkeleton span {
+  border-radius: 8px;
+  left: 5%;
+  right: 5%;
+}
+
+.notificationsHeader {height: 10%; top: 5%;}
+.notificationRowOne {height: 23%; top: 20%;}
+.notificationRowTwo {height: 23%; top: 47%;}
+.notificationRowThree {height: 23%; top: 74%;}
+
+.workspaceSkeleton {
+  border-radius: 10px;
+}
+
+.workspaceSkeleton span {
+  border-radius: 5px;
+  height: 30%;
+  top: 35%;
+}
+
+.workspacePrevious {left: 7%; width: 7%;}
+.workspaceIndicators {left: 20%; right: 20%;}
+.workspaceNext {right: 7%; width: 7%;}
+
 @keyframes shimmer {
   to {transform: translateX(100%);}
 }

@@ -4,6 +4,7 @@ import 'package:hyprbaric/widget_catalog.dart';
 import 'package:widgetbook_annotation/widgetbook_annotation.dart';
 
 import '../../catalog/catalog_frame.dart';
+import '../../stories/power_panel_preview.dart';
 import 'power_fixtures.dart';
 
 @UseCase(
@@ -99,7 +100,7 @@ Widget buildFailedPowerPanel(BuildContext context) {
   path: '[Widgets]/Power',
 )
 Widget buildInteractivePowerPanel(BuildContext context) {
-  return const _InteractivePowerPanelStory();
+  return const CatalogCanvas(child: PowerPanelPreview());
 }
 
 class _PowerPanelStory extends StatelessWidget {
@@ -116,37 +117,6 @@ class _PowerPanelStory extends StatelessWidget {
         status: status,
         latestResult: latestResult,
         onSetProfile: (_) {},
-      ),
-    );
-  }
-}
-
-class _InteractivePowerPanelStory extends StatefulWidget {
-  const _InteractivePowerPanelStory();
-
-  @override
-  State<_InteractivePowerPanelStory> createState() =>
-      _InteractivePowerPanelStoryState();
-}
-
-class _InteractivePowerPanelStoryState
-    extends State<_InteractivePowerPanelStory> {
-  PowerProfile activeProfile = PowerProfile.balanced;
-
-  @override
-  Widget build(BuildContext context) {
-    return CatalogCanvas(
-      child: PowerPanel(
-        borderRadius: const BorderRadius.all(Radius.circular(18)),
-        status: AsyncValue<PowerStatus>.data(
-          PowerFixtures.laptop(activeProfile: activeProfile),
-        ),
-        latestResult: null,
-        onSetProfile: (PowerProfile profile) {
-          setState(() {
-            activeProfile = profile;
-          });
-        },
       ),
     );
   }

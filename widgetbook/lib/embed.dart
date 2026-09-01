@@ -6,6 +6,10 @@ import 'package:flutter/material.dart';
 
 import 'audio/audio_mixer_preview.dart';
 import 'audio/controls_panel_preview.dart';
+import 'audio/network_panel_preview.dart';
+import 'audio/notification_panel_preview.dart';
+import 'audio/power_panel_preview.dart';
+import 'audio/workspace_strip_preview.dart';
 import 'embed/embed_theme.dart';
 
 void main() => runWidget(const _EmbedViews());
@@ -51,7 +55,11 @@ class _EmbedViewsState extends State<_EmbedViews> with WidgetsBindingObserver {
 
 enum _Preview {
   mixer(width: 336),
-  controls(width: 432);
+  controls(width: 432),
+  network(width: 340),
+  power(width: 320),
+  notifications(width: 380),
+  workspaces(width: 340);
 
   const _Preview({required this.width});
 
@@ -60,6 +68,10 @@ enum _Preview {
   static _Preview from(_EmbedInitialData? data) {
     return switch (data?.preview) {
       'controls' => _Preview.controls,
+      'network' => _Preview.network,
+      'power' => _Preview.power,
+      'notifications' => _Preview.notifications,
+      'workspaces' => _Preview.workspaces,
       _ => _Preview.mixer,
     };
   }
@@ -135,6 +147,10 @@ class _PreviewEmbedState extends State<_PreviewEmbed> {
                 child: switch (preview) {
                   _Preview.mixer => const AudioMixerPreview(),
                   _Preview.controls => const ControlsPanelPreview.landing(),
+                  _Preview.network => const NetworkPanelPreview(),
+                  _Preview.power => const PowerPanelPreview(),
+                  _Preview.notifications => const NotificationPanelPreview(),
+                  _Preview.workspaces => const WorkspaceStripPreview(),
                 },
               ),
             ),

@@ -2,9 +2,11 @@
   "name": "hyprbaric-docs",
   "private": true,
   "scripts": {
-    "start": "docusaurus start",
+    "start": "node scripts/start-development.mjs",
+    "start:docusaurus": "docusaurus start",
     "build": "npm run build:flutter-embed && docusaurus build",
     "build:flutter-embed": "node scripts/build-flutter-embed.mjs",
+    "watch:flutter-embed": "node scripts/watch-flutter-embed.mjs",
     "serve": "docusaurus serve",
     "clear": "docusaurus clear"
   },
