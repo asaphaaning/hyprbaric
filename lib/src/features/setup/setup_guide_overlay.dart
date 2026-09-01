@@ -200,7 +200,7 @@ class _SetupGuideOverlayState extends ConsumerState<SetupGuideOverlay> {
                       600,
                     );
 
-                    return _GuideCard(
+                    return SetupGuideCard(
                       width: width,
                       height: height,
                       preview: SetupGuidePreview(
@@ -248,8 +248,13 @@ class _SetupGuideOverlayState extends ConsumerState<SetupGuideOverlay> {
   }
 }
 
-class _GuideCard extends StatelessWidget {
-  const _GuideCard({
+/// The split-stage chassis that pairs the live preview with its controls.
+///
+/// The overlay owns the compositor plumbing; this card owns the layout, so the
+/// catalog can present the guide without a layer-shell surface.
+class SetupGuideCard extends StatelessWidget {
+  const SetupGuideCard({
+    super.key,
     required this.width,
     required this.height,
     required this.preview,

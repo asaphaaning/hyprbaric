@@ -24,3 +24,12 @@ recording, inspect, rocker, tray, and settings atoms.
 The audio catalog similarly covers the complete mixer panel, its output and
 input strips, faders, readouts, mute controls, brightness deck, and supporting
 header, rail, footer, divider, and unavailable message atoms.
+The bar slice adds the workspace indicator strip across its roman, numeric,
+read-only, special-workspace, and unfocused-output states, its button, nav
+button, and placeholder atoms, and the left and center clusters driven by
+overridden compositor signals.
+The setup slice presents the first-run guide card at every step, plus its stage
+preview and control column in isolation.
+Every widget the catalog exports now has a story: the OSD header, readout,
+meter, scale, and segment atoms, the toast app tag and corner brackets, and the
+settings sidebar, tab button, content header, tab body, and keybinding row.
