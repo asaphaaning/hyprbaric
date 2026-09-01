@@ -31,6 +31,11 @@
   transition: opacity 180ms ease-out;
 }
 
+.host,
+.hostReady {
+  border: 0;
+}
+
 .skeleton {
   background: linear-gradient(180deg, #1c2025, #101216);
   border: 1px solid #2b3037;

@@ -1,7 +1,6 @@
 import {useEffect, useRef, useState} from 'react';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 
-import {loadFlutterRuntime} from './flutterRuntime';
 import styles from './index.module.css';
 
 function MixerSkeleton() {
@@ -30,45 +29,42 @@ function ControlsSkeleton() {
 }
 
 export default function FlutterDemo({className = '', preview = 'mixer'}) {
-  const source = useBaseUrl('flutter/previews/flutter_bootstrap.js');
-  const host = useRef(null);
+  const source = `${useBaseUrl('flutter-preview/')}?preview=${preview}`;
+  const frame = useRef(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const element = host.current;
+    const element = frame.current;
     if (!element) return undefined;
 
-    let cancelled = false;
-    let viewId;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) return;
-        observer.disconnect();
-        loadFlutterRuntime(source)
-          .then((app) => {
-            if (cancelled) return;
-            viewId = app.addView({hostElement: element, initialData: {preview}});
-            requestAnimationFrame(() => setReady(true));
-          })
-          .catch(() => setReady(false));
-      },
-      {rootMargin: '300px'},
-    );
-    observer.observe(element);
+    setReady(false);
+
+    const receiveStatus = (event) => {
+      if (event.origin !== window.location.origin || event.source !== element.contentWindow) return;
+      if (event.data?.type !== 'hyprbaric-preview-ready') return;
+
+      setReady(true);
+    };
+
+    window.addEventListener('message', receiveStatus);
 
     return () => {
-      cancelled = true;
-      observer.disconnect();
-      if (viewId !== undefined && window.hyprbaricEmbedsApp) {
-        window.hyprbaricEmbedsApp.removeView(viewId);
-      }
+      window.removeEventListener('message', receiveStatus);
     };
-  }, [preview, source]);
+  }, [source]);
 
   return (
     <div className={`${styles.frame} ${className}`}>
       {!ready && (preview === 'controls' ? <ControlsSkeleton /> : <MixerSkeleton />)}
-      <div className={ready ? styles.hostReady : styles.host} ref={host} />
+      <iframe
+        aria-label={`${preview} module preview`}
+        className={ready ? styles.hostReady : styles.host}
+        loading="lazy"
+        onError={() => setReady(false)}
+        ref={frame}
+        src={source}
+        title={`${preview} module preview`}
+      />
     </div>
   );
 }

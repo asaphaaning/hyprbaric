@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      html,
+      body,
+      #preview {
+        background: transparent;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        padding: 0;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="preview"></div>
+    <script>
+      const hostElement = document.querySelector('#preview');
+      const preview = new URLSearchParams(window.location.search).get('preview') === 'controls'
+        ? 'controls'
+        : 'mixer';
+      const script = document.createElement('script');
+
+      const basePath = window.location.pathname.split('/flutter-preview')[0];
+      script.src = `${basePath}/flutter/previews/flutter_bootstrap.js`;
+      script.addEventListener('load', async () => {
+        const app = await window.hyprbaricEmbedsReady;
+
+        app.addView({
+          hostElement,
+          initialData: {
+            preview,
+            onReady: () => {
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                  window.parent.postMessage({type: 'hyprbaric-preview-ready'}, window.location.origin);
+                });
+              });
+            },
+          },
+        });
+      });
+      document.head.append(script);
+    </script>
+  </body>
+</html>

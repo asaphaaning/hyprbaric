@@ -42,7 +42,7 @@ class _EmbedViewsState extends State<_EmbedViews> with WidgetsBindingObserver {
           View(
             key: ValueKey<int>(view.viewId),
             view: view,
-            child: _PreviewEmbed(preview: _Preview.from(view)),
+            child: _PreviewEmbed(configuration: _Configuration.from(view)),
           ),
       ],
     );
@@ -57,10 +57,7 @@ enum _Preview {
 
   final double width;
 
-  static _Preview from(FlutterView view) {
-    final _EmbedInitialData? data =
-        ui_web.views.getInitialData(view.viewId) as _EmbedInitialData?;
-
+  static _Preview from(_EmbedInitialData? data) {
     return switch (data?.preview) {
       'controls' => _Preview.controls,
       _ => _Preview.mixer,
@@ -68,17 +65,62 @@ enum _Preview {
   }
 }
 
-extension type _EmbedInitialData._(JSObject _) implements JSObject {
-  external String? get preview;
-}
-
-class _PreviewEmbed extends StatelessWidget {
-  const _PreviewEmbed({required this.preview});
+class _Configuration {
+  const _Configuration({required this.preview, required this.onReady});
 
   final _Preview preview;
+  final JSFunction? onReady;
+
+  factory _Configuration.from(FlutterView view) {
+    final _EmbedInitialData? data =
+        ui_web.views.getInitialData(view.viewId) as _EmbedInitialData?;
+
+    return _Configuration(preview: _Preview.from(data), onReady: data?.onReady);
+  }
+
+  void reportReady() => onReady?.callAsFunction();
+}
+
+extension type _EmbedInitialData._(JSObject _) implements JSObject {
+  external String? get preview;
+
+  external JSFunction? get onReady;
+}
+
+class _PreviewEmbed extends StatefulWidget {
+  const _PreviewEmbed({required this.configuration});
+
+  final _Configuration configuration;
+
+  @override
+  State<_PreviewEmbed> createState() => _PreviewEmbedState();
+}
+
+class _PreviewEmbedState extends State<_PreviewEmbed> {
+  bool _reportedReady = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_reportedReady) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _reportedReady) {
+        return;
+      }
+
+      _reportedReady = true;
+      widget.configuration.reportReady();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final _Preview preview = widget.configuration.preview;
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: embedTheme,
