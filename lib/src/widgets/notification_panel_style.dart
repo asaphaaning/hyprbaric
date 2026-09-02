@@ -35,15 +35,15 @@ class NotificationTileStyle {
     return switch (phase) {
       NotificationTilePhase.idle => const NotificationTileStyle(
         base: NotificationPalette.tile,
-        topLight: Color(0x09FFFFFF),
-        border: Color(0x8C000000),
-        shadow: Color(0x66000000),
+        topLight: Color(0x0EFFFFFF),
+        border: NotificationPalette.tileBorder,
+        shadow: Color(0x52000000),
       ),
       NotificationTilePhase.hovered => const NotificationTileStyle(
         base: NotificationPalette.tileHovered,
-        topLight: Color(0x0EFFFFFF),
-        border: Color(0x99000000),
-        shadow: Color(0x66000000),
+        topLight: Color(0x13FFFFFF),
+        border: NotificationPalette.tileBorder,
+        shadow: Color(0x57000000),
       ),
     };
   }

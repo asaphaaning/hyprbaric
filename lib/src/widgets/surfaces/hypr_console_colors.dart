@@ -6,8 +6,8 @@ import 'hypr_colors.dart';
 ///
 /// These are machined-metal greys rather than semantic UI colours, which is
 /// why they live apart from [HyprColors]. Anything that renders inside a
-/// [HyprConsoleChassis] should pull its greys from here so the controls panel
-/// and the audio mixer stay lit by the same imaginary light source.
+/// console panel should pull its greys from here so the controls panel and
+/// the audio mixer stay lit by the same imaginary light source.
 abstract final class HyprConsoleColors {
   static const Color tray = Color(0xFF121216);
   static const Color trayBorder = Color(0x182E3036);

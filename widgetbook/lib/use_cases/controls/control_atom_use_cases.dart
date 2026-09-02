@@ -17,12 +17,12 @@ const ControlAvailability _unavailable = ControlAvailability.unavailable(
 
 @UseCase(
   name: 'Translucent chassis',
-  type: HyprConsoleChassis,
+  type: HyprPopoverPanel,
   path: '[Building blocks]/Controls',
 )
 Widget buildControlChassis(BuildContext context) {
   return CatalogCanvas(
-    child: HyprConsoleChassis(
+    child: HyprPopoverPanel(
       borderRadius: const BorderRadius.all(Radius.circular(18)),
       constraints: const BoxConstraints.tightFor(width: 432),
       padding: const EdgeInsets.all(17),

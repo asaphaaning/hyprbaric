@@ -720,13 +720,13 @@
 }
 
 .powerPreview {
-  aspect-ratio: .76;
+  aspect-ratio: .95;
   margin-bottom: auto;
   margin-top: clamp(12px, 1.6vw, 24px);
 }
 
 .controlsPreview {
-  aspect-ratio: 1.12;
+  aspect-ratio: .65;
   margin-bottom: auto;
   margin-top: clamp(12px, 1.6vw, 24px);
 }

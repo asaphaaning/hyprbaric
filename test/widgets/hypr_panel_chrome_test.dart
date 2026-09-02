@@ -43,7 +43,11 @@ void main() {
         ),
       );
 
-      expect(surface.color, HyprColors.popoverSurface);
+      expect(surface.color, isNull);
+      expect(
+        tester.widget<HyprGlassSurface>(find.byType(HyprGlassSurface)).color,
+        HyprColors.surfaceStrong,
+      );
       expect(surface.borderColor, HyprColors.popupStroke);
       expect(constrained.constraints, constraints);
       expect(panelPadding.padding, padding);

@@ -140,41 +140,94 @@ class _LedBar extends StatelessWidget {
         height: 18,
         child: Padding(
           padding: const EdgeInsets.all(3),
-          child: Row(
-            children: List<Widget>.generate(20, (int index) {
-              final double threshold = (index + 1) / 20 * 100;
-              final bool lit = active && threshold <= percentage;
-              final Color color = !lit
-                  ? const Color(0xFF202A33)
-                  : threshold < 30
-                  ? const Color(0xFFE05F55)
-                  : threshold < 60
-                  ? const Color(0xFFE7C34A)
-                  : const Color(0xFF55D982);
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(left: index == 0 ? 0 : 2),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(1),
-                      boxShadow: lit
-                          ? <BoxShadow>[
-                              BoxShadow(
-                                color: color.withValues(alpha: 0.72),
-                                blurRadius: 4,
-                              ),
-                            ]
-                          : null,
-                    ),
-                  ),
-                ),
-              );
-            }),
+          child: SizedBox.expand(
+            child: CustomPaint(
+              key: const ValueKey<String>('battery-charge-meter'),
+              painter: _BatteryChargeMeterPainter(
+                percentage: percentage,
+                active: active,
+              ),
+            ),
           ),
         ),
       ),
     );
+  }
+}
+
+/// Paints the charge segments as a single canvas rather than a flex row.
+///
+/// A canvas keeps all twenty LEDs present at every embed scale, including the
+/// narrow Flutter surfaces used by Widgetbook and the landing page.
+class _BatteryChargeMeterPainter extends CustomPainter {
+  const _BatteryChargeMeterPainter({
+    required this.percentage,
+    required this.active,
+  });
+
+  static const int _segmentCount = 20;
+  static const double _gap = 2;
+
+  final int percentage;
+  final bool active;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) {
+      return;
+    }
+
+    final double width =
+        (size.width - _gap * (_segmentCount - 1)) / _segmentCount;
+    if (width <= 0) {
+      return;
+    }
+
+    final int charge = percentage.clamp(0, 100);
+    for (int index = 0; index < _segmentCount; index += 1) {
+      final double threshold = (index + 1) / _segmentCount * 100;
+      final bool lit = active && threshold <= charge;
+      final Color color = lit
+          ? _chargeColor(threshold)
+          : const Color(0xFF202A33);
+      final RRect segment = RRect.fromRectAndRadius(
+        Rect.fromLTWH(index * (width + _gap), 0, width, size.height),
+        const Radius.circular(1),
+      );
+
+      if (lit) {
+        canvas.drawRRect(
+          segment,
+          Paint()
+            ..color = color.withValues(alpha: 0.50)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
+        );
+      }
+
+      canvas.drawRRect(segment, Paint()..color = color);
+      canvas.drawLine(
+        Offset(segment.left + 0.5, 0.5),
+        Offset(segment.right - 0.5, 0.5),
+        Paint()
+          ..color = Colors.white.withValues(alpha: lit ? 0.2 : 0.06)
+          ..strokeWidth = 0.7,
+      );
+    }
+  }
+
+  static Color _chargeColor(double threshold) {
+    if (threshold < 30) {
+      return const Color(0xFFE05F55);
+    }
+    if (threshold < 60) {
+      return const Color(0xFFE7C34A);
+    }
+    return const Color(0xFF55D982);
+  }
+
+  @override
+  bool shouldRepaint(covariant _BatteryChargeMeterPainter oldDelegate) {
+    return oldDelegate.percentage != percentage || oldDelegate.active != active;
   }
 }
 

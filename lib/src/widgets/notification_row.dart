@@ -51,34 +51,31 @@ class NotificationRow extends StatelessWidget {
                 blurRadius: 2,
                 offset: const Offset(0, 1),
               ),
+              if (phase != NotificationTilePhase.pressed)
+                BoxShadow(
+                  color: const Color(0x6B000000),
+                  blurRadius: phase == NotificationTilePhase.hovered ? 11 : 7,
+                  offset: const Offset(0, 5),
+                  spreadRadius: -4,
+                ),
             ],
           ),
           clipBehavior: Clip.antiAlias,
           child: Stack(
             children: <Widget>[
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        stops: const <double>[0, 0.42, 1],
-                        colors: <Color>[
-                          style.topLight,
-                          style.topLight.withValues(
-                            alpha: style.topLight.a * 0.22,
-                          ),
-                          Colors.transparent,
-                        ],
+              if (phase != NotificationTilePhase.pressed)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: CustomPaint(
+                      painter: _NotificationTileRimPainter(
+                        color: style.topLight,
                       ),
                     ),
                   ),
                 ),
-              ),
               Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
+                  horizontal: 12,
                   vertical: 9,
                 ),
                 child: Row(
@@ -128,6 +125,43 @@ class NotificationRow extends StatelessWidget {
   }
 }
 
+/// Paints the reference's top-only rim along the complete squircle edge.
+///
+/// The painter is clipped to the upper band after stroking the tile's full
+/// superellipse. That preserves the light into the rounded shoulders without
+/// turning the row into a fully outlined card.
+class _NotificationTileRimPainter extends CustomPainter {
+  const _NotificationTileRimPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 2 || size.height <= 4) {
+      return;
+    }
+
+    final Rect bounds = Offset.zero & size;
+    final Paint paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+
+    canvas.save();
+    canvas.clipRect(Rect.fromLTWH(0, 0, size.width, 4));
+    canvas.drawRSuperellipse(
+      BorderRadius.circular(12).toRSuperellipse(bounds.deflate(0.5)),
+      paint,
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _NotificationTileRimPainter oldDelegate) {
+    return oldDelegate.color != color;
+  }
+}
+
 class _NotificationAppLabel extends StatelessWidget {
   const _NotificationAppLabel({required this.app, required this.accent});
 
@@ -136,20 +170,31 @@ class _NotificationAppLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      app.toUpperCase(),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      textAlign: TextAlign.center,
-      style: HyprTypography.compactMonoStrong.copyWith(
-        color: accent,
-        fontSize: HyprTypography.size(9),
-        fontWeight: FontWeight.w700,
-        letterSpacing: 1.26,
-        height: 1,
-        shadows: <Shadow>[
-          Shadow(color: accent.withValues(alpha: 0.42), blurRadius: 4),
-        ],
+    return DecoratedBox(
+      decoration: const ShapeDecoration(
+        color: NotificationPalette.well,
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.all(Radius.circular(7)),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+        child: Text(
+          app.toUpperCase(),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: HyprTypography.compactMonoStrong.copyWith(
+            color: accent,
+            fontSize: HyprTypography.size(9),
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.26,
+            height: 1,
+            shadows: <Shadow>[
+              Shadow(color: accent.withValues(alpha: 0.42), blurRadius: 4),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -162,18 +207,29 @@ class _NotificationTimeLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label.toUpperCase(),
-      maxLines: 1,
-      style: HyprTypography.compactMono.copyWith(
-        color: NotificationPalette.warmTime,
-        fontSize: HyprTypography.size(9),
-        letterSpacing: 0.54,
-        height: 1,
-        fontFeatures: HyprTypography.tabularNumbers,
-        shadows: const <Shadow>[
-          Shadow(color: Color(0x668F765E), blurRadius: 4),
-        ],
+    return DecoratedBox(
+      decoration: const ShapeDecoration(
+        color: NotificationPalette.well,
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.all(Radius.circular(6)),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+        child: Text(
+          label.toUpperCase(),
+          maxLines: 1,
+          style: HyprTypography.compactMono.copyWith(
+            color: NotificationPalette.warmTime,
+            fontSize: HyprTypography.size(9),
+            letterSpacing: 0.54,
+            height: 1,
+            fontFeatures: HyprTypography.tabularNumbers,
+            shadows: const <Shadow>[
+              Shadow(color: Color(0x668F765E), blurRadius: 4),
+            ],
+          ),
+        ),
       ),
     );
   }

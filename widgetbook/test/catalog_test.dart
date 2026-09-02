@@ -248,6 +248,29 @@ void main() {
     expect(night.value, isTrue);
   });
 
+  testWidgets('controls preview toggles the production recording pad', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: const Scaffold(body: ControlsPanelPreview()),
+      ),
+    );
+
+    final Finder recordPad = find.byType(ControlRecordPad);
+    expect(recordPad, findsOneWidget);
+
+    await tester.tap(recordPad);
+    await tester.pump();
+
+    final ControlRecordPad recording = tester.widget<ControlRecordPad>(
+      recordPad,
+    );
+    expect(recording.active, isTrue);
+    expect(recording.phase, 'REC');
+  });
+
   test('controls fixtures preserve distinct operational states', () {
     expect(ControlsFixtures.ready.dndEnabled, isFalse);
     expect(ControlsFixtures.active.dndEnabled, isTrue);
@@ -321,7 +344,7 @@ void main() {
         home: Builder(builder: buildControlChassis),
       ),
     );
-    expect(find.byType(HyprConsoleChassis), findsOneWidget);
+    expect(find.byType(HyprPopoverPanel), findsOneWidget);
 
     await tester.pumpWidget(
       MaterialApp(

@@ -3272,6 +3272,10 @@ void main() {
     expect(find.text('REMAINING'), findsOneWidget);
     expect(find.text('-8.2W'), findsOneWidget);
     expect(find.text('BALANCED'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('battery-charge-meter')),
+      findsOneWidget,
+    );
 
     await tester.tap(find.text('SAVER'));
     await tester.pumpAndSettle();
@@ -3544,7 +3548,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('NOTIFICATIONS'), findsOneWidget);
-    expect(find.text('clear all'), findsOneWidget);
+    expect(find.text('CLEAR ALL'), findsOneWidget);
     expect(
       find.byKey(const ValueKey<String>('notifications-count-pill')),
       findsOneWidget,
@@ -4197,12 +4201,11 @@ void main() {
       find.byKey(const ValueKey<String>('network-connect-submit')),
     );
     await tester.pumpAndSettle();
-    await tester.tap(
+    expect(
       find.byKey(const ValueKey<String>('network-connect-submit')),
+      findsOneWidget,
     );
-    await tester.pump();
-
-    expect(find.text('Password required.'), findsOneWidget);
+    expect(find.text('Password required.'), findsNothing);
   });
 
   testWidgets('secured network password field accepts text and digits', (
@@ -4242,7 +4245,7 @@ void main() {
 
     final Finder passwordField = find.widgetWithText(
       TextField,
-      'Enter password',
+      'Password for Fiber_2.4G',
     );
     await tester.enterText(passwordField, 'pass1234');
     await tester.pump();

@@ -1,5 +1,21 @@
 import '../../bindings/bindings.dart';
 
+/// Returns the compact radio band label used in the Wi-Fi list.
+///
+/// The current signal payload does not expose a frequency. This deliberately
+/// keeps the display-only inference at the presentation boundary; connection
+/// behaviour never depends on the SSID's name.
+String networkBandLabel(NetworkEntry entry) {
+  final String ssid = entry.ssid.toUpperCase();
+  if (ssid.contains('5G') || ssid.contains('5 GHZ')) {
+    return '5G';
+  }
+  if (ssid.contains('2.4') || ssid.contains('2G')) {
+    return '2.4G';
+  }
+  return networkStrengthLabel(entry.strength);
+}
+
 String formatTransferRateValue(Uint64 bytesPerSecond) {
   final NetworkByteDisplay display = byteDisplay(bytesPerSecond.toInt());
   return display.value;

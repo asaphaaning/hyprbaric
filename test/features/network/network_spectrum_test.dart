@@ -73,4 +73,33 @@ void main() {
       expect(find.text('--'), findsOneWidget);
     });
   });
+  testWidgets('network metric values never change their card height', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(_metric('0.04 MB/s'));
+    final Size quietSize = tester.getSize(find.byType(NetworkParameter));
+
+    await tester.pumpWidget(_metric('153.40 MB/s'));
+    final Size burstSize = tester.getSize(find.byType(NetworkParameter));
+
+    expect(burstSize, quietSize);
+    expect(find.byType(FittedBox), findsOneWidget);
+  });
+}
+
+Widget _metric(String value) {
+  return MaterialApp(
+    home: Center(
+      child: SizedBox(
+        width: 150,
+        child: NetworkParameter(
+          label: 'Downstream',
+          value: value,
+          detail: '14.3 GB received',
+          tone: NetworkParameterTone.rx,
+          progress: 0.5,
+        ),
+      ),
+    ),
+  );
 }

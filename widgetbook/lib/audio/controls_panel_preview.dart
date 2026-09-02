@@ -34,7 +34,7 @@ class _ControlsPanelPreviewState extends State<ControlsPanelPreview> {
       borderRadius: const BorderRadius.all(Radius.circular(18)),
       onCaptureScreenshot: _ignoreScreenshot,
       onPickColor: _noop,
-      onToggleRecording: _noop,
+      onToggleRecording: _toggleRecording,
       onOpenSettings: _noop,
       onToast: _ignoreToast,
       dndEnabled: _scenario.dndEnabled,
@@ -62,6 +62,22 @@ class _ControlsPanelPreviewState extends State<ControlsPanelPreview> {
       },
       recordingStatus: _scenario.recordingStatus,
     );
+  }
+
+  void _toggleRecording() {
+    final RecordingStatus next = switch (_scenario.recordingStatus) {
+      RecordingStatusRecording() ||
+      RecordingStatusStopping() => const RecordingStatusIdle(),
+      _ => RecordingStatusRecording(
+        mode: RecordingMode.region,
+        path: '/tmp/hyprbaric-preview-recording.mp4',
+        startedAtMs: Uint64.fromBigInt(
+          BigInt.from(DateTime.now().millisecondsSinceEpoch),
+        ),
+      ),
+    };
+
+    setState(() => _scenario = _scenario.copyWith(recordingStatus: next));
   }
 }
 

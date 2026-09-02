@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/hypr_tokens.dart';
-import 'hypr_colors.dart';
 import 'hypr_console_colors.dart';
-import 'hypr_popover_surface.dart';
 import 'hypr_typography.dart';
 
 /// How far a console face sinks while pressed.

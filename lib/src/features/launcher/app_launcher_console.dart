@@ -6,7 +6,6 @@ import 'app_launcher_detail.dart';
 import 'app_launcher_footer.dart';
 import 'app_launcher_header.dart';
 import 'app_launcher_results_list.dart';
-import 'app_launcher_style.dart';
 
 class AppLauncherConsole extends StatelessWidget {
   const AppLauncherConsole({
@@ -44,11 +43,9 @@ class AppLauncherConsole extends StatelessWidget {
         ? null
         : entries[selectedIndex.clamp(0, entries.length - 1)];
 
-    return HyprSurface(
+    return HyprPopoverSurface(
       borderRadius: borderRadius,
-      color: AppLauncherColors.surface,
       borderColor: HyprColors.popupStroke,
-      frame: HyprSurfaceFrame.popover,
       child: ClipRRect(
         borderRadius: borderRadius,
         child: Column(

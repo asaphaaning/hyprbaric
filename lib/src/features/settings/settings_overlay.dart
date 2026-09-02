@@ -101,13 +101,11 @@ class _SettingsModalOverlayState extends ConsumerState<SettingsModalOverlay> {
               child: Center(
                 child: GestureDetector(
                   onTap: _claimKeyboard,
-                  child: HyprSurface(
+                  child: HyprPopoverSurface(
                     borderRadius: BorderRadius.circular(
                       SettingsOverlayLayout.surfaceRadius,
                     ),
-                    color: HyprColors.popoverSurface,
                     borderColor: HyprColors.popupStroke,
-                    frame: HyprSurfaceFrame.popover,
                     child: SettingsOverlayContent(
                       tab: _tab,
                       onTabChanged: (SettingsTab tab) {
