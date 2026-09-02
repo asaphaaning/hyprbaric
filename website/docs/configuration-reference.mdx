@@ -130,6 +130,7 @@ ddc_discovery_delay = "1s"
 # ddc_discovery_interval = "15m"
 ddc_write_debounce = "300ms"
 ddc_command_timeout = "1200ms"
+write_timeout = "5s"
 
 [power]
 refresh_interval = "15s"
@@ -142,8 +143,9 @@ refresh_interval = "15s"
 | `[brightness]` | `backlight_refresh_interval` | `"1s"` | Polls Linux backlight devices. |
 | `[brightness]` | `ddc_discovery_delay` | `"1s"` | Waits after startup before the first DDC monitor scan. |
 | `[brightness]` | `ddc_discovery_interval` | Unset | Repeats DDC monitor discovery. Left unset, discovery runs once after `ddc_discovery_delay` and never again. Set it only if you hot-plug displays. |
-| `[brightness]` | `ddc_write_debounce` | `"300ms"` | Coalesces rapid DDC brightness changes before writing. |
+| `[brightness]` | `ddc_write_debounce` | `"300ms"` | Coalesces rapid DDC brightness changes into at most one write per window. A change that arrives mid-window replaces the pending value without extending the deadline. |
 | `[brightness]` | `ddc_command_timeout` | `"1200ms"` | Bounds one DDC command before it is treated as failed. |
+| `[brightness]` | `write_timeout` | `"5s"` | Backstop for a brightness write that never returns. Without it a stalled backend would silently swallow every later change for that display. |
 | `[power]` | `refresh_interval` | `"15s"` | Refreshes UPower battery and power-profiles-daemon status. |
 
 The latency reading in the network panel is a TCP connection to `1.1.1.1:53` with a 350 ms timeout, made once per `full_refresh_interval`. It is not currently configurable, so raise `full_refresh_interval` if you want it to happen less often.
