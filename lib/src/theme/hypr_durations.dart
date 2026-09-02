@@ -5,6 +5,10 @@
 abstract final class HyprDurations {
   static const Duration queryDebounce = Duration(milliseconds: 35);
   static const Duration pressed = Duration(milliseconds: 60);
+  /// Rate limit for pushing a dragged value at its backend.
+  static const Duration commit = Duration(milliseconds: 75);
+  /// Tracks a value the pointer is actively dragging.
+  static const Duration scrub = Duration(milliseconds: 80);
   static const Duration hover = Duration(milliseconds: 120);
   static const Duration selection = Duration(milliseconds: 130);
   static const Duration switcher = Duration(milliseconds: 180);
@@ -14,5 +18,7 @@ abstract final class HyprDurations {
   static const Duration growPopup = Duration(milliseconds: 360);
   static const Duration osdPeakTick = Duration(milliseconds: 60);
   static const Duration osdLifetime = Duration(milliseconds: 1500);
+  /// How long a control shows its own value before deferring to a backend.
+  static const Duration previewHold = Duration(milliseconds: 2000);
   static const Duration toastLifetime = Duration(milliseconds: 3800);
 }

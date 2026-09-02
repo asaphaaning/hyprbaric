@@ -39,6 +39,10 @@ abstract final class HyprSpacing {
     horizontal: xxl,
     vertical: panel - md,
   );
+  static const EdgeInsets well = EdgeInsets.symmetric(
+    horizontal: xl,
+    vertical: xs,
+  );
   static const EdgeInsets textField = EdgeInsets.symmetric(
     horizontal: section,
     vertical: xxs,

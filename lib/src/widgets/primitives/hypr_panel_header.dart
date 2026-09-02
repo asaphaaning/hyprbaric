@@ -103,15 +103,19 @@ class HyprPanelHeader extends StatelessWidget {
         ],
         if (actionLabel != null) ...<Widget>[
           SizedBox(width: actionGap),
-          _HyprPanelHeaderAction(
-            key: actionKey,
-            label: actionLabel!,
-            enabled: actionEnabled && onAction != null,
-            onPressed: onAction,
-            style: actionStyle,
-            color: actionColor,
-            disabledColor:
-                actionDisabledColor ?? actionColor.withValues(alpha: 0.45),
+          // An action that cannot shrink overflows any panel narrow enough,
+          // or any text scale large enough, to run out of room for it.
+          Flexible(
+            child: _HyprPanelHeaderAction(
+              key: actionKey,
+              label: actionLabel!,
+              enabled: actionEnabled && onAction != null,
+              onPressed: onAction,
+              style: actionStyle,
+              color: actionColor,
+              disabledColor:
+                  actionDisabledColor ?? actionColor.withValues(alpha: 0.45),
+            ),
           ),
         ],
       ],
@@ -152,6 +156,8 @@ class _HyprPanelHeaderAction extends StatelessWidget {
         ),
         child: Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: (style ?? HyprTypography.compactMono).copyWith(
             color: enabled ? color : disabledColor,
           ),

@@ -184,6 +184,53 @@ abstract final class HyprTypography {
     fontFeatures: tabularNumbers,
   );
 
+  // Mixer console. Four roles replace the ad hoc size and tracking pairs the
+  // console used to spell out at every call site.
+
+  /// Widest-tracked chrome legend: MIXER, DISPLAY.
+  static TextStyle get mixerLegend => TextStyle(
+    fontFamily: monoFamily,
+    fontFamilyFallback: <String>['monospace'],
+    color: HyprColors.textFaint,
+    fontSize: size(10),
+    fontWeight: FontWeight.w600,
+    letterSpacing: 2.2,
+    fontFeatures: tabularNumbers,
+  );
+
+  /// Channel and section labels: OUT, MIC, MASTER, BRIGHTNESS.
+  static TextStyle get mixerLabel => TextStyle(
+    fontFamily: monoFamily,
+    fontFamilyFallback: <String>['monospace'],
+    color: HyprColors.textFaint,
+    fontSize: size(9),
+    fontWeight: FontWeight.w600,
+    letterSpacing: 1.6,
+    fontFeatures: tabularNumbers,
+  );
+
+  /// Numeric readouts inside a well.
+  static TextStyle get mixerValue => TextStyle(
+    fontFamily: monoFamily,
+    fontFamilyFallback: <String>['monospace'],
+    color: HyprColors.text,
+    fontSize: size(10.5),
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0,
+    fontFeatures: tabularNumbers,
+  );
+
+  /// Device names and other supporting console text.
+  static TextStyle get mixerMeta => TextStyle(
+    fontFamily: monoFamily,
+    fontFamilyFallback: <String>['monospace'],
+    color: HyprColors.textMuted,
+    fontSize: size(9),
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.4,
+    fontFeatures: tabularNumbers,
+  );
+
   static TextStyle get notificationText => TextStyle(
     fontFamily: uiFamily,
     color: HyprColors.textMuted,

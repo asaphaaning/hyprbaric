@@ -11,5 +11,8 @@ export 'hypr_interactive_tile.dart';
 export 'hypr_live_value.dart';
 export 'hypr_metric_card.dart';
 export 'hypr_panel_chrome.dart';
+export 'hypr_preview_value.dart';
+export 'hypr_segmented_meter.dart';
 export 'hypr_text_field_chrome.dart';
 export 'hypr_toggle_switch.dart';
+export 'hypr_well.dart';

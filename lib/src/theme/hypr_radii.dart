@@ -18,6 +18,7 @@ abstract final class HyprRadii {
   static const double field = 10;
   static const double bar = 12;
   static const double tile = 14;
+  static const double chassis = 16;
   static const double clockCard = 17;
   static const double popover = 18;
   static const double launcher = 20;
@@ -38,6 +39,9 @@ abstract final class HyprRadii {
     Radius.circular(compact),
   );
   static const BorderRadius rowRadius = BorderRadius.all(Radius.circular(row));
+  static const BorderRadius chassisRadius = BorderRadius.all(
+    Radius.circular(chassis),
+  );
   static const BorderRadius panelRadius = BorderRadius.all(
     Radius.circular(panel),
   );

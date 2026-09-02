@@ -8,6 +8,7 @@ import 'hypr_durations.dart';
 /// one-off effect. Widgets should read as design intent: hover, popup, dismiss,
 /// or switch, rather than as unrelated millisecond values.
 abstract final class HyprMotion {
+  static const Duration scrub = HyprDurations.scrub;
   static const Duration hover = HyprDurations.hover;
   static const Duration selection = HyprDurations.selection;
   static const Duration workspace = HyprDurations.workspace;
@@ -20,6 +21,7 @@ abstract final class HyprMotion {
   static const double growPopupHiddenOffsetY = -12;
   static const double growPopupHiddenBlur = 0;
 
+  static const Curve scrubCurve = Curves.easeOutCubic;
   static const Curve hoverCurve = Curves.easeOutCubic;
   static const Curve selectionCurve = Curves.easeOutCubic;
   static const Curve workspaceCurve = Curves.easeOutCubic;

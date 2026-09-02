@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../features/audio/audio_chrome.dart';
 import '../state/transient_overlays.dart';
 import 'hypr_surface.dart';
 
@@ -202,7 +203,7 @@ class OsdHeader extends StatelessWidget {
       return 'Muted';
     }
     return switch (event.kind) {
-      OsdKind.volume => 'Stereo · 48kHz · 24bit',
+      OsdKind.volume => 'Output level',
       OsdKind.brightness => 'Display · backlight',
     };
   }
@@ -218,12 +219,10 @@ class OsdReadout {
     if (event.kind == OsdKind.brightness) {
       return OsdReadout(value: event.value.toString(), unit: '%');
     }
-    if (event.muted || event.value == 0) {
-      return const OsdReadout(value: '-∞', unit: 'dB');
-    }
-    final double ratio = event.value.clamp(0, 100) / 100;
-    final double db = 20 * math.log(ratio) / math.ln10;
-    return OsdReadout(value: db.toStringAsFixed(1), unit: 'dB');
+    return OsdReadout(
+      value: audioDecibelReadout(event.value, muted: event.muted),
+      unit: 'dB',
+    );
   }
 }
 
@@ -308,23 +307,11 @@ class OsdMeter extends StatelessWidget {
   }
 
   Color _segmentColor(OsdKind kind, int index) {
-    final double position = index / _segments;
-    if (kind == OsdKind.brightness) {
-      if (position > 0.86) {
-        return const Color(0xFFFFE68A);
-      }
-      if (position > 0.62) {
-        return const Color(0xFFEFC75E);
-      }
-      return const Color(0xFF72C7FF);
-    }
-    if (position > 0.88) {
-      return const Color(0xFFE16658);
-    }
-    if (position > 0.72) {
-      return const Color(0xFFD9C46D);
-    }
-    return const Color(0xFF4BDA88);
+    final HyprLevelRamp ramp = switch (kind) {
+      OsdKind.volume => HyprLevelRamp.audio,
+      OsdKind.brightness => HyprLevelRamp.brightness,
+    };
+    return ramp.colorAt(index / _segments);
   }
 }
 
@@ -344,7 +331,7 @@ class OsdSegment extends StatelessWidget {
   Widget build(BuildContext context) {
     final Color fill = active || peak
         ? color
-        : const Color(0xFF252A34).withValues(alpha: 0.6);
+        : HyprColors.levelSlot;
     return AnimatedContainer(
       duration: HyprDurations.osdPeakTick,
       curve: Curves.linear,
@@ -375,7 +362,8 @@ class OsdScale extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final List<String> labels = switch (kind) {
-      OsdKind.volume => <String>['-∞', '-30', '-20', '-12', '-6', '-3', '0'],
+      // Even positions on a cubic volume curve, matching the readout.
+      OsdKind.volume => <String>['-∞', '-47', '-29', '-18', '-11', '-5', '0'],
       OsdKind.brightness => <String>['0', '15', '30', '50', '70', '85', '100'],
     };
     return Row(
