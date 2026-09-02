@@ -10,6 +10,7 @@ class HyprPopoverSurface extends StatelessWidget {
     required this.child,
     required this.borderRadius,
     this.color = HyprColors.popoverSurface,
+    this.gradient,
     this.borderColor = HyprColors.popupStroke,
     this.blur = 18,
     this.shadow = false,
@@ -19,6 +20,7 @@ class HyprPopoverSurface extends StatelessWidget {
   final Widget child;
   final BorderRadius borderRadius;
   final Color color;
+  final Gradient? gradient;
   final Color borderColor;
   final double blur;
   final bool shadow;
@@ -29,6 +31,7 @@ class HyprPopoverSurface extends StatelessWidget {
     return HyprGlassSurface(
       borderRadius: borderRadius,
       color: color,
+      gradient: gradient,
       borderColor: borderColor,
       blur: blur,
       shadow: shadow,

@@ -9,7 +9,6 @@ import '../features/controls/controls_panel.dart';
 import '../features/network/network_panel.dart';
 import '../features/power/battery_chip.dart';
 import '../features/power/power_panel.dart';
-import '../features/rust_commands.dart';
 import '../features/tray/tray_menu_panel.dart';
 import '../features/tray/tray_strip.dart';
 import '../state/providers.dart';
@@ -49,6 +48,7 @@ class RightCluster extends ConsumerWidget {
     required this.onSetAudioVolume,
     required this.onSetAudioMuted,
     required this.onSetBrightness,
+    required this.onOpenAudioMixer,
     required this.onSetPowerProfile,
     required this.onCaptureScreenshot,
     required this.onPickColor,
@@ -95,6 +95,7 @@ class RightCluster extends ConsumerWidget {
   final void Function(AudioEndpointKind kind, {required bool muted})
   onSetAudioMuted;
   final ValueChanged<int> onSetBrightness;
+  final VoidCallback onOpenAudioMixer;
   final ValueChanged<PowerProfile> onSetPowerProfile;
   final ValueChanged<ScreenshotMode> onCaptureScreenshot;
   final VoidCallback onPickColor;
@@ -247,13 +248,7 @@ class RightCluster extends ConsumerWidget {
                                 onSetMuted: onSetAudioMuted,
                                 onSetBrightness: onSetBrightness,
                                 onOpenMixer: () {
-                                  ref
-                                      .read(rustCommandDispatcherProvider)
-                                      .dispatch(
-                                        const LauncherIntent.launch(
-                                          'pavucontrol.desktop',
-                                        ),
-                                      );
+                                  onOpenAudioMixer();
                                   controller.dismiss();
                                 },
                               );

@@ -1112,6 +1112,7 @@ void main() {
               onSetAudioVolume: (_, _) {},
               onSetAudioMuted: (_, {required bool muted}) {},
               onSetBrightness: (_) {},
+              onOpenAudioMixer: () {},
               onSetPowerProfile: (_) {},
               onCaptureScreenshot: (_) {},
               onPickColor: () {},

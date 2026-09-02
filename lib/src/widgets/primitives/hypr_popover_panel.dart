@@ -10,6 +10,7 @@ class HyprPopoverPanel extends StatelessWidget {
     required this.padding,
     required this.child,
     this.color = HyprColors.popoverSurface,
+    this.gradient,
     this.borderColor = HyprColors.popupStroke,
   });
 
@@ -18,6 +19,10 @@ class HyprPopoverPanel extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final Widget child;
   final Color color;
+
+  /// Material painted instead of [color], for surfaces that are not flat.
+  final Gradient? gradient;
+
   final Color borderColor;
 
   @override
@@ -25,6 +30,7 @@ class HyprPopoverPanel extends StatelessWidget {
     return HyprPopoverSurface(
       borderRadius: borderRadius,
       color: color,
+      gradient: gradient,
       borderColor: borderColor,
       child: ConstrainedBox(
         constraints: constraints,

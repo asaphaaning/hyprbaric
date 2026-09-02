@@ -10,6 +10,7 @@ class HyprGlassSurface extends StatelessWidget {
     required this.child,
     required this.borderRadius,
     this.color = HyprColors.surface,
+    this.gradient,
     this.borderColor = HyprColors.border,
     this.blur = 18,
     this.shadow = false,
@@ -20,6 +21,10 @@ class HyprGlassSurface extends StatelessWidget {
   final Widget child;
   final BorderRadius borderRadius;
   final Color color;
+
+  /// Material painted instead of [color], for surfaces that are not flat.
+  final Gradient? gradient;
+
   final Color borderColor;
   final double blur;
   final bool shadow;
@@ -42,7 +47,8 @@ class HyprGlassSurface extends StatelessWidget {
         borderRadius: borderRadius,
         child: DecoratedBox(
           decoration: ShapeDecoration(
-            color: color,
+            color: gradient == null ? color : null,
+            gradient: gradient,
             shape: RoundedSuperellipseBorder(
               borderRadius: borderRadius,
               side: side,

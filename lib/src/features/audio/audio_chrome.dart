@@ -35,6 +35,14 @@ extension AudioStatusView on AudioStatus {
 abstract final class AudioMixerColors {
   static const Color chassisTop = Color(0xF0161A20);
   static const Color chassisBottom = Color(0xFA0E1218);
+
+  /// The console's own material, declared to [HyprPopoverPanel] rather than
+  /// painted over a transparent one.
+  static const LinearGradient chassis = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: <Color>[chassisTop, chassisBottom],
+  );
   static const Color deckTop = Color(0xFF242527);
   static const Color deckMiddle = Color(0xFF202123);
   static const Color deckBottom = Color(0xFF1C1D1F);

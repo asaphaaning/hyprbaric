@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'bindings/bindings.dart';
 import 'features/launcher/app_launcher.dart';
+import 'features/rust_commands.dart';
 import 'features/session/session_launcher.dart';
 import 'features/settings/settings_overlay.dart';
 import 'features/setup/setup_guide_host.dart';
@@ -497,6 +498,12 @@ class _BarViewState extends ConsumerState<_BarView> {
   void _setBrightnessFromPanel(int value) =>
       _setBrightness(value, feedback: BrightnessFeedback.none);
 
+  void _openAudioMixer() {
+    ref
+        .read(rustCommandDispatcherProvider)
+        .dispatch(const LauncherIntent.launch('pavucontrol.desktop'));
+  }
+
   void _setPowerProfile(PowerProfile profile) {
     ref.read(powerControllerProvider.notifier).setProfile(profile);
   }
@@ -682,6 +689,7 @@ class _BarViewState extends ConsumerState<_BarView> {
                             onSetAudioVolume: _setAudioVolume,
                             onSetAudioMuted: _setAudioMuted,
                             onSetBrightness: _setBrightnessFromPanel,
+                            onOpenAudioMixer: _openAudioMixer,
                             onSetPowerProfile: _setPowerProfile,
                             onCaptureScreenshot: _captureScreenshot,
                             onPickColor: _pickColor,
