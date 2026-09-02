@@ -66,7 +66,7 @@ class AudioPanel extends StatelessWidget {
               onSetBrightness: onSetBrightness,
             ),
             AudioMasterRail(output: output),
-            AudioMixerFooter(onOpenMixer: onOpenMixer),
+            AudioMixerFooter(input: input, onOpenMixer: onOpenMixer),
             if (status.isLoading) ...<Widget>[
               const Padding(
                 padding: EdgeInsets.fromLTRB(14, 0, 14, 12),

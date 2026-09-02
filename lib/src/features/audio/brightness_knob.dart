@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
-import 'audio_chrome.dart';
 import 'brightness_knob_painter.dart';
 import 'brightness_knob_readout.dart';
 
@@ -122,8 +121,8 @@ class BrightnessKnobState extends State<BrightnessKnob> {
                 builder: (BuildContext context, double pointer, Widget? child) {
                   return TweenAnimationBuilder<double>(
                     tween: Tween<double>(end: target),
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
+                    duration: HyprMotion.popup,
+                    curve: HyprMotion.popupCurve,
                     builder:
                         (BuildContext context, double lamps, Widget? child) {
                           return CustomPaint(
@@ -170,14 +169,7 @@ class BrightnessKnobState extends State<BrightnessKnob> {
                 const SizedBox(height: 10),
                 BrightnessKnobReadout(value: widget.value),
                 const SizedBox(height: 2),
-                Text(
-                  'BRIGHTNESS',
-                  style: HyprTypography.compactMonoStrong.copyWith(
-                    color: AudioMixerColors.label,
-                    fontSize: HyprTypography.size(9),
-                    letterSpacing: 1.44,
-                  ),
-                ),
+                Text('BRIGHTNESS', style: HyprTypography.mixerLabel),
               ],
             ),
           },

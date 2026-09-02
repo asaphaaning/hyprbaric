@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
+import '../../widgets/primitives/primitives.dart';
 import 'audio_channel_strip.dart';
 import 'audio_chrome.dart';
 import 'brightness_control.dart';
@@ -15,69 +16,36 @@ class AudioMixerHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 11, 16, 10),
-      child: Row(
-        children: <Widget>[
-          Text(
-            'MIXER',
-            style: HyprTypography.compactMonoStrong.copyWith(
-              color: AudioMixerColors.label,
-              fontSize: HyprTypography.size(10),
-              letterSpacing: 2.2,
+      padding: const EdgeInsets.fromLTRB(
+        HyprSpacing.roomy,
+        HyprSpacing.xxl + HyprSpacing.hairline,
+        HyprSpacing.roomy,
+        HyprSpacing.xxl,
+      ),
+      child: HyprPanelHeader(
+        title: 'MIXER',
+        titleStyle: HyprTypography.mixerLegend,
+        trailing: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 176),
+          child: HyprWell(
+            height: 26,
+            padding: const EdgeInsets.symmetric(
+              horizontal: HyprSpacing.lg + HyprSpacing.xs,
             ),
-          ),
-          const Spacer(),
-          Flexible(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 176),
-              child: Container(
-                height: 26,
-                padding: const EdgeInsets.symmetric(horizontal: 9),
-                decoration: BoxDecoration(
-                  color: AudioMixerColors.well,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0x52000000)),
-                  boxShadow: const <BoxShadow>[
-                    BoxShadow(
-                      color: Color(0x80000000),
-                      blurRadius: 3,
-                      offset: Offset(0, 1),
-                      blurStyle: BlurStyle.inner,
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Flexible(
-                      child: Text(
-                        output?.name ?? 'No output device',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: HyprTypography.compactMonoStrong.copyWith(
-                          color: output == null
-                              ? HyprColors.textFaint
-                              : const Color(0xFFD1EEF0),
-                          fontSize: HyprTypography.size(9.5),
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 7),
-                    Text(
-                      '▾',
-                      style: HyprTypography.compactMonoStrong.copyWith(
-                        color: HyprColors.textFaint,
-                        fontSize: HyprTypography.size(8),
-                      ),
-                    ),
-                  ],
-                ),
+            borderColor: const Color(0x52000000),
+            shadowColor: const Color(0x80000000),
+            child: Text(
+              output?.name ?? 'No output device',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: HyprTypography.mixerMeta.copyWith(
+                color: output == null
+                    ? HyprColors.textFaint
+                    : const Color(0xFFD1EEF0),
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -104,75 +72,87 @@ class AudioMixerStage extends StatelessWidget {
   final void Function(AudioEndpointKind kind, {required bool muted}) onSetMuted;
   final ValueChanged<int> onSetBrightness;
 
+  /// Where the console begins, below the brightness deck.
+  static const double _consoleTop = 117;
+
+  /// Top padding inside the console that clears the knob notch.
+  static const double _notchClearance = 74;
+
   @override
   Widget build(BuildContext context) {
     final double illumination = brightnessStatus?.isAvailable ?? false
         ? (brightnessStatus!.displayValue / 100).clamp(0, 1).toDouble()
         : 0;
 
-    return SizedBox(
-      height: 457,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: <Widget>[
-          Positioned(
-            top: 0,
-            left: 16,
-            right: 16,
-            child: _BrightnessDeck(illumination: illumination),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: <Widget>[
+        Positioned(
+          top: 0,
+          left: HyprSpacing.roomy,
+          right: HyprSpacing.roomy,
+          child: _BrightnessDeck(illumination: illumination),
+        ),
+        // Non-positioned, so the console sizes the stage instead of a fixed
+        // height that overflows the moment text scaling grows the strips.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            HyprSpacing.roomy,
+            _consoleTop,
+            HyprSpacing.roomy,
+            0,
           ),
-          Positioned(
-            top: 117,
-            left: 16,
-            right: 16,
-            height: 340,
-            child: ClipPath(
-              clipper: const _ConsoleNotchClipper(),
-              child: ColoredBox(
-                color: AudioMixerColors.console,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 74, 14, 12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Expanded(
-                        child: AudioChannelStrip(
-                          channel: AudioMixerChannel.output,
-                          endpoint: output,
-                          fallbackName: 'No output device',
-                          onSetVolume: onSetVolume,
-                          onSetMuted: onSetMuted,
-                        ),
+          child: ClipPath(
+            clipper: const _ConsoleNotchClipper(),
+            child: ColoredBox(
+              color: AudioMixerColors.console,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  HyprSpacing.panel,
+                  _notchClearance,
+                  HyprSpacing.panel,
+                  HyprSpacing.section,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Expanded(
+                      child: AudioChannelStrip(
+                        channel: AudioMixerChannel.output,
+                        endpoint: output,
+                        fallbackName: 'No output device',
+                        onSetVolume: onSetVolume,
+                        onSetMuted: onSetMuted,
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: AudioChannelStrip(
-                          channel: AudioMixerChannel.input,
-                          endpoint: input,
-                          fallbackName: 'No input device',
-                          onSetVolume: onSetVolume,
-                          onSetMuted: onSetMuted,
-                        ),
+                    ),
+                    const SizedBox(width: HyprSpacing.xxl),
+                    Expanded(
+                      child: AudioChannelStrip(
+                        channel: AudioMixerChannel.input,
+                        endpoint: input,
+                        fallbackName: 'No input device',
+                        onSetVolume: onSetVolume,
+                        onSetMuted: onSetMuted,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-          Positioned(
-            top: 13,
-            left: 0,
-            right: 0,
-            child: BrightnessControl(
-              status: brightnessStatus,
-              loading: brightnessLoading,
-              presentation: BrightnessControlPresentation.console,
-              onSetBrightness: onSetBrightness,
-            ),
+        ),
+        Positioned(
+          top: 13,
+          left: 0,
+          right: 0,
+          child: BrightnessControl(
+            status: brightnessStatus,
+            loading: brightnessLoading,
+            presentation: BrightnessControlPresentation.console,
+            onSetBrightness: onSetBrightness,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -282,8 +262,8 @@ class _ConsoleNotchClipper extends CustomClipper<Path> {
       ..addRRect(
         RRect.fromRectAndCorners(
           Offset.zero & size,
-          bottomLeft: const Radius.circular(16),
-          bottomRight: const Radius.circular(16),
+          bottomLeft: const Radius.circular(HyprRadii.chassis),
+          bottomRight: const Radius.circular(HyprRadii.chassis),
         ),
       );
     final Path clearance = Path()
@@ -307,158 +287,79 @@ class AudioMasterRail extends StatelessWidget {
   Widget build(BuildContext context) {
     final int volume = output?.volume ?? 0;
     final bool muted = output?.muted ?? true;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Color(0x24000000)),
-        ),
-      ),
-      child: Row(
-        children: <Widget>[
-          Text(
-            'MASTER',
-            style: HyprTypography.compactMonoStrong.copyWith(
-              color: HyprColors.textFaint,
-              fontSize: HyprTypography.size(8),
-              letterSpacing: 1.6,
-            ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: HyprSpacing.roomy,
+            vertical: HyprSpacing.xl + HyprSpacing.hairline,
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: SizedBox(
-              height: 8,
-              child: CustomPaint(
-                painter: AudioMasterMeterPainter(
-                  value: muted ? 0 : volume / 100,
+          child: Row(
+            children: <Widget>[
+              Text('MASTER', style: HyprTypography.mixerLabel),
+              const SizedBox(width: HyprSpacing.xxl),
+              Expanded(
+                child: SizedBox(
+                  height: HyprSpacing.xl,
+                  child: CustomPaint(
+                    painter: HyprSegmentedMeterPainter(
+                      value: muted ? 0 : volume / 100,
+                      ramp: HyprLevelRamp.audio,
+                      trackColor: AudioMixerColors.rail,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 54,
-            child: Text.rich(
-              TextSpan(
-                text: audioDecibelReadout(volume, muted: muted),
-                children: const <InlineSpan>[
-                  TextSpan(
-                    text: ' dB',
-                    style: TextStyle(color: HyprColors.textFaint, fontSize: 7),
-                  ),
-                ],
+              const SizedBox(width: HyprSpacing.xxl),
+              SizedBox(
+                width: 54,
+                child: AudioUnitReadout(
+                  text: audioDecibelReadout(volume, muted: muted),
+                  unit: 'dB',
+                  color: HyprColors.text,
+                  textAlign: TextAlign.right,
+                ),
               ),
-              textAlign: TextAlign.right,
-              style: HyprTypography.compactMonoStrong.copyWith(
-                color: AudioMixerColors.value,
-                fontSize: HyprTypography.size(10.5),
-              ),
-            ),
+            ],
           ),
-        ],
-      ),
+        ),
+        const HyprPanelDivider(),
+      ],
     );
   }
 }
 
-/// Paints the segmented output level used by [AudioMasterRail].
-class AudioMasterMeterPainter extends CustomPainter {
-  const AudioMasterMeterPainter({required this.value});
-
-  final double value;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final RRect well = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      const Radius.circular(3),
-    );
-    canvas.drawRRect(well, Paint()..color = AudioMixerColors.rail);
-    const int segments = 32;
-    const double gap = 1.5;
-    final double width = (size.width - 4 - gap * (segments - 1)) / segments;
-    final int active = (value.clamp(0, 1) * segments).round();
-    for (int index = 0; index < segments; index += 1) {
-      final double threshold = index / segments;
-      final Color tone = threshold >= .90
-          ? AudioMixerColors.peak
-          : threshold >= .76
-          ? AudioMixerColors.warning
-          : AudioMixerColors.output;
-      final Rect segment = Rect.fromLTWH(
-        2 + index * (width + gap),
-        2,
-        width,
-        size.height - 4,
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(segment, const Radius.circular(1)),
-        Paint()..color = index < active ? tone : AudioMixerColors.slot,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(AudioMasterMeterPainter oldDelegate) =>
-      value != oldDelegate.value;
-}
-
-/// Reference audio format and external mixer affordance.
+/// Input device and the external mixer affordance.
 class AudioMixerFooter extends StatelessWidget {
-  const AudioMixerFooter({super.key, required this.onOpenMixer});
+  const AudioMixerFooter({
+    super.key,
+    required this.input,
+    required this.onOpenMixer,
+  });
 
+  final AudioEndpoint? input;
   final VoidCallback onOpenMixer;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '3 CH · 48 KHZ · 24-BIT',
-                style: HyprTypography.compactMonoStrong.copyWith(
-                  color: HyprColors.textFaint,
-                  fontSize: HyprTypography.size(8.5),
-                  letterSpacing: 0.8,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 18),
-          Flexible(
-            child: Semantics(
-              container: true,
-              button: true,
-              label: 'Open pavucontrol',
-              child: InkWell(
-                onTap: onOpenMixer,
-                borderRadius: BorderRadius.circular(4),
-                hoverColor: const Color(0x0FFFFFFF),
-                splashColor: Colors.transparent,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      'PAVUCONTROL →',
-                      style: HyprTypography.compactMonoStrong.copyWith(
-                        color: AudioMixerColors.label,
-                        fontSize: HyprTypography.size(8.5),
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+      padding: const EdgeInsets.fromLTRB(
+        HyprSpacing.roomy,
+        HyprSpacing.xl,
+        HyprSpacing.roomy,
+        HyprSpacing.xxl,
+      ),
+      child: HyprPanelHeader(
+        title: input?.name ?? 'No input device',
+        titleStyle: HyprTypography.mixerMeta,
+        titleColor: input == null ? HyprColors.textFaint : null,
+        leading: Text('MIC', style: HyprTypography.mixerLabel),
+        leadingGap: HyprSpacing.xxl,
+        actionLabel: 'PAVUCONTROL →',
+        actionStyle: HyprTypography.mixerLabel,
+        onAction: onOpenMixer,
       ),
     );
   }

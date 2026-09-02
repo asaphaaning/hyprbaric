@@ -45,10 +45,7 @@ class AudioController extends _$AudioController {
         .dispatch(AudioIntent.setMuted(kind: kind, muted: muted));
   }
 
-  void setBrightness(
-    int value, {
-    BrightnessFeedback feedback = BrightnessFeedback.osd,
-  }) {
+  void setBrightness(int value, {required BrightnessFeedback feedback}) {
     final int clampedValue = value.clamp(0, 100).toInt();
     if (feedback == BrightnessFeedback.osd) {
       ref

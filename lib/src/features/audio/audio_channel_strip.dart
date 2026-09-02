@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
+import '../../widgets/primitives/primitives.dart';
 import 'audio_chrome.dart';
 import 'audio_fader.dart';
 
@@ -36,41 +37,43 @@ class AudioChannelStrip extends StatefulWidget {
 }
 
 class AudioChannelStripState extends State<AudioChannelStrip> {
-  String? _previewEndpointId;
-  int? _previewVolume;
+  final HyprPreviewValue _preview = HyprPreviewValue();
 
   @override
-  void didUpdateWidget(covariant AudioChannelStrip oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final AudioEndpoint? value = widget.endpoint;
-    if (value == null || value.id != _previewEndpointId) {
-      _previewEndpointId = null;
-      _previewVolume = null;
-      return;
-    }
-    if (_previewVolume == value.volume) {
-      _previewEndpointId = null;
-      _previewVolume = null;
-    }
+  void initState() {
+    super.initState();
+    _preview.addListener(_onPreviewChanged);
   }
 
-  void _setPreviewVolume(AudioEndpoint endpoint, int volume) {
-    setState(() {
-      _previewEndpointId = endpoint.id;
-      _previewVolume = volume.clamp(0, 100);
-    });
+  @override
+  void dispose() {
+    _preview
+      ..removeListener(_onPreviewChanged)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onPreviewChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final AudioEndpoint? value = widget.endpoint;
-    final int? displayedVolume = value == null
-        ? null
-        : _previewEndpointId == value.id
-        ? _previewVolume
-        : value.volume;
+    final int? displayedVolume = _preview.settle(
+      value?.volume,
+      scope: value?.id,
+    );
+    final bool muted = value?.muted ?? true;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 8, 6, 9),
+      padding: const EdgeInsets.fromLTRB(
+        HyprSpacing.lg,
+        HyprSpacing.xl,
+        HyprSpacing.lg,
+        HyprSpacing.panel - HyprSpacing.md,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -78,45 +81,41 @@ class AudioChannelStripState extends State<AudioChannelStrip> {
           Text(
             widget.channel.label,
             textAlign: TextAlign.center,
-            style: HyprTypography.compactMonoStrong.copyWith(
-              color: value == null || value.muted
+            style: HyprTypography.mixerLabel.copyWith(
+              color: value == null || muted
                   ? HyprColors.textFaint
-                  : AudioMixerColors.label,
-              fontSize: HyprTypography.size(9),
-              letterSpacing: 1.6,
+                  : HyprColors.textMuted,
             ),
           ),
-          const SizedBox(height: 8),
-          if (value == null)
-            Center(child: AudioDisabledFader(accent: widget.channel.accent))
-          else
-            Center(
-              child: AudioFader(
-                endpoint: value,
-                accent: widget.channel.accent,
-                onPreviewVolume: (int volume) =>
-                    _setPreviewVolume(value, volume),
-                onSetVolume: widget.onSetVolume,
-              ),
-            ),
-          const SizedBox(height: 8),
+          const SizedBox(height: HyprSpacing.xl),
+          Center(
+            child: value == null
+                ? AudioDisabledFader(accent: widget.channel.accent)
+                : AudioFader(
+                    endpoint: value,
+                    accent: widget.channel.accent,
+                    onPreviewVolume: (int volume) =>
+                        _preview.show(volume, scope: value.id),
+                    onSetVolume: widget.onSetVolume,
+                  ),
+          ),
+          const SizedBox(height: HyprSpacing.xl),
           AudioDbReadout(
             value: displayedVolume,
-            muted: value?.muted ?? true,
+            muted: muted,
             accent: widget.channel.accent,
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: HyprSpacing.lg + HyprSpacing.hairline),
           AudioMuteButton(
-            muted: value?.muted ?? true,
-            enabled: value != null,
+            muted: muted,
             label: value == null
                 ? widget.fallbackName
-                : value.muted
+                : muted
                 ? 'Unmute ${value.name}'
                 : 'Mute ${value.name}',
             onPressed: value == null
                 ? null
-                : () => widget.onSetMuted(value.kind, muted: !value.muted),
+                : () => widget.onSetMuted(value.kind, muted: !muted),
           ),
         ],
       ),
@@ -139,41 +138,51 @@ class AudioDbReadout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      decoration: BoxDecoration(
-        color: AudioMixerColors.well,
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: const Color(0x4D000000)),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x7A000000),
-            blurRadius: 3,
-            offset: Offset(0, 1),
-            blurStyle: BlurStyle.inner,
+    return HyprWell(
+      padding: const EdgeInsets.symmetric(vertical: HyprSpacing.xs),
+      borderRadius: HyprRadii.cardRadius,
+      child: AudioUnitReadout(
+        text: value == null ? '--' : audioDecibelReadout(value!, muted: muted),
+        unit: 'dB',
+        color: muted ? HyprColors.textFaint : accent,
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+}
+
+/// A measured value followed by its unit, sized as one readout.
+class AudioUnitReadout extends StatelessWidget {
+  const AudioUnitReadout({
+    super.key,
+    required this.text,
+    required this.unit,
+    required this.color,
+    this.textAlign = TextAlign.left,
+  });
+
+  final String text;
+  final String unit;
+  final Color color;
+  final TextAlign textAlign;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text.rich(
+      TextSpan(
+        text: text,
+        children: <InlineSpan>[
+          TextSpan(
+            text: ' $unit',
+            style: TextStyle(
+              color: HyprColors.textFaint,
+              fontSize: HyprTypography.size(7),
+            ),
           ),
         ],
       ),
-      child: Text.rich(
-        TextSpan(
-          text: value == null
-              ? '--'
-              : audioDecibelReadout(value!, muted: muted),
-          children: const <InlineSpan>[
-            TextSpan(
-              text: ' dB',
-              style: TextStyle(color: HyprColors.textFaint, fontSize: 7),
-            ),
-          ],
-        ),
-        textAlign: TextAlign.center,
-        style: HyprTypography.compactMonoStrong.copyWith(
-          color: muted ? HyprColors.textFaint : accent,
-          fontSize: HyprTypography.size(10.5),
-          fontWeight: FontWeight.w500,
-        ),
-      ),
+      textAlign: textAlign,
+      style: HyprTypography.mixerValue.copyWith(color: color),
     );
   }
 }
@@ -183,65 +192,46 @@ class AudioMuteButton extends StatelessWidget {
   const AudioMuteButton({
     super.key,
     required this.muted,
-    required this.enabled,
     required this.label,
     required this.onPressed,
   });
 
   final bool muted;
-  final bool enabled;
   final String label;
   final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      container: true,
-      button: true,
-      label: label,
-      child: ExcludeSemantics(
-        child: InkWell(
-          onTap: onPressed,
-          customBorder: RoundedSuperellipseBorder(
-            borderRadius: BorderRadius.circular(4),
-          ),
-          hoverColor: enabled ? const Color(0x12FFFFFF) : Colors.transparent,
-          splashColor: Colors.transparent,
-          highlightColor: enabled
-              ? const Color(0x10FFFFFF)
-              : Colors.transparent,
-          child: DecoratedBox(
-            decoration: ShapeDecoration(
-              color: muted ? const Color(0x2ED45146) : AudioMixerColors.well,
-              shape: RoundedSuperellipseBorder(
-                borderRadius: BorderRadius.circular(4),
-                side: BorderSide(
-                  color: muted
-                      ? const Color(0x70D45146)
-                      : const Color(0x24000000),
-                ),
-              ),
-            ),
-            child: SizedBox(
-              width: double.infinity,
-              height: 21,
-              child: Center(
-                child: Text(
-                  'M',
-                  style: HyprTypography.compactMonoStrong.copyWith(
-                    color: enabled
-                        ? muted
-                              ? AudioMixerColors.peak
-                              : AudioMixerColors.quiet
-                        : HyprColors.textFaint,
-                    fontSize: HyprTypography.size(8.5),
-                  ),
-                ),
+    return HyprInteractiveTile(
+      onPressed: onPressed,
+      semanticLabel: label,
+      selected: muted,
+      height: 21,
+      borderRadius: HyprRadii.badgeRadius,
+      color: HyprColors.well,
+      borderColor: HyprColors.wellBorder,
+      hoverColor: HyprColors.hoverStrong,
+      hoverBorderColor: HyprColors.borderSoft,
+      selectedColor: HyprColors.dangerHoverSoft,
+      selectedBorderColor: HyprColors.danger,
+      builder: (BuildContext context, HyprInteractiveTileState state) {
+        // The tile already carries the label; the glyph must not merge into it.
+        return ExcludeSemantics(
+          child: Center(
+            child: Text(
+              'M',
+              style: HyprTypography.mixerLabel.copyWith(
+                letterSpacing: 0,
+                color: !state.enabled
+                    ? HyprColors.textFaint
+                    : muted
+                    ? HyprColors.danger
+                    : HyprColors.textMuted,
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

@@ -487,14 +487,15 @@ class _BarViewState extends ConsumerState<_BarView> {
     ref.read(audioControllerProvider.notifier).setMuted(kind, muted: muted);
   }
 
-  void _setBrightness(
-    int value, {
-    BrightnessFeedback feedback = BrightnessFeedback.none,
-  }) {
+  void _setBrightness(int value, {required BrightnessFeedback feedback}) {
     ref
         .read(audioControllerProvider.notifier)
         .setBrightness(value, feedback: feedback);
   }
+
+  /// The mixer knob already shows the value it is setting.
+  void _setBrightnessFromPanel(int value) =>
+      _setBrightness(value, feedback: BrightnessFeedback.none);
 
   void _setPowerProfile(PowerProfile profile) {
     ref.read(powerControllerProvider.notifier).setProfile(profile);
@@ -680,7 +681,7 @@ class _BarViewState extends ConsumerState<_BarView> {
                             onOpenNetworkSettings: _openNetworkSettings,
                             onSetAudioVolume: _setAudioVolume,
                             onSetAudioMuted: _setAudioMuted,
-                            onSetBrightness: _setBrightness,
+                            onSetBrightness: _setBrightnessFromPanel,
                             onSetPowerProfile: _setPowerProfile,
                             onCaptureScreenshot: _captureScreenshot,
                             onPickColor: _pickColor,

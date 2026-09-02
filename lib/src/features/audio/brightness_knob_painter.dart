@@ -309,7 +309,13 @@ class BrightnessKnobPainter extends CustomPainter {
     bool lit,
   ) {
     const int dots = 28;
+    // A blur sigma that tracks the value would rebuild the mask every frame of
+    // a scrub, so hold it constant and carry the change in alpha instead.
+    const double glowSigma = 3.6;
+    const Color inactive = Color(0xFF2D3033);
+
     final double radius = width * 0.567;
+    final double glowRadius = 3.1 + progress * 0.7;
     final double illuminatedDots = lit ? progress * dots : 0;
     final double warmth = progress * progress;
     final Color lamp = Color.lerp(
@@ -317,7 +323,12 @@ class BrightnessKnobPainter extends CustomPainter {
       const Color(0xFFFFD05A),
       warmth,
     )!;
-    const Color inactive = Color(0xFF2D3033);
+
+    final List<Offset> centers = <Offset>[];
+    final List<double> intensities = <double>[];
+    final Path steadyGlow = Path();
+    Offset? edge;
+    double edgeIntensity = 0;
 
     for (int index = 0; index < dots; index += 1) {
       final double fraction = index / (dots - 1);
@@ -326,27 +337,37 @@ class BrightnessKnobPainter extends CustomPainter {
       );
       final Offset dot =
           center + Offset(math.cos(angle), math.sin(angle)) * radius;
-      final double intensity = (illuminatedDots - index).clamp(0.0, 1.0);
-      final double easedIntensity = Curves.easeOutCubic.transform(intensity);
-
-      if (easedIntensity > 0) {
-        canvas.drawCircle(
-          dot,
-          3.1 + progress * 0.7,
-          Paint()
-            ..color = lamp.withValues(alpha: 0.34 * easedIntensity)
-            ..maskFilter = MaskFilter.blur(
-              BlurStyle.normal,
-              2.8 + progress * 2.2,
-            ),
-        );
-      }
-
-      canvas.drawCircle(
-        dot,
-        1.7,
-        Paint()..color = Color.lerp(inactive, lamp, easedIntensity)!,
+      final double intensity = Curves.easeOutCubic.transform(
+        (illuminatedDots - index).clamp(0.0, 1.0),
       );
+      centers.add(dot);
+      intensities.add(intensity);
+
+      // Every lit dot but the leading one glows at full strength, so they can
+      // share a single blurred draw instead of one per dot.
+      if (intensity >= 1) {
+        steadyGlow.addOval(Rect.fromCircle(center: dot, radius: glowRadius));
+      } else if (intensity > 0) {
+        edge = dot;
+        edgeIntensity = intensity;
+      }
+    }
+
+    Paint glowPaint(double alpha) => Paint()
+      ..color = lamp.withValues(alpha: alpha)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, glowSigma);
+
+    if (!steadyGlow.getBounds().isEmpty) {
+      canvas.drawPath(steadyGlow, glowPaint(0.34));
+    }
+    if (edge case final Offset dot) {
+      canvas.drawCircle(dot, glowRadius, glowPaint(0.34 * edgeIntensity));
+    }
+
+    final Paint core = Paint();
+    for (int index = 0; index < dots; index += 1) {
+      core.color = Color.lerp(inactive, lamp, intensities[index])!;
+      canvas.drawCircle(centers[index], 1.7, core);
     }
   }
 

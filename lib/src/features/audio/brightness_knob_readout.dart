@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../widgets/hypr_surface.dart';
-import 'audio_chrome.dart';
 
 class BrightnessKnobReadout extends StatelessWidget {
   const BrightnessKnobReadout({super.key, required this.value});
@@ -25,7 +24,7 @@ class BrightnessKnobReadout extends StatelessWidget {
         ],
       ),
       style: HyprTypography.compactMonoStrong.copyWith(
-        color: AudioMixerColors.value,
+        color: HyprColors.text,
         fontSize: HyprTypography.size(14),
         fontWeight: FontWeight.w600,
       ),

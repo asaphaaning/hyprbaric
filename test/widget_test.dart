@@ -15,6 +15,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hyprbaric/src/bindings/bindings.dart';
+import 'package:hyprbaric/src/features/audio/audio_fader.dart';
 import 'package:hyprbaric/src/features/audio/audio_panel.dart';
 import 'package:hyprbaric/src/features/audio/brightness_control.dart';
 import 'package:hyprbaric/src/features/controls/control_rocker.dart';
@@ -3036,12 +3037,11 @@ void main() {
 
     expect(find.text('MIXER'), findsOneWidget);
     expect(find.text('OUT'), findsOneWidget);
-    expect(find.text('MIC'), findsOneWidget);
+    expect(find.text('MIC'), findsNWidgets(2));
     expect(find.text('EVO4 Analog Surround 4.0'), findsOneWidget);
     expect(find.text('MASTER'), findsOneWidget);
-    expect(find.text('3 CH · 48 KHZ · 24-BIT'), findsOneWidget);
     expect(find.text('PAVUCONTROL →'), findsOneWidget);
-    expect(find.text('▾'), findsOneWidget);
+    expect(find.text('Built-in Mic'), findsOneWidget);
     expect(find.text('M'), findsNWidgets(2));
     expect(
       find.bySemanticsLabel('EVO4 Analog Surround 4.0 volume'),
@@ -3083,9 +3083,8 @@ void main() {
     expect(find.text('MIXER'), findsOneWidget);
     expect(find.text('DISPLAY 72%'), findsOneWidget);
     expect(find.text('OUT'), findsOneWidget);
-    expect(find.text('MIC'), findsOneWidget);
+    expect(find.text('MIC'), findsNWidgets(2));
     expect(find.text('MASTER'), findsOneWidget);
-    expect(find.text('3 CH · 48 KHZ · 24-BIT'), findsOneWidget);
     expect(find.text('PAVUCONTROL →'), findsOneWidget);
     expect(tester.getSize(find.byType(AudioPanel)).width, 336);
   });
@@ -3279,16 +3278,18 @@ void main() {
     final Finder outputFader = find.bySemanticsLabel(
       'EVO4 Analog Surround 4.0 volume',
     );
-    final Finder outputFaderPaint = find
-        .descendant(of: outputFader, matching: find.byType(CustomPaint))
-        .first;
+    final Rect outputFaderRect = tester.getRect(outputFader);
+    // Only the track takes drags; the level ladder beside it is a readout.
+    // The panel renders scaled here, so place the drag proportionally.
+    const double trackFraction =
+        (AudioFaderMetrics.trackLeft + AudioFaderMetrics.trackWidth / 2) /
+        AudioFaderMetrics.width;
+    final double trackX =
+        outputFaderRect.left + outputFaderRect.width * trackFraction;
     final TestGesture drag = await tester.startGesture(
-      tester.getCenter(outputFaderPaint),
+      Offset(trackX, outputFaderRect.center.dy),
     );
-    final Rect outputFaderRect = tester.getRect(outputFaderPaint);
-    await drag.moveTo(
-      Offset(outputFaderRect.center.dx, outputFaderRect.top + 0.1),
-    );
+    await drag.moveTo(Offset(trackX, outputFaderRect.top + 0.1));
     await tester.pump(const Duration(milliseconds: 90));
 
     expect(find.text('VOLUME'), findsOneWidget);
@@ -4348,7 +4349,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('VOLUME'), findsOneWidget);
-    expect(find.text('Stereo · 48kHz · 24bit'), findsOneWidget);
+    expect(find.text('Output level'), findsOneWidget);
 
     hotkeys.add(_shortcut(1, const HotkeyEventToggleMute()));
     await tester.pump();

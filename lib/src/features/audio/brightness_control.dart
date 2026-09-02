@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
-import 'audio_chrome.dart';
 import 'brightness_knob.dart';
 import 'brightness_status_view.dart';
 
@@ -34,40 +33,60 @@ class BrightnessControl extends StatefulWidget {
 }
 
 class BrightnessControlState extends State<BrightnessControl> {
-  double? _preview;
+  static const int _minimum = 1;
+
+  final HyprPreviewValue _preview = HyprPreviewValue();
   final HyprLiveValue _commits = HyprLiveValue(
     initialValue: 0,
-    minimum: 1,
-    commitInterval: const Duration(milliseconds: 75),
+    minimum: _minimum,
+    commitInterval: HyprDurations.commit,
   );
 
   @override
-  void didUpdateWidget(covariant BrightnessControl oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (_preview != null && widget.status?.displayValue == _preview!.round()) {
-      _preview = null;
-      _commits.sync(widget.status?.displayValue ?? 0);
+  void initState() {
+    super.initState();
+    _preview.addListener(_onPreviewChanged);
+  }
+
+  @override
+  void dispose() {
+    _preview
+      ..removeListener(_onPreviewChanged)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onPreviewChanged() {
+    if (mounted) {
+      setState(() {});
     }
   }
 
   void _setValue(double value, {bool force = false}) {
-    final double next = value.clamp(1, 100).toDouble();
-    setState(() => _preview = next);
-    final int level = next.round();
+    final int level = value.clamp(_minimum, 100).round();
+    _preview.show(level);
     _commits.preview(level);
     final int? committed = _commits.commit(force: force);
-    if (committed != null) {
-      final ValueChanged<int> commit = widget.onSetBrightness;
-      WidgetsBinding.instance.addPostFrameCallback((_) => commit(committed));
+    if (committed == null) {
+      return;
     }
+    // Let the frame that shows the new value present before the command
+    // crosses to Rust.
+    final ValueChanged<int> commit = widget.onSetBrightness;
+    WidgetsBinding.instance.addPostFrameCallback((_) => commit(committed));
   }
 
   @override
   Widget build(BuildContext context) {
     final BrightnessStatus? status = widget.status;
     final bool available = status?.isAvailable ?? false;
-    final int value = (_preview ?? status?.displayValue.toDouble() ?? 0)
-        .round();
+    final int? backendValue = status?.displayValue;
+    final int value = _preview.settle(backendValue) ?? 0;
+    // Keep the commit baseline on the backend so returning the knob to a value
+    // the backend reached by other means still dispatches.
+    if (!_preview.isActive && backendValue != null) {
+      _commits.sync(backendValue);
+    }
     final String label = widget.loading
         ? 'Reading display...'
         : available
@@ -95,49 +114,39 @@ class BrightnessControlState extends State<BrightnessControl> {
       ),
     );
 
-    if (widget.presentation == BrightnessControlPresentation.console) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: AudioMixerColors.well,
-              borderRadius: BorderRadius.circular(6),
-              boxShadow: const <BoxShadow>[
-                BoxShadow(
-                  color: Color(0x70000000),
-                  blurRadius: 3,
-                  offset: Offset(0, 1),
-                  blurStyle: BlurStyle.inner,
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              child: Text.rich(
-                TextSpan(
-                  text: 'DISPLAY ',
-                  children: <InlineSpan>[
-                    TextSpan(
-                      text: available ? '$value%' : '--',
-                      style: const TextStyle(color: AudioMixerColors.quiet),
-                    ),
-                  ],
-                ),
-                style: HyprTypography.compactMonoStrong.copyWith(
-                  color: AudioMixerColors.value,
-                  fontSize: HyprTypography.size(10),
-                  letterSpacing: 2.2,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 28),
-          knob,
-        ],
+    if (widget.presentation != BrightnessControlPresentation.console) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(0, HyprSpacing.xxs, 0, 0),
+        child: knob,
       );
     }
 
-    return Padding(padding: const EdgeInsets.fromLTRB(0, 2, 0, 0), child: knob);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        HyprWell(
+          padding: const EdgeInsets.symmetric(
+            horizontal: HyprSpacing.xxl,
+            vertical: HyprSpacing.sm,
+          ),
+          borderColor: Colors.transparent,
+          shadowColor: const Color(0x70000000),
+          child: Text.rich(
+            TextSpan(
+              text: 'DISPLAY ',
+              children: <InlineSpan>[
+                TextSpan(
+                  text: available ? '$value%' : '--',
+                  style: const TextStyle(color: HyprColors.textMuted),
+                ),
+              ],
+            ),
+            style: HyprTypography.mixerLegend.copyWith(color: HyprColors.text),
+          ),
+        ),
+        const SizedBox(height: HyprSpacing.loose + HyprSpacing.sm),
+        knob,
+      ],
+    );
   }
 }
