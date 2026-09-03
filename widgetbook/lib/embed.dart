@@ -2,8 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
-import 'catalog/catalog_theme.dart';
-import 'stories/audio_mixer_preview.dart';
+import 'audio/audio_mixer_preview.dart';
+import 'embed/embed_theme.dart';
 
 void main() => runWidget(const _EmbedViews());
 
@@ -53,7 +53,7 @@ class _MixerEmbed extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: catalogTheme.copyWith(scaffoldBackgroundColor: Colors.transparent),
+      theme: embedTheme,
       home: Scaffold(
         backgroundColor: Colors.transparent,
         body: SizedBox.expand(

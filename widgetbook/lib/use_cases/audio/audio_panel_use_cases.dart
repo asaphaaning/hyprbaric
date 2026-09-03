@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hyprbaric/widget_catalog.dart';
 import 'package:widgetbook_annotation/widgetbook_annotation.dart';
 
+import '../../audio/audio_fixtures.dart';
+import '../../audio/audio_mixer_preview.dart';
 import '../../catalog/catalog_frame.dart';
-import '../../stories/audio_mixer_preview.dart';
-import 'audio_fixtures.dart';
 
 @UseCase(name: 'Ready', type: AudioPanel, path: '[Widgets]/Audio')
 Widget buildReadyAudioPanel(BuildContext context) {

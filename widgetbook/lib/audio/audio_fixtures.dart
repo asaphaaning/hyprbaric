@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hyprbaric/widget_catalog.dart';
+import 'package:hyprbaric/audio_embed.dart';
 
-/// Typed endpoint and display snapshots for production mixer stories.
+/// Typed endpoint and display snapshots for mixer previews and stories.
 abstract final class AudioFixtures {
   static const AudioEndpoint output = AudioEndpoint(
     kind: AudioEndpointKind.output,

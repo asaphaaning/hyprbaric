@@ -1,11 +1,11 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:hyprbaric/widget_catalog.dart';
+import 'package:hyprbaric/audio_embed.dart';
 
-import '../use_cases/audio/audio_fixtures.dart';
+import 'audio_fixtures.dart';
 
-/// Interactive mixer preview shared by Widgetbook and the landing page embed.
+/// Interactive mixer preview shared by the landing embed and Widgetbook.
 class AudioMixerPreview extends StatefulWidget {
   const AudioMixerPreview({super.key, this.animateMeters = true});
 
