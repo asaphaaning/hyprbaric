@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bindings/bindings.dart';
-import '../../layer_shell_controller.dart';
 import '../../state/providers.dart';
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
@@ -56,10 +55,10 @@ class _AppearanceSettingsPanelState
         _MonitorRow(
           value: view.monitor,
           monitors: ref
-              .watch(layerShellMonitorsProvider)
+              .watch(currentWorkspaceStatusProvider)
               .maybeWhen(
-                data: (List<LayerShellMonitor> monitors) => monitors,
-                orElse: () => const <LayerShellMonitor>[],
+                data: (WorkspaceStatus status) => status.monitors,
+                orElse: () => const <MonitorWorkspaceStatus>[],
               ),
           onChanged: (AppearanceMonitorTarget monitor) {
             final AppearanceStatus next = view.copyWith(monitor: monitor);
@@ -190,7 +189,7 @@ class _MonitorRow extends StatelessWidget {
   });
 
   final AppearanceMonitorTarget value;
-  final List<LayerShellMonitor> monitors;
+  final List<MonitorWorkspaceStatus> monitors;
   final ValueChanged<AppearanceMonitorTarget> onChanged;
 
   @override
@@ -212,9 +211,9 @@ class _MonitorRow extends StatelessWidget {
             selected: value is AppearanceMonitorTargetAll,
             onPressed: () => onChanged(const AppearanceMonitorTargetAll()),
           ),
-          for (final LayerShellMonitor monitor in monitors)
+          for (final MonitorWorkspaceStatus monitor in monitors)
             _SegmentButton(
-              label: monitor.label,
+              label: monitor.name,
               selected:
                   value is AppearanceMonitorTargetNamed &&
                   (value as AppearanceMonitorTargetNamed).name == monitor.name,

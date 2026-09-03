@@ -801,15 +801,18 @@ class _TrayMenuItemActivateIntent extends TrayIntent {
 sealed class WorkspaceIntent extends RustIntent {
   const WorkspaceIntent();
 
-  const factory WorkspaceIntent.relative(int delta) = _WorkspaceRelativeIntent;
+  const factory WorkspaceIntent.relative(int delta, String? monitorName) =
+      _WorkspaceRelativeIntent;
 
-  const factory WorkspaceIntent.absolute(int target) = _WorkspaceAbsoluteIntent;
+  const factory WorkspaceIntent.absolute(int target, String? monitorName) =
+      _WorkspaceAbsoluteIntent;
 }
 
 class _WorkspaceRelativeIntent extends WorkspaceIntent {
-  const _WorkspaceRelativeIntent(this.delta);
+  const _WorkspaceRelativeIntent(this.delta, this.monitorName);
 
   final int delta;
+  final String? monitorName;
 
   @override
   String get debugLabel => 'workspace_delta:$delta';
@@ -819,14 +822,16 @@ class _WorkspaceRelativeIntent extends WorkspaceIntent {
     WorkspaceSwitch(
       kind: WorkspaceSwitchKind.relative,
       value: delta,
+      monitorName: monitorName,
     ).sendSignalToRust();
   }
 }
 
 class _WorkspaceAbsoluteIntent extends WorkspaceIntent {
-  const _WorkspaceAbsoluteIntent(this.target);
+  const _WorkspaceAbsoluteIntent(this.target, this.monitorName);
 
   final int target;
+  final String? monitorName;
 
   @override
   String get debugLabel => 'workspace_target:$target';
@@ -836,6 +841,7 @@ class _WorkspaceAbsoluteIntent extends WorkspaceIntent {
     WorkspaceSwitch(
       kind: WorkspaceSwitchKind.absolute,
       value: target,
+      monitorName: monitorName,
     ).sendSignalToRust();
   }
 }

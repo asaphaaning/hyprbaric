@@ -16,7 +16,7 @@ enum NativeLayerShellKeyboardMode { none, exclusive, onDemand }
 
 enum NativeLayerShellBarEdge { top, bottom }
 
-enum NativeLayerShellMonitorTargetKind { primary, all, named }
+enum NativeLayerShellMonitorTargetKind { primary, all, named, hidden }
 
 class NativeLayerShellMonitorTarget {
   NativeLayerShellMonitorTargetKind kind;

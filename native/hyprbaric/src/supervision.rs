@@ -149,11 +149,8 @@ async fn output_forwarder(ctx: Context<App>) -> supervised::ServiceOutcome {
         let output = subscriptions.next().await;
 
         match &output {
-            Output::Workspace(snapshot) => {
-                context.set_workspace(snapshot.clone()).await;
-            }
-            Output::FocusedWindow(snapshot) => {
-                context.set_focused_window(snapshot.clone()).await;
+            Output::Desktop(snapshot) => {
+                context.set_desktop(snapshot.clone()).await;
             }
             Output::Shortcut(event) => {
                 tracing::debug!(shortcut = %event.shortcut, "Shortcut activated");

@@ -22,6 +22,8 @@ gboolean should_show(const NativeWindowState *state) {
     return state->monitor_name == state->named_monitor_target ||
            (state->monitor_is_primary &&
             !hyprbaric_has_monitor(state->named_monitor_target));
+  case HYPRBARIC_NATIVE_LAYER_SHELL_MONITOR_TARGET_KIND_HIDDEN:
+    return FALSE;
   }
   return state->monitor_is_primary;
 }

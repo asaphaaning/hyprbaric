@@ -3,13 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../bindings/bindings.dart';
 import '../layer_shell_controller.dart';
 import 'appearance.dart';
+import 'monitor_workspace.dart';
 
 /// Immutable configuration describing core bar characteristics.
 class BarConfig {
   const BarConfig({
     required this.height,
     required this.position,
-    required this.monitor,
     required this.opacity,
     required this.cornerRadius,
     required this.accentHue,
@@ -19,7 +19,6 @@ class BarConfig {
     return BarConfig(
       height: 40,
       position: appearance.position,
-      monitor: _monitorTarget(appearance.monitor),
       opacity: appearance.opacity,
       cornerRadius: appearance.cornerRadius,
       accentHue: appearance.accentHue,
@@ -28,7 +27,6 @@ class BarConfig {
 
   final double height;
   final AppearancePosition position;
-  final LayerShellMonitorTarget monitor;
   final int opacity;
   final int cornerRadius;
   final int accentHue;
@@ -38,7 +36,6 @@ class BarConfig {
   BarConfig copyWith({
     double? height,
     AppearancePosition? position,
-    LayerShellMonitorTarget? monitor,
     int? opacity,
     int? cornerRadius,
     int? accentHue,
@@ -46,22 +43,11 @@ class BarConfig {
     return BarConfig(
       height: height ?? this.height,
       position: position ?? this.position,
-      monitor: monitor ?? this.monitor,
       opacity: opacity ?? this.opacity,
       cornerRadius: cornerRadius ?? this.cornerRadius,
       accentHue: accentHue ?? this.accentHue,
     );
   }
-}
-
-LayerShellMonitorTarget _monitorTarget(AppearanceMonitorTarget monitor) {
-  return switch (monitor) {
-    AppearanceMonitorTargetPrimary() => const LayerShellMonitorTarget.primary(),
-    AppearanceMonitorTargetAll() => const LayerShellMonitorTarget.all(),
-    AppearanceMonitorTargetNamed(:final String name) =>
-      LayerShellMonitorTarget.named(name),
-    _ => const LayerShellMonitorTarget.primary(),
-  };
 }
 
 final barConfigProvider = Provider<BarConfig>((ref) {
@@ -77,3 +63,46 @@ final barHeightProvider = Provider<double>((ref) {
 final barPositionProvider = Provider<AppearancePosition>((ref) {
   return ref.watch(barConfigProvider).position;
 });
+
+/// Resolves a persisted connector target into visibility for one native view.
+LayerShellMonitorTarget resolveViewMonitorTarget(
+  AppearanceMonitorTarget configured,
+  WorkspaceStatus? workspace,
+  LayerShellMonitor? output,
+) {
+  return switch (configured) {
+    AppearanceMonitorTargetPrimary() => const LayerShellMonitorTarget.primary(),
+    AppearanceMonitorTargetAll() => const LayerShellMonitorTarget.all(),
+    AppearanceMonitorTargetNamed(:final String name) => _resolveNamedTarget(
+      name,
+      workspace,
+      output,
+    ),
+    _ => const LayerShellMonitorTarget.primary(),
+  };
+}
+
+LayerShellMonitorTarget _resolveNamedTarget(
+  String name,
+  WorkspaceStatus? workspace,
+  LayerShellMonitor? output,
+) {
+  if (workspace == null || output == null) {
+    return const LayerShellMonitorTarget.primary();
+  }
+
+  final bool targetExists = workspace.monitors.any(
+    (MonitorWorkspaceStatus monitor) => monitor.name == name,
+  );
+  if (!targetExists) {
+    return const LayerShellMonitorTarget.primary();
+  }
+
+  final String? currentName = resolveMonitorWorkspace(
+    workspace,
+    output,
+  ).monitorName;
+  return currentName == name
+      ? const LayerShellMonitorTarget.all()
+      : const LayerShellMonitorTarget.hidden();
+}

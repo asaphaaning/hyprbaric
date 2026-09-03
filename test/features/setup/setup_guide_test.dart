@@ -92,7 +92,7 @@ void main() {
     );
   });
 
-  testWidgets('manual request opens setup on a non-automatic host', (
+  testWidgets('non-host view ignores shared manual setup requests', (
     WidgetTester tester,
   ) async {
     int openingCount = 0;
@@ -127,13 +127,8 @@ void main() {
     await tester.tap(find.text('Launch'));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey<String>('setup-guide')), findsOneWidget);
-    expect(openingCount, 1);
-    final Finder scrim = find.byKey(
-      const ValueKey<String>('setup-guide-scrim'),
-    );
-    expect(tester.getTopLeft(scrim).dy, 43);
-    expect(tester.getSize(scrim), const Size(1200, 757));
+    expect(find.byKey(const ValueKey<String>('setup-guide')), findsNothing);
+    expect(openingCount, 0);
   });
 
   testWidgets('guide preserves the v6 split geometry and control vocabulary', (

@@ -31,6 +31,8 @@ sealed class LayerShellMonitorTarget {
   const factory LayerShellMonitorTarget.all() = LayerShellAllMonitorTarget;
   const factory LayerShellMonitorTarget.named(String name) =
       LayerShellNamedMonitorTarget;
+  const factory LayerShellMonitorTarget.hidden() =
+      LayerShellHiddenMonitorTarget;
 
   NativeLayerShellMonitorTarget toNative();
 }
@@ -62,6 +64,15 @@ class LayerShellNamedMonitorTarget extends LayerShellMonitorTarget {
   NativeLayerShellMonitorTarget toNative() => NativeLayerShellMonitorTarget(
     kind: NativeLayerShellMonitorTargetKind.named,
     name: name,
+  );
+}
+
+class LayerShellHiddenMonitorTarget extends LayerShellMonitorTarget {
+  const LayerShellHiddenMonitorTarget();
+
+  @override
+  NativeLayerShellMonitorTarget toNative() => NativeLayerShellMonitorTarget(
+    kind: NativeLayerShellMonitorTargetKind.hidden,
   );
 }
 
@@ -244,12 +255,18 @@ class LayerShellController {
   Future<void> setRegion(NativeLayerShellRegionRequest request) =>
       _invoke('setRegion', () => _api.setRegion(request));
 
-  static Future<void> _invoke(String method, Future<void> Function() action) {
+  static Future<void> _invoke(
+    String method,
+    Future<void> Function() action,
+  ) async {
     if (!_isSupported) return Future<void>.value();
-    return action().catchError((Object error, StackTrace stackTrace) {
+    try {
+      await action();
+    } catch (error, stackTrace) {
       debugPrint('Layer shell call $method failed: $error');
       debugPrint('$stackTrace');
-    });
+      Error.throwWithStackTrace(error, stackTrace);
+    }
   }
 }
 

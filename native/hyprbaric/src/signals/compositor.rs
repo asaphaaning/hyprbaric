@@ -11,6 +11,7 @@ pub enum WorkspaceSwitchKind {
 pub struct WorkspaceSwitch {
     pub kind: WorkspaceSwitchKind,
     pub value: i32,
+    pub monitor_name: Option<String>,
 }
 
 #[derive(Serialize, SignalPiece, Clone, Debug, PartialEq)]
@@ -32,7 +33,7 @@ pub struct MonitorWorkspaceStatus {
     pub refresh_rate_millihertz: i32,
 }
 
-#[derive(Serialize, RustSignal)]
+#[derive(Serialize, SignalPiece, Clone, Debug, PartialEq)]
 pub struct WorkspaceStatus {
     pub id: i32,
     pub name: String,
@@ -43,12 +44,19 @@ pub struct WorkspaceStatus {
     pub monitors: Vec<MonitorWorkspaceStatus>,
 }
 
-#[derive(Serialize, RustSignal)]
+#[derive(Serialize, SignalPiece, Clone, Debug, PartialEq)]
 pub struct FocusedWindowStatus {
     pub app_name: Option<String>,
     pub title: Option<String>,
     pub hostname: String,
     pub monitors: Vec<MonitorFocusedWindowStatus>,
+}
+
+/// Workspace and focused-window projections from the same compositor read.
+#[derive(Serialize, RustSignal)]
+pub struct DesktopStatus {
+    pub workspace: WorkspaceStatus,
+    pub focused_window: FocusedWindowStatus,
 }
 
 #[derive(Serialize, SignalPiece, Clone, Debug, PartialEq, Eq)]

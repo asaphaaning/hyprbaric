@@ -5,7 +5,7 @@ use crate::signals::{
     AppStatus, AppearanceCommand, AppearanceCommandResult, AppearanceStatus, AudioCommand,
     AudioCommandResult, AudioStatus, BrightnessCommandResult, BrightnessSetLevel, BrightnessStatus,
     CaffeineCommandResult, CaffeineSetEnabled, CaffeineStatus, CapabilityStatus,
-    ClockCalendarRequest, ClockStatus, ColorPickRequest, ColorPickerCommandResult,
+    ClockCalendarRequest, ClockStatus, ColorPickRequest, ColorPickerCommandResult, DesktopStatus,
     FocusedWindowStatus, HotkeyEvent, ModuleCommand, ModuleCommandResult, ModulesStatus,
     NetworkCommandResult, NetworkConnectRequest, NetworkScanRequest, NetworkSetWifiEnabled,
     NetworkSettingsRequest, NetworkStatus, NightLightCommandResult, NightLightSetEnabled,
@@ -26,7 +26,7 @@ use crate::{
         App, Command as AppCommand, NetworkCommand as AppNetworkCommand, Outcome, Output,
         WorkspaceCommand as AppWorkspaceCommand,
     },
-    hyprland::{self, FocusedWindowSnapshot, WorkspaceSnapshot},
+    hyprland::{self, DesktopSnapshot, FocusedWindowSnapshot, WorkspaceSnapshot},
 };
 use crate::{
     appearance, audio, brightness, caffeine, capabilities, clock, color_picker, launcher, modules,
@@ -48,8 +48,7 @@ pub(crate) fn send_app_signal() {
 pub(crate) fn publish(output: &Output) {
     match output {
         Output::Started => send_app_signal(),
-        Output::Workspace(snapshot) => send_workspace_signal(snapshot),
-        Output::FocusedWindow(snapshot) => send_focused_window_signal(snapshot),
+        Output::Desktop(snapshot) => send_desktop_signal(snapshot),
         Output::Appearance(snapshot) => send_appearance_signal(snapshot),
         Output::AppearanceReport(report) => send_appearance_command_result(report),
         Output::Modules(snapshot) => send_modules_signal(snapshot),
@@ -91,7 +90,7 @@ pub(crate) fn publish(output: &Output) {
     }
 }
 
-pub(crate) fn send_workspace_signal(snapshot: &WorkspaceSnapshot) {
+fn workspace_signal(snapshot: &WorkspaceSnapshot) -> WorkspaceStatus {
     WorkspaceStatus {
         id: snapshot.id.get(),
         name: snapshot.name.clone(),
@@ -114,10 +113,9 @@ pub(crate) fn send_workspace_signal(snapshot: &WorkspaceSnapshot) {
             })
             .collect(),
     }
-    .send_signal_to_dart();
 }
 
-pub(crate) fn send_focused_window_signal(snapshot: &FocusedWindowSnapshot) {
+fn focused_window_signal(snapshot: &FocusedWindowSnapshot) -> FocusedWindowStatus {
     FocusedWindowStatus {
         app_name: snapshot.app_name.clone(),
         title: snapshot.title.clone(),
@@ -132,21 +130,30 @@ pub(crate) fn send_focused_window_signal(snapshot: &FocusedWindowSnapshot) {
             })
             .collect(),
     }
+}
+
+pub(crate) fn send_desktop_signal(snapshot: &DesktopSnapshot) {
+    DesktopStatus {
+        workspace: workspace_signal(&snapshot.workspace),
+        focused_window: focused_window_signal(&snapshot.focused_window),
+    }
     .send_signal_to_dart();
 }
 
 pub(crate) async fn handle_workspace_switch(State(context): State<App>, command: WorkspaceSwitch) {
+    let output = command.monitor_name.and_then(hyprland::OutputName::new);
     let command = match command.kind {
         WorkspaceSwitchKind::Relative if command.value == 0 => AppWorkspaceCommand::Refresh,
-        WorkspaceSwitchKind::Relative => {
-            AppWorkspaceCommand::Switch(hyprland::WorkspaceTarget::relative(command.value))
-        }
+        WorkspaceSwitchKind::Relative => AppWorkspaceCommand::Switch {
+            target: hyprland::WorkspaceTarget::relative(command.value),
+            output,
+        },
         WorkspaceSwitchKind::Absolute => {
             let Some(target) = hyprland::WorkspaceTarget::absolute(command.value) else {
                 tracing::warn!(target = command.value, "Ignoring invalid workspace target");
                 return;
             };
-            AppWorkspaceCommand::Switch(target)
+            AppWorkspaceCommand::Switch { target, output }
         }
     };
 

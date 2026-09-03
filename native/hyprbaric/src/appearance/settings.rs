@@ -1,6 +1,6 @@
 //! Appearance settings persistence.
 
-use toml_edit::{DocumentMut, Item, Table, value};
+use toml_edit::{Table, value};
 use tracing::instrument;
 
 use crate::config;
@@ -12,18 +12,12 @@ const TABLE: &str = "appearance";
 #[instrument(skip(command), err)]
 pub fn save(command: &Command, current: Configuration) -> Result<Configuration, Error> {
     let next = current.apply(command);
-    config::edit(|document| write_appearance(document, &next))?;
+    config::edit_table(TABLE, |table| write_appearance(table, &next))?;
 
     Ok(next)
 }
 
-fn write_appearance(document: &mut DocumentMut, config: &Configuration) {
-    if !document.as_table().contains_key(TABLE) {
-        document[TABLE] = Item::Table(Table::new());
-    }
-    let table = document[TABLE]
-        .as_table_mut()
-        .expect("appearance item should be a table");
+fn write_appearance(table: &mut Table, config: &Configuration) {
     table["position"] = value(config.position().as_str());
     table["monitor"] = value(config.monitor().as_str());
     table["opacity"] = value(config.opacity().as_u8() as i64);
@@ -35,7 +29,7 @@ fn write_appearance(document: &mut DocumentMut, config: &Configuration) {
 mod tests {
     use std::{env, fs, path::PathBuf};
 
-    use toml_edit::DocumentMut;
+    use toml_edit::Table;
 
     use crate::appearance::{Command, Configuration, Opacity};
 
@@ -110,17 +104,45 @@ mod tests {
         )
         .expect("fixture should parse");
         let next = current.apply(&Command::RestoreDefaults);
-        let mut document = "[appearance]\nposition = \"bottom\"\nmonitor = \"all\"\nopacity = 42\ncorner_radius = 4\naccent_hue = 300\n"
-            .parse::<DocumentMut>()
-            .expect("fixture document should parse");
+        let mut table = Table::new();
 
-        write_appearance(&mut document, &next);
-        let source = document.to_string();
+        write_appearance(&mut table, &next);
+        let source = table.to_string();
         assert!(source.contains("position = \"top\""));
         assert!(source.contains("monitor = \"primary\""));
         assert!(source.contains("opacity = 77"));
         assert!(source.contains("corner_radius = 12"));
         assert!(source.contains("accent_hue = 197"));
         assert_eq!(next, Configuration::default());
+    }
+
+    #[test]
+    fn save_rejects_a_non_table_appearance_item() {
+        let _environment = crate::config::environment_lock();
+        let root = env::temp_dir().join(format!(
+            "hyprbaric-appearance-invalid-test-{}",
+            std::process::id()
+        ));
+        let _guard = EnvGuard::set("XDG_CONFIG_HOME", &root);
+        let config_path = root.join("hyprbaric/config.toml");
+        fs::create_dir_all(config_path.parent().expect("config should have parent"))
+            .expect("config directory should be created");
+        fs::write(&config_path, "appearance = \"invalid\"\n")
+            .expect("fixture config should be written");
+
+        let result = save(
+            &Command::SetOpacity {
+                opacity: Opacity::new(82).expect("opacity should be valid"),
+            },
+            Configuration::default(),
+        );
+
+        assert!(matches!(
+            result,
+            Err(crate::appearance::Error::Config(
+                crate::config::Error::InvalidTable { name: "appearance" }
+            ))
+        ));
+        fs::remove_dir_all(root).expect("fixture config should be removed");
     }
 }

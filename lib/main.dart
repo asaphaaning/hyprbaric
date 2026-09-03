@@ -12,7 +12,7 @@ import 'src/state/layer_shell.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeRust(assignRustSignal);
-  runWidget(const _HyprbaricViews());
+  runWidget(const ProviderScope(child: _HyprbaricViews()));
 }
 
 class _HyprbaricViews extends StatefulWidget {
@@ -59,13 +59,19 @@ class _HyprbaricViewsState extends State<_HyprbaricViews>
     );
 
     return ViewCollection(
-      views: views
-          .map(
-            (ui.FlutterView view) => View(
+      views: views.indexed
+          .map(((int, ui.FlutterView) entry) {
+            final (int index, ui.FlutterView view) = entry;
+            return View(
               key: ValueKey<int>(view.viewId),
               view: view,
               child: ProviderScope(
                 overrides: [
+                  layerShellViewRoleProvider.overrideWithValue(
+                    index == 0
+                        ? LayerShellViewRole.globalHost
+                        : LayerShellViewRole.satellite,
+                  ),
                   layerShellControllerProvider.overrideWithValue(
                     _controllers.putIfAbsent(
                       view.viewId,
@@ -78,8 +84,8 @@ class _HyprbaricViewsState extends State<_HyprbaricViews>
                 ],
                 child: const Hyprbaric(),
               ),
-            ),
-          )
+            );
+          })
           .toList(growable: false),
     );
   }

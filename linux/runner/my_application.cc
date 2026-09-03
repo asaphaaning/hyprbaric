@@ -67,6 +67,18 @@ void clear_window_channel(MyApplication *self, WindowRecord *record) {
       messenger, record->channel_suffix);
 }
 
+void remove_fallback_window(MyApplication *self) {
+  for (guint index = 0; index < self->windows->len; ++index) {
+    auto *record =
+        static_cast<WindowRecord *>(g_ptr_array_index(self->windows, index));
+    if (record->monitor == nullptr) {
+      clear_window_channel(self, record);
+      g_ptr_array_remove_index(self->windows, index);
+      return;
+    }
+  }
+}
+
 void refresh_monitor_descriptors(MyApplication *self) {
   for (const MonitorDescriptor &descriptor : hyprbaric_monitors()) {
     WindowRecord *record = find_window(self, descriptor.monitor);
@@ -128,6 +140,7 @@ void monitor_added_cb(GdkDisplay *display, GdkMonitor *monitor,
   (void)display;
   auto *self = MY_APPLICATION(user_data);
   create_window_for_monitor(self, monitor);
+  remove_fallback_window(self);
   refresh_monitor_descriptors(self);
 }
 

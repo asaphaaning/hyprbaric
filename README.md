@@ -108,6 +108,14 @@ placeholder indefinitely.
 - Rust owns domain state, compositor and portal integration, commands, and events.
 - The native Linux host owns GTK, layer-shell setup, transparency, and native hit regions.
 
+Each connected output receives its own Flutter view. One view is designated as
+the process-global interaction host for shortcuts and setup, while satellite
+views render monitor-local workspace and focused-window state. Persisted monitor
+targets use Hyprland connector names; Flutter resolves those names against each
+view's native geometry before configuring visibility. Rust publishes workspace
+and focused-window projections together so a view never combines observations
+from different compositor refreshes.
+
 Keep raw platform data at those boundaries; internal features communicate through typed Rust and Flutter models. See [AGENTS.md](AGENTS.md) for the project conventions.
 
 ## Verify changes

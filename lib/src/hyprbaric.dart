@@ -9,6 +9,7 @@ import 'features/rust_commands.dart';
 import 'features/session/session_launcher.dart';
 import 'features/settings/settings_overlay.dart';
 import 'features/setup/setup_guide_host.dart';
+import 'layer_shell_controller.dart';
 import 'layer_shell_hit_region.dart';
 import 'state/providers.dart';
 import 'widgets/center_cluster.dart';
@@ -79,7 +80,12 @@ class _BarViewState extends ConsumerState<_BarView> {
   final GlobalKey _appLauncherAnchorKey = GlobalKey();
   final GlobalKey _powerButtonAnchorKey = GlobalKey();
   bool _settingsOpen = false;
+  bool _layerShellConfigurationInProgress = false;
+  ({BarConfig bar, LayerShellMonitorTarget monitor})?
+  _pendingLayerShellConfiguration;
   late final ProviderSubscription<BarConfig> _barConfigSubscription;
+  late final ProviderSubscription<LayerShellMonitorTarget>
+  _viewMonitorTargetSubscription;
   late final ProviderSubscription<AsyncValue<ShortcutEvent>>
   _hotkeySubscription;
   late final ProviderSubscription<AsyncValue<AudioStatus>>
@@ -110,12 +116,20 @@ class _BarViewState extends ConsumerState<_BarView> {
       if (!mounted) {
         return;
       }
-      unawaited(_configureLayerShell(next));
+      _scheduleLayerShellConfiguration();
     });
+    _viewMonitorTargetSubscription = ref.listenManual<LayerShellMonitorTarget>(
+      layerShellViewMonitorTargetProvider,
+      (_, _) => _scheduleLayerShellConfiguration(),
+    );
     _hotkeySubscription = ref.listenManual<AsyncValue<ShortcutEvent>>(
       shortcutEventProvider,
       (AsyncValue<ShortcutEvent>? _, AsyncValue<ShortcutEvent> next) {
-        next.whenData((ShortcutEvent event) => _handleHotkeyEvent(event.event));
+        next.whenData((ShortcutEvent event) {
+          if (ref.read(layerShellViewRoleProvider).handlesGlobalActions) {
+            _handleHotkeyEvent(event.event);
+          }
+        });
       },
     );
     _audioStatusSubscription = ref.listenManual<AsyncValue<AudioStatus>>(
@@ -153,8 +167,7 @@ class _BarViewState extends ConsumerState<_BarView> {
       },
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final BarConfig barConfig = ref.read(barConfigProvider);
-      unawaited(_configureLayerShell(barConfig));
+      _scheduleLayerShellConfiguration();
     });
   }
 
@@ -163,6 +176,7 @@ class _BarViewState extends ConsumerState<_BarView> {
     _appLauncherController.removeListener(_handleLauncherChromeChanged);
     _sessionLauncherController.removeListener(_handleSessionLauncherChanged);
     _barConfigSubscription.close();
+    _viewMonitorTargetSubscription.close();
     _hotkeySubscription.close();
     _audioStatusSubscription.close();
     _brightnessStatusSubscription.close();
@@ -202,7 +216,40 @@ class _BarViewState extends ConsumerState<_BarView> {
     }
   }
 
-  Future<void> _configureLayerShell(BarConfig barConfig) async {
+  void _scheduleLayerShellConfiguration() {
+    if (!mounted) {
+      return;
+    }
+
+    _pendingLayerShellConfiguration = (
+      bar: ref.read(barConfigProvider),
+      monitor: ref.read(layerShellViewMonitorTargetProvider),
+    );
+    if (!_layerShellConfigurationInProgress) {
+      unawaited(_flushLayerShellConfiguration());
+    }
+  }
+
+  Future<void> _flushLayerShellConfiguration() async {
+    _layerShellConfigurationInProgress = true;
+    try {
+      while (true) {
+        final configuration = _pendingLayerShellConfiguration;
+        if (configuration == null) {
+          break;
+        }
+        _pendingLayerShellConfiguration = null;
+        await _configureLayerShell(configuration.bar, configuration.monitor);
+      }
+    } finally {
+      _layerShellConfigurationInProgress = false;
+    }
+  }
+
+  Future<void> _configureLayerShell(
+    BarConfig barConfig,
+    LayerShellMonitorTarget monitor,
+  ) async {
     try {
       await ref
           .read(layerShellControllerProvider)
@@ -215,7 +262,7 @@ class _BarViewState extends ConsumerState<_BarView> {
             marginBottom: barConfig.isBottom ? _barTopMargin : 0,
             marginLeft: 0,
             marginRight: 0,
-            monitor: barConfig.monitor,
+            monitor: monitor,
           );
       if (!mounted) {
         return;

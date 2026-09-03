@@ -192,7 +192,8 @@ class LayerShellRegionManager {
           .toList(growable: false),
       captureAllClicks: _captureAllClicks,
     );
-    if (request == _lastAppliedRequest || request == _pendingUpdate?.request) {
+    if (request == _lastAppliedRequest ||
+        (_flushInProgress && request == _pendingUpdate?.request)) {
       return;
     }
 
@@ -220,7 +221,8 @@ class LayerShellRegionManager {
           await _controller.setRegion(nextUpdate.request.toNative());
           _lastAppliedRequest = nextUpdate.request;
         } catch (_) {
-          // A dropped region update is recoverable: the next one reapplies it.
+          _pendingUpdate ??= nextUpdate;
+          rethrow;
         }
       }
     } finally {

@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../state/layer_shell.dart';
+
 /// Ordered steps in the first-run journey.
 enum SetupStep {
   welcome,
@@ -28,6 +30,7 @@ enum SetupLaunch { automatic, manual }
 /// An intentional request to show the guide from application UI.
 enum SetupGuideRequest { show }
 
+<<<<<<< HEAD
 /// Whether this view may host automatic onboarding.
 ///
 /// This is the policy switch; the election below is the tie-break between
@@ -36,6 +39,15 @@ enum SetupGuideRequest { show }
 /// still stands down its automatic guide once completion settles, so a
 /// redundant open can never linger past the first acknowledged journey.
 final setupGuideAutomaticHostProvider = Provider<bool>((_) => true);
+||||||| parent of 758c1b8 (Fix multi-monitor state ownership)
+/// Only the first native view hosts automatic onboarding.
+final setupGuideAutomaticHostProvider = Provider<bool>((_) => true);
+=======
+/// Only the first native view hosts automatic onboarding.
+final setupGuideAutomaticHostProvider = Provider<bool>(
+  (ref) => ref.watch(layerShellViewRoleProvider).handlesGlobalActions,
+);
+>>>>>>> 758c1b8 (Fix multi-monitor state ownership)
 
 /// Elects the single view that opens the guide automatically.
 ///

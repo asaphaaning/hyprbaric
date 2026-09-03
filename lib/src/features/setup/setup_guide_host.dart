@@ -38,6 +38,7 @@ class _SetupGuideHostState extends ConsumerState<SetupGuideHost> {
   late final ProviderSubscription<AsyncValue<SetupCommandResult>>
   _resultSubscription;
   late final ProviderSubscription<SetupGuideRequest?> _requestSubscription;
+  late final ProviderSubscription<bool> _hostSubscription;
 
   /// Captured up front: `ref` cannot be read once the element is unmounting,
   /// and the claim has to be released exactly then.
@@ -64,12 +65,29 @@ class _SetupGuideHostState extends ConsumerState<SetupGuideHost> {
     _requestSubscription = ref.listenManual<SetupGuideRequest?>(
       setupGuideRequestProvider,
       (_, SetupGuideRequest? request) {
+<<<<<<< HEAD
         final pending = request;
         if (pending != null && pending == SetupGuideRequest.show) {
+||||||| parent of 758c1b8 (Fix multi-monitor state ownership)
+        if (request == SetupGuideRequest.show) {
+=======
+        if (request == SetupGuideRequest.show &&
+            ref.read(setupGuideAutomaticHostProvider)) {
+>>>>>>> 758c1b8 (Fix multi-monitor state ownership)
           _open(SetupLaunch.manual);
           scheduleMicrotask(
             () => ref.read(setupGuideRequestProvider.notifier).consume(pending),
           );
+        }
+      },
+    );
+    _hostSubscription = ref.listenManual<bool>(
+      setupGuideAutomaticHostProvider,
+      (_, bool isHost) {
+        if (isHost) {
+          ref.read(setupStatusProvider).whenData(_acceptStatus);
+        } else if (_launch != null) {
+          setState(() => _launch = null);
         }
       },
     );
@@ -80,7 +98,12 @@ class _SetupGuideHostState extends ConsumerState<SetupGuideHost> {
     _statusSubscription.close();
     _resultSubscription.close();
     _requestSubscription.close();
+<<<<<<< HEAD
     _election.release(this);
+||||||| parent of 758c1b8 (Fix multi-monitor state ownership)
+=======
+    _hostSubscription.close();
+>>>>>>> 758c1b8 (Fix multi-monitor state ownership)
     super.dispose();
   }
 

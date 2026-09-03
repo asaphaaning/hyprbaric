@@ -34,15 +34,26 @@ class LeftCluster extends ConsumerWidget {
         .asData
         ?.value;
     final Widget workspaceWidget = workspaceStatus.when(
-      data: (WorkspaceStatus status) => WorkspaceStrip(
-        status: status,
-        resolution: resolveMonitorWorkspace(status, output),
-        settings: workspaceSettings,
-        onPrevious: () =>
-            ref.read(workspaceControllerProvider.notifier).previous(),
-        onNext: () => ref.read(workspaceControllerProvider.notifier).next(),
-        onSelect: ref.read(workspaceControllerProvider.notifier).select,
-      ),
+      data: (WorkspaceStatus status) {
+        final MonitorWorkspaceResolution resolution = resolveMonitorWorkspace(
+          status,
+          output,
+        );
+        return WorkspaceStrip(
+          status: status,
+          resolution: resolution,
+          settings: workspaceSettings,
+          onPrevious: () => ref
+              .read(workspaceControllerProvider.notifier)
+              .previous(resolution.monitorName),
+          onNext: () => ref
+              .read(workspaceControllerProvider.notifier)
+              .next(resolution.monitorName),
+          onSelect: (int target) => ref
+              .read(workspaceControllerProvider.notifier)
+              .select(target, resolution.monitorName),
+        );
+      },
       loading: () => const WorkspaceStripPlaceholder(label: '…'),
       error: (_, _) => const WorkspaceStripPlaceholder(label: '!'),
     );

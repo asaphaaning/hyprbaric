@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hyprbaric/src/bindings/bindings.dart';
 import 'package:hyprbaric/src/layer_shell_controller.dart';
+import 'package:hyprbaric/src/state/bar_config.dart';
 import 'package:hyprbaric/src/state/monitor_workspace.dart';
 
 MonitorWorkspaceStatus _monitor(
@@ -69,6 +70,49 @@ WorkspaceStatus _status({
 }
 
 void main() {
+  test('named connector is visible only on its matched view', () {
+    final WorkspaceStatus status = _status(
+      focusedId: 2,
+      monitors: <MonitorWorkspaceStatus>[
+        _monitor('DP-1', 1),
+        _monitor('DP-2', 2, focused: true, x: 3840),
+      ],
+    );
+
+    expect(
+      resolveViewMonitorTarget(
+        const AppearanceMonitorTargetNamed(name: 'DP-2'),
+        status,
+        _output(x: 3840),
+      ),
+      isA<LayerShellAllMonitorTarget>(),
+    );
+    expect(
+      resolveViewMonitorTarget(
+        const AppearanceMonitorTargetNamed(name: 'DP-2'),
+        status,
+        _output(),
+      ),
+      isA<LayerShellHiddenMonitorTarget>(),
+    );
+  });
+
+  test('missing named connector falls back to the primary view', () {
+    final WorkspaceStatus status = _status(
+      focusedId: 1,
+      monitors: <MonitorWorkspaceStatus>[_monitor('DP-1', 1, focused: true)],
+    );
+
+    expect(
+      resolveViewMonitorTarget(
+        const AppearanceMonitorTargetNamed(name: 'DP-9'),
+        status,
+        _output(),
+      ),
+      isA<LayerShellPrimaryMonitorTarget>(),
+    );
+  });
+
   test('unfocused output reports its own workspace', () {
     final WorkspaceStatus status = _status(
       focusedId: 4,

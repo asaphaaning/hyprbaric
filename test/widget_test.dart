@@ -36,7 +36,6 @@ import 'package:hyprbaric/src/features/settings/settings_overlay_content.dart';
 import 'package:hyprbaric/src/features/settings/settings_overlay_layout.dart';
 import 'package:hyprbaric/src/features/settings/settings_rows.dart';
 import 'package:hyprbaric/src/features/settings/settings_tabs.dart';
-import 'package:hyprbaric/src/features/setup/setup_guide_state.dart';
 import 'package:hyprbaric/src/features/tray/tray_menu_panel.dart';
 import 'package:hyprbaric/src/features/tray/tray_strip.dart';
 import 'package:hyprbaric/src/hyprbaric.dart';
@@ -1518,6 +1517,7 @@ void main() {
     final WorkspaceSwitch command = const WorkspaceSwitch(
       kind: WorkspaceSwitchKind.absolute,
       value: 5,
+      monitorName: 'DP-2',
     );
 
     expect(
@@ -1982,7 +1982,6 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          setupGuideAutomaticHostProvider.overrideWithValue(false),
           setupStatusProvider.overrideWith(
             (_) => Stream<SetupStatus>.value(
               const SetupStatus(state: SetupState.complete),
@@ -4370,6 +4369,32 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  testWidgets('satellite view ignores process-global hotkeys', (
+    WidgetTester tester,
+  ) async {
+    final StreamController<ShortcutEvent> hotkeys =
+        StreamController<ShortcutEvent>();
+    addTearDown(hotkeys.close);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          layerShellViewRoleProvider.overrideWithValue(
+            LayerShellViewRole.satellite,
+          ),
+          shortcutEventProvider.overrideWith((ref) => hotkeys.stream),
+        ],
+        child: const Hyprbaric(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    hotkeys.add(_shortcut(0, const HotkeyEventToggleSessionLauncher()));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('SESSION'), findsNothing);
+  });
+
   testWidgets('session launcher arrow keys browse actions before confirming', (
     WidgetTester tester,
   ) async {
@@ -5082,6 +5107,33 @@ void main() {
     await tester.pump();
 
     expect(invocationCount, 1);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
+
+  testWidgets('region manager surfaces and retries a failed request', (
+    WidgetTester tester,
+  ) async {
+    int invocationCount = 0;
+    _setRegionMock((Object? message) {
+      invocationCount += 1;
+      if (invocationCount == 1) {
+        return <Object?>['native-error', 'temporary failure', null];
+      }
+      return _pigeonSuccess();
+    });
+
+    final LayerShellRegionManager manager = LayerShellRegionManager(
+      barHeight: 36,
+    );
+    const Rect rect = Rect.fromLTWH(0, 36, 140, 48);
+
+    await expectLater(
+      manager.updateRegion(menuRect: rect, debugLabel: 'first'),
+      throwsA(isA<PlatformException>()),
+    );
+    await manager.updateRegion(menuRect: rect, debugLabel: 'retry');
+    await tester.pump();
+
+    expect(invocationCount, 2);
   }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
   testWidgets('region manager preserves passive regions across menu updates', (

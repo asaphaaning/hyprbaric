@@ -6,10 +6,42 @@ use std::collections::BTreeSet;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct WorkspaceId(i32);
 
+/// A non-empty Hyprland output connector name.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OutputName(String);
+
 /// A typed compositor request.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Command {
-    SwitchWorkspace(WorkspaceTarget),
+    SwitchWorkspace {
+        /// Workspace to activate.
+        target: WorkspaceTarget,
+        /// Output that originated the request, when known.
+        output: Option<OutputName>,
+    },
+}
+
+/// One coherent observation of the compositor desktop.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DesktopSnapshot {
+    /// Workspace state observed in this snapshot.
+    pub workspace: WorkspaceSnapshot,
+    /// Focused-window state observed in this snapshot.
+    pub focused_window: FocusedWindowSnapshot,
+}
+
+impl OutputName {
+    /// Creates an output name after trimming transport whitespace.
+    pub fn new(value: impl Into<String>) -> Option<Self> {
+        let value = value.into();
+        let trimmed = value.trim();
+        (!trimmed.is_empty()).then(|| Self(trimmed.to_owned()))
+    }
+
+    /// Returns the compositor-facing connector name.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
 }
 
 /// A legal workspace switch target.
@@ -327,8 +359,8 @@ fn normalize(value: &str) -> Option<String> {
 mod tests {
     use super::{
         DisplayedWorkspace, FocusedWindowSnapshot, MonitorFocusedWindow, MonitorWorkspace,
-        OutputGeometry, OutputTransform, WorkspaceId, WorkspaceOccupancy, WorkspaceSnapshot,
-        WorkspaceTarget, normalize_app_name, normalize_title,
+        OutputGeometry, OutputName, OutputTransform, WorkspaceId, WorkspaceOccupancy,
+        WorkspaceSnapshot, WorkspaceTarget, normalize_app_name, normalize_title,
     };
 
     #[test]
@@ -341,6 +373,15 @@ mod tests {
     fn normalize_app_name_rejects_blank_values() {
         assert_eq!(normalize_app_name("   "), None);
         assert_eq!(normalize_app_name(" zed "), Some("zed".to_owned()));
+    }
+
+    #[test]
+    fn output_name_rejects_blank_transport_values() {
+        assert_eq!(OutputName::new("  "), None);
+        assert_eq!(
+            OutputName::new(" DP-2 ").map(|name| name.as_str().to_owned()),
+            Some("DP-2".to_owned())
+        );
     }
 
     #[test]

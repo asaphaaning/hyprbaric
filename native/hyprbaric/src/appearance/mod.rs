@@ -131,8 +131,8 @@ impl Appearance {
     #[instrument(skip(self))]
     pub async fn apply(&self, command: Command) {
         drop(self.results.send(Report::Started(command.clone())));
-        let current = { self.state.lock().await.clone() };
-        let next = match settings::save(&command, current) {
+        let mut state = self.state.lock().await;
+        let next = match settings::save(&command, state.clone()) {
             Ok(next) => next,
             Err(error) => {
                 drop(self.results.send(Report::Failed {
@@ -144,10 +144,8 @@ impl Appearance {
         };
 
         let snapshot = next.snapshot();
-        {
-            let mut state = self.state.lock().await;
-            *state = next;
-        }
+        *state = next;
+        drop(state);
 
         drop(self.results.send(Report::Saved(command)));
         drop(self.events.send(snapshot));
