@@ -27,7 +27,7 @@ class NotificationPanel extends StatelessWidget {
 
   /// The raw snapshot stream, kept as an [AsyncValue] so the panel can tell a
   /// pending first frame apart from a daemon that genuinely has nothing to
-  /// show. [AudioPanel] and [NetworkPanel] take the same shape.
+  /// show. AudioPanel and NetworkPanel take the same shape.
   final AsyncValue<NotificationStatus> status;
   final ValueChanged<int> onDismiss;
   final VoidCallback onClearAll;
