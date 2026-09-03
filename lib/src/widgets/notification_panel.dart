@@ -5,6 +5,13 @@ import 'hypr_surface.dart';
 import 'notification_panel_parts.dart';
 import 'notification_panel_style.dart';
 
+/// Width of the notification centre.
+///
+/// The dropdown that hosts this panel sizes its overlay slot from the same
+/// constant. Keeping one number here stops the panel from declaring a width
+/// the layer-shell slot silently clamps away.
+const double kNotificationPanelWidth = 380;
+
 class NotificationPanel extends StatelessWidget {
   const NotificationPanel({
     super.key,
@@ -42,8 +49,8 @@ class NotificationPanel extends StatelessWidget {
         ),
         child: ConstrainedBox(
           constraints: const BoxConstraints(
-            minWidth: 380,
-            maxWidth: 380,
+            minWidth: kNotificationPanelWidth,
+            maxWidth: kNotificationPanelWidth,
             maxHeight: 388,
           ),
           child: Padding(

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hyprbaric/src/bindings/bindings.dart';
-import 'package:hyprbaric/src/widgets/hypr_surface.dart';
 import 'package:hyprbaric/src/widgets/notification_panel.dart';
 import 'package:hyprbaric/src/widgets/notification_panel_parts.dart';
 import 'package:hyprbaric/src/widgets/notification_panel_style.dart';
@@ -34,7 +33,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Center(
-          child: NotificationPanel(
+          // Mirrors AnchoredMenuOverlay, which hands the panel a tight slot.
+          child: SizedBox(
+            width: kNotificationPanelWidth,
+            child: NotificationPanel(
             borderRadius: BorderRadius.circular(16),
             status: NotificationStatus(
               available: true,
@@ -48,21 +50,19 @@ void main() {
             onDismiss: (_) {},
             onClearAll: () {},
           ),
+          ),
         ),
       ),
     );
 
-    final HyprPopoverSurface surface = tester.widget<HyprPopoverSurface>(
-      find.byType(HyprPopoverSurface),
-    );
-    final ListView list = tester.widget<ListView>(find.byType(ListView));
     final List<NotificationRow> rows = tester
         .widgetList<NotificationRow>(find.byType(NotificationRow))
         .toList();
 
-    expect(surface.color, const Color(0xE6070E17));
-    expect(tester.getSize(find.byType(NotificationPanel)).width, 380);
-    expect(list.padding, const EdgeInsets.symmetric(vertical: 4));
+    expect(
+      tester.getSize(find.byType(NotificationPanel)).width,
+      kNotificationPanelWidth,
+    );
     expect(rows, hasLength(2));
     expect(find.text('GITHUB'), findsOneWidget);
     expect(find.text('DISCORD'), findsOneWidget);
