@@ -21,32 +21,27 @@ class HyprConsoleChassis extends StatelessWidget {
     required this.constraints,
     required this.padding,
     required this.child,
-    this.topColor = HyprConsoleColors.chassisTop,
-    this.bottomColor = HyprConsoleColors.chassisBottom,
+    this.ramp = HyprChassisRamp.console,
     this.surfaceColor = HyprColors.popoverSurface,
+    this.borderColor = HyprColors.popupStroke,
   });
 
   final BorderRadius borderRadius;
   final BoxConstraints constraints;
   final EdgeInsetsGeometry padding;
   final Widget child;
-  final Color topColor;
-  final Color bottomColor;
+  final HyprChassisRamp ramp;
   final Color surfaceColor;
+  final Color borderColor;
 
   @override
   Widget build(BuildContext context) {
     return HyprPopoverSurface(
       borderRadius: borderRadius,
       color: surfaceColor,
+      borderColor: borderColor,
       child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: <Color>[topColor, bottomColor],
-          ),
-        ),
+        decoration: BoxDecoration(gradient: ramp.gradient),
         child: ConstrainedBox(
           constraints: constraints,
           child: Padding(padding: padding, child: child),

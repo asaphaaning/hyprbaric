@@ -7,8 +7,6 @@ abstract final class NetworkMenuColors {
   static const Color fg1 = Color(0xECCBD2DA);
   static const Color fg2 = Color(0xC8BEC7D0);
   static const Color fg3 = Color(0xA0929DA8);
-  static const Color chassisTop = Color(0xF00C121A);
-  static const Color chassisBottom = Color(0xFA080B11);
   static const Color tile = Color(0xE60B0C0E);
   static const Color tileHover = Color(0xEB121314);
   static const Color hover = HyprColors.hover;

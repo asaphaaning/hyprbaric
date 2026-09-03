@@ -5,14 +5,6 @@ import '../surfaces/hypr_console_colors.dart';
 import '../surfaces/hypr_typography.dart';
 import 'hypr_interaction_region.dart';
 
-/// Flat gasket ring that frames the plate. A single solid slab: no gradient,
-/// no rim light and no drop shadow, so it reads as a thick flat mat rather
-/// than a raised bezel.
-const Color _ringColor = Color(0xFF16181D);
-
-/// Rim light hairline sitting just inside the face's top border.
-const Color _faceRimLight = Color(0x1AFFFFFF);
-
 /// Transport-key plate: a dimensional face sunk into a thick flat gasket.
 ///
 /// Shared by the controls and network popovers, which use the same
@@ -62,7 +54,7 @@ class HyprPlateButton extends StatelessWidget {
           child: DecoratedBox(
             key: frameKey,
             decoration: const ShapeDecoration(
-              color: _ringColor,
+              color: HyprPlateFace.ring,
               shape: RoundedSuperellipseBorder(
                 borderRadius: BorderRadius.all(Radius.circular(15)),
                 side: BorderSide(color: Color(0x99000000)),
@@ -102,8 +94,8 @@ class HyprPlateButton extends StatelessWidget {
                             gradient: LinearGradient(
                               colors: <Color>[
                                 Colors.transparent,
-                                _faceRimLight,
-                                _faceRimLight,
+                                HyprPlateFace.rimLight,
+                                HyprPlateFace.rimLight,
                                 Colors.transparent,
                               ],
                               stops: <double>[0, 0.1, 0.9, 1],
@@ -124,8 +116,8 @@ class HyprPlateButton extends StatelessWidget {
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
                                 colors: <Color>[
-                                  Color(0xFF090B0F),
-                                  Color(0xFF040508),
+                                  HyprPlateFace.recessTop,
+                                  HyprPlateFace.recessBottom,
                                 ],
                               ),
                               shadows: <BoxShadow>[
@@ -198,30 +190,12 @@ class HyprPlateButton extends StatelessWidget {
 /// swallowed by the face's own 1px border.
 LinearGradient _faceGradient(HyprInteractionState state) {
   if (state.pressed) {
-    // Pressed reads as a well: the shade sits at the top of the face.
-    return const LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: <Color>[Color(0xFF08080A), Color(0xFF111216), Color(0xFF17181D)],
-      stops: <double>[0, 0.1, 1],
-    );
+    return HyprPlateFace.pressed.gradient;
   }
-
   if (state.hovered) {
-    return const LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: <Color>[Color(0xFF25282D), Color(0xFF15171C), Color(0xFF0C0D0F)],
-      stops: <double>[0, 0.955, 1],
-    );
+    return HyprPlateFace.hovered.gradient;
   }
-
-  return const LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: <Color>[Color(0xFF1C1F24), Color(0xFF0E1116), Color(0xFF08090C)],
-    stops: <double>[0, 0.955, 1],
-  );
+  return HyprPlateFace.idle.gradient;
 }
 
 /// The chord hint stamped onto a plate.

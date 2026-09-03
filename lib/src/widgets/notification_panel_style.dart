@@ -9,8 +9,6 @@ abstract final class NotificationPalette {
   static const Color fg3 = Color(0xA0929DA8);
   static const Color warmTime = Color(0xD9CBB29E);
 
-  static const Color chassisTop = Color(0x800E1015);
-  static const Color chassisBottom = Color(0x8F090C10);
   static const Color tile = Color(0xE60B0C0E);
   static const Color placeholderFill = Color(0x66000000);
   static const Color placeholderStroke = Color(0x8C000000);
