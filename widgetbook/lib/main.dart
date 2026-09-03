@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hyprbaric/widget_catalog.dart';
 import 'package:widgetbook/widgetbook.dart';
 import 'package:widgetbook_annotation/widgetbook_annotation.dart';
 
@@ -20,10 +21,12 @@ class HyprbaricWidgetbook extends StatelessWidget {
       addons: <WidgetbookAddon>[
         MaterialThemeAddon(
           themes: <WidgetbookTheme<ThemeData>>[
-            WidgetbookTheme<ThemeData>(
-              name: 'Hyprbaric dark',
-              data: catalogTheme,
-            ),
+            for (final MapEntry<String, HyprPalette> palette
+                in CatalogPalettes.all.entries)
+              WidgetbookTheme<ThemeData>(
+                name: palette.key,
+                data: catalogThemeFor(palette.value),
+              ),
           ],
         ),
       ],

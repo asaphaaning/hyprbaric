@@ -33,3 +33,15 @@ preview and control column in isolation.
 Every widget the catalog exports now has a story: the OSD header, readout,
 meter, scale, and segment atoms, the toast app tag and corner brackets, and the
 settings sidebar, tab button, content header, tab body, and keybinding row.
+
+## Checkout requirements
+
+`widgetbook/assets` and `widgetbook/native` are symlinks into the repository
+root, so the catalog shares the app's fonts, wallpaper and Rust crate rather
+than keeping copies that drift.
+
+Git must be able to create symlinks on checkout. That is the default on Linux
+and macOS. On Windows it needs either developer mode or
+`git config --global core.symlinks true` before cloning, otherwise both paths
+arrive as ordinary text files holding the target path and asset resolution
+fails with no useful error.

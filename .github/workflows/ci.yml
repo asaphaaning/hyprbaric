@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.0
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.94.1
+          components: rustfmt, clippy
+
+      - name: Install Linux prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            clang cmake libdbus-1-dev libgtk-3-dev libgtk-layer-shell-dev \
+            libwayland-dev ninja-build pkg-config
+
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+
+      - name: Install RINF code generator
+        run: cargo install rinf_cli --version 8.10.0 --locked
+
+      - name: Generate bindings
+        run: rinf gen
+
+      - name: Verify Flutter
+        run: |
+          flutter analyze
+          flutter test
+
+      - name: Verify Rust
+        run: |
+          cargo fmt --all -- --check
+          cargo test --workspace --locked
+
+      # The catalog is a separate package. Nothing above compiles it, and
+      # lib/widget_catalog.dart is unreachable from the app's own tests, so
+      # without this step a catalog that does not build reaches a release tag.
+      - name: Verify widget catalog
+        working-directory: widgetbook
+        run: |
+          flutter pub get
+          dart run build_runner build --delete-conflicting-outputs
+          flutter analyze
+          flutter test
