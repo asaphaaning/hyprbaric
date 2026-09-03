@@ -15,11 +15,10 @@ use crate::signals::{
     RecordingStatus, ScheduleCommand, ScheduleCommandResult, ScheduleStatus,
     ScreenshotCaptureRequest, ScreenshotCommandResult, SessionActionAvailability, SessionCommand,
     SessionCommandResult, SetupCommand, SetupCommandResult, SetupStatus,
-    ShortcutSettingsCommandResult,
-    ShortcutSettingsRequest, ShortcutSettingsSnapshot, TrayActivateRequest,
-    TrayMenuItemActivateRequest, TrayMenuStatus, TrayStatus, WorkspaceSettingsCommand,
-    WorkspaceSettingsCommandResult, WorkspaceSettingsStatus, WorkspaceStatus, WorkspaceSwitch,
-    WorkspaceSwitchKind,
+    ShortcutSettingsCommandResult, ShortcutSettingsRequest, ShortcutSettingsSnapshot,
+    TrayActivateRequest, TrayMenuItemActivateRequest, TrayMenuStatus, TrayStatus,
+    WorkspaceSettingsCommand, WorkspaceSettingsCommandResult, WorkspaceSettingsStatus,
+    WorkspaceStatus, WorkspaceSwitch, WorkspaceSwitchKind,
 };
 use crate::{
     app::{
