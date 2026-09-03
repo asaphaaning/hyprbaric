@@ -109,6 +109,34 @@ pub(super) struct Model {
     dnd_enabled: bool,
 }
 
+/// What one model transition changed.
+///
+/// `closed` carries the notifications the model stopped showing on its own
+/// initiative, through do-not-disturb or the [`MAX_ENTRIES`] cap. The caller
+/// owes each of those a protocol close: a client whose notification silently
+/// vanished from the center otherwise believes it is still on screen forever,
+/// and its ID stays allocated for the life of the process.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub(super) struct Transition {
+    pub(super) snapshot: Option<Snapshot>,
+    pub(super) closed: Vec<NotificationId>,
+}
+
+impl Transition {
+    /// A transition that changed nothing.
+    fn unchanged() -> Self {
+        Self::default()
+    }
+
+    /// A transition that only republishes state.
+    fn published(snapshot: Snapshot) -> Self {
+        Self {
+            snapshot: Some(snapshot),
+            closed: Vec::new(),
+        }
+    }
+}
+
 impl Snapshot {
     /// Creates an available empty snapshot.
     pub fn empty() -> Self {
@@ -196,45 +224,59 @@ impl Lifetime {
 }
 
 impl Model {
-    /// Applies one notification event and returns a changed snapshot.
-    pub(super) fn apply(&mut self, event: Event) -> Option<Snapshot> {
+    /// Applies one notification event.
+    pub(super) fn apply(&mut self, event: Event) -> Transition {
         match event {
-            Event::Received { id, pending } => {
-                self.insert(id, pending);
-                Some(self.snapshot())
-            }
+            Event::Received { id, pending } => self.insert(id, pending),
             Event::Closed(id) => self.dismiss(id),
             Event::Invalidated => {
                 if self.entries.is_empty() {
-                    None
+                    Transition::unchanged()
                 } else {
+                    // The owning daemon is gone, so these IDs mean nothing to
+                    // anyone any more. Nothing is owed a close.
                     self.entries.clear();
-                    Some(self.snapshot())
+                    Transition::published(self.snapshot())
                 }
             }
         }
     }
 
-    /// Removes one visible notification and returns a changed snapshot.
-    pub(super) fn dismiss(&mut self, id: NotificationId) -> Option<Snapshot> {
-        self.remove(id).then(|| self.snapshot())
+    /// Removes one visible notification.
+    pub(super) fn dismiss(&mut self, id: NotificationId) -> Transition {
+        if self.remove(id) {
+            Transition::published(self.snapshot())
+        } else {
+            Transition::unchanged()
+        }
     }
 
-    /// Sets do-not-disturb mode and returns a changed snapshot.
-    pub(super) fn set_dnd(&mut self, enabled: bool) -> Option<Snapshot> {
+    /// Sets do-not-disturb mode.
+    pub(super) fn set_dnd(&mut self, enabled: bool) -> Transition {
         if self.dnd_enabled == enabled {
-            return None;
+            return Transition::unchanged();
         }
         self.dnd_enabled = enabled;
-        if enabled {
-            self.entries.clear();
+        let closed = if enabled {
+            self.entries.drain(..).map(|entry| entry.id).collect()
+        } else {
+            Vec::new()
+        };
+
+        Transition {
+            snapshot: Some(self.snapshot()),
+            closed,
         }
-        Some(self.snapshot())
     }
 
-    fn insert(&mut self, id: NotificationId, pending: Pending) {
+    fn insert(&mut self, id: NotificationId, pending: Pending) -> Transition {
         if self.dnd_enabled {
-            return;
+            // Suppressed, not queued. The sender is told so rather than left
+            // holding a notification that will never be shown.
+            return Transition {
+                snapshot: None,
+                closed: vec![id],
+            };
         }
         if let Some(replaces_id) = pending.replaces_id {
             self.remove(replaces_id);
@@ -250,7 +292,17 @@ impl Model {
                 urgency: pending.urgency,
             },
         );
-        self.entries.truncate(MAX_ENTRIES);
+        let evicted = self
+            .entries
+            .split_off(self.entries.len().min(MAX_ENTRIES))
+            .into_iter()
+            .map(|entry| entry.id)
+            .collect();
+
+        Transition {
+            snapshot: Some(self.snapshot()),
+            closed: evicted,
+        }
     }
 
     fn remove(&mut self, id: NotificationId) -> bool {
@@ -305,27 +357,44 @@ fn normalize_text(value: &str) -> Option<String> {
     }
 }
 
+/// Removes the subset of HTML the notification spec allows in a body.
+///
+/// Only a bracket pair that actually closes counts as a tag. A lone `<` is
+/// ordinary text in the wild (`build <prod> failed`, `mail from <a@b.c>`), and
+/// treating it as an unterminated tag silently swallowed the rest of the line.
 fn strip_markup(value: &str) -> String {
     let mut output = String::with_capacity(value.len());
-    let mut inside_tag = false;
-    for ch in value.chars() {
-        match ch {
-            '<' => inside_tag = true,
-            '>' => inside_tag = false,
-            _ if !inside_tag => output.push(ch),
-            _ => {}
+    let mut rest = value;
+
+    while let Some(open) = rest.find('<') {
+        let (before, from_open) = rest.split_at(open);
+        output.push_str(before);
+        match from_open.find('>') {
+            Some(close) => rest = &from_open[close + 1..],
+            None => {
+                output.push_str(from_open);
+                return output;
+            }
         }
     }
+    output.push_str(rest);
+
     output
 }
 
+/// Resolves the entities the notification spec requires a server to accept.
+///
+/// `&amp;` is resolved last. Doing it first turns an escaped entity such as
+/// `&amp;lt;` into `&lt;`, which the next replacement then decodes a second
+/// time into a bracket the sender never wrote.
 fn html_unescape(value: &str) -> String {
     value
-        .replace("&amp;", "&")
         .replace("&lt;", "<")
         .replace("&gt;", ">")
         .replace("&quot;", "\"")
+        .replace("&apos;", "'")
         .replace("&#39;", "'")
+        .replace("&amp;", "&")
 }
 
 #[cfg(test)]
@@ -333,7 +402,8 @@ mod tests {
     use std::time::Duration;
 
     use super::{
-        Event, Lifetime, Model, NotificationId, Pending, Urgency, compose_message, normalize_text,
+        Event, Lifetime, MAX_ENTRIES, Model, NotificationId, Pending, Urgency, compose_message,
+        normalize_text,
     };
 
     #[test]
@@ -355,6 +425,7 @@ mod tests {
                 id: NotificationId::new(4),
                 pending: Pending::new("Mail", "New message", "", None, 1, Urgency::Normal),
             })
+            .snapshot
             .unwrap();
 
         assert_eq!(snapshot.entries.len(), 1);
@@ -396,6 +467,7 @@ mod tests {
                 2,
                 Urgency::Critical,
             ))
+            .snapshot
             .unwrap();
 
         assert_eq!(snapshot.entries.len(), 1);
@@ -430,11 +502,11 @@ mod tests {
         let mut model = Model::default();
         model.apply(received(1, "App", "Message", None, 1, Urgency::Normal));
 
-        let snapshot = model.apply(Event::Invalidated).unwrap();
+        let snapshot = model.apply(Event::Invalidated).snapshot.unwrap();
 
         assert!(snapshot.entries.is_empty());
         assert_eq!(snapshot.unread_count, 0);
-        assert_eq!(model.apply(Event::Invalidated), None);
+        assert_eq!(model.apply(Event::Invalidated).snapshot, None);
     }
 
     #[test]
@@ -443,11 +515,11 @@ mod tests {
         model.apply(received(1, "App", "One", None, 1, Urgency::Normal));
         model.apply(received(2, "App", "Two", None, 2, Urgency::Normal));
 
-        let snapshot = model.dismiss(NotificationId::new(1)).unwrap();
+        let snapshot = model.dismiss(NotificationId::new(1)).snapshot.unwrap();
 
         assert_eq!(snapshot.entries.len(), 1);
         assert_eq!(snapshot.entries[0].id, NotificationId::new(2));
-        assert_eq!(model.dismiss(NotificationId::new(99)), None);
+        assert_eq!(model.dismiss(NotificationId::new(99)).snapshot, None);
     }
 
     #[test]
@@ -455,7 +527,7 @@ mod tests {
         let mut model = Model::default();
         model.apply(received(1, "App", "One", None, 1, Urgency::Normal));
 
-        let snapshot = model.set_dnd(true).unwrap();
+        let snapshot = model.set_dnd(true).snapshot.unwrap();
 
         assert!(snapshot.dnd_enabled);
         assert!(snapshot.entries.is_empty());
@@ -467,25 +539,104 @@ mod tests {
     fn dnd_discards_notifications_received_while_enabled() {
         let mut model = Model::default();
         model.set_dnd(true);
-        let suppressed = model
-            .apply(received(1, "App", "Suppressed", None, 1, Urgency::Normal))
-            .unwrap();
+        let suppressed = model.apply(received(1, "App", "Suppressed", None, 1, Urgency::Normal));
 
-        assert!(suppressed.entries.is_empty());
-        assert_eq!(suppressed.unread_count, 0);
+        // Nothing visible changed, so there is nothing to republish.
+        assert_eq!(suppressed.snapshot, None);
 
-        let resumed = model.set_dnd(false).unwrap();
+        let resumed = model.set_dnd(false).snapshot.unwrap();
 
         assert!(!resumed.dnd_enabled);
         assert!(resumed.entries.is_empty());
 
         let visible = model
             .apply(received(2, "App", "Visible", None, 2, Urgency::Normal))
+            .snapshot
             .unwrap();
 
         assert_eq!(visible.entries.len(), 1);
         assert_eq!(visible.entries[0].message, "Visible");
         assert_eq!(visible.unread_count, 1);
+    }
+
+    #[test]
+    fn suppressed_notifications_are_handed_back_to_be_closed() {
+        let mut model = Model::default();
+        model.set_dnd(true);
+
+        let suppressed = model.apply(received(1, "App", "Hidden", None, 1, Urgency::Normal));
+
+        assert_eq!(suppressed.snapshot, None);
+        assert_eq!(suppressed.closed, vec![NotificationId::new(1)]);
+    }
+
+    #[test]
+    fn the_visible_cap_evicts_rather_than_dropping_silently() {
+        let mut model = Model::default();
+        for index in 0..MAX_ENTRIES as u32 {
+            let transition = model.apply(received(
+                index + 10,
+                "App",
+                "Visible",
+                None,
+                u64::from(index),
+                Urgency::Normal,
+            ));
+            assert!(transition.closed.is_empty());
+        }
+
+        let evicting = model.apply(received(99, "App", "Newest", None, 99, Urgency::Normal));
+
+        assert_eq!(evicting.closed, vec![NotificationId::new(10)]);
+        assert_eq!(
+            evicting.snapshot.expect("cap should publish").entries.len(),
+            MAX_ENTRIES
+        );
+    }
+
+    #[test]
+    fn enabling_do_not_disturb_retires_what_was_on_screen() {
+        let mut model = Model::default();
+        model.apply(received(1, "App", "One", None, 1, Urgency::Normal));
+        model.apply(received(2, "App", "Two", None, 2, Urgency::Normal));
+
+        let transition = model.set_dnd(true);
+
+        assert_eq!(
+            transition.closed,
+            vec![NotificationId::new(2), NotificationId::new(1)]
+        );
+    }
+
+    #[test]
+    fn dismissal_and_invalidation_owe_no_protocol_close() {
+        let mut model = Model::default();
+        model.apply(received(1, "App", "One", None, 1, Urgency::Normal));
+
+        // The user closed it, so the daemon side is already handled.
+        assert!(model.dismiss(NotificationId::new(1)).closed.is_empty());
+
+        model.apply(received(2, "App", "Two", None, 2, Urgency::Normal));
+        // The owning daemon vanished, so its IDs mean nothing to anyone.
+        assert!(model.apply(Event::Invalidated).closed.is_empty());
+    }
+
+    #[test]
+    fn plain_text_survives_an_unclosed_angle_bracket() {
+        assert_eq!(
+            normalize_text("build <prod> failed for <user"),
+            Some("build failed for <user".to_string())
+        );
+    }
+
+    #[test]
+    fn escaped_entities_are_resolved_exactly_once() {
+        // "&amp;lt;" is a literal "&lt;", not a bracket.
+        assert_eq!(normalize_text("a &amp;lt; b"), Some("a &lt; b".to_string()));
+        assert_eq!(
+            normalize_text("Tom &amp; Jerry"),
+            Some("Tom & Jerry".to_string())
+        );
     }
 
     fn received(

@@ -76,7 +76,7 @@ impl Center {
 
     /// Applies a notification command.
     #[instrument(skip(self))]
-    pub async fn apply(&self, command: Command) {
+    pub async fn apply(self: &Arc<Self>, command: Command) {
         match command {
             Command::Dismiss(id) => self.dismiss(id).await,
             Command::Clear => self.clear().await,
@@ -86,7 +86,7 @@ impl Center {
 
     /// Dismisses one notification optimistically.
     #[instrument(skip(self), fields(notification_id = id.as_u32()))]
-    pub async fn dismiss(&self, id: NotificationId) {
+    pub async fn dismiss(self: &Arc<Self>, id: NotificationId) {
         match self.read_runtime() {
             Runtime::Server(server) => {
                 if let Err(error) = server.dismiss(id).await {
@@ -110,7 +110,7 @@ impl Center {
 
     /// Clears the visible notification list optimistically.
     #[instrument(skip(self))]
-    pub async fn clear(&self) {
+    pub async fn clear(self: &Arc<Self>) {
         let ids = self
             .read_snapshot()
             .entries
@@ -124,33 +124,57 @@ impl Center {
 
     /// Toggles Hyprbaric's do-not-disturb mode.
     #[instrument(skip(self), fields(enabled))]
-    pub fn set_dnd(&self, enabled: bool) {
-        let snapshot = {
+    pub fn set_dnd(self: &Arc<Self>, enabled: bool) {
+        let transition = {
             let mut model = lock_mutex(&self.model);
             model.set_dnd(enabled)
         };
-        if let Some(snapshot) = snapshot {
-            self.publish(snapshot);
-        }
+        self.settle(transition);
     }
 
-    fn accept(&self, event: Event) {
-        let snapshot = {
+    fn accept(self: &Arc<Self>, event: Event) {
+        let transition = {
             let mut model = lock_mutex(&self.model);
             model.apply(event)
         };
-        if let Some(snapshot) = snapshot {
-            self.publish(snapshot);
-        }
+        self.settle(transition);
     }
 
-    fn forget(&self, id: NotificationId) {
-        let snapshot = {
+    fn forget(self: &Arc<Self>, id: NotificationId) {
+        let transition = {
             let mut model = lock_mutex(&self.model);
             model.dismiss(id)
         };
-        if let Some(snapshot) = snapshot {
+        self.settle(transition);
+    }
+
+    /// Publishes one transition and retires whatever the model stopped showing.
+    ///
+    /// Only the hosted server is reconciled. In observer mode the IDs belong to
+    /// another daemon that is still displaying them in its own UI, and Hyprbaric
+    /// holds no protocol state of its own to leak, so silently closing them
+    /// there would reach into a surface it does not own.
+    fn settle(self: &Arc<Self>, transition: domain::Transition) {
+        if let Some(snapshot) = transition.snapshot {
             self.publish(snapshot);
+        }
+        if transition.closed.is_empty() {
+            return;
+        }
+        let Runtime::Server(server) = self.read_runtime() else {
+            return;
+        };
+        for id in transition.closed {
+            let server = server.clone();
+            tokio::spawn(async move {
+                if let Err(error) = server.retire(id).await {
+                    tracing::warn!(
+                        notification_id = id.as_u32(),
+                        %error,
+                        "Failed to retire a notification the center dropped"
+                    );
+                }
+            });
         }
     }
 

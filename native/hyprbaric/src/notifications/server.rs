@@ -11,7 +11,9 @@ use std::{
 };
 
 use tracing::instrument;
-use zbus::{Connection, connection::Builder, interface, zvariant::OwnedValue};
+use zbus::{
+    Connection, connection::Builder, interface, object_server::SignalEmitter, zvariant::OwnedValue,
+};
 
 use super::{
     Error,
@@ -48,6 +50,9 @@ enum CloseReason {
     Dismissed,
     /// The originating client called `CloseNotification`.
     Requested,
+    /// Hyprbaric stopped showing it for a reason the protocol does not name,
+    /// such as do-not-disturb or the visible-entry cap.
+    Undefined,
 }
 
 #[derive(Default)]
@@ -105,15 +110,27 @@ impl Handle {
         err
     )]
     pub(super) async fn dismiss(&self, id: NotificationId) -> Result<bool, Error> {
-        close(
-            &self.connection,
-            &self.state,
-            id,
-            CloseReason::Dismissed,
-            None,
-        )
-        .await
-        .map_err(Error::EmitNotificationClosed)
+        self.close(id, CloseReason::Dismissed).await
+    }
+
+    /// Closes one notification the center stopped showing on its own.
+    #[instrument(
+        name = "hyprbaric::notifications::server::retire",
+        skip(self),
+        fields(notification_id = id.as_u32()),
+        err
+    )]
+    pub(super) async fn retire(&self, id: NotificationId) -> Result<bool, Error> {
+        self.close(id, CloseReason::Undefined).await
+    }
+
+    async fn close(&self, id: NotificationId, reason: CloseReason) -> Result<bool, Error> {
+        let emitter =
+            SignalEmitter::new(&self.connection, PATH).map_err(Error::EmitNotificationClosed)?;
+
+        close(&emitter, &self.state, id, reason, None)
+            .await
+            .map_err(Error::EmitNotificationClosed)
     }
 }
 
@@ -138,14 +155,15 @@ impl State {
             let state = Arc::clone(self);
             tokio::spawn(async move {
                 tokio::time::sleep(duration).await;
-                if let Err(error) = close(
-                    &connection,
-                    &state,
-                    id,
-                    CloseReason::Expired,
-                    Some(generation),
-                )
-                .await
+                let emitter = match SignalEmitter::new(&connection, PATH) {
+                    Ok(emitter) => emitter,
+                    Err(error) => {
+                        tracing::warn!(notification_id = id.as_u32(), %error, "Failed to expire notification");
+                        return;
+                    }
+                };
+                if let Err(error) =
+                    close(&emitter, &state, id, CloseReason::Expired, Some(generation)).await
                 {
                     tracing::warn!(notification_id = id.as_u32(), %error, "Failed to expire notification");
                 }
@@ -210,6 +228,7 @@ impl CloseReason {
             Self::Expired => 1,
             Self::Dismissed => 2,
             Self::Requested => 3,
+            Self::Undefined => 4,
         }
     }
 }
@@ -217,8 +236,12 @@ impl CloseReason {
 #[interface(name = "org.freedesktop.Notifications")]
 impl Notifications {
     /// Returns the optional protocol features implemented by Hyprbaric.
+    ///
+    /// `body-markup` is declared because the body pipeline strips tags and
+    /// resolves entities. Without it, senders are entitled to ship raw text
+    /// that this server would then rewrite.
     fn get_capabilities(&self) -> Vec<&str> {
-        vec!["body"]
+        vec!["body", "body-markup"]
     }
 
     /// Accepts or replaces one notification.
@@ -260,10 +283,10 @@ impl Notifications {
     async fn close_notification(
         &self,
         id: u32,
-        #[zbus(connection)] connection: &Connection,
+        #[zbus(signal_emitter)] emitter: SignalEmitter<'_>,
     ) -> zbus::fdo::Result<()> {
         let id = NotificationId::new(id);
-        let removed = close(connection, &self.state, id, CloseReason::Requested, None)
+        let removed = close(&emitter, &self.state, id, CloseReason::Requested, None)
             .await
             .map_err(|error| zbus::fdo::Error::Failed(error.to_string()))?;
 
@@ -305,8 +328,15 @@ impl Notifications {
     ) -> zbus::Result<()>;
 }
 
+/// Retires one notification and tells the bus about it.
+///
+/// The signal goes out through a [`SignalEmitter`] rather than by looking the
+/// interface up on the object server again. `close_notification` runs while
+/// zbus holds a read guard on this interface, and that lookup takes a second
+/// read on the same fair lock, so any writer queued between the two would
+/// deadlock the handler.
 async fn close(
-    connection: &Connection,
+    emitter: &SignalEmitter<'_>,
     state: &State,
     id: NotificationId,
     reason: CloseReason,
@@ -316,13 +346,7 @@ async fn close(
         return Ok(false);
     }
 
-    let interface = connection
-        .object_server()
-        .interface::<_, Notifications>(PATH)
-        .await?;
-    interface
-        .notification_closed(id.as_u32(), reason.code())
-        .await?;
+    Notifications::notification_closed(emitter, id.as_u32(), reason.code()).await?;
     Ok(true)
 }
 
