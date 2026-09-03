@@ -104,9 +104,7 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        _host(
-          AsyncValue<NotificationStatus>.data(_status(dndEnabled: true)),
-        ),
+        _host(AsyncValue<NotificationStatus>.data(_status(dndEnabled: true))),
       );
 
       expect(find.text('Do not disturb'), findsOneWidget);

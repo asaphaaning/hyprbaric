@@ -5,6 +5,7 @@ import '../bindings/bindings.dart';
 import 'hypr_surface.dart';
 import 'notification_panel_parts.dart';
 import 'notification_panel_style.dart';
+import 'primitives/primitives.dart';
 
 /// Width of the notification centre.
 ///
@@ -36,46 +37,37 @@ class NotificationPanel extends StatelessWidget {
     final NotificationStatus? snapshot = status.asData?.value;
     final List<NotificationEntry> entries = snapshot?.entries ?? const [];
 
-    return HyprPopoverSurface(
+    return HyprPopoverPanel(
       borderRadius: borderRadius,
-      color: const Color(0xE6070E17),
       borderColor: HyprColors.popupStroke,
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: <Color>[
-              NotificationPalette.chassisTop,
-              NotificationPalette.chassisBottom,
-            ],
+      constraints: const BoxConstraints(
+        minWidth: kNotificationPanelWidth,
+        maxWidth: kNotificationPanelWidth,
+        maxHeight: 388,
+      ),
+      padding: HyprSpacing.panelAll,
+      gradient: const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: <Color>[
+          NotificationPalette.chassisTop,
+          NotificationPalette.chassisBottom,
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          NotificationHeader(
+            // Deliberately the length of the list this pill labels, not
+            // snapshot.unreadCount, which Rust documents as the bell's
+            // number and zeroes under do-not-disturb.
+            count: entries.length,
+            onClearAll: onClearAll,
           ),
-        ),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            minWidth: kNotificationPanelWidth,
-            maxWidth: kNotificationPanelWidth,
-            maxHeight: 388,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                NotificationHeader(
-                  // Deliberately the length of the list this pill labels, not
-                  // snapshot.unreadCount, which Rust documents as the bell's
-                  // number and zeroes under do-not-disturb.
-                  count: entries.length,
-                  onClearAll: onClearAll,
-                ),
-                const SizedBox(height: 10),
-                _body(snapshot, entries),
-              ],
-            ),
-          ),
-        ),
+          const SizedBox(height: 10),
+          _body(snapshot, entries),
+        ],
       ),
     );
   }

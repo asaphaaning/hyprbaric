@@ -88,16 +88,6 @@ String notificationAgeLabel(Uint64 createdAtMs, {DateTime? now}) {
 }
 
 Color _badgeColor(String name) {
-  final Color? referenceColor = switch (name.toLowerCase()) {
-    'github' => const Color(0xFF8190A8),
-    'discord' => const Color(0xFF6684FB),
-    'system' => const Color(0xFF5480C7),
-    _ => null,
-  };
-  if (referenceColor != null) {
-    return referenceColor;
-  }
-
   const List<Color> palette = <Color>[
     Color(0xFF9BA8B8),
     Color(0xFF8C83CA),

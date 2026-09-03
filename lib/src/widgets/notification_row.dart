@@ -42,7 +42,7 @@ class NotificationRow extends StatelessWidget {
           decoration: ShapeDecoration(
             color: style.base,
             shape: RoundedSuperellipseBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: HyprRadii.tileRadius,
               side: BorderSide(color: style.border),
             ),
             shadows: <BoxShadow>[
@@ -106,10 +106,7 @@ class NotificationRow extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                     _NotificationTimeLabel(
-                      label: notificationAgeLabel(
-                        entry.createdAtMs,
-                        now: now,
-                      ),
+                      label: notificationAgeLabel(entry.createdAtMs, now: now),
                     ),
                     const SizedBox(width: 10),
                     IgnorePointer(
@@ -192,40 +189,29 @@ class _NotificationDismissButton extends StatelessWidget {
     return IconButton(
       tooltip: 'Dismiss',
       onPressed: onPressed,
-      style: ButtonStyle(
-        visualDensity: VisualDensity.compact,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        minimumSize: const WidgetStatePropertyAll<Size>(Size(22, 22)),
-        fixedSize: const WidgetStatePropertyAll<Size>(Size(22, 22)),
-        padding: const WidgetStatePropertyAll<EdgeInsetsGeometry>(
-          EdgeInsets.zero,
-        ),
-        shape: WidgetStatePropertyAll<OutlinedBorder>(
-          RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(6)),
-        ),
-        overlayColor: const WidgetStatePropertyAll<Color>(Colors.transparent),
-        side: WidgetStateProperty.resolveWith<BorderSide>((states) {
-          if (states.contains(WidgetState.hovered) ||
-              states.contains(WidgetState.pressed)) {
-            return BorderSide(color: HyprColors.danger.withValues(alpha: 0.45));
-          }
-          return BorderSide.none;
-        }),
-        backgroundColor: WidgetStateProperty.resolveWith<Color?>((states) {
-          if (states.contains(WidgetState.hovered) ||
-              states.contains(WidgetState.pressed)) {
-            return HyprColors.danger.withValues(alpha: 0.15);
-          }
-          return Colors.transparent;
-        }),
-        foregroundColor: WidgetStateProperty.resolveWith<Color>((states) {
-          if (states.contains(WidgetState.hovered) ||
-              states.contains(WidgetState.pressed)) {
-            return const Color(0xFFE19A8E);
-          }
-          return NotificationPalette.fg3;
-        }),
-      ),
+      // The shared style already carries sizing, shape, overlay suppression
+      // and, unlike the open-coded version this replaces, a focused state.
+      style:
+          hyprCompactIconButtonStyle(
+            size: const Size.square(22),
+            radius: HyprRadii.control,
+            foregroundColor: NotificationPalette.fg3,
+            hoverForegroundColor: const Color(0xFFE19A8E),
+            hoverBackgroundColor: HyprColors.danger.withValues(alpha: 0.15),
+          ).copyWith(
+            side: WidgetStateProperty.resolveWith<BorderSide>((
+              Set<WidgetState> states,
+            ) {
+              if (states.contains(WidgetState.hovered) ||
+                  states.contains(WidgetState.pressed) ||
+                  states.contains(WidgetState.focused)) {
+                return BorderSide(
+                  color: HyprColors.danger.withValues(alpha: 0.45),
+                );
+              }
+              return BorderSide.none;
+            }),
+          ),
       icon: const _CloseSquareIcon(),
     );
   }

@@ -23,6 +23,8 @@ abstract final class HyprSpacing {
 
   static const EdgeInsets none = EdgeInsets.zero;
   static const EdgeInsets hairlineInset = EdgeInsets.all(hairline);
+  static const EdgeInsets panelAll = EdgeInsets.all(panel);
+
   static const EdgeInsets badge = EdgeInsets.symmetric(
     horizontal: xl - hairline,
     vertical: xs,
