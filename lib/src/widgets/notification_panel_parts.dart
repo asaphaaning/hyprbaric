@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../bindings/bindings.dart';
@@ -23,8 +25,9 @@ class NotificationHeader extends StatelessWidget {
       uppercaseTitle: true,
       titleTrailing: count > 0 ? NotificationCountPill(count: count) : null,
       actionKey: const ValueKey<String>('notifications-clear-all'),
-      actionLabel: count > 0 ? 'clear all' : null,
-      onAction: count > 0 ? onClearAll : null,
+      actionLabel: 'clear all',
+      actionEnabled: count > 0,
+      onAction: onClearAll,
       titleTrailingGap: 8,
       titleStyle: HyprTypography.popTitle.copyWith(
         color: NotificationPalette.fg3,
@@ -65,98 +68,99 @@ class NotificationCountPill extends StatelessWidget {
   }
 }
 
-class NotificationList extends StatelessWidget {
+class NotificationList extends StatefulWidget {
   const NotificationList({
     super.key,
     required this.entries,
     required this.onDismiss,
   });
 
+  /// How often mounted rows re-stamp their age label.
+  ///
+  /// The list is only built while the dropdown is open, so the timer lives
+  /// exactly as long as the panel is on screen.
+  static const Duration ageTick = Duration(seconds: 30);
+
   final List<NotificationEntry> entries;
   final ValueChanged<int> onDismiss;
+
+  @override
+  State<NotificationList> createState() => _NotificationListState();
+}
+
+class _NotificationListState extends State<NotificationList> {
+  Timer? _ageTimer;
+  late DateTime _now;
+
+  @override
+  void initState() {
+    super.initState();
+    _now = DateTime.now();
+    _ageTimer = Timer.periodic(NotificationList.ageTick, (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _now = DateTime.now());
+    });
+  }
+
+  @override
+  void dispose() {
+    _ageTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
       shrinkWrap: true,
       padding: const EdgeInsets.symmetric(vertical: 4),
-      itemCount: entries.length,
+      itemCount: widget.entries.length,
       separatorBuilder: (_, _) => const SizedBox(height: 14),
       itemBuilder: (BuildContext context, int index) {
-        final NotificationEntry entry = entries[index];
+        final NotificationEntry entry = widget.entries[index];
         return NotificationRow(
+          // Identity hygiene. Lazy slivers rebuild state per index slot either
+          // way, so this buys correctness only if the list stops being lazy.
+          key: ValueKey<int>(entry.id),
           entry: entry,
-          onDismiss: () => onDismiss(entry.id),
+          now: _now,
+          onDismiss: () => widget.onDismiss(entry.id),
         );
       },
     );
   }
 }
 
-class NotificationEmptyState extends StatelessWidget {
-  const NotificationEmptyState({
+class NotificationPlaceholder extends StatelessWidget {
+  const NotificationPlaceholder({
     super.key,
-    required this.available,
-    this.message,
+    required this.label,
+    this.subtitle,
   });
 
-  final bool available;
-  final String? message;
+  final String label;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
-    final String label = available
-        ? 'No notifications'
-        : 'Notifications unavailable';
-    final String? subtitle = available
-        ? null
-        : (message ?? 'notification service is offline');
-
-    return DecoratedBox(
-      decoration: ShapeDecoration(
-        color: Colors.black.withValues(alpha: 0.40),
-        shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(6),
-          side: BorderSide(color: Colors.black.withValues(alpha: 0.55)),
-        ),
-        shadows: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.50),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+    return HyprEmptyState(
+      message: label,
+      subtitle: subtitle,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+      color: NotificationPalette.placeholderFill,
+      borderColor: NotificationPalette.placeholderStroke,
+      borderRadius: HyprRadii.controlRadius,
+      messageStyle: HyprTypography.compactMonoStrong.copyWith(
+        color: NotificationPalette.fg2,
+        fontSize: HyprTypography.size(11),
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.44,
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Text(
-              label,
-              style: HyprTypography.compactMonoStrong.copyWith(
-                color: NotificationPalette.fg2,
-                fontSize: HyprTypography.size(11),
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.44,
-              ),
-            ),
-            if (subtitle != null) ...<Widget>[
-              const SizedBox(height: 6),
-              Text(
-                subtitle,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: HyprTypography.compactMono.copyWith(
-                  color: NotificationPalette.fg3,
-                  fontSize: HyprTypography.size(10),
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ],
-          ],
-        ),
+      subtitleStyle: HyprTypography.compactMono.copyWith(
+        color: NotificationPalette.fg3,
+        fontSize: HyprTypography.size(10),
+        letterSpacing: 0.2,
       ),
     );
   }

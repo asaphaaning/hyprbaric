@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../bindings/bindings.dart';
@@ -14,11 +12,12 @@ abstract final class NotificationPalette {
   static const Color chassisTop = Color(0x800E1015);
   static const Color chassisBottom = Color(0x8F090C10);
   static const Color tile = Color(0xE60B0C0E);
+  static const Color placeholderFill = Color(0x66000000);
+  static const Color placeholderStroke = Color(0x8C000000);
   static const Color tileHovered = Color(0xEB121314);
-  static const Color tilePressed = Color(0xF007080A);
 }
 
-enum NotificationTilePhase { idle, hovered, pressed }
+enum NotificationTilePhase { idle, hovered }
 
 @immutable
 class NotificationTileStyle {
@@ -48,12 +47,6 @@ class NotificationTileStyle {
         border: Color(0x99000000),
         shadow: Color(0x66000000),
       ),
-      NotificationTilePhase.pressed => const NotificationTileStyle(
-        base: NotificationPalette.tilePressed,
-        topLight: Color(0x05FFFFFF),
-        border: Color(0x99000000),
-        shadow: Color(0x73000000),
-      ),
     };
   }
 }
@@ -66,16 +59,27 @@ Color notificationAccent(NotificationEntry entry) {
   };
 }
 
+/// Widest span [DateTime.fromMillisecondsSinceEpoch] accepts.
+const int _maxRepresentableMs = 8640000000000000;
+
 String notificationAgeLabel(Uint64 createdAtMs, {DateTime? now}) {
   final DateTime observedAt = now ?? DateTime.now();
+  // Uint64.toInt() clamps to the int64 bound rather than throwing, and that
+  // clamped value is far outside the range DateTime accepts, so an absurd
+  // created_at_ms would otherwise throw a RangeError out of the panel build.
+  final int createdMs = createdAtMs.toInt();
+  if (createdMs.abs() > _maxRepresentableMs) {
+    return 'now';
+  }
   final Duration age = observedAt.difference(
-    DateTime.fromMillisecondsSinceEpoch(createdAtMs.toInt()),
+    DateTime.fromMillisecondsSinceEpoch(createdMs),
   );
+  // Negative ages come from clock skew. Nothing is older than the present.
   if (age.inSeconds < 60) {
     return 'now';
   }
   if (age.inMinutes < 60) {
-    return '${math.max(1, age.inMinutes)}m ago';
+    return '${age.inMinutes}m ago';
   }
   if (age.inHours < 24) {
     return '${age.inHours}h ago';

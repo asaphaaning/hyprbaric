@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../bindings/bindings.dart';
 import 'hypr_surface.dart';
@@ -22,15 +23,18 @@ class NotificationPanel extends StatelessWidget {
   });
 
   final BorderRadius borderRadius;
-  final NotificationStatus? status;
+
+  /// The raw snapshot stream, kept as an [AsyncValue] so the panel can tell a
+  /// pending first frame apart from a daemon that genuinely has nothing to
+  /// show. [AudioPanel] and [NetworkPanel] take the same shape.
+  final AsyncValue<NotificationStatus> status;
   final ValueChanged<int> onDismiss;
   final VoidCallback onClearAll;
 
   @override
   Widget build(BuildContext context) {
-    final NotificationStatus? snapshot = status;
+    final NotificationStatus? snapshot = status.asData?.value;
     final List<NotificationEntry> entries = snapshot?.entries ?? const [];
-    final bool available = snapshot?.available ?? true;
 
     return HyprPopoverSurface(
       borderRadius: borderRadius,
@@ -60,27 +64,47 @@ class NotificationPanel extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
                 NotificationHeader(
+                  // Deliberately the length of the list this pill labels, not
+                  // snapshot.unreadCount, which Rust documents as the bell's
+                  // number and zeroes under do-not-disturb.
                   count: entries.length,
                   onClearAll: onClearAll,
                 ),
                 const SizedBox(height: 10),
-                if (entries.isEmpty)
-                  NotificationEmptyState(
-                    available: available,
-                    message: snapshot?.message,
-                  )
-                else
-                  Flexible(
-                    child: NotificationList(
-                      entries: entries,
-                      onDismiss: onDismiss,
-                    ),
-                  ),
+                _body(snapshot, entries),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _body(NotificationStatus? snapshot, List<NotificationEntry> entries) {
+    if (snapshot == null) {
+      return NotificationPlaceholder(
+        label: status.hasError ? 'Notifications unavailable' : 'Loading',
+        subtitle: status.hasError ? 'could not reach the bar service' : null,
+      );
+    }
+    // Availability outranks the entry list. A lost daemon leaves whatever it
+    // last sent behind, and that copy is stale rather than current.
+    if (!snapshot.available) {
+      return NotificationPlaceholder(
+        label: 'Notifications unavailable',
+        subtitle: snapshot.message ?? 'notification service is offline',
+      );
+    }
+    if (entries.isEmpty) {
+      return NotificationPlaceholder(
+        label: snapshot.dndEnabled ? 'Do not disturb' : 'No notifications',
+        subtitle: snapshot.dndEnabled
+            ? 'notifications are being suppressed'
+            : snapshot.message,
+      );
+    }
+    return Flexible(
+      child: NotificationList(entries: entries, onDismiss: onDismiss),
     );
   }
 }

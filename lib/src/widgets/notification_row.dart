@@ -10,9 +10,14 @@ class NotificationRow extends StatelessWidget {
     super.key,
     required this.entry,
     required this.onDismiss,
+    this.now,
   });
 
   final NotificationEntry entry;
+
+  /// Observation time for the age label, re-stamped by [NotificationList] so
+  /// the shipped path is the one the tests exercise.
+  final DateTime? now;
   final VoidCallback onDismiss;
 
   @override
@@ -21,9 +26,9 @@ class NotificationRow extends StatelessWidget {
 
     return HyprInteractionRegion(
       builder: (BuildContext context, HyprInteractionState state) {
-        final NotificationTilePhase phase = state.pressed
-            ? NotificationTilePhase.pressed
-            : state.hovered
+        // HyprInteractionRegion only reports pressed when a tap handler is
+        // wired, and this row has none, so hover is the only live phase.
+        final NotificationTilePhase phase = state.hovered
             ? NotificationTilePhase.hovered
             : NotificationTilePhase.idle;
         final NotificationTileStyle style = NotificationTileStyle.forPhase(
@@ -43,7 +48,7 @@ class NotificationRow extends StatelessWidget {
             shadows: <BoxShadow>[
               BoxShadow(
                 color: style.shadow,
-                blurRadius: phase == NotificationTilePhase.pressed ? 3 : 2,
+                blurRadius: 2,
                 offset: const Offset(0, 1),
               ),
             ],
@@ -101,7 +106,10 @@ class NotificationRow extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                     _NotificationTimeLabel(
-                      label: notificationAgeLabel(entry.createdAtMs),
+                      label: notificationAgeLabel(
+                        entry.createdAtMs,
+                        now: now,
+                      ),
                     ),
                     const SizedBox(width: 10),
                     IgnorePointer(

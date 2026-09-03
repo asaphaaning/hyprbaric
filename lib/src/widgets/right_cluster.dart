@@ -389,7 +389,7 @@ class RightCluster extends ConsumerWidget {
                               return NotificationPanel(
                                 borderRadius: audioRadius,
                                 status: ref.watch(
-                                  currentNotificationStatusProvider,
+                                  currentNotificationSignalProvider,
                                 ),
                                 onDismiss: onDismissNotification,
                                 onClearAll: onClearNotifications,
