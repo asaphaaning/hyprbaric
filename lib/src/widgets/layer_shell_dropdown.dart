@@ -91,11 +91,9 @@ class LayerShellDropdownController {
 class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
     with SingleTickerProviderStateMixin {
   late LayerShellDropdownController _controller;
-
-  LayerShellRegionManager get _regionManager =>
-      ref.read(layerShellRegionManagerProvider);
-
+  late final LayerShellRegionManager _regionManager;
   late final AnimationController _animationController;
+  final Object _regionOwner = Object();
   final LayerLink _buttonLayerLink = LayerLink();
   final GlobalKey _buttonKey = GlobalKey();
   final GlobalKey _menuKey = GlobalKey();
@@ -110,6 +108,7 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
     super.initState();
     _controller = widget.controller ?? LayerShellDropdownController();
     _controller._attach(this);
+    _regionManager = ref.read(layerShellRegionManagerProvider);
     _animationController =
         AnimationController(vsync: this, duration: widget.animationDuration)
           ..value = 1
@@ -136,6 +135,14 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
   @override
   void dispose() {
     _controller._detach(this);
+    unawaited(
+      _regionManager.updateRegion(
+        owner: _regionOwner,
+        menuRect: null,
+        radius: null,
+        debugLabel: 'dropdown-disposed',
+      ),
+    );
     _animationController.dispose();
     _removeOverlay();
     super.dispose();
@@ -301,6 +308,7 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
   Future<void> _updateRegion(_RegionSyncMode mode) async {
     if (mode == _RegionSyncMode.barOnly) {
       await _regionManager.updateRegion(
+        owner: _regionOwner,
         menuRect: null,
         radius: null,
         debugLabel: 'dropdown-closed',
@@ -310,6 +318,7 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
 
     final Rect? menuRect = _resolveMenuRect();
     await _regionManager.updateRegion(
+      owner: _regionOwner,
       menuRect: menuRect,
       radius: menuRect == null ? null : widget.menuRadius,
       // Keep outside-click dismissal working while any popup is open by

@@ -113,6 +113,7 @@ class LayerShellRegionManager {
   int _barHeight;
   LayerShellBarEdge _barEdge;
   LayerShellMenuRegion? _menu;
+  Object? _menuOwner;
   bool _captureAllClicks = false;
   final Map<String, List<LayerShellMenuRegion>> _ownedRegions =
       <String, List<LayerShellMenuRegion>>{};
@@ -133,15 +134,24 @@ class LayerShellRegionManager {
   void dispose() {
     _pendingUpdate = null;
     _ownedRegions.clear();
+    _menu = null;
+    _menuOwner = null;
+    _captureAllClicks = false;
   }
 
   Future<void> updateRegion({
     required Rect? menuRect,
     BorderRadius? radius,
     bool captureAllClicks = false,
+    Object? owner,
     String debugLabel = 'layer-shell',
   }) async {
     if (!_isLinux()) {
+      return;
+    }
+
+    if (menuRect == null && _menuOwner != null && _menuOwner != owner) {
+      await _sendMergedRegion(debugLabel);
       return;
     }
 
@@ -151,6 +161,7 @@ class LayerShellRegionManager {
             rect: menuRect,
             radius: radius ?? BorderRadius.zero,
           );
+    _menuOwner = menuRect == null ? null : owner;
     _captureAllClicks = captureAllClicks;
     await _sendMergedRegion(debugLabel);
   }

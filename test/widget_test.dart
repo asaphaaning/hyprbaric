@@ -5257,4 +5257,50 @@ void main() {
     },
     variant: TargetPlatformVariant.only(TargetPlatform.linux),
   );
+
+  testWidgets(
+    'disposing an open dropdown releases its full-surface input region',
+    (WidgetTester tester) async {
+      final List<Map<String, Object?>> payloads = <Map<String, Object?>>[];
+      _setRegionMock((Object? message) {
+        payloads.add(_regionPayloadFromMessage(message));
+        return _pigeonSuccess();
+      });
+      final LayerShellDropdownController controller =
+          LayerShellDropdownController();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: LayerShellDropdown(
+              controller: controller,
+              buttonBuilder:
+                  (
+                    BuildContext context,
+                    LayerShellDropdownController controller, {
+                    required bool isOpen,
+                  }) => const SizedBox(width: 96, height: 32),
+              menuBuilder:
+                  (
+                    BuildContext context,
+                    LayerShellDropdownController controller,
+                  ) => const Material(child: SizedBox(width: 180, height: 160)),
+            ),
+          ),
+        ),
+      );
+      controller.open();
+      await tester.pump();
+      await tester.pump();
+
+      expect(payloads.last['capture_all_clicks'], true);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+
+      expect(payloads.last['capture_all_clicks'], false);
+      expect(payloads.last['menu'], null);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.linux),
+  );
 }
