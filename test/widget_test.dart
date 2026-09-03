@@ -4789,6 +4789,36 @@ void main() {
     expect(icon.dimension, 24);
   });
 
+  testWidgets('missing icon files never throw out of build', (
+    WidgetTester tester,
+  ) async {
+    // Desktop entries routinely point at icons that no longer exist, and tray
+    // apps delete their icon on exit. Reading the file eagerly in build (for
+    // instance to hand a String to SvgPicture.string) puts the failure outside
+    // the reach of errorBuilder and takes the whole subtree down with it.
+    for (final String path in <String>[
+      '/nonexistent/gone.svg',
+      '/nonexistent/gone.png',
+    ]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AppLauncherIconFile(
+            path: path,
+            dimension: 24,
+            fallback: const Text('fallback'),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: '$path must degrade to the fallback, not throw',
+      );
+    }
+  });
+
   testWidgets('app launcher bitmap icons decode at display size', (
     WidgetTester tester,
   ) async {

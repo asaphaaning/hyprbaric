@@ -1,6 +1,4 @@
 import 'dart:io' show File;
-
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -350,13 +348,6 @@ class AppLauncherIconFile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Launcher icon paths come from the native desktop index. Web builds have
-    // no local filesystem, so keep the deterministic glyph fallback instead
-    // of asking flutter_svg for a platform-specific File type.
-    if (kIsWeb) {
-      return fallback;
-    }
-
     final File file = File(path);
     final String lowerPath = path.toLowerCase();
     final int cacheDimension =
@@ -365,8 +356,8 @@ class AppLauncherIconFile extends StatelessWidget {
     if (lowerPath.endsWith('.svg')) {
       return SizedBox.square(
         dimension: dimension,
-        child: SvgPicture.string(
-          file.readAsStringSync(),
+        child: SvgPicture.file(
+          file,
           width: dimension,
           height: dimension,
           fit: BoxFit.contain,

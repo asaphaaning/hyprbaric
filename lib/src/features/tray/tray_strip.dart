@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -169,14 +168,10 @@ class _ThemedTrayIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (kIsWeb) {
-      return Icon(Icons.apps_rounded, size: 13, color: tint);
-    }
-
     final File file = File(path);
     if (path.toLowerCase().endsWith('.svg')) {
-      return SvgPicture.string(
-        file.readAsStringSync(),
+      return SvgPicture.file(
+        file,
         width: 13,
         height: 13,
         colorFilter: ColorFilter.mode(tint, BlendMode.srcIn),
