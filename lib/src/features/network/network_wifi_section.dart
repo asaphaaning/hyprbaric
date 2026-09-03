@@ -56,19 +56,54 @@ class _NetworkWifiSectionState extends State<NetworkWifiSection> {
   double _entryExtent = NetworkEntryTile.collapsedExtent;
   final GlobalKey _firstEntryKey = GlobalKey();
 
+  /// Guards the measurement against feeding itself.
+  ///
+  /// `_measureEntry` calls `setState`, which schedules the frame that would
+  /// arm the next measurement. Without this the pair is a loop held open only
+  /// by a tolerance, and any content that settles more than half a pixel from
+  /// where it started pins the UI at the frame rate.
+  bool _measurePending = false;
+  bool _measured = false;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(_measureEntry);
+    _scheduleMeasure();
   }
 
   @override
   void didUpdateWidget(NetworkWifiSection oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Font metrics decide the height, so one settled measurement holds for
+    // every later list. Only a text scale change can invalidate it.
+    if (!_measured) {
+      _scheduleMeasure();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final double scale = MediaQuery.textScalerOf(context).scale(12);
+    if (_textScale != scale) {
+      _textScale = scale;
+      _measured = false;
+      _scheduleMeasure();
+    }
+  }
+
+  double? _textScale;
+
+  void _scheduleMeasure() {
+    if (_measurePending) {
+      return;
+    }
+    _measurePending = true;
     WidgetsBinding.instance.addPostFrameCallback(_measureEntry);
   }
 
   void _measureEntry(Duration _) {
+    _measurePending = false;
     if (!mounted) {
       return;
     }
@@ -83,7 +118,11 @@ class _NetworkWifiSectionState extends State<NetworkWifiSection> {
       return;
     }
     final double extent = box.size.height;
-    if (extent <= 0 || (extent - _entryExtent).abs() < 0.5) {
+    if (extent <= 0) {
+      return;
+    }
+    _measured = true;
+    if ((extent - _entryExtent).abs() < 0.5) {
       return;
     }
     setState(() => _entryExtent = extent);

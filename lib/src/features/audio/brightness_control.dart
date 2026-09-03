@@ -71,9 +71,14 @@ class BrightnessControlState extends State<BrightnessControl> {
       return;
     }
     // Let the frame that shows the new value present before the command
-    // crosses to Rust.
+    // crosses to Rust. Guarded because the knob lives in a popover that can
+    // be dismissed by the same gesture that released it.
     final ValueChanged<int> commit = widget.onSetBrightness;
-    WidgetsBinding.instance.addPostFrameCallback((_) => commit(committed));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        commit(committed);
+      }
+    });
   }
 
   @override
