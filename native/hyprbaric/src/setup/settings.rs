@@ -30,7 +30,11 @@ fn write(document: &mut DocumentMut, configuration: &Configuration) -> Result<()
 
     let table = document[TABLE].as_table_mut().ok_or(Error::InvalidTable)?;
 
-    table["startup"] = value(configuration.startup().as_str());
+    // Only the fact this write exists to record. Stamping `startup` back in
+    // would freeze a default the user never chose into their own file.
+    if table.contains_key("startup") {
+        table["startup"] = value(configuration.startup().as_str());
+    }
     table["completed"] = value(configuration.completion().is_complete());
 
     Ok(())
@@ -49,13 +53,28 @@ mod tests {
             toml::from_str::<Configuration>("startup = \"never\"\ncompleted = false\n")
                 .expect("setup fixture should parse")
                 .completed();
-        let mut document = DocumentMut::new();
+        let mut document = "[setup]\nstartup = \"never\"\n"
+            .parse::<DocumentMut>()
+            .expect("setup fixture should parse");
 
         write(&mut document, &configuration).expect("setup config should be writable");
 
         assert!(document.to_string().contains("startup = \"never\""));
         assert!(document.to_string().contains("completed = true"));
         assert_eq!(configuration.status(), Status::Disabled);
+    }
+
+    #[test]
+    fn completion_does_not_stamp_in_an_unset_startup_policy() {
+        let configuration = Configuration::default().completed();
+        let mut document = DocumentMut::new();
+
+        write(&mut document, &configuration).expect("setup config should be writable");
+
+        // The user never chose a policy, so completing must not freeze the
+        // current default into their file.
+        assert!(!document.to_string().contains("startup"));
+        assert!(document.to_string().contains("completed = true"));
     }
 
     #[test]

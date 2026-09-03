@@ -176,17 +176,25 @@ impl Guide {
 
         match persisted {
             Ok(Ok(next)) => {
+                // The published status is derived, never assumed: completing a
+                // guide whose policy is `never` leaves it disabled, not
+                // complete, and the UI has to hear the same answer the
+                // configuration would give.
+                let status = next.status();
                 *state = next;
-                drop(self.events.send(Status::Complete));
+                drop(state);
+                drop(self.events.send(status));
                 drop(self.reports.send(Report::Saved(command)));
             }
             Ok(Err(error)) => {
+                drop(state);
                 drop(self.reports.send(Report::Failed {
                     command,
                     message: error.to_string(),
                 }));
             }
             Err(join) => {
+                drop(state);
                 drop(self.reports.send(Report::Failed {
                     command,
                     message: format!("setup persistence task failed: {join}"),
