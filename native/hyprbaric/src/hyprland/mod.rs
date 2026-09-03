@@ -58,11 +58,7 @@ impl Desktop {
             WorkspaceTarget::Absolute(id) => WorkspaceIdentifierWithSpecial::Id(id.get()),
         };
         if let Some(output) = output.as_ref() {
-            Dispatch::call_async(DispatchType::FocusMonitor(MonitorIdentifier::Name(
-                output.as_str(),
-            )))
-            .await
-            .map_err(Error::Dispatch)?;
+            focus_output(output).await.map_err(Error::Dispatch)?;
         }
         let lua_dispatch = lua_workspace_dispatch(identifier);
 
@@ -86,6 +82,23 @@ impl Desktop {
 /// queries yields empty sets while the focused workspace itself still lands.
 /// Only the active workspace read is fatal, without which there is nothing
 /// to display.
+/// Focuses an output, including Hyprland's Lua-config dispatcher syntax.
+async fn focus_output(output: &OutputName) -> Result<(), HyprError> {
+    match Dispatch::call_async(DispatchType::FocusMonitor(MonitorIdentifier::Name(
+        output.as_str(),
+    )))
+    .await
+    {
+        Ok(()) => Ok(()),
+        Err(error) if requires_lua_dispatch(&error) => {
+            let lua_dispatch = lua_output_focus_dispatch(output);
+            tracing::debug!(%lua_dispatch, "Retrying output focus dispatch with Lua syntax");
+            Dispatch::call_async(DispatchType::Custom(&lua_dispatch, "")).await
+        }
+        Err(error) => Err(error),
+    }
+}
+
 async fn desktop_snapshot(hostname: &str) -> Result<DesktopSnapshot, HyprError> {
     let workspace = Workspace::get_active_async().await?;
     let workspaces = Workspaces::get_async()
@@ -199,6 +212,22 @@ fn lua_workspace_dispatch(identifier: WorkspaceIdentifierWithSpecial<'_>) -> Str
     format!("hl.dsp.focus({{ workspace = \"{identifier}\" }})")
 }
 
+/// Formats an output-focus command for Hyprland's Lua-config IPC mode.
+fn lua_output_focus_dispatch(output: &OutputName) -> String {
+    let output = lua_string(output.as_str());
+
+    format!("hl.dsp.focus({{ monitor = \"{output}\" }})")
+}
+
+/// Escapes a string embedded in a double-quoted Lua literal.
+fn lua_string(value: &str) -> String {
+    value
+        .replace('\\', "\\\\")
+        .replace('\"', "\\\"")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+}
+
 /// Detects Hyprland's explicit legacy-dispatch rejection in Lua config mode.
 fn requires_lua_dispatch(error: &HyprError) -> bool {
     matches!(error, HyprError::NotOkDispatch(message) if message.contains("dispatch in lua"))
@@ -279,7 +308,11 @@ pub enum Error {
 
 #[cfg(test)]
 mod tests {
-    use super::{lua_workspace_dispatch, read_hostname_from_paths, requires_lua_dispatch};
+    use super::{
+        lua_output_focus_dispatch, lua_workspace_dispatch, read_hostname_from_paths,
+        requires_lua_dispatch,
+    };
+    use crate::hyprland::OutputName;
     use hyprland::{dispatch::WorkspaceIdentifierWithSpecial, error::HyprError};
     use std::{
         fs,
@@ -324,6 +357,26 @@ mod tests {
         assert_eq!(
             lua_workspace_dispatch(WorkspaceIdentifierWithSpecial::Relative(1)),
             "hl.dsp.focus({ workspace = \"+1\" })"
+        );
+    }
+
+    #[test]
+    fn formats_output_focus_for_lua_dispatch() {
+        let output = OutputName::new("DP-2").expect("a connector name is not empty");
+
+        assert_eq!(
+            lua_output_focus_dispatch(&output),
+            "hl.dsp.focus({ monitor = \"DP-2\" })"
+        );
+    }
+
+    #[test]
+    fn escapes_output_names_for_lua_dispatch() {
+        let output = OutputName::new("DP-\\\"2").expect("a connector name is not empty");
+
+        assert_eq!(
+            lua_output_focus_dispatch(&output),
+            "hl.dsp.focus({ monitor = \"DP-\\\\\\\"2\" })"
         );
     }
 
