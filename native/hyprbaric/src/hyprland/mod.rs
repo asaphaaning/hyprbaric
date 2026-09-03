@@ -11,6 +11,7 @@ use tracing::instrument;
 
 mod domain;
 mod listener;
+mod occupancy;
 
 pub use domain::{
     Command, FocusedWindowSnapshot, WorkspaceOccupancy, WorkspaceSnapshot, WorkspaceTarget,
@@ -20,6 +21,7 @@ pub use domain::{
 pub struct Desktop {
     workspace_events: broadcast::Sender<WorkspaceSnapshot>,
     focused_window_events: broadcast::Sender<FocusedWindowSnapshot>,
+    initial_occupancy: WorkspaceOccupancy,
     hostname: String,
 }
 
@@ -30,7 +32,7 @@ impl Desktop {
         let initial_workspace = Workspace::get_active_async()
             .await
             .map_err(Error::ActiveWorkspace)?;
-        let snapshot = initial_snapshot(initial_workspace).await;
+        let snapshot = workspace_snapshot(initial_workspace).await;
         let hostname = resolve_hostname();
         let initial_client = Client::get_active_async()
             .await
@@ -43,6 +45,7 @@ impl Desktop {
             Self {
                 workspace_events: workspace_tx,
                 focused_window_events: focused_window_tx,
+                initial_occupancy: snapshot.occupied.clone(),
                 hostname,
             },
             snapshot,
@@ -56,6 +59,7 @@ impl Desktop {
         listener::run(
             self.workspace_events.clone(),
             self.focused_window_events.clone(),
+            self.initial_occupancy.clone(),
             self.hostname.clone(),
         )
         .await
@@ -97,33 +101,32 @@ impl Desktop {
     }
 }
 
-/// Reads the initial workspace projection, degrading to empty occupancy.
+/// Reads one workspace projection, degrading rather than failing.
 ///
-/// Occupancy is advisory: a transient compositor hiccup at startup must not
-/// prevent the bar from connecting. The listener refreshes occupancy on the
-/// first workspace or window event.
-async fn initial_snapshot(workspace: Workspace) -> WorkspaceSnapshot {
-    let id = workspace.id;
-    let name = workspace.name;
-    let is_special = is_special_workspace(id);
+/// Occupancy is decoration on the workspace strip. A compositor that cannot
+/// answer the query must not be able to abort startup, so an unreadable set
+/// becomes an empty one.
+async fn workspace_snapshot(workspace: Workspace) -> WorkspaceSnapshot {
+    let occupancy = workspace_occupancy().await.unwrap_or_else(|error| {
+        tracing::warn!(
+            ?error,
+            "Failed to read Hyprland workspace occupancy; starting without it"
+        );
+        WorkspaceOccupancy::default()
+    });
+    let is_special = is_special_workspace(workspace.id, &workspace.name);
 
-    match workspace_occupancy().await {
-        Ok(occupancy) => WorkspaceSnapshot::new(id, name, is_special, occupancy),
-        Err(error) => {
-            tracing::warn!(?error, "Falling back to empty workspace occupancy");
-
-            WorkspaceSnapshot::new(id, name, is_special, WorkspaceOccupancy::default())
-        }
-    }
+    WorkspaceSnapshot::new(workspace.id, workspace.name, is_special, occupancy)
 }
 
-/// Whether a workspace id denotes a special workspace.
+/// Decides whether a workspace is a special workspace.
 ///
-/// Hyprland assigns special workspaces negative ids. The event listener learns
-/// this authoritatively from [`WorkspaceType`](hyprland::shared::WorkspaceType);
-/// this helper covers the polling paths that only see the id.
-pub(super) fn is_special_workspace(id: i32) -> bool {
-    id < 0
+/// Both facts are checked because the two event paths carry different data:
+/// Hyprland gives special workspaces a negative ID and a `special` name
+/// prefix, and deriving the flag from only one of them let the same workspace
+/// arrive flagged differently depending on which event produced it.
+pub(super) fn is_special_workspace(id: i32, name: &str) -> bool {
+    id < 0 || name.starts_with("special")
 }
 
 pub(super) async fn workspace_occupancy() -> Result<WorkspaceOccupancy, HyprError> {
@@ -207,6 +210,16 @@ mod tests {
             .map(|value| value.as_nanos())
             .unwrap_or_default();
         std::env::temp_dir().join(format!("hyprbaric-{name}-{nanos}.tmp"))
+    }
+
+    #[test]
+    fn special_workspaces_are_recognized_from_either_event_shape() {
+        // The workspace-changed event carries the name, the occupancy refresh
+        // carries the ID. Both have to reach the same verdict.
+        assert!(is_special_workspace(-99, "special:magic"));
+        assert!(is_special_workspace(-99, "magic"));
+        assert!(is_special_workspace(3, "special:magic"));
+        assert!(!is_special_workspace(3, "3"));
     }
 
     #[test]
