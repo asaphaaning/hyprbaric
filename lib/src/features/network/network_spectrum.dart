@@ -1,10 +1,10 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 
-import '../../bindings/bindings.dart';
+import '../../bindings/bindings.dart' hide listEquals;
 import '../../widgets/hypr_surface.dart';
-import '../../widgets/primitives/primitives.dart';
 import 'network_chrome.dart';
 import 'network_formatting.dart';
 
@@ -13,10 +13,17 @@ class NetworkSpectrumPanel extends StatelessWidget {
     super.key,
     required this.uploadHistory,
     required this.downloadHistory,
+    this.window,
   });
 
   final List<double> uploadHistory;
   final List<double> downloadHistory;
+
+  /// The real time the samples span, measured by the panel that collects them.
+  ///
+  /// The poll cadence is configurable, so the axis cannot be labelled from the
+  /// sample count alone.
+  final Duration? window;
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +57,7 @@ class NetworkSpectrumPanel extends StatelessWidget {
                 right: 9,
                 bottom: 7,
                 child: Text(
-                  '20 s',
+                  _windowLabel(window),
                   style: HyprTypography.compactMono.copyWith(
                     color: NetworkMenuColors.fg3.withValues(alpha: 0.62),
                     fontSize: HyprTypography.size(7.5),
@@ -65,6 +72,17 @@ class NetworkSpectrumPanel extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Formats the scope's time base, or a placeholder until it can be measured.
+String _windowLabel(Duration? window) {
+  if (window == null || window.inSeconds < 1) {
+    return '--';
+  }
+  if (window.inSeconds < 90) {
+    return '${window.inSeconds} s';
+  }
+  return '${window.inMinutes} min';
 }
 
 class _ScopeLabel extends StatelessWidget {
@@ -433,7 +451,9 @@ class NetworkSpectrumPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant NetworkSpectrumPainter oldDelegate) {
-    return oldDelegate.uploadHistory != uploadHistory ||
-        oldDelegate.downloadHistory != downloadHistory;
+    // Compared by value. `!=` on a List is identity, which was always false
+    // while the panel handed the painter the same buffer every frame.
+    return !listEquals(oldDelegate.uploadHistory, uploadHistory) ||
+        !listEquals(oldDelegate.downloadHistory, downloadHistory);
   }
 }
