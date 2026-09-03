@@ -13,6 +13,7 @@ dependencies:
   hyprbaric:
     path: ..
   iconsax_flutter: ^1.0.1
+  riverpod: ^3.3.2
   widgetbook: ^3.25.0
   widgetbook_annotation: ^3.11.0
 
@@ -30,7 +31,27 @@ flutter:
   fonts:
     - family: Inter
       fonts:
+        # Mirrors the app's declaration exactly. A single untagged entry makes
+        # Flutter treat the family as weight 400 and approximate the rest, so
+        # the catalog would render every weight differently from the bar.
         - asset: assets/fonts/InterVariable.ttf
+          weight: 100
+        - asset: assets/fonts/InterVariable.ttf
+          weight: 200
+        - asset: assets/fonts/InterVariable.ttf
+          weight: 300
+        - asset: assets/fonts/InterVariable.ttf
+          weight: 400
+        - asset: assets/fonts/InterVariable.ttf
+          weight: 500
+        - asset: assets/fonts/InterVariable.ttf
+          weight: 600
+        - asset: assets/fonts/InterVariable.ttf
+          weight: 700
+        - asset: assets/fonts/InterVariable.ttf
+          weight: 800
+        - asset: assets/fonts/InterVariable.ttf
+          weight: 900
     - family: JetBrains Mono
       fonts:
         - asset: assets/fonts/JetBrainsMono-Regular.ttf

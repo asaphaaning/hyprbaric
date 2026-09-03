@@ -158,6 +158,26 @@ void main() {
     expect(find.text('Sun, Aug 30'), findsOneWidget);
   });
 
+  testWidgets('full bar story leaves no region waiting on a real signal', (
+    WidgetTester tester,
+  ) async {
+    // The catalog never initialises RINF, so any provider the story forgets to
+    // override stays in AsyncLoading forever and renders as a dead region
+    // rather than as a visible failure. The tray is the canary: it is the
+    // furthest-downstream cluster fed by its own provider.
+    await tester.pumpWidget(Builder(builder: buildLaptopBar));
+    await tester.pump();
+    await tester.pump();
+
+    // TrayStrip collapses to a shrink box when it has no items, so this key
+    // is present only once trayStatusProvider has actually yielded.
+    expect(
+      find.byKey(const ValueKey<String>('tray-strip')),
+      findsOneWidget,
+      reason: 'the tray only renders once trayStatusProvider is overridden',
+    );
+  });
+
   testWidgets('settings story uses the complete production menu', (
     WidgetTester tester,
   ) async {
@@ -655,15 +675,11 @@ void main() {
     expect(find.bySemanticsLabel('Session actions'), findsNWidgets(2));
   });
 
-  test('workspace fixtures separate compositor focus from this output', () {
+
+  test('workspace fixtures cover occupancy, special and read-only states', () {
     expect(WorkspaceFixtures.occupied.occupiedWorkspaceIds, contains(5));
     expect(WorkspaceFixtures.special.isSpecial, isTrue);
     expect(WorkspaceFixtures.readOnly.clickable, isFalse);
-    expect(
-      WorkspaceFixtures.resolutionFor(WorkspaceFixtures.occupied).monitorName,
-      'DP-1',
-    );
-    expect(WorkspaceFixtures.unfocusedOutput.activeWorkspaceId, 1);
   });
 
   testWidgets('workspace strip stories render each indicator style', (

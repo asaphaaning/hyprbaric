@@ -1192,12 +1192,6 @@ final directories = <_widgetbook.WidgetbookNode>[
                     _hyprbaric_widgetbook_use_cases_bar_workspace_strip_use_cases
                         .buildSpecialWorkspaceStrip,
               ),
-              _widgetbook.WidgetbookUseCase(
-                name: 'Unfocused output',
-                builder:
-                    _hyprbaric_widgetbook_use_cases_bar_workspace_strip_use_cases
-                        .buildUnfocusedWorkspaceStrip,
-              ),
             ],
           ),
         ],

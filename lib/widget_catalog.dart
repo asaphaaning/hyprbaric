@@ -58,6 +58,8 @@ export 'src/bindings/bindings.dart'
         PowerCommandResultFailed,
         PowerCommandSetProfile,
         PowerProfile,
+        PortalColorScheme,
+        PortalStatus,
         PowerStatus,
         RecordingMode,
         RecordingStatus,
@@ -67,6 +69,8 @@ export 'src/bindings/bindings.dart'
         ScheduleAction,
         ScheduleEntry,
         ScheduleStatus,
+        SetupState,
+        SetupStatus,
         ScreenshotMode,
         SessionAction,
         ShortcutBindingInput,
@@ -164,19 +168,27 @@ export 'src/state/rust_signals/audio.dart'
     show audioStatusProvider, brightnessStatusProvider;
 export 'src/state/rust_signals/capabilities.dart' show capabilityStatusProvider;
 export 'src/state/rust_signals/clock.dart' show clockStatusProvider;
+export 'src/state/rust_signals/caffeine.dart' show caffeineStatusProvider;
 export 'src/state/rust_signals/compositor.dart'
-    show focusedWindowStatusProvider, workspaceStatusProvider;
+    show
+        focusedWindowStatusProvider,
+        portalStatusProvider,
+        workspaceStatusProvider;
 export 'src/state/rust_signals/modules.dart' show modulesStatusProvider;
 export 'src/state/rust_signals/network.dart' show networkStatusProvider;
 export 'src/state/rust_signals/night_light.dart' show nightLightStatusProvider;
 export 'src/state/rust_signals/notifications.dart'
     show notificationStatusProvider;
 export 'src/state/rust_signals/power.dart' show powerStatusProvider;
+export 'src/state/rust_signals/recording.dart' show recordingStatusProvider;
 export 'src/state/rust_signals/schedule.dart' show scheduleStatusProvider;
+export 'src/state/rust_signals/setup.dart' show setupStatusProvider;
 export 'src/state/rust_signals/shortcuts.dart'
     show
         shortcutSettingsCommandResultProvider,
         shortcutSettingsSnapshotProvider;
+export 'src/state/rust_signals/tray.dart'
+    show trayMenuStatusProvider, trayStatusProvider;
 export 'src/state/rust_signals/workspace_settings.dart'
     show workspaceSettingsStatusProvider;
 export 'src/state/transient_overlays.dart' show OsdEvent, OsdKind, ToastEntry;
