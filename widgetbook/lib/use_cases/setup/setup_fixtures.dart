@@ -1,14 +1,27 @@
 import 'package:hyprbaric/widget_catalog.dart';
 
+import '../settings/settings_fixtures.dart';
+
 /// Deterministic first-run snapshots for the setup guide stories.
 abstract final class SetupFixtures {
-  /// The appearance the guide starts from on a fresh install.
-  static const AppearanceStatus appearanceDefault = AppearanceStatus(
-    position: AppearancePosition.top,
-    opacity: 77,
-    cornerRadius: 12,
-    accentHue: 197,
-  );
+  /// The appearance a fresh install starts from.
+  ///
+  /// Shared with the settings stories rather than restated, so the two cannot
+  /// disagree about what "default" means.
+  static const AppearanceStatus appearanceDefault =
+      SettingsFixtures.appearanceDefault;
+
+  static const WorkspaceSettingsStatus workspacesRoman =
+      SettingsFixtures.workspacesRoman;
+
+  /// The guide's own narrower default, distinct from the settings story's.
+  static const WorkspaceSettingsStatus workspacesNumeric =
+      WorkspaceSettingsStatus(
+        indicatorStyle: WorkspaceIndicatorStyle.numeric,
+        clickable: true,
+        visibleRange: WorkspaceVisibleRange.small,
+        visibleCount: 5,
+      );
 
   /// A guide run that has already committed a translucent, magenta bar.
   static const AppearanceStatus appearanceTuned = AppearanceStatus(
@@ -17,22 +30,6 @@ abstract final class SetupFixtures {
     cornerRadius: 18,
     accentHue: 310,
   );
-
-  static const WorkspaceSettingsStatus workspacesRoman =
-      WorkspaceSettingsStatus(
-        indicatorStyle: WorkspaceIndicatorStyle.roman,
-        clickable: true,
-        visibleRange: WorkspaceVisibleRange.medium,
-        visibleCount: 7,
-      );
-
-  static const WorkspaceSettingsStatus workspacesNumeric =
-      WorkspaceSettingsStatus(
-        indicatorStyle: WorkspaceIndicatorStyle.numeric,
-        clickable: true,
-        visibleRange: WorkspaceVisibleRange.small,
-        visibleCount: 5,
-      );
 
   /// The accent wheel the guide offers, mirroring the production overlay.
   static const List<int> accentPresets = <int>[

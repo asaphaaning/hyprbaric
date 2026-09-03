@@ -84,10 +84,7 @@ class _BarChrome extends StatelessWidget {
 }
 
 class _WorkspaceStripStory extends StatelessWidget {
-  const _WorkspaceStripStory({
-    required this.status,
-    required this.settings,
-  });
+  const _WorkspaceStripStory({required this.status, required this.settings});
 
   final WorkspaceStatus status;
   final WorkspaceSettingsStatus settings;

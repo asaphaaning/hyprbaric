@@ -53,13 +53,13 @@ export 'src/bindings/bindings.dart'
         NotificationEntry,
         NotificationStatus,
         NotificationUrgency,
+        PortalColorScheme,
+        PortalStatus,
         PowerBatteryState,
         PowerCommandResult,
         PowerCommandResultFailed,
         PowerCommandSetProfile,
         PowerProfile,
-        PortalColorScheme,
-        PortalStatus,
         PowerStatus,
         RecordingMode,
         RecordingStatus,
@@ -69,10 +69,10 @@ export 'src/bindings/bindings.dart'
         ScheduleAction,
         ScheduleEntry,
         ScheduleStatus,
-        SetupState,
-        SetupStatus,
         ScreenshotMode,
         SessionAction,
+        SetupState,
+        SetupStatus,
         ShortcutBindingInput,
         ShortcutBindingPhase,
         ShortcutBindingView,
@@ -166,9 +166,9 @@ export 'src/state/rust_signals/app.dart' show appStatusProvider;
 export 'src/state/rust_signals/appearance.dart' show appearanceStatusProvider;
 export 'src/state/rust_signals/audio.dart'
     show audioStatusProvider, brightnessStatusProvider;
+export 'src/state/rust_signals/caffeine.dart' show caffeineStatusProvider;
 export 'src/state/rust_signals/capabilities.dart' show capabilityStatusProvider;
 export 'src/state/rust_signals/clock.dart' show clockStatusProvider;
-export 'src/state/rust_signals/caffeine.dart' show caffeineStatusProvider;
 export 'src/state/rust_signals/compositor.dart'
     show
         focusedWindowStatusProvider,
