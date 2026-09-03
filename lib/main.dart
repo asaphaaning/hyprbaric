@@ -81,6 +81,18 @@ class _HyprbaricViewsState extends State<_HyprbaricViews>
                   layerShellMetricsRevisionProvider.overrideWithValue(
                     _metricsRevision,
                   ),
+                  layerShellRegionManagerProvider.overrideWith(
+                    createLayerShellRegionManager,
+                  ),
+                  layerShellMonitorsProvider.overrideWith(
+                    listLayerShellMonitors,
+                  ),
+                  layerShellCurrentMonitorProvider.overrideWith(
+                    currentLayerShellMonitor,
+                  ),
+                  layerShellViewMonitorTargetProvider.overrideWith(
+                    resolveLayerShellViewMonitorTarget,
+                  ),
                 ],
                 child: const Hyprbaric(),
               ),

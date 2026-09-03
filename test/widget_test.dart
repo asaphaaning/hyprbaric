@@ -58,6 +58,14 @@ const BasicMessageChannel<Object?> _layerShellSetRegionChannel =
       'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setRegion',
       NativeLayerShellHostApi.pigeonChannelCodec,
     );
+
+BasicMessageChannel<Object?> _layerShellSetRegionChannelForView(int viewId) {
+  return BasicMessageChannel<Object?>(
+    'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setRegion.$viewId',
+    NativeLayerShellHostApi.pigeonChannelCodec,
+  );
+}
+
 const BasicMessageChannel<Object?> _layerShellSetKeyboardModeChannel =
     BasicMessageChannel<Object?>(
       'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setKeyboardMode',
@@ -100,19 +108,22 @@ class _RecordingRustDispatcher extends RustCommandDispatcher {
   }
 }
 
-void _setRegionMock(FutureOr<Object?> Function(Object? message)? handler) {
+void _setRegionMock(
+  FutureOr<Object?> Function(Object? message)? handler, {
+  int? viewId,
+}) {
+  final BasicMessageChannel<Object?> channel = viewId == null
+      ? _layerShellSetRegionChannel
+      : _layerShellSetRegionChannelForView(viewId);
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMessageHandler(
-        _layerShellSetRegionChannel.name,
+        channel.name,
         handler == null
             ? null
             : (ByteData? message) async {
-                final Object? decoded = _layerShellSetRegionChannel.codec
-                    .decodeMessage(message);
+                final Object? decoded = channel.codec.decodeMessage(message);
                 final Object? response = await handler(decoded);
-                return _layerShellSetRegionChannel.codec.encodeMessage(
-                  response,
-                );
+                return channel.codec.encodeMessage(response);
               },
       );
 }
@@ -5085,6 +5096,45 @@ void main() {
     await tester.pump();
 
     expect(payloads.single['bar_edge'], 'bottom');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
+
+  testWidgets('view-scoped region managers use their suffixed channel', (
+    WidgetTester tester,
+  ) async {
+    const int viewId = 42;
+    final List<Map<String, Object?>> payloads = <Map<String, Object?>>[];
+    _setRegionMock((Object? message) {
+      payloads.add(_regionPayloadFromMessage(message));
+      return _pigeonSuccess();
+    }, viewId: viewId);
+    final ProviderContainer container = ProviderContainer(
+      overrides: [
+        layerShellControllerProvider.overrideWithValue(
+          LayerShellController.forView(viewId),
+        ),
+        layerShellRegionManagerProvider.overrideWith(
+          createLayerShellRegionManager,
+        ),
+      ],
+    );
+    addTearDown(() {
+      container.dispose();
+      _setRegionMock(null, viewId: viewId);
+    });
+
+    await container
+        .read(layerShellRegionManagerProvider)
+        .setPassiveRegions(
+          owner: 'setup-guide',
+          regions: const <LayerShellMenuRegion>[
+            LayerShellMenuRegion(
+              rect: Rect.fromLTWH(0, 0, 800, 600),
+              radius: BorderRadius.zero,
+            ),
+          ],
+        );
+
+    expect(payloads, hasLength(1));
   }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
   testWidgets('region manager skips duplicate requests', (

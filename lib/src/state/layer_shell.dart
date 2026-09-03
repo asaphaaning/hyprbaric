@@ -25,9 +25,15 @@ final layerShellViewRoleProvider = Provider<LayerShellViewRole>(
 
 /// Shared instance of [LayerShellRegionManager] so overlays and other widgets
 /// operate on the same native channel connection.
-final layerShellRegionManagerProvider = Provider<LayerShellRegionManager>((
-  ref,
-) {
+final layerShellRegionManagerProvider = Provider<LayerShellRegionManager>(
+  createLayerShellRegionManager,
+);
+
+/// Creates the input-region state owned by one native Flutter view.
+///
+/// The application overrides [layerShellRegionManagerProvider] for every
+/// [View] so a manager can never use another view's platform channel.
+LayerShellRegionManager createLayerShellRegionManager(Ref ref) {
   final manager = LayerShellRegionManager(
     barHeight: ref.read(barHeightProvider),
     controller: ref.watch(layerShellControllerProvider),
@@ -46,7 +52,7 @@ final layerShellRegionManagerProvider = Provider<LayerShellRegionManager>((
   ref.onDispose(manager.dispose);
 
   return manager;
-});
+}
 
 LayerShellBarEdge _edgeFromPosition(AppearancePosition position) {
   return switch (position) {
@@ -60,25 +66,36 @@ final layerShellControllerProvider = Provider<LayerShellController>(
 );
 
 final layerShellMonitorsProvider = FutureProvider<List<LayerShellMonitor>>(
-  (ref) => ref.watch(layerShellControllerProvider).listMonitors(),
+  listLayerShellMonitors,
 );
 
+/// Lists outputs through the platform channel owned by the current view.
+Future<List<LayerShellMonitor>> listLayerShellMonitors(Ref ref) {
+  return ref.watch(layerShellControllerProvider).listMonitors();
+}
+
 /// Native output occupied by this provider scope's Flutter view.
-final layerShellCurrentMonitorProvider = FutureProvider<LayerShellMonitor?>((
-  ref,
-) {
+final layerShellCurrentMonitorProvider = FutureProvider<LayerShellMonitor?>(
+  currentLayerShellMonitor,
+);
+
+/// Reads the native output occupied by the current Flutter view.
+Future<LayerShellMonitor?> currentLayerShellMonitor(Ref ref) {
   ref.watch(layerShellMetricsRevisionProvider);
   return ref.watch(layerShellControllerProvider).currentMonitor();
-});
+}
 
 /// Native visibility target resolved for the current Flutter view.
 ///
 /// Persisted named targets are Hyprland connector names. GTK cannot expose
 /// these names, so each view matches its GDK geometry to the compositor
 /// projection and receives an explicit visible or hidden target.
-final layerShellViewMonitorTargetProvider = Provider<LayerShellMonitorTarget>((
-  ref,
-) {
+final layerShellViewMonitorTargetProvider = Provider<LayerShellMonitorTarget>(
+  resolveLayerShellViewMonitorTarget,
+);
+
+/// Resolves the visibility target for the native output of the current view.
+LayerShellMonitorTarget resolveLayerShellViewMonitorTarget(Ref ref) {
   final AppearanceMonitorTarget configured = ref
       .watch(currentAppearanceProvider)
       .monitor;
@@ -92,7 +109,7 @@ final layerShellViewMonitorTargetProvider = Provider<LayerShellMonitorTarget>((
       ?.value;
 
   return resolveViewMonitorTarget(configured, workspace, output);
-});
+}
 
 /// Changes whenever Flutter reports output metrics changing.
 final layerShellMetricsRevisionProvider = Provider<int>((_) => 0);
