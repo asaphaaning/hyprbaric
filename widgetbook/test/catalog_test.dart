@@ -266,8 +266,8 @@ void main() {
         home: Builder(builder: buildControlSectionTray),
       ),
     );
-    expect(find.byType(ControlSectionTray), findsOneWidget);
-    expect(find.byType(ControlSectionLabel), findsOneWidget);
+    expect(find.byType(HyprConsoleTray), findsOneWidget);
+    expect(find.byType(HyprConsoleSectionLabel), findsOneWidget);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -275,7 +275,7 @@ void main() {
         home: Builder(builder: buildControlChassis),
       ),
     );
-    expect(find.byType(ControlChassis), findsOneWidget);
+    expect(find.byType(HyprConsoleChassis), findsOneWidget);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -283,7 +283,7 @@ void main() {
         home: Builder(builder: buildControlSectionLabel),
       ),
     );
-    expect(find.byType(ControlSectionLabel), findsOneWidget);
+    expect(find.byType(HyprConsoleSectionLabel), findsOneWidget);
   });
 
   testWidgets('composed controls story uses the complete production panel', (
@@ -297,7 +297,7 @@ void main() {
     );
 
     expect(find.byType(ControlsPanel), findsOneWidget);
-    expect(find.byType(ControlSectionTray), findsNWidgets(3));
+    expect(find.byType(HyprConsoleTray), findsNWidgets(3));
     expect(find.byType(ControlCapturePad), findsNWidgets(3));
     expect(find.byType(ControlRecordPad), findsOneWidget);
     expect(find.byType(ControlInspectButton), findsNWidgets(2));
@@ -606,9 +606,6 @@ void main() {
 
     await pumpStory(buildGlassFrameTreatments);
     expect(find.byType(HyprGlassFrame), findsNWidgets(2));
-
-    await pumpStory(buildIconTileStates);
-    expect(find.byType(HyprIconTile), findsNWidgets(3));
 
     await pumpStory(buildPanelChrome);
     expect(find.byType(HyprPanelHeader), findsOneWidget);

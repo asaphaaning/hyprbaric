@@ -5,22 +5,32 @@ import 'package:widgetbook_annotation/widgetbook_annotation.dart';
 
 import '../../catalog/catalog_frame.dart';
 
+/// Chords in these stories stand in for the user's own bindings, which the
+/// live panel reads from the keybinding snapshot.
+const String _regionChord = 'Super+⇧+S';
+const String _recordChord = 'Super+⇧+R';
+const String _pickChord = 'Super+⇧+P';
+
+const ControlAvailability _unavailable = ControlAvailability.unavailable(
+  'Not available yet',
+);
+
 @UseCase(
   name: 'Translucent chassis',
-  type: ControlChassis,
+  type: HyprConsoleChassis,
   path: '[Building blocks]/Controls',
 )
 Widget buildControlChassis(BuildContext context) {
   return CatalogCanvas(
-    child: ControlChassis(
+    child: HyprConsoleChassis(
       borderRadius: const BorderRadius.all(Radius.circular(18)),
       constraints: const BoxConstraints.tightFor(width: 432),
       padding: const EdgeInsets.all(17),
-      child: const ControlSectionTray(
+      child: const HyprConsoleTray(
         label: 'Inspect',
         child: ControlInspectButton(
           label: 'Color Pick',
-          shortcut: 'Mod P',
+          shortcut: _pickChord,
           icon: Iconsax.colorfilter_copy,
           onPressed: _noop,
         ),
@@ -44,7 +54,7 @@ Widget buildControlCapturePadStates(BuildContext context) {
           Expanded(
             child: ControlCapturePad(
               label: 'Region',
-              shortcut: '⇧ Mod 4',
+              shortcut: _regionChord,
               icon: Iconsax.maximize_3_copy,
               onPressed: _noop,
             ),
@@ -53,16 +63,16 @@ Widget buildControlCapturePadStates(BuildContext context) {
           Expanded(
             child: ControlCapturePad(
               label: 'Window',
-              shortcut: 'Mod W',
+              shortcut: 'Super+Print',
               icon: Iconsax.monitor_copy,
               onPressed: _noop,
             ),
           ),
           SizedBox(width: 8),
+          // A control whose binding is unknown or disabled stamps no chord.
           Expanded(
             child: ControlCapturePad(
               label: 'Full',
-              shortcut: 'PrtSc',
               icon: Iconsax.maximize_2_copy,
               onPressed: _noop,
             ),
@@ -79,53 +89,59 @@ Widget buildControlCapturePadStates(BuildContext context) {
   path: '[Building blocks]/Controls',
 )
 Widget buildControlRecordPadStates(BuildContext context) {
+  final int startedAt = DateTime.now()
+      .subtract(const Duration(minutes: 3, seconds: 27))
+      .millisecondsSinceEpoch;
+
   return CatalogFrame(
     width: 500,
     child: SizedBox(
       height: 110,
       child: Row(
-        children: const <Widget>[
-          Expanded(
+        children: <Widget>[
+          const Expanded(
             child: ControlRecordPad(
               active: false,
-              enabled: true,
+              availability: ControlAvailability.available(),
               phase: 'STBY',
-              elapsed: '00:00',
-              shortcut: 'Mod R',
+              startedAtMs: null,
+              shortcut: _recordChord,
               onPressed: _noop,
             ),
           ),
-          SizedBox(width: 8),
-          Expanded(
+          const SizedBox(width: 8),
+          const Expanded(
             child: ControlRecordPad(
               active: true,
-              enabled: true,
+              availability: ControlAvailability.available(),
               phase: 'SEL',
-              elapsed: '00:00',
-              shortcut: 'Mod R',
+              startedAtMs: null,
+              shortcut: _recordChord,
               onPressed: _noop,
             ),
           ),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Expanded(
             child: ControlRecordPad(
               active: true,
-              enabled: true,
+              availability: const ControlAvailability.available(),
               phase: 'REC',
-              elapsed: '03:27',
-              shortcut: 'Mod R',
+              startedAtMs: startedAt,
+              shortcut: _recordChord,
               onPressed: _noop,
             ),
           ),
-          SizedBox(width: 8),
-          Expanded(
+          const SizedBox(width: 8),
+          const Expanded(
             child: ControlRecordPad(
               active: false,
-              enabled: false,
+              availability: ControlAvailability.unavailable(
+                '`wf-recorder` is unavailable',
+              ),
               phase: 'N/A',
-              elapsed: '00:00',
-              shortcut: 'Mod R',
-              onPressed: null,
+              startedAtMs: null,
+              shortcut: _recordChord,
+              onPressed: _noop,
             ),
           ),
         ],
@@ -147,7 +163,7 @@ Widget buildControlInspectButtonStates(BuildContext context) {
         Expanded(
           child: ControlInspectButton(
             label: 'Color Pick',
-            shortcut: 'Mod P',
+            shortcut: _pickChord,
             icon: Iconsax.colorfilter_copy,
             onPressed: _noop,
           ),
@@ -156,9 +172,8 @@ Widget buildControlInspectButtonStates(BuildContext context) {
         Expanded(
           child: ControlInspectButton(
             label: 'Magnify',
-            shortcut: 'Mod M',
             icon: Iconsax.search_zoom_in_1_copy,
-            active: true,
+            availability: _unavailable,
             onPressed: _noop,
           ),
         ),
@@ -197,12 +212,13 @@ Widget buildControlRockerStates(BuildContext context) {
             ),
           ),
           SizedBox(width: 8),
+          // Unavailable wins over `value`: this reads as off and dimmed.
           Expanded(
             child: ControlRocker(
               label: 'Caffeine',
               icon: Iconsax.coffee_copy,
               value: true,
-              enabled: false,
+              availability: _unavailable,
               onChanged: _ignore,
             ),
           ),
@@ -220,23 +236,23 @@ Widget buildControlRockerStates(BuildContext context) {
 Widget buildControlSettingsRow(BuildContext context) {
   return const CatalogFrame(
     width: 460,
-    child: ControlSettingsRow(onPressed: _noop),
+    child: ControlSettingsRow(onPressed: _noop, shortcut: 'Super+⇧+C'),
   );
 }
 
 @UseCase(
   name: 'Tray and label',
-  type: ControlSectionTray,
+  type: HyprConsoleTray,
   path: '[Building blocks]/Controls',
 )
 Widget buildControlSectionTray(BuildContext context) {
   return const CatalogFrame(
     width: 460,
-    child: ControlSectionTray(
+    child: HyprConsoleTray(
       label: 'Inspect',
       child: ControlInspectButton(
         label: 'Color Pick',
-        shortcut: 'Mod P',
+        shortcut: _pickChord,
         icon: Iconsax.colorfilter_copy,
         onPressed: _noop,
       ),
@@ -246,11 +262,14 @@ Widget buildControlSectionTray(BuildContext context) {
 
 @UseCase(
   name: 'Section label',
-  type: ControlSectionLabel,
+  type: HyprConsoleSectionLabel,
   path: '[Building blocks]/Controls',
 )
 Widget buildControlSectionLabel(BuildContext context) {
-  return const CatalogFrame(width: 460, child: ControlSectionLabel('Capture'));
+  return const CatalogFrame(
+    width: 460,
+    child: HyprConsoleSectionLabel('Capture'),
+  );
 }
 
 void _noop() {}

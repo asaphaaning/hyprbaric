@@ -373,17 +373,6 @@ final directories = <_widgetbook.WidgetbookNode>[
             ],
           ),
           _widgetbook.WidgetbookComponent(
-            name: 'ControlChassis',
-            useCases: [
-              _widgetbook.WidgetbookUseCase(
-                name: 'Translucent chassis',
-                builder:
-                    _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases
-                        .buildControlChassis,
-              ),
-            ],
-          ),
-          _widgetbook.WidgetbookComponent(
             name: 'ControlInspectButton',
             useCases: [
               _widgetbook.WidgetbookUseCase(
@@ -417,28 +406,6 @@ final directories = <_widgetbook.WidgetbookNode>[
             ],
           ),
           _widgetbook.WidgetbookComponent(
-            name: 'ControlSectionLabel',
-            useCases: [
-              _widgetbook.WidgetbookUseCase(
-                name: 'Section label',
-                builder:
-                    _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases
-                        .buildControlSectionLabel,
-              ),
-            ],
-          ),
-          _widgetbook.WidgetbookComponent(
-            name: 'ControlSectionTray',
-            useCases: [
-              _widgetbook.WidgetbookUseCase(
-                name: 'Tray and label',
-                builder:
-                    _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases
-                        .buildControlSectionTray,
-              ),
-            ],
-          ),
-          _widgetbook.WidgetbookComponent(
             name: 'ControlSettingsRow',
             useCases: [
               _widgetbook.WidgetbookUseCase(
@@ -461,6 +428,39 @@ final directories = <_widgetbook.WidgetbookNode>[
             ],
           ),
           _widgetbook.WidgetbookComponent(
+            name: 'HyprConsoleChassis',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Translucent chassis',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases
+                        .buildControlChassis,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'HyprConsoleSectionLabel',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Section label',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases
+                        .buildControlSectionLabel,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'HyprConsoleTray',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Tray and label',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases
+                        .buildControlSectionTray,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
             name: 'HyprHardwareToggle',
             useCases: [
               _widgetbook.WidgetbookUseCase(
@@ -479,17 +479,6 @@ final directories = <_widgetbook.WidgetbookNode>[
                 builder:
                     _hyprbaric_widgetbook_use_cases_primitives_shared_primitives_use_cases
                         .buildHoverPlateStates,
-              ),
-            ],
-          ),
-          _widgetbook.WidgetbookComponent(
-            name: 'HyprIconTile',
-            useCases: [
-              _widgetbook.WidgetbookUseCase(
-                name: 'Action states',
-                builder:
-                    _hyprbaric_widgetbook_use_cases_primitives_shared_primitives_use_cases
-                        .buildIconTileStates,
               ),
             ],
           ),

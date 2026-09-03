@@ -125,8 +125,7 @@ export 'src/features/controls/control_inspect_button.dart'
 export 'src/features/controls/control_rocker.dart' show ControlRocker;
 export 'src/features/controls/control_settings_row.dart'
     show ControlSettingsRow;
-export 'src/features/controls/controls_chrome.dart'
-    show ControlChassis, ControlSectionLabel, ControlSectionTray;
+export 'src/features/controls/controls_chrome.dart' show ControlAvailability;
 export 'src/features/controls/controls_panel.dart' show ControlsPanel;
 export 'src/features/launcher/app_launcher_console.dart'
     show AppLauncherConsole;
@@ -220,7 +219,6 @@ export 'src/widgets/primitives/hypr_glyph_badge.dart' show HyprGlyphBadge;
 export 'src/widgets/primitives/hypr_hardware_toggle.dart'
     show HyprHardwareToggle;
 export 'src/widgets/primitives/hypr_hover_plate.dart' show HyprHoverPlate;
-export 'src/widgets/primitives/hypr_icon_tile.dart' show HyprIconTile;
 export 'src/widgets/primitives/hypr_inline_tag.dart'
     show HyprBracketedTag, HyprInlineTag;
 export 'src/widgets/primitives/hypr_interaction_region.dart'

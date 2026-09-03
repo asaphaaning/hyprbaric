@@ -171,50 +171,6 @@ Widget _selectedPlateLabel(BuildContext context, {required bool hovered}) {
 }
 
 @UseCase(
-  name: 'Action states',
-  type: HyprIconTile,
-  path: '[Building blocks]/Controls',
-)
-Widget buildIconTileStates(BuildContext context) {
-  return CatalogFrame(
-    width: 320,
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: <Widget>[
-        _iconTile(active: false, icon: Icons.wifi_rounded),
-        _iconTile(active: true, icon: Icons.nights_stay_rounded),
-        _iconTile(active: false, enabled: false, icon: Icons.block_rounded),
-      ],
-    ),
-  );
-}
-
-Widget _iconTile({
-  required bool active,
-  required IconData icon,
-  bool enabled = true,
-}) {
-  return HyprIconTile(
-    active: active,
-    enabled: enabled,
-    semanticLabel: 'Icon tile',
-    onPressed: enabled ? _noop : null,
-    padding: const EdgeInsets.all(HyprSpacing.lg),
-    builder:
-        (
-          BuildContext context, {
-          required bool hovered,
-          required bool pressed,
-        }) => Icon(
-          icon,
-          color: active || hovered
-              ? HyprColors.accentSoft
-              : HyprColors.textMuted,
-        ),
-  );
-}
-
-@UseCase(
   name: 'Tag styles',
   type: HyprInlineTag,
   path: '[Building blocks]/Feedback',
