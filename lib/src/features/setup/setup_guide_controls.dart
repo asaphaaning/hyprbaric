@@ -52,28 +52,13 @@ class SetupGuideControls extends StatelessWidget {
             style: setupMono(size: 9.5, spacing: 1.6),
           ),
           const SizedBox(height: 18),
-          Text(
-            _title(step),
-            style: const TextStyle(
-              color: SetupGuideColors.text,
-              fontFamily: 'Inter',
-              fontSize: 24,
-              height: 1.16,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -.48,
-            ),
-          ),
+          Text(_title(step), style: SetupGuideTypography.stepTitle),
           const SizedBox(height: 12),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 365),
             child: Text(
               _subtitle(step),
-              style: const TextStyle(
-                color: SetupGuideColors.textMuted,
-                fontFamily: 'Inter',
-                fontSize: 12.5,
-                height: 1.65,
-              ),
+              style: SetupGuideTypography.stepSubtitle,
             ),
           ),
           const SizedBox(height: 26),
@@ -332,11 +317,7 @@ class _Feature extends StatelessWidget {
                 ),
               ],
             ),
-            style: const TextStyle(
-              color: Color(0xFFB8BAC1),
-              fontFamily: 'Inter',
-              fontSize: 12,
-            ),
+            style: SetupGuideTypography.summaryRow,
           ),
         ),
       ],
@@ -435,25 +416,9 @@ class _ChoiceCardState extends State<_ChoiceCard> {
               children: <Widget>[
                 widget.preview,
                 const SizedBox(height: 13),
-                Text(
-                  widget.title,
-                  style: const TextStyle(
-                    color: Color(0xFFD5D7DC),
-                    fontFamily: 'Inter',
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                Text(widget.title, style: SetupGuideTypography.cardTitle),
                 const SizedBox(height: 5),
-                Text(
-                  widget.subtitle,
-                  style: const TextStyle(
-                    color: SetupGuideColors.textFaint,
-                    fontFamily: 'Inter',
-                    fontSize: 11,
-                    height: 1.45,
-                  ),
-                ),
+                Text(widget.subtitle, style: SetupGuideTypography.cardSubtitle),
               ],
             ),
           ),
@@ -578,25 +543,9 @@ class _ControlWell extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Color(0xFFCACCD2),
-                    fontFamily: 'Inter',
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                Text(title, style: SetupGuideTypography.rowTitle),
                 const SizedBox(height: 5),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: SetupGuideColors.textFaint,
-                    fontFamily: 'Inter',
-                    fontSize: 11,
-                    height: 1.45,
-                  ),
-                ),
+                Text(subtitle, style: SetupGuideTypography.cardSubtitle),
               ],
             ),
           ),

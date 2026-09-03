@@ -9,10 +9,12 @@ import 'package:hyprbaric/src/bindings/bindings.dart';
 import 'package:hyprbaric/src/features/rust_commands.dart';
 import 'package:hyprbaric/src/features/setup/setup_guide_host.dart';
 import 'package:hyprbaric/src/features/setup/setup_guide_state.dart';
+import 'package:hyprbaric/src/features/setup/setup_guide_style.dart';
 import 'package:hyprbaric/src/layer_shell_controller.dart';
 import 'package:hyprbaric/src/native/layer_shell_api.g.dart';
 import 'package:hyprbaric/src/state/providers.dart';
 import 'package:hyprbaric/src/theme/hypr_palette.dart';
+import 'package:hyprbaric/src/widgets/surfaces/hypr_typography.dart';
 import 'package:hyprbaric/src/widgets/transient_overlays.dart';
 
 const BasicMessageChannel<Object?> _keyboardModeChannel =
@@ -363,6 +365,34 @@ void main() {
       // Invariants are verified before tearDowns run, so the platform
       // override must be restored in the body itself.
       debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  test('setup guide text roles draw from the shared type vocabulary', () {
+    final List<TextStyle> roles = <TextStyle>[
+      SetupGuideTypography.stepTitle,
+      SetupGuideTypography.stepSubtitle,
+      SetupGuideTypography.cardTitle,
+      SetupGuideTypography.rowTitle,
+      SetupGuideTypography.cardSubtitle,
+      SetupGuideTypography.summaryRow,
+      SetupGuideTypography.glyph(active: true),
+      SetupGuideTypography.glyph(active: false),
+      setupMono(),
+    ];
+
+    for (final TextStyle role in roles) {
+      expect(
+        role.fontFamily,
+        anyOf(HyprTypography.uiFamily, HyprTypography.monoFamily),
+        reason: 'roles must not hardcode a family literal',
+      );
+      expect(role.fontSize, isNotNull);
+      expect(
+        role.fontSize,
+        HyprTypography.size(role.fontSize!),
+        reason: 'sizes must be snapped to the device pixel grid',
+      );
     }
   });
 }
