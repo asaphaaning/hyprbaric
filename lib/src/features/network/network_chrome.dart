@@ -17,7 +17,6 @@ abstract final class NetworkMenuColors {
   static const Color metricTop = Color(0x70030406);
   static const Color metricBottom = Color(0x8A07090D);
   static const Color metricBorder = Color(0x21000000);
-  static const Color metricHighlight = Color(0x0AFFFFFF);
   static const Color accent = HyprColors.accentSoft;
   static const Color tx = Color(0xFF92EDFF);
   static const Color rx = Color(0xFF4DE07F);
@@ -46,6 +45,11 @@ abstract final class NetworkWifiColors {
   static const Color cast = Color(0x52000000);
   static const Color castStrong = Color(0x6B000000);
   static const Color focus = Color(0xFF45536D);
+
+  /// Fill for the prompt's emphasised action, which reads as raised.
+  static const Color actionEmphasized = Color(0xE025242B);
+  static const Color actionHovered = Color(0xF015161B);
+  static const Color actionPressed = Color(0xF0060709);
 }
 
 @immutable

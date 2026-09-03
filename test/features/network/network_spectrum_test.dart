@@ -83,8 +83,34 @@ void main() {
     final Size burstSize = tester.getSize(find.byType(NetworkParameter));
 
     expect(burstSize, quietSize);
-    expect(find.byType(FittedBox), findsOneWidget);
   });
+
+  testWidgets('an overlong metric value ellipsises rather than shrinking', (
+    WidgetTester tester,
+  ) async {
+    // Scaling the glyphs down to fit would undo the device-pixel snapping in
+    // HyprTypography.size and break tabular alignment against the card next
+    // to it, so the value has to keep its type size and lose characters.
+    await tester.pumpWidget(_metric('0.04 MB/s'));
+    final double quietSize = _valueFontSize(tester, '0.04 MB/s');
+
+    const String overlong = '188888.8888 MB/s downstream sustained';
+    await tester.pumpWidget(_metric(overlong));
+    final Text value = tester.widget<Text>(find.text(overlong));
+
+    expect(_valueFontSize(tester, overlong), quietSize);
+    expect(value.maxLines, 1);
+    expect(value.overflow, TextOverflow.ellipsis);
+    expect(
+      find.byType(FittedBox),
+      findsNothing,
+      reason: 'a scale-down fit would render the value off the type ramp',
+    );
+  });
+}
+
+double _valueFontSize(WidgetTester tester, String value) {
+  return tester.widget<Text>(find.text(value)).style!.fontSize!;
 }
 
 Widget _metric(String value) {

@@ -243,7 +243,7 @@ class _KeybindingsPanelState extends ConsumerState<KeybindingsPanel> {
       onKeyEvent: _handleKeyEvent,
       child: snapshot.when(
         data: _buildSnapshot,
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: HyprSpinner.panel()),
         error: (Object error, StackTrace stackTrace) => HyprEmptyState(
           symbol: 'KEYS',
           message: 'Keybindings unavailable: $error',

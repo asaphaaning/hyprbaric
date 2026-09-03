@@ -18,13 +18,18 @@ class HyprCommandButton extends StatelessWidget {
     this.textStyle,
     this.textAlign = TextAlign.center,
     this.maxLines = 2,
+    this.enabled = true,
     this.color,
     this.hoverColor,
+    this.pressedColor,
+    this.disabledOpacity = 1,
     this.foregroundColor,
     this.hoverForegroundColor,
     this.borderColor,
     this.hoverBorderColor,
     this.iconGap = HyprSpacing.lg,
+    this.shadowsBuilder,
+    this.pressedScale = 0.94,
   });
 
   final String label;
@@ -37,13 +42,22 @@ class HyprCommandButton extends StatelessWidget {
   final TextStyle? textStyle;
   final TextAlign textAlign;
   final int maxLines;
+  final bool enabled;
   final Color? color;
   final Color? hoverColor;
+
+  /// Fill while the pointer is held down. Falls back to the hover fill.
+  final Color? pressedColor;
+
+  /// Opacity applied while the button is not interactive.
+  final double disabledOpacity;
   final Color? foregroundColor;
   final Color? hoverForegroundColor;
   final Color? borderColor;
   final Color? hoverBorderColor;
   final double iconGap;
+  final HyprInteractiveShadowBuilder? shadowsBuilder;
+  final double pressedScale;
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +74,11 @@ class HyprCommandButton extends StatelessWidget {
     return HyprInteractiveTile(
       semanticLabel: label,
       onPressed: onPressed,
+      enabled: enabled,
+      pressedColor: pressedColor,
+      disabledOpacity: disabledOpacity,
+      shadowsBuilder: shadowsBuilder,
+      pressedScale: pressedScale,
       padding: padding,
       constraints: constraints,
       borderRadius: borderRadius,

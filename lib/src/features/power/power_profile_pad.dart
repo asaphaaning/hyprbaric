@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
+import 'power_colors.dart';
 import 'power_formatting.dart';
 
 class PowerProfilePad extends StatelessWidget {
@@ -321,7 +322,7 @@ class _ProfilePalette {
         motif: Color(0xFF33875B),
         activeMotif: Color(0xFF145C34),
         highlight: Color(0xFF66D98A),
-        accent: Color(0xFF55D982),
+        accent: PowerColors.healthy,
       ),
       PowerProfile.balanced => const _ProfilePalette.values(
         disc: Color(0xFF49361A),
@@ -329,7 +330,7 @@ class _ProfilePalette {
         motif: Color(0xFF8E6230),
         activeMotif: Color(0xFF683710),
         highlight: Color(0xFFE4B548),
-        accent: Color(0xFFE7C34A),
+        accent: PowerColors.low,
       ),
       PowerProfile.performance => const _ProfilePalette.values(
         disc: Color(0xFF352353),

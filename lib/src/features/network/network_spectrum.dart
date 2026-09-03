@@ -202,7 +202,7 @@ class NetworkParameter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const BorderRadius radius = BorderRadius.all(Radius.circular(7));
+    const BorderRadius radius = HyprRadii.compactRadius;
 
     return ClipRSuperellipse(
       borderRadius: radius,
@@ -223,21 +223,15 @@ class NetworkParameter extends StatelessWidget {
         ),
         child: Stack(
           children: <Widget>[
-            const Positioned(
-              top: 0,
-              left: 8,
-              right: 8,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: <Color>[
-                      Colors.transparent,
-                      NetworkMenuColors.metricHighlight,
-                      Colors.transparent,
-                    ],
-                  ),
+            // The card's top highlight comes from the shared inset border so
+            // it stays inboard of the corner arcs and off the clip boundary.
+            const Positioned.fill(
+              child: IgnorePointer(
+                child: HyprInsetBorder(
+                  borderRadius: radius,
+                  borderColor: NetworkMenuColors.metricBorder,
+                  frame: HyprSurfaceFrame.card,
                 ),
-                child: SizedBox(height: 1),
               ),
             ),
             Padding(
@@ -258,23 +252,24 @@ class NetworkParameter extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 6),
+                      // Ellipsis rather than a scale-down fit: shrinking the
+                      // glyphs would undo the device-pixel snapping in
+                      // HyprTypography.size and break tabular alignment
+                      // between neighbouring cards.
                       Expanded(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            value,
-                            maxLines: 1,
-                            softWrap: false,
-                            textAlign: TextAlign.right,
-                            style: HyprTypography.compactMonoStrong.copyWith(
-                              color: _tone,
-                              fontSize: HyprTypography.size(11),
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0,
-                              height: 1.12,
-                              fontFeatures: HyprTypography.tabularNumbers,
-                            ),
+                        child: Text(
+                          value,
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: HyprTypography.compactMonoStrong.copyWith(
+                            color: _tone,
+                            fontSize: HyprTypography.size(11),
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0,
+                            height: 1.12,
+                            fontFeatures: HyprTypography.tabularNumbers,
                           ),
                         ),
                       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../widgets/hypr_surface.dart';
+import '../../widgets/primitives/primitives.dart';
 
 class LauncherLoadingState extends StatelessWidget {
   const LauncherLoadingState({super.key});
@@ -8,13 +9,7 @@ class LauncherLoadingState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: SizedBox.square(
-        dimension: 22,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: HyprColors.accent,
-        ),
-      ),
+      child: HyprSpinner(size: HyprIconSizes.action, strokeWidth: 2),
     );
   }
 }

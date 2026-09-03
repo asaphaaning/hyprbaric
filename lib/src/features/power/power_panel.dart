@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
+import 'battery_meter_geometry.dart';
+import 'power_colors.dart';
 import 'power_formatting.dart';
 import 'power_profile_pad.dart';
 
@@ -157,16 +159,15 @@ class _LedBar extends StatelessWidget {
 
 /// Paints the charge segments as a single canvas rather than a flex row.
 ///
-/// A canvas keeps all twenty LEDs present at every embed scale, including the
-/// narrow Flutter surfaces used by Widgetbook and the landing page.
+/// Twenty `Expanded` children each carrying their own decoration and shadow
+/// cost twenty render objects and twenty shadow layers for a meter that is one
+/// strip of colour. One canvas draws it in a single pass and lets the segments
+/// stay legible when the strip is laid out narrower than its usual width.
 class _BatteryChargeMeterPainter extends CustomPainter {
   const _BatteryChargeMeterPainter({
     required this.percentage,
     required this.active,
   });
-
-  static const int _segmentCount = 20;
-  static const double _gap = 2;
 
   final int percentage;
   final bool active;
@@ -177,22 +178,33 @@ class _BatteryChargeMeterPainter extends CustomPainter {
       return;
     }
 
-    final double width =
-        (size.width - _gap * (_segmentCount - 1)) / _segmentCount;
-    if (width <= 0) {
+    final BatteryMeterGeometry geometry = BatteryMeterGeometry.forWidth(
+      size.width,
+    );
+    if (!geometry.isPaintable) {
       return;
     }
 
     final int charge = percentage.clamp(0, 100);
-    for (int index = 0; index < _segmentCount; index += 1) {
-      final double threshold = (index + 1) / _segmentCount * 100;
+    for (
+      int index = 0;
+      index < BatteryMeterGeometry.segmentCount;
+      index += 1
+    ) {
+      final double threshold =
+          (index + 1) / BatteryMeterGeometry.segmentCount * 100;
       final bool lit = active && threshold <= charge;
       final Color color = lit
-          ? _chargeColor(threshold)
-          : const Color(0xFF202A33);
+          ? PowerColors.forCharge(threshold)
+          : PowerColors.unlit;
       final RRect segment = RRect.fromRectAndRadius(
-        Rect.fromLTWH(index * (width + _gap), 0, width, size.height),
-        const Radius.circular(1),
+        Rect.fromLTWH(
+          geometry.offsetOf(index),
+          0,
+          geometry.segmentWidth,
+          size.height,
+        ),
+        const Radius.circular(HyprRadii.hairline),
       );
 
       if (lit) {
@@ -209,20 +221,12 @@ class _BatteryChargeMeterPainter extends CustomPainter {
         Offset(segment.left + 0.5, 0.5),
         Offset(segment.right - 0.5, 0.5),
         Paint()
-          ..color = Colors.white.withValues(alpha: lit ? 0.2 : 0.06)
+          ..color = lit
+              ? PowerColors.segmentHighlight
+              : PowerColors.segmentHighlightDim
           ..strokeWidth = 0.7,
       );
     }
-  }
-
-  static Color _chargeColor(double threshold) {
-    if (threshold < 30) {
-      return const Color(0xFFE05F55);
-    }
-    if (threshold < 60) {
-      return const Color(0xFFE7C34A);
-    }
-    return const Color(0xFF55D982);
   }
 
   @override
@@ -275,15 +279,13 @@ class _Readout extends StatelessWidget {
                   TextSpan(
                     text: value,
                     style: HyprTypography.compactMonoStrong.copyWith(
-                      color: const Color(0xFFE7C34A),
+                      color: PowerColors.low,
                       fontSize: HyprTypography.size(19),
                       fontWeight: FontWeight.w600,
                       height: 1,
                       shadows: <Shadow>[
                         Shadow(
-                          color: const Color(
-                            0xFFE7C34A,
-                          ).withValues(alpha: 0.45),
+                          color: PowerColors.low.withValues(alpha: 0.45),
                           blurRadius: 6,
                         ),
                       ],

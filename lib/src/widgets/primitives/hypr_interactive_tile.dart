@@ -44,6 +44,8 @@ class HyprInteractiveTile extends StatefulWidget {
     this.borderRadius = HyprRadii.fieldRadius,
     this.color = Colors.transparent,
     this.hoverColor = HyprColors.hover,
+    this.pressedColor,
+    this.disabledOpacity = 1,
     this.selectedColor = HyprColors.hoverStrong,
     this.borderColor = Colors.transparent,
     this.hoverBorderColor = HyprColors.borderSoft,
@@ -73,6 +75,12 @@ class HyprInteractiveTile extends StatefulWidget {
   final BorderRadius borderRadius;
   final Color color;
   final Color hoverColor;
+
+  /// Fill while the pointer is held down. Falls back to [hoverColor].
+  final Color? pressedColor;
+
+  /// Opacity applied while the tile is not interactive.
+  final double disabledOpacity;
   final Color selectedColor;
   final Color borderColor;
   final Color hoverBorderColor;
@@ -121,7 +129,9 @@ class _HyprInteractiveTileState extends State<HyprInteractiveTile> {
       selected: widget.selected,
       enabled: _interactive,
     );
-    final Widget tile = MouseRegion(
+    final Widget tile = _withDisabledOpacity(
+      state,
+      MouseRegion(
       cursor: _interactive ? widget.cursor : MouseCursor.defer,
       onEnter: _interactive ? (_) => _setHovered(true) : null,
       onExit: _interactive
@@ -162,6 +172,7 @@ class _HyprInteractiveTileState extends State<HyprInteractiveTile> {
           ),
         ),
       ),
+      ),
     );
 
     final String? label = widget.semanticLabel;
@@ -177,7 +188,23 @@ class _HyprInteractiveTileState extends State<HyprInteractiveTile> {
     );
   }
 
+  Widget _withDisabledOpacity(HyprInteractiveTileState state, Widget child) {
+    if (widget.disabledOpacity == 1) {
+      return child;
+    }
+
+    return AnimatedOpacity(
+      opacity: state.enabled ? 1 : widget.disabledOpacity,
+      duration: widget.duration,
+      curve: widget.curve,
+      child: child,
+    );
+  }
+
   Color _fillColor(HyprInteractiveTileState state) {
+    if (state.pressed) {
+      return widget.pressedColor ?? widget.hoverColor;
+    }
     if (state.selected) {
       return widget.selectedColor;
     }

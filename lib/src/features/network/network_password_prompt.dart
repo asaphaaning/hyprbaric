@@ -103,19 +103,31 @@ class _NetworkConnectingStatus extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: <Widget>[
-        const SizedBox.square(
-          dimension: 12,
-          child: CircularProgressIndicator(strokeWidth: 1.5),
-        ),
+        const HyprSpinner.inline(),
         const SizedBox(width: 8),
+        // Two tones: the verb stays quiet so the network name carries the row.
         Expanded(
-          child: Text(
-            'Joining $ssid...',
+          child: Text.rich(
+            TextSpan(
+              children: <InlineSpan>[
+                const TextSpan(text: 'Joining '),
+                TextSpan(
+                  text: ssid,
+                  style: const TextStyle(
+                    color: NetworkMenuColors.fg1,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const TextSpan(text: '\u2026'),
+              ],
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: HyprTypography.popRow.copyWith(
               color: NetworkMenuColors.fg2,
               fontSize: HyprTypography.size(11.5),
+              letterSpacing: 0,
+              height: 1,
             ),
           ),
         ),
@@ -408,59 +420,36 @@ class _NetworkPasswordAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HyprInteractionRegion(
-      semanticLabel: label,
-      enabled: enabled,
+    return HyprCommandButton(
+      label: label,
       onPressed: onPressed,
-      builder: (BuildContext context, HyprInteractionState state) {
-        final bool pressed = state.pressed;
-        final bool hovered = state.hovered && !pressed;
-        final Color fill = pressed
-            ? const Color(0xF0060709)
-            : hovered
-            ? const Color(0xF015161B)
-            : emphasized
-            ? const Color(0xE025242B)
-            : NetworkWifiColors.well;
-
-        return AnimatedOpacity(
-          duration: HyprMotion.hover,
-          curve: HyprMotion.hoverCurve,
-          opacity: enabled ? 1 : 0.3,
-          child: AnimatedContainer(
-            duration: HyprMotion.hover,
-            curve: HyprMotion.hoverCurve,
-            transform: Matrix4.translationValues(0, pressed ? 0.5 : 0, 0),
-            decoration: ShapeDecoration(
-              color: fill,
-              shape: const RoundedSuperellipseBorder(
-                borderRadius: BorderRadius.all(Radius.circular(9)),
-              ),
-              shadows: pressed
-                  ? null
-                  : const <BoxShadow>[
-                      BoxShadow(color: Color(0x70000000), offset: Offset(0, 1)),
-                      BoxShadow(
-                        color: Color(0x0FFFFFFF),
-                        offset: Offset(0, -1),
-                      ),
-                    ],
-            ),
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(vertical: 9),
-            child: Text(
-              label,
-              style: HyprTypography.popRowStrong.copyWith(
-                color: NetworkMenuColors.fg2,
-                fontSize: HyprTypography.size(11.5),
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0,
-                height: 1,
-              ),
-            ),
-          ),
-        );
-      },
+      enabled: enabled,
+      borderRadius: HyprRadii.panelRadius,
+      padding: const EdgeInsets.symmetric(vertical: 9),
+      constraints: const BoxConstraints(),
+      maxLines: 1,
+      disabledOpacity: 0.3,
+      color: emphasized
+          ? NetworkWifiColors.actionEmphasized
+          : NetworkWifiColors.well,
+      hoverColor: NetworkWifiColors.actionHovered,
+      pressedColor: NetworkWifiColors.actionPressed,
+      foregroundColor: NetworkMenuColors.fg2,
+      hoverForegroundColor: NetworkMenuColors.fg2,
+      // The raised edge drops away on press, which is the whole affordance.
+      shadowsBuilder: (HyprInteractiveTileState state) => state.pressed
+          ? const <BoxShadow>[]
+          : const <BoxShadow>[
+              BoxShadow(color: Color(0x70000000), offset: Offset(0, 1)),
+              BoxShadow(color: Color(0x0FFFFFFF), offset: Offset(0, -1)),
+            ],
+      pressedScale: 1,
+      textStyle: HyprTypography.popRowStrong.copyWith(
+        fontSize: HyprTypography.size(11.5),
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0,
+        height: 1,
+      ),
     );
   }
 }
