@@ -9,6 +9,11 @@ abstract final class SetupGuideColors {
   static const Color text = Color(0xFFF0F1F4);
   static const Color textMuted = Color(0xFF92949C);
   static const Color textFaint = Color(0xFF60636C);
+  static const Color cardTitleText = Color(0xFFD5D7DC);
+  static const Color rowTitleText = Color(0xFFCACCD2);
+  static const Color summaryText = Color(0xFFB8BAC1);
+  static const Color glyphActive = Color(0xFFE3E5ED);
+  static const Color glyphIdle = Color(0xFF74757D);
   static const Color stageBase = Color(0xFF21171D);
   static const Color wellTop = Color(0xB8171920);
   static const Color wellBottom = Color(0xB821232B);
@@ -34,14 +39,75 @@ extension SetupGuidePalette on BuildContext {
   Color get setupGuideAccentSoft => hyprPalette.accentSoft;
 }
 
+/// Named text roles for the setup guide.
+///
+/// The guide keeps its own colour palette (the warm chassis look is
+/// deliberately not the bar's blue-accented glass) but it draws families and
+/// sizing from [HyprTypography] so it snaps to the device pixel grid the same
+/// way every other surface does.
+abstract final class SetupGuideTypography {
+  static TextStyle get stepTitle => TextStyle(
+    fontFamily: HyprTypography.uiFamily,
+    color: SetupGuideColors.text,
+    fontSize: HyprTypography.size(24),
+    fontWeight: FontWeight.w600,
+    height: 1.16,
+    letterSpacing: -.48,
+  );
+
+  static TextStyle get stepSubtitle => TextStyle(
+    fontFamily: HyprTypography.uiFamily,
+    color: SetupGuideColors.textMuted,
+    fontSize: HyprTypography.size(12.5),
+    height: 1.65,
+  );
+
+  static TextStyle get cardTitle => TextStyle(
+    fontFamily: HyprTypography.uiFamily,
+    color: SetupGuideColors.cardTitleText,
+    fontSize: HyprTypography.size(12.5),
+    fontWeight: FontWeight.w600,
+  );
+
+  static TextStyle get rowTitle => TextStyle(
+    fontFamily: HyprTypography.uiFamily,
+    color: SetupGuideColors.rowTitleText,
+    fontSize: HyprTypography.size(12.5),
+    fontWeight: FontWeight.w500,
+  );
+
+  /// Shared by choice-card and settings-row supporting copy.
+  static TextStyle get cardSubtitle => TextStyle(
+    fontFamily: HyprTypography.uiFamily,
+    color: SetupGuideColors.textFaint,
+    fontSize: HyprTypography.size(11),
+    height: 1.45,
+  );
+
+  static TextStyle get summaryRow => TextStyle(
+    fontFamily: HyprTypography.uiFamily,
+    color: SetupGuideColors.summaryText,
+    fontSize: HyprTypography.size(12),
+  );
+
+  static TextStyle glyph({required bool active}) => TextStyle(
+    fontFamily: HyprTypography.monoFamily,
+    fontFamilyFallback: const <String>['monospace'],
+    color: active ? SetupGuideColors.glyphActive : SetupGuideColors.glyphIdle,
+    fontSize: HyprTypography.size(10),
+    fontWeight: FontWeight.w600,
+  );
+}
+
 TextStyle setupMono({
   Color color = SetupGuideColors.textFaint,
   double size = 9.5,
   double spacing = 1.55,
 }) => TextStyle(
   color: color,
-  fontFamily: 'JetBrains Mono',
-  fontSize: size,
+  fontFamily: HyprTypography.monoFamily,
+  fontFamilyFallback: const <String>['monospace'],
+  fontSize: HyprTypography.size(size),
   fontWeight: FontWeight.w700,
   letterSpacing: spacing,
 );

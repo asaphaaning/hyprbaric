@@ -492,14 +492,7 @@ class _WorkspaceStrip extends StatelessWidget {
                 style == WorkspaceIndicatorStyle.roman
                     ? roman[index]
                     : '${index + 1}',
-                style: TextStyle(
-                  color: active
-                      ? const Color(0xFFE3E5ED)
-                      : const Color(0xFF74757D),
-                  fontFamily: 'JetBrains Mono',
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: SetupGuideTypography.glyph(active: active),
               ),
               if (occupied)
                 Positioned(
