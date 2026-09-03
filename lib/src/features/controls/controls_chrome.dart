@@ -1,171 +1,100 @@
 import 'package:flutter/material.dart';
 
 import '../../widgets/hypr_surface.dart';
+import '../../widgets/primitives/primitives.dart';
 
-abstract final class ControlColors {
-  static const Color chassisTop = Color(0x570B0D12);
-  static const Color chassisBottom = Color(0x6B07090D);
-  static const Color tray = Color(0xFF121216);
-  static const Color trayBorder = Color(0x182E3036);
-  static const Color trayHighlight = Color(0x10FFFFFF);
-  static const Color tile = Color(0xFF17171C);
-  static const Color tileHover = Color(0xFF202027);
-  static const Color tilePressed = Color(0xFF111116);
-  static const Color well = Color(0xFF0D0D0F);
-  static const Color wellBottom = Color(0xFF101014);
-  static const Color label = Color(0xFF666870);
-  static const Color text = Color(0xFFB0B1B7);
-  static const Color textMuted = Color(0xFF898B93);
-  static const Color textFaint = Color(0xFF555760);
-  static const Color danger = Color(0xFFE16658);
+/// Whether a control can act, and if not, why.
+///
+/// The panel has exactly one story for "you cannot use this": the face dims,
+/// it announces itself as unavailable, and it stays tappable purely so a tap
+/// can surface [reason]. Both "not implemented yet" and "the backend said no"
+/// go through here so they cannot drift apart.
+@immutable
+class ControlAvailability {
+  const ControlAvailability.available() : reason = null;
+
+  const ControlAvailability.unavailable(String this.reason);
+
+  /// Null when the control is usable, otherwise the message to surface.
+  final String? reason;
+
+  bool get isAvailable => reason == null;
+
+  /// Opacity applied to an unavailable face.
+  static const double dimmed = 0.46;
 }
 
-/// The translucent outer instrument shell shared by the controls panel.
-class ControlChassis extends StatelessWidget {
-  const ControlChassis({
-    super.key,
-    required this.borderRadius,
-    required this.constraints,
-    required this.padding,
-    required this.child,
-  });
-
-  final BorderRadius borderRadius;
-  final BoxConstraints constraints;
-  final EdgeInsetsGeometry padding;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return HyprPopoverSurface(
-      borderRadius: borderRadius,
-      color: Colors.transparent,
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: <Color>[
-              ControlColors.chassisTop,
-              ControlColors.chassisBottom,
-            ],
-          ),
-        ),
-        child: ConstrainedBox(
-          constraints: constraints,
-          child: Padding(padding: padding, child: child),
-        ),
-      ),
-    );
+/// Rest/hover/pressed resolution for a raised console face.
+///
+/// Disabled faces stay at [rest]: an unavailable control must never light up
+/// as though it were about to do something.
+Color controlFaceColor(
+  HyprInteractionState state, {
+  Color rest = HyprConsoleColors.tile,
+  Color hover = HyprConsoleColors.tileHover,
+  Color pressed = HyprConsoleColors.tilePressed,
+}) {
+  if (!state.enabled) {
+    return rest;
   }
+  if (state.pressed) {
+    return pressed;
+  }
+  if (state.hovered) {
+    return hover;
+  }
+  return rest;
 }
 
-class ControlSectionTray extends StatelessWidget {
-  const ControlSectionTray({
-    super.key,
-    required this.label,
-    required this.child,
-  });
+/// The travel a console face makes while held.
+Matrix4 controlPressTransform(HyprInteractionState state) =>
+    Matrix4.translationValues(0, state.pressed ? kHyprConsolePressDepth : 0, 0);
+
+/// A recessed face, lit from above like every other well in the console.
+ShapeDecoration controlWellDecoration({
+  BorderRadius borderRadius = HyprRadii.fieldRadius,
+}) {
+  return ShapeDecoration(
+    gradient: const LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: <Color>[HyprConsoleColors.wellTop, HyprConsoleColors.well],
+    ),
+    shape: RoundedSuperellipseBorder(borderRadius: borderRadius),
+  );
+}
+
+/// The chord hint stamped onto a console face.
+///
+/// Chords come from user configuration, so the label must be free to shrink:
+/// it ellipsises rather than forcing its parent row wider.
+class ControlShortcutBadge extends StatelessWidget {
+  const ControlShortcutBadge(this.label, {super.key});
 
   final String label;
-  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    const BorderRadius radius = BorderRadius.all(Radius.circular(17));
-
     return DecoratedBox(
       decoration: const ShapeDecoration(
-        color: ControlColors.tray,
+        color: HyprConsoleColors.seam,
         shape: RoundedSuperellipseBorder(
-          borderRadius: radius,
-          side: BorderSide(color: ControlColors.trayBorder),
+          borderRadius: HyprRadii.badgeRadius,
+          side: BorderSide(color: Color(0x66000000)),
         ),
       ),
-      child: ClipRSuperellipse(
-        borderRadius: radius,
-        child: Stack(
-          children: <Widget>[
-            const Positioned(
-              top: 1,
-              left: 16,
-              right: 16,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: <Color>[
-                      Colors.transparent,
-                      ControlColors.trayHighlight,
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-                child: SizedBox(height: 1),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(17, 17, 17, 22),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  ControlSectionLabel(label),
-                  const SizedBox(height: 13),
-                  child,
-                ],
-              ),
-            ),
-          ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: HyprSpacing.sm,
+          vertical: HyprSpacing.xxs,
         ),
-      ),
-    );
-  }
-}
-
-class ControlSectionLabel extends StatelessWidget {
-  const ControlSectionLabel(this.label, {super.key});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 13,
-      child: Row(
-        children: <Widget>[
-          Text(
-            label.toUpperCase(),
-            style: HyprTypography.compactMonoStrong.copyWith(
-              color: ControlColors.label,
-              fontSize: HyprTypography.size(10.5),
-              fontWeight: FontWeight.w600,
-              height: 1,
-              letterSpacing: 1.05,
-              shadows: const <Shadow>[
-                Shadow(
-                  color: Color(0xBF000000),
-                  offset: Offset(0, 1),
-                  blurRadius: 2,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: <Color>[
-                    Color(0x003C3D43),
-                    Color(0x993C3D43),
-                    Color(0x003C3D43),
-                  ],
-                ),
-              ),
-              child: SizedBox(height: 1),
-            ),
-          ),
-        ],
+        child: Text(
+          label,
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.ellipsis,
+          style: HyprTypography.consoleShortcut,
+        ),
       ),
     );
   }

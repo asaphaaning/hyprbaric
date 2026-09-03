@@ -20,7 +20,6 @@ import 'package:hyprbaric/src/features/audio/audio_panel.dart';
 import 'package:hyprbaric/src/features/audio/brightness_control.dart';
 import 'package:hyprbaric/src/features/controls/control_rocker.dart';
 import 'package:hyprbaric/src/features/controls/control_settings_row.dart';
-import 'package:hyprbaric/src/features/controls/controls_chrome.dart';
 import 'package:hyprbaric/src/features/controls/controls_panel.dart';
 import 'package:hyprbaric/src/features/launcher/app_launcher_results.dart';
 import 'package:hyprbaric/src/features/network/network_panel.dart';
@@ -3728,11 +3727,11 @@ void main() {
     expect(find.text('REGION'), findsOneWidget);
     expect(find.text('BAR SETTINGS'), findsOneWidget);
     expect(find.text('KBD'), findsOneWidget);
-    expect(find.byType(ControlSectionTray), findsNWidgets(3));
+    expect(find.byType(HyprConsoleTray), findsNWidgets(3));
     expect(find.byType(ControlRocker), findsNWidgets(4));
     expect(
-      tester.getSize(find.byType(ControlSettingsRow)),
-      const Size(398, 62),
+      tester.getSize(find.byType(ControlSettingsRow)).height,
+      ControlSettingsRow.height,
     );
 
     await tester.tap(find.text('REGION'));
@@ -3902,16 +3901,22 @@ void main() {
     );
     await tester.pump();
 
+    final SemanticsHandle handle = tester.ensureSemantics();
     final ControlRocker rocker = tester.widget<ControlRocker>(
       find.byKey(const ValueKey<String>('controls-night-light-rocker')),
     );
     expect(rocker.value, true);
     expect(rocker.enabled, false);
 
+    // An unavailable rocker must not announce itself as on just because the
+    // backend's last known value was true.
+    expect(find.bySemanticsLabel('Night, unavailable'), findsOneWidget);
+
     await tester.tap(find.text('NIGHT'));
     await tester.pump();
 
     expect(nightTarget, isNull);
+    handle.dispose();
   });
 
   testWidgets('controls panel routes Caffeine rocker state outward', (

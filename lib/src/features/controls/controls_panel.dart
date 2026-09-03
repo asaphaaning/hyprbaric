@@ -1,16 +1,22 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 import '../../bindings/bindings.dart';
+import '../../widgets/hypr_surface.dart';
 import 'control_capture_pads.dart';
 import 'control_inspect_button.dart';
 import 'control_rocker.dart';
 import 'control_settings_row.dart';
 import 'controls_chrome.dart';
 
-class ControlsPanel extends StatefulWidget {
+const ControlAvailability _magnifierUnavailable =
+    ControlAvailability.unavailable('Magnifier support is not available yet');
+const ControlAvailability _keyboardLockUnavailable =
+    ControlAvailability.unavailable(
+      'Keyboard lock support is not available yet',
+    );
+
+class ControlsPanel extends StatelessWidget {
   const ControlsPanel({
     super.key,
     required this.borderRadius,
@@ -26,6 +32,7 @@ class ControlsPanel extends StatefulWidget {
     required this.caffeineStatus,
     required this.onSetCaffeine,
     this.recordingStatus,
+    this.shortcutLabels = const <ShortcutSettingId, String>{},
   });
 
   final BorderRadius borderRadius;
@@ -42,57 +49,31 @@ class ControlsPanel extends StatefulWidget {
   final ValueChanged<bool> onSetCaffeine;
   final RecordingStatus? recordingStatus;
 
-  @override
-  State<ControlsPanel> createState() => ControlsPanelState();
-}
+  /// The user's effective chords, keyed by shortcut. A missing entry renders
+  /// no hint at all rather than a guessed default.
+  final Map<ShortcutSettingId, String> shortcutLabels;
 
-class ControlsPanelState extends State<ControlsPanel> {
-  Timer? _recordingTicker;
-
-  @override
-  void initState() {
-    super.initState();
-    _syncRecordingTicker();
-  }
-
-  @override
-  void didUpdateWidget(covariant ControlsPanel oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _syncRecordingTicker();
-  }
-
-  @override
-  void dispose() {
-    _recordingTicker?.cancel();
-    super.dispose();
-  }
-
-  void _syncRecordingTicker() {
-    if (widget.recordingStatus.ticks && _recordingTicker == null) {
-      _recordingTicker = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted) {
-          setState(() {});
-        }
-      });
-      return;
-    }
-    if (!widget.recordingStatus.ticks && _recordingTicker != null) {
-      _recordingTicker?.cancel();
-      _recordingTicker = null;
-    }
+  /// Runs [action] when available, otherwise surfaces the reason.
+  VoidCallback _guard(ControlAvailability availability, VoidCallback action) {
+    final String? reason = availability.reason;
+    return reason == null ? action : () => onToast(reason);
   }
 
   @override
   Widget build(BuildContext context) {
-    return ControlChassis(
-      borderRadius: widget.borderRadius,
+    final ControlAvailability recording = recordingStatus.availability;
+    final ControlAvailability nightLight = nightLightStatus.availability;
+    final ControlAvailability caffeine = caffeineStatus.availability;
+
+    return HyprConsoleChassis(
+      borderRadius: borderRadius,
       constraints: const BoxConstraints(minWidth: 432, maxWidth: 432),
       padding: const EdgeInsets.all(17),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          ControlSectionTray(
+          HyprConsoleTray(
             label: 'Capture',
             child: SizedBox(
               height: 92,
@@ -102,100 +83,86 @@ class ControlsPanelState extends State<ControlsPanel> {
                     flex: 10,
                     child: ControlCapturePad(
                       label: 'Region',
-                      shortcut: '⇧ Mod 4',
+                      shortcut: shortcutLabels[ShortcutSettingId.captureRegion],
                       icon: Iconsax.maximize_3_copy,
                       onPressed: () =>
-                          widget.onCaptureScreenshot(ScreenshotMode.region),
+                          onCaptureScreenshot(ScreenshotMode.region),
                     ),
                   ),
-                  const SizedBox(width: 7),
+                  const SizedBox(width: HyprSpacing.lg + HyprSpacing.hairline),
                   Expanded(
                     flex: 10,
                     child: ControlCapturePad(
                       label: 'Window',
-                      shortcut: 'Mod W',
+                      shortcut: shortcutLabels[ShortcutSettingId.captureWindow],
                       icon: Iconsax.monitor_copy,
                       onPressed: () =>
-                          widget.onCaptureScreenshot(ScreenshotMode.window),
+                          onCaptureScreenshot(ScreenshotMode.window),
                     ),
                   ),
-                  const SizedBox(width: 7),
+                  const SizedBox(width: HyprSpacing.lg + HyprSpacing.hairline),
                   Expanded(
                     flex: 10,
                     child: ControlCapturePad(
                       label: 'Full',
-                      shortcut: 'PrtSc',
+                      shortcut:
+                          shortcutLabels[ShortcutSettingId.captureFullScreen],
                       icon: Iconsax.maximize_2_copy,
                       onPressed: () =>
-                          widget.onCaptureScreenshot(ScreenshotMode.fullScreen),
+                          onCaptureScreenshot(ScreenshotMode.fullScreen),
                     ),
                   ),
-                  const SizedBox(width: 7),
+                  const SizedBox(width: HyprSpacing.lg + HyprSpacing.hairline),
                   Expanded(
                     flex: 14,
                     child: ControlRecordPad(
-                      active: widget.recordingStatus.active,
-                      enabled: widget.recordingStatus.isAvailable,
-                      phase: widget.recordingStatus.phase,
-                      elapsed: widget.recordingStatus.elapsed,
-                      shortcut: 'Mod R',
-                      onPressed: widget.recordingStatus.isAvailable
-                          ? widget.onToggleRecording
-                          : null,
+                      active: recordingStatus.active,
+                      availability: recording,
+                      phase: recordingStatus.phase,
+                      startedAtMs: recordingStatus.startedAtMs,
+                      shortcut:
+                          shortcutLabels[ShortcutSettingId.toggleRecording],
+                      onPressed: _guard(recording, onToggleRecording),
                     ),
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 10),
-          ControlSectionTray(
+          const SizedBox(height: HyprSpacing.xxl),
+          HyprConsoleTray(
             label: 'Inspect',
             child: Row(
               children: <Widget>[
                 Expanded(
                   child: ControlInspectButton(
                     label: 'Color Pick',
-                    shortcut: 'Mod P',
+                    shortcut: shortcutLabels[ShortcutSettingId.colorPick],
                     icon: Iconsax.colorfilter_copy,
-                    onPressed: widget.onPickColor,
+                    onPressed: onPickColor,
                   ),
                 ),
-                const SizedBox(width: 7),
+                const SizedBox(width: HyprSpacing.lg + HyprSpacing.hairline),
                 Expanded(
                   child: ControlInspectButton(
                     label: 'Magnify',
-                    shortcut: 'Mod M',
                     icon: Iconsax.search_zoom_in_1_copy,
-                    onPressed: () => widget.onToast(
-                      'Magnifier support is not available yet',
-                    ),
+                    availability: _magnifierUnavailable,
+                    onPressed: _guard(_magnifierUnavailable, () {}),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 10),
-          ControlSectionTray(
+          const SizedBox(height: HyprSpacing.xxl),
+          HyprConsoleTray(
             label: 'Toggles',
             child: SizedBox(
               height: 90,
               child: DecoratedBox(
-                decoration: ShapeDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: <Color>[
-                      ControlColors.well,
-                      ControlColors.wellBottom,
-                    ],
-                  ),
-                  shape: RoundedSuperellipseBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
+                decoration: controlWellDecoration(),
                 child: Padding(
-                  padding: const EdgeInsets.all(5),
+                  padding: const EdgeInsets.all(HyprSpacing.md),
                   child: Row(
                     children: <Widget>[
                       Expanded(
@@ -203,11 +170,11 @@ class ControlsPanelState extends State<ControlsPanel> {
                           key: const ValueKey<String>('controls-dnd-rocker'),
                           label: 'DND',
                           icon: Iconsax.minus_cirlce_copy,
-                          value: widget.dndEnabled,
-                          onChanged: widget.onSetDoNotDisturb,
+                          value: dndEnabled,
+                          onChanged: onSetDoNotDisturb,
                         ),
                       ),
-                      const SizedBox(width: 5),
+                      const SizedBox(width: HyprSpacing.md),
                       Expanded(
                         child: ControlRocker(
                           key: const ValueKey<String>(
@@ -215,24 +182,23 @@ class ControlsPanelState extends State<ControlsPanel> {
                           ),
                           label: 'Night',
                           icon: Iconsax.moon_copy,
-                          value: widget.nightLightStatus.enabled,
-                          enabled: widget.nightLightStatus.isAvailable,
-                          onChanged: widget.onSetNightLight,
+                          value: nightLightStatus.enabled,
+                          availability: nightLight,
+                          onChanged: _guarded(nightLight, onSetNightLight),
                         ),
                       ),
-                      const SizedBox(width: 5),
+                      const SizedBox(width: HyprSpacing.md),
                       Expanded(
                         child: ControlRocker(
                           key: const ValueKey<String>('controls-kbd-rocker'),
                           label: 'Kbd',
                           icon: Iconsax.keyboard_copy,
                           value: false,
-                          onChanged: (_) => widget.onToast(
-                            'Keyboard lock support is not available yet',
-                          ),
+                          availability: _keyboardLockUnavailable,
+                          onChanged: _guarded(_keyboardLockUnavailable, (_) {}),
                         ),
                       ),
-                      const SizedBox(width: 5),
+                      const SizedBox(width: HyprSpacing.md),
                       Expanded(
                         child: ControlRocker(
                           key: const ValueKey<String>(
@@ -240,9 +206,9 @@ class ControlsPanelState extends State<ControlsPanel> {
                           ),
                           label: 'Caffeine',
                           icon: Iconsax.coffee_copy,
-                          value: widget.caffeineStatus.enabled,
-                          enabled: widget.caffeineStatus.isAvailable,
-                          onChanged: widget.onSetCaffeine,
+                          value: caffeineStatus.enabled,
+                          availability: caffeine,
+                          onChanged: _guarded(caffeine, onSetCaffeine),
                         ),
                       ),
                     ],
@@ -251,11 +217,23 @@ class ControlsPanelState extends State<ControlsPanel> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          ControlSettingsRow(onPressed: widget.onOpenSettings),
+          const SizedBox(height: HyprSpacing.section),
+          ControlSettingsRow(
+            onPressed: onOpenSettings,
+            shortcut: shortcutLabels[ShortcutSettingId.barSettings],
+          ),
         ],
       ),
     );
+  }
+
+  /// [_guard] for the value-carrying callbacks the rockers take.
+  ValueChanged<bool> _guarded(
+    ControlAvailability availability,
+    ValueChanged<bool> action,
+  ) {
+    final String? reason = availability.reason;
+    return reason == null ? action : (_) => onToast(reason);
   }
 }
 
@@ -266,7 +244,12 @@ extension on NightLightStatus? {
     _ => false,
   };
 
-  bool get isAvailable => this is NightLightStatusAvailable;
+  ControlAvailability get availability => switch (this) {
+    NightLightStatusAvailable() => const ControlAvailability.available(),
+    NightLightStatusUnavailable(:final message) =>
+      ControlAvailability.unavailable(message),
+    _ => const ControlAvailability.unavailable('Night light is unavailable'),
+  };
 }
 
 extension on CaffeineStatus? {
@@ -275,23 +258,31 @@ extension on CaffeineStatus? {
     _ => false,
   };
 
-  bool get isAvailable => this is CaffeineStatusAvailable;
+  ControlAvailability get availability => switch (this) {
+    CaffeineStatusAvailable() => const ControlAvailability.available(),
+    CaffeineStatusUnavailable(:final message) =>
+      ControlAvailability.unavailable(message),
+    _ => const ControlAvailability.unavailable('Caffeine is unavailable'),
+  };
 }
 
 extension on RecordingStatus? {
-  bool get isAvailable =>
-      this is RecordingStatusIdle ||
-      this is RecordingStatusSelecting ||
-      this is RecordingStatusRecording ||
-      this is RecordingStatusStopping;
+  ControlAvailability get availability => switch (this) {
+    RecordingStatusIdle() ||
+    RecordingStatusSelecting() ||
+    RecordingStatusRecording() ||
+    RecordingStatusStopping() => const ControlAvailability.available(),
+    RecordingStatusUnavailable(:final message) =>
+      ControlAvailability.unavailable(message),
+    _ => const ControlAvailability.unavailable(
+      'Screen recording is unavailable',
+    ),
+  };
 
   bool get active =>
       this is RecordingStatusSelecting ||
       this is RecordingStatusRecording ||
       this is RecordingStatusStopping;
-
-  bool get ticks =>
-      this is RecordingStatusRecording || this is RecordingStatusStopping;
 
   String get phase => switch (this) {
     RecordingStatusIdle() => 'STBY',
@@ -302,19 +293,11 @@ extension on RecordingStatus? {
     _ => 'N/A',
   };
 
-  String get elapsed {
-    final int? startedAtMs = switch (this) {
-      RecordingStatusRecording(:final startedAtMs) => startedAtMs.toInt(),
-      RecordingStatusStopping(:final startedAtMs) => startedAtMs.toInt(),
-      _ => null,
-    };
-    if (startedAtMs == null) {
-      return '00:00';
-    }
-    final DateTime startedAt = DateTime.fromMillisecondsSinceEpoch(startedAtMs);
-    final Duration elapsed = DateTime.now().difference(startedAt);
-    final int minutes = elapsed.inMinutes.clamp(0, 99);
-    final int seconds = elapsed.inSeconds.remainder(60);
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-  }
+  /// Non-null only while a capture is actually running, which is what drives
+  /// the record pad's ticker.
+  int? get startedAtMs => switch (this) {
+    RecordingStatusRecording(:final startedAtMs) => startedAtMs.toInt(),
+    RecordingStatusStopping(:final startedAtMs) => startedAtMs.toInt(),
+    _ => null,
+  };
 }

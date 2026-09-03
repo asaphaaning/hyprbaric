@@ -26,6 +26,7 @@ class HyprInteractionRegion extends StatefulWidget {
     this.onTapUp,
     this.onSecondaryTapUp,
     this.semanticLabel,
+    this.semanticToggled,
     this.enabled = true,
     this.trackHover = true,
     this.cursor = SystemMouseCursors.click,
@@ -37,6 +38,11 @@ class HyprInteractionRegion extends StatefulWidget {
   final ValueChanged<TapUpDetails>? onTapUp;
   final ValueChanged<TapUpDetails>? onSecondaryTapUp;
   final String? semanticLabel;
+
+  /// Announces the region as a toggle in the given state. Leave null for
+  /// regions that are plain buttons.
+  final bool? semanticToggled;
+
   final bool enabled;
   final bool trackHover;
   final MouseCursor cursor;
@@ -115,11 +121,15 @@ class _HyprInteractionRegionState extends State<HyprInteractionRegion> {
       return region;
     }
 
+    // The authored label is the whole announcement. Without excluding the
+    // subtree it would be read out concatenated with every decorative
+    // caption, chord hint and chevron underneath it.
     return Semantics(
       button: true,
       enabled: _respondsToTap,
+      toggled: widget.semanticToggled,
       label: label,
-      child: region,
+      child: ExcludeSemantics(child: region),
     );
   }
 }

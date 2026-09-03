@@ -4,6 +4,8 @@ import 'surfaces/hypr_surface_frame.dart';
 
 export '../theme/hypr_tokens.dart';
 export 'surfaces/hypr_colors.dart';
+export 'surfaces/hypr_console.dart';
+export 'surfaces/hypr_console_colors.dart';
 export 'surfaces/hypr_divider.dart';
 export 'surfaces/hypr_glass_surface.dart';
 export 'surfaces/hypr_inset_border.dart';

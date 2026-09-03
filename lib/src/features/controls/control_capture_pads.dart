@@ -1,252 +1,324 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
 import 'controls_chrome.dart';
 
+/// Formats the wall-clock age of a recording as `MM:SS`.
+///
+/// The start stamp comes from the compositor's clock, so it can sit slightly
+/// in the future relative to ours. Clamping the whole duration keeps that from
+/// rendering as `00:-7`, and saturates a very long capture at `99:59` rather
+/// than letting the minutes field grow the readout.
+String formatRecordingElapsed(int? startedAtMs) {
+  if (startedAtMs == null) {
+    return '00:00';
+  }
+  final DateTime startedAt = DateTime.fromMillisecondsSinceEpoch(startedAtMs);
+  final int totalSeconds = DateTime.now()
+      .difference(startedAt)
+      .inSeconds
+      .clamp(0, 99 * 60 + 59);
+  final String minutes = (totalSeconds ~/ 60).toString().padLeft(2, '0');
+  final String seconds = (totalSeconds % 60).toString().padLeft(2, '0');
+  return '$minutes:$seconds';
+}
+
 class ControlCapturePad extends StatelessWidget {
   const ControlCapturePad({
     super.key,
     required this.label,
-    required this.shortcut,
     required this.icon,
     required this.onPressed,
+    this.shortcut,
   });
 
   final String label;
-  final String shortcut;
   final IconData icon;
   final VoidCallback onPressed;
 
+  /// The user's configured chord, or null when the binding is unknown or
+  /// disabled. A guessed chord is worse than none at all.
+  final String? shortcut;
+
   @override
   Widget build(BuildContext context) {
-    return _CapturePlate(
+    return ControlPlate(
       semanticLabel: 'Capture $label',
       onPressed: onPressed,
-      child: Stack(
-        children: <Widget>[
-          Positioned(top: 7, right: 7, child: _ShortcutBadge(shortcut)),
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 15),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  _CaptureIcon(icon),
-                  const SizedBox(height: 8),
-                  Text(
-                    label.toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.clip,
-                    style: HyprTypography.compactMonoStrong.copyWith(
-                      color: ControlColors.textMuted,
-                      fontSize: HyprTypography.size(9),
-                      fontWeight: FontWeight.w700,
-                      height: 1,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class ControlRecordPad extends StatelessWidget {
-  const ControlRecordPad({
-    super.key,
-    required this.active,
-    required this.enabled,
-    required this.phase,
-    required this.elapsed,
-    required this.shortcut,
-    required this.onPressed,
-  });
-
-  final bool active;
-  final bool enabled;
-  final String phase;
-  final String elapsed;
-  final String shortcut;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return _CapturePlate(
-      semanticLabel: active ? 'Stop recording' : 'Start recording',
-      onPressed: onPressed,
-      enabled: enabled,
-      active: active,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 10, 10, 9),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: Text(
-                    phase,
-                    maxLines: 1,
-                    overflow: TextOverflow.clip,
-                    style: HyprTypography.compactMonoStrong.copyWith(
-                      color: active
-                          ? ControlColors.danger
-                          : ControlColors.textMuted,
-                      fontSize: HyprTypography.size(9),
-                      fontWeight: FontWeight.w700,
-                      height: 1,
-                      letterSpacing: 1.8,
-                    ),
-                  ),
-                ),
-                _ShortcutBadge(shortcut),
-              ],
-            ),
-            const Spacer(),
-            DecoratedBox(
-              decoration: ShapeDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: <Color>[ControlColors.well, ControlColors.wellBottom],
-                ),
-                shape: RoundedSuperellipseBorder(
-                  borderRadius: BorderRadius.circular(5),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 5),
-                child: Text(
-                  elapsed,
-                  textAlign: TextAlign.center,
-                  style: HyprTypography.compactMonoStrong.copyWith(
-                    color: !enabled
-                        ? ControlColors.textFaint
-                        : active
-                        ? ControlColors.danger
-                        : ControlColors.textMuted,
-                    fontSize: HyprTypography.size(16),
-                    fontWeight: FontWeight.w600,
-                    height: 1,
-                    letterSpacing: 0.65,
-                    fontFeatures: HyprTypography.tabularNumbers,
-                    shadows: active
-                        ? const <Shadow>[
-                            Shadow(color: Color(0x66E16658), blurRadius: 8),
-                          ]
-                        : null,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CapturePlate extends StatelessWidget {
-  const _CapturePlate({
-    required this.semanticLabel,
-    required this.onPressed,
-    required this.child,
-    this.enabled = true,
-    this.active = false,
-  });
-
-  final String semanticLabel;
-  final VoidCallback? onPressed;
-  final Widget child;
-  final bool enabled;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    return HyprInteractionRegion(
-      semanticLabel: semanticLabel,
-      enabled: enabled,
-      onPressed: onPressed,
       builder: (BuildContext context, HyprInteractionState state) {
-        final Color color = active
-            ? ControlColors.danger.withValues(alpha: 0.16)
-            : state.pressed
-            ? ControlColors.tilePressed
-            : state.hovered
-            ? ControlColors.tileHover
-            : ControlColors.tile;
+        final bool lit = state.enabled && state.active;
 
-        return AnimatedContainer(
-          duration: HyprMotion.hover,
-          curve: HyprMotion.hoverCurve,
-          transform: Matrix4.translationValues(0, state.pressed ? 1 : 0, 0),
-          decoration: ShapeDecoration(
-            color: color,
-            shape: RoundedSuperellipseBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
+        return Padding(
+          padding: const EdgeInsets.all(HyprSpacing.lg + 1),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              SizedBox(
+                height: 14,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: <Widget>[
+                    if (shortcut case final String chord)
+                      Flexible(child: ControlShortcutBadge(chord)),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    _CaptureIcon(icon, lit: lit),
+                    const SizedBox(height: HyprSpacing.xl),
+                    Text(
+                      label.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.clip,
+                      style: HyprTypography.consoleCaptionTight.copyWith(
+                        color: lit
+                            ? HyprConsoleColors.text
+                            : HyprConsoleColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+            ],
           ),
-          child: Opacity(opacity: enabled ? 1 : 0.48, child: child),
         );
       },
     );
   }
 }
 
-class _ShortcutBadge extends StatelessWidget {
-  const _ShortcutBadge(this.label);
+/// The recording pad, which owns its own once-a-second repaint.
+///
+/// The ticker lives here rather than on the panel so a running capture
+/// repaints one pad instead of every superellipse-clipped tray above it.
+class ControlRecordPad extends StatefulWidget {
+  const ControlRecordPad({
+    super.key,
+    required this.active,
+    required this.availability,
+    required this.phase,
+    required this.startedAtMs,
+    required this.onPressed,
+    this.shortcut,
+  });
 
-  final String label;
+  final bool active;
+  final ControlAvailability availability;
+  final String phase;
+
+  /// Wall-clock start of the running capture, or null when it is not running.
+  /// Non-null is what drives the ticker.
+  final int? startedAtMs;
+
+  final VoidCallback? onPressed;
+  final String? shortcut;
+
+  bool get enabled => availability.isAvailable;
+
+  @override
+  State<ControlRecordPad> createState() => _ControlRecordPadState();
+}
+
+class _ControlRecordPadState extends State<ControlRecordPad> {
+  Timer? _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncTicker();
+  }
+
+  @override
+  void didUpdateWidget(covariant ControlRecordPad oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncTicker();
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  void _syncTicker() {
+    final bool wanted = widget.startedAtMs != null;
+    if (wanted && _ticker == null) {
+      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+        setState(() {});
+      });
+      return;
+    }
+    if (!wanted && _ticker != null) {
+      _ticker?.cancel();
+      _ticker = null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: ShapeDecoration(
-        color: const Color(0xA6000000),
-        shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(4),
-          side: const BorderSide(color: Color(0x66000000)),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        child: Text(
-          label,
-          style: HyprTypography.compactMonoStrong.copyWith(
-            color: ControlColors.textFaint,
-            fontSize: HyprTypography.size(8),
-            fontWeight: FontWeight.w600,
-            height: 1,
-            letterSpacing: 0.3,
-          ),
-        ),
+    final bool enabled = widget.enabled;
+
+    return RepaintBoundary(
+      child: ControlPlate(
+        semanticLabel: widget.active ? 'Stop recording' : 'Start recording',
+        onPressed: widget.onPressed,
+        availability: widget.availability,
+        active: widget.active,
+        builder: (BuildContext context, HyprInteractionState state) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(
+              HyprSpacing.xxl,
+              HyprSpacing.xxl,
+              HyprSpacing.xxl,
+              HyprSpacing.panel - HyprSpacing.md,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        widget.phase,
+                        maxLines: 1,
+                        overflow: TextOverflow.clip,
+                        style: HyprTypography.consoleCaptionTight.copyWith(
+                          color: widget.active
+                              ? HyprColors.danger
+                              : HyprConsoleColors.textMuted,
+                          letterSpacing: 1.8,
+                        ),
+                      ),
+                    ),
+                    if (widget.shortcut case final String chord)
+                      Flexible(child: ControlShortcutBadge(chord)),
+                  ],
+                ),
+                const Spacer(),
+                DecoratedBox(
+                  decoration: controlWellDecoration(
+                    borderRadius: HyprRadii.cardRadius,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: HyprSpacing.md,
+                    ),
+                    child: Text(
+                      formatRecordingElapsed(widget.startedAtMs),
+                      textAlign: TextAlign.center,
+                      style: HyprTypography.consoleReadout.copyWith(
+                        color: !enabled
+                            ? HyprConsoleColors.textFaint
+                            : widget.active
+                            ? HyprColors.danger
+                            : HyprConsoleColors.textMuted,
+                        shadows: widget.active
+                            ? const <Shadow>[
+                                Shadow(color: Color(0x66E16658), blurRadius: 8),
+                              ]
+                            : null,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 }
 
+/// A raised pad in the capture tray.
+///
+/// The child is built from the interaction state so its contents can respond
+/// to hover, not just the plate underneath them.
+class ControlPlate extends StatelessWidget {
+  const ControlPlate({
+    super.key,
+    required this.semanticLabel,
+    required this.onPressed,
+    required this.builder,
+    this.availability = const ControlAvailability.available(),
+    this.active = false,
+  });
+
+  final String semanticLabel;
+  final VoidCallback? onPressed;
+  final HyprInteractionRegionBuilder builder;
+  final ControlAvailability availability;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool enabled = availability.isAvailable;
+
+    return HyprInteractionRegion(
+      semanticLabel: enabled ? semanticLabel : '$semanticLabel, unavailable',
+      onPressed: onPressed,
+      builder: (BuildContext context, HyprInteractionState rawState) {
+        // The region stays tappable while unavailable so a tap can surface
+        // the reason, but the face must not light up as though it were live.
+        final HyprInteractionState state = HyprInteractionState(
+          hovered: rawState.hovered,
+          pressed: rawState.pressed,
+          enabled: enabled && rawState.enabled,
+        );
+        final Color color = active && enabled
+            ? HyprColors.danger.withValues(alpha: 0.16)
+            : controlFaceColor(state);
+
+        return AnimatedContainer(
+          duration: HyprMotion.hover,
+          curve: HyprMotion.hoverCurve,
+          transform: controlPressTransform(state),
+          decoration: ShapeDecoration(
+            color: color,
+            shape: const RoundedSuperellipseBorder(
+              borderRadius: HyprRadii.fieldRadius,
+            ),
+          ),
+          child: Opacity(
+            opacity: enabled ? 1 : ControlAvailability.dimmed,
+            child: builder(context, state),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _CaptureIcon extends StatelessWidget {
-  const _CaptureIcon(this.icon);
+  const _CaptureIcon(this.icon, {required this.lit});
 
   final IconData icon;
+  final bool lit;
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: ShapeDecoration(
-        color: ControlColors.well,
-        shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(6),
-        ),
+      decoration: const ShapeDecoration(
+        color: HyprConsoleColors.well,
+        shape: RoundedSuperellipseBorder(borderRadius: HyprRadii.controlRadius),
       ),
       child: SizedBox.square(
         dimension: 28,
-        child: Icon(icon, size: 21, color: ControlColors.textFaint),
+        child: Icon(
+          icon,
+          size: 21,
+          color: lit
+              ? HyprConsoleColors.textMuted
+              : HyprConsoleColors.textFaint,
+        ),
       ),
     );
   }

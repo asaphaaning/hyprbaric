@@ -27,6 +27,51 @@ void main() {
     expect(faceDecoration.gradient, isA<LinearGradient>());
     expect(faceDecoration.shadows, isNotEmpty);
   });
+
+  testWidgets('the settings row shows a chord only when one is bound', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Center(child: ControlSettingsRow(onPressed: _ignore)),
+      ),
+    );
+
+    expect(find.text('BAR SETTINGS'), findsOneWidget);
+    expect(find.text('Super+⇧+C'), findsNothing);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Center(
+          child: ControlSettingsRow(onPressed: _ignore, shortcut: 'Super+⇧+C'),
+        ),
+      ),
+    );
+
+    expect(find.text('Super+⇧+C'), findsOneWidget);
+  });
+
+  testWidgets('the settings row announces itself as one button', (
+    WidgetTester tester,
+  ) async {
+    final SemanticsHandle handle = tester.ensureSemantics();
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Center(
+          child: ControlSettingsRow(onPressed: _ignore, shortcut: 'Super+⇧+C'),
+        ),
+      ),
+    );
+
+    // The authored label is the whole announcement: the caption, the chord
+    // hint and the chevron underneath it must not be read out with it.
+    expect(find.bySemanticsLabel('Bar settings'), findsOneWidget);
+    expect(find.bySemanticsLabel('BAR SETTINGS'), findsNothing);
+    expect(find.bySemanticsLabel('Super+⇧+C'), findsNothing);
+
+    handle.dispose();
+  });
 }
 
 void _ignore() {}

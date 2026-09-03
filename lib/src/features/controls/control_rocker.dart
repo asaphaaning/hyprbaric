@@ -11,70 +11,88 @@ class ControlRocker extends StatelessWidget {
     required this.icon,
     required this.value,
     required this.onChanged,
-    this.enabled = true,
+    this.availability = const ControlAvailability.available(),
   });
 
   final String label;
   final IconData icon;
   final bool value;
   final ValueChanged<bool> onChanged;
-  final bool enabled;
+  final ControlAvailability availability;
+
+  bool get enabled => availability.isAvailable;
 
   @override
   Widget build(BuildContext context) {
+    // Unavailable rockers stay tappable so a tap can surface the reason, but
+    // they must not read as on: `value` is whatever the backend last knew.
+    final bool lit = value && enabled;
+
     return HyprInteractionRegion(
-      semanticLabel: label,
-      enabled: enabled,
+      semanticLabel: enabled ? label : '$label, unavailable',
+      semanticToggled: lit,
       onPressed: () => onChanged(!value),
-      builder: (BuildContext context, HyprInteractionState state) {
+      builder: (BuildContext context, HyprInteractionState rawState) {
+        final HyprInteractionState state = HyprInteractionState(
+          hovered: rawState.hovered,
+          pressed: rawState.pressed,
+          enabled: enabled && rawState.enabled,
+        );
         final Color accent = context.hyprPalette.accent;
-        final Color color = value
+        final Color rest = lit
             ? Color.alphaBlend(
                 accent.withValues(alpha: 0.12),
-                const Color(0xFF131318),
+                HyprConsoleColors.face,
               )
-            : state.pressed
-            ? ControlColors.tilePressed
-            : state.hovered
-            ? ControlColors.tileHover
-            : const Color(0xFF131318);
+            : HyprConsoleColors.face;
+        final Color color = controlFaceColor(
+          state,
+          rest: rest,
+          hover: HyprConsoleColors.faceHover,
+          pressed: HyprConsoleColors.facePressed,
+        );
 
         return AnimatedContainer(
           duration: HyprMotion.hover,
           curve: HyprMotion.hoverCurve,
-          transform: Matrix4.translationValues(0, state.pressed ? 1 : 0, 0),
-          padding: const EdgeInsets.fromLTRB(5, 9, 5, 8),
+          transform: controlPressTransform(state),
+          padding: const EdgeInsets.fromLTRB(
+            HyprSpacing.md,
+            HyprSpacing.panel - HyprSpacing.md,
+            HyprSpacing.md,
+            HyprSpacing.xl,
+          ),
           decoration: ShapeDecoration(
             color: color,
-            shape: RoundedSuperellipseBorder(
-              borderRadius: BorderRadius.circular(10),
+            shape: const RoundedSuperellipseBorder(
+              borderRadius: HyprRadii.fieldRadius,
             ),
           ),
           child: Opacity(
-            opacity: enabled ? 1 : 0.46,
+            opacity: enabled ? 1 : ControlAvailability.dimmed,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
                 Icon(
                   icon,
                   size: 21,
-                  color: value
+                  color: lit
                       ? context.hyprPalette.accentSoft
-                      : ControlColors.textFaint,
+                      : HyprConsoleColors.textFaint,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: HyprSpacing.xl),
                 _RockerSwitch(value: value, enabled: enabled),
-                const SizedBox(height: 8),
+                const SizedBox(height: HyprSpacing.xl),
                 Text(
                   label.toUpperCase(),
                   maxLines: 1,
                   overflow: TextOverflow.clip,
                   textAlign: TextAlign.center,
-                  style: HyprTypography.compactMonoStrong.copyWith(
-                    color: value ? ControlColors.text : ControlColors.textFaint,
+                  style: HyprTypography.consoleCaptionTight.copyWith(
+                    color: lit
+                        ? HyprConsoleColors.text
+                        : HyprConsoleColors.textFaint,
                     fontSize: HyprTypography.size(8),
-                    fontWeight: FontWeight.w700,
-                    height: 1,
                     letterSpacing: 1.05,
                   ),
                 ),
@@ -104,8 +122,12 @@ class _RockerSwitch extends StatelessWidget {
       height: 18,
       padding: const EdgeInsets.all(1.5),
       decoration: ShapeDecoration(
+        // Both states declare the same axis so toggling animates the tint
+        // without swinging the highlight from vertical to horizontal.
         gradient: value
             ? LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
                 colors: <Color>[
                   accent.withValues(alpha: enabled ? 0.38 : 0.18),
                   accent.withValues(alpha: enabled ? 0.22 : 0.12),

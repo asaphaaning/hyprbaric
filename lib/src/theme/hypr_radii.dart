@@ -48,6 +48,9 @@ abstract final class HyprRadii {
   static const BorderRadius fieldRadius = BorderRadius.all(
     Radius.circular(field),
   );
+  static const BorderRadius tileRadius = BorderRadius.all(
+    Radius.circular(tile),
+  );
   static const BorderRadius clockCardRadius = BorderRadius.all(
     Radius.circular(clockCard),
   );
