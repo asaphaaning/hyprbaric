@@ -45,7 +45,6 @@ Widget buildEmptyCenterCluster(BuildContext context) {
       appName: '',
       title: '',
       hostname: 'hyprbaric',
-      monitors: <MonitorFocusedWindowStatus>[],
     ),
   );
 }

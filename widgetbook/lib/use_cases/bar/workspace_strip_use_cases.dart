@@ -37,15 +37,6 @@ Widget buildSpecialWorkspaceStrip(BuildContext context) {
   );
 }
 
-@UseCase(name: 'Unfocused output', type: WorkspaceStrip, path: '[Widgets]/Bar')
-Widget buildUnfocusedWorkspaceStrip(BuildContext context) {
-  return const _WorkspaceStripStory(
-    status: WorkspaceFixtures.occupied,
-    settings: WorkspaceFixtures.roman,
-    resolution: WorkspaceFixtures.unfocusedOutput,
-  );
-}
-
 @UseCase(name: 'Interactive', type: WorkspaceStrip, path: '[Widgets]/Bar')
 Widget buildInteractiveWorkspaceStrip(BuildContext context) {
   return const _InteractiveWorkspaceStripStory();
@@ -96,12 +87,10 @@ class _WorkspaceStripStory extends StatelessWidget {
   const _WorkspaceStripStory({
     required this.status,
     required this.settings,
-    this.resolution,
   });
 
   final WorkspaceStatus status;
   final WorkspaceSettingsStatus settings;
-  final MonitorWorkspaceResolution? resolution;
 
   @override
   Widget build(BuildContext context) {
@@ -110,7 +99,6 @@ class _WorkspaceStripStory extends StatelessWidget {
         child: WorkspaceStrip(
           status: status,
           settings: settings,
-          resolution: resolution ?? WorkspaceFixtures.resolutionFor(status),
           onPrevious: () {},
           onNext: () {},
           onSelect: (_) {},
@@ -143,7 +131,6 @@ class _InteractiveWorkspaceStripStoryState
       name: '$active',
       isSpecial: false,
       occupiedWorkspaceIds: WorkspaceFixtures.occupied.occupiedWorkspaceIds,
-      monitors: const <MonitorWorkspaceStatus>[],
     );
 
     return CatalogCanvas(
@@ -151,7 +138,6 @@ class _InteractiveWorkspaceStripStoryState
         child: WorkspaceStrip(
           status: status,
           settings: WorkspaceFixtures.roman,
-          resolution: WorkspaceFixtures.resolutionFor(status),
           onPrevious: () => _move(-1),
           onNext: () => _move(1),
           onSelect: (int index) => setState(() => active = index),

@@ -5,7 +5,6 @@ abstract final class SetupFixtures {
   /// The appearance the guide starts from on a fresh install.
   static const AppearanceStatus appearanceDefault = AppearanceStatus(
     position: AppearancePosition.top,
-    monitor: AppearanceMonitorTargetPrimary(),
     opacity: 77,
     cornerRadius: 12,
     accentHue: 197,
@@ -14,7 +13,6 @@ abstract final class SetupFixtures {
   /// A guide run that has already committed a translucent, magenta bar.
   static const AppearanceStatus appearanceTuned = AppearanceStatus(
     position: AppearancePosition.bottom,
-    monitor: AppearanceMonitorTargetAll(),
     opacity: 46,
     cornerRadius: 18,
     accentHue: 310,

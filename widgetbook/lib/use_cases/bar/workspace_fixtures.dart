@@ -7,7 +7,6 @@ abstract final class WorkspaceFixtures {
     name: '3',
     isSpecial: false,
     occupiedWorkspaceIds: <int>[1, 2, 3, 5, 8],
-    monitors: <MonitorWorkspaceStatus>[],
   );
 
   static const WorkspaceStatus special = WorkspaceStatus(
@@ -15,7 +14,6 @@ abstract final class WorkspaceFixtures {
     name: 'magic',
     isSpecial: true,
     occupiedWorkspaceIds: <int>[1, 2, 4],
-    monitors: <MonitorWorkspaceStatus>[],
   );
 
   static const WorkspaceSettingsStatus roman = WorkspaceSettingsStatus(
@@ -38,23 +36,4 @@ abstract final class WorkspaceFixtures {
     visibleRange: WorkspaceVisibleRange.large,
     visibleCount: 9,
   );
-
-  /// This output owns the compositor focus, which is the common case.
-  static MonitorWorkspaceResolution resolutionFor(WorkspaceStatus status) {
-    return MonitorWorkspaceResolution(
-      activeWorkspaceId: status.id,
-      activeWorkspaceName: status.name,
-      isSpecial: status.isSpecial,
-      monitorName: 'DP-1',
-    );
-  }
-
-  /// Another output holds focus, so this bar falls back to workspace one.
-  static const MonitorWorkspaceResolution unfocusedOutput =
-      MonitorWorkspaceResolution(
-        activeWorkspaceId: 1,
-        activeWorkspaceName: '1',
-        isSpecial: false,
-        monitorName: 'HDMI-A-1',
-      );
 }

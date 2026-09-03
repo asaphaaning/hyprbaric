@@ -71,14 +71,12 @@ abstract final class BarFixtures {
     name: '2',
     isSpecial: false,
     occupiedWorkspaceIds: <int>[1, 2, 4],
-    monitors: <MonitorWorkspaceStatus>[],
   );
 
   static const FocusedWindowStatus focusedWindow = FocusedWindowStatus(
     appName: 'dev.zed.Zed',
     title: 'widget_catalog.dart — Hyprbaric',
     hostname: 'hyprbaric',
-    monitors: <MonitorFocusedWindowStatus>[],
   );
 
   static final NetworkStatus network = NetworkStatus(
