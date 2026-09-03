@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../bindings/bindings.dart';
+import '../../widgets/primitives/primitives.dart';
 import 'setup_guide_state.dart';
 import 'setup_guide_style.dart';
 
@@ -325,7 +326,7 @@ class _Feature extends StatelessWidget {
   }
 }
 
-class _ChoiceCard extends StatefulWidget {
+class _ChoiceCard extends StatelessWidget {
   const _ChoiceCard({
     required this.title,
     required this.subtitle,
@@ -341,89 +342,81 @@ class _ChoiceCard extends StatefulWidget {
   final VoidCallback onPressed;
 
   @override
-  State<_ChoiceCard> createState() => _ChoiceCardState();
-}
-
-class _ChoiceCardState extends State<_ChoiceCard> {
-  bool _hovered = false;
-
-  @override
   Widget build(BuildContext context) {
     final Color accent = context.setupGuideAccent;
-    return Semantics(
-      button: true,
-      label: widget.title,
-      selected: widget.selected,
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          onTap: widget.onPressed,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(13),
-              gradient: widget.selected
-                  ? LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: <Color>[
-                        Color.lerp(const Color(0xFF343740), accent, .20)!,
-                        Color.lerp(const Color(0xFF292B33), accent, .14)!,
-                      ],
-                    )
-                  : LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: <Color>[
-                        _hovered
-                            ? const Color(0xFF484A54)
-                            : SetupGuideColors.faceTop,
-                        _hovered
-                            ? const Color(0xFF353740)
-                            : SetupGuideColors.faceBottom,
-                      ],
-                    ),
-              border: Border.all(
-                color: widget.selected
-                    ? accent.withValues(alpha: .72)
-                    : const Color(0x59000000),
-                width: widget.selected ? 2.5 : 1,
-              ),
-              boxShadow: <BoxShadow>[
-                const BoxShadow(
-                  color: Color(0x17FFFFFF),
-                  offset: Offset(0, 1),
-                  blurStyle: BlurStyle.inner,
-                ),
-                const BoxShadow(
-                  color: Color(0x66000000),
-                  offset: Offset(0, -1),
-                  blurStyle: BlurStyle.inner,
-                ),
-                if (!widget.selected)
-                  const BoxShadow(
-                    color: Color(0xA6000000),
-                    blurRadius: 14,
-                    spreadRadius: -8,
-                    offset: Offset(0, 6),
+    return HyprInteractionRegion(
+      semanticLabel: title,
+      semanticToggled: selected,
+      onPressed: onPressed,
+      builder: (BuildContext context, HyprInteractionState state) {
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(13),
+            gradient: selected
+                ? LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[
+                      Color.lerp(const Color(0xFF343740), accent, .20)!,
+                      Color.lerp(const Color(0xFF292B33), accent, .14)!,
+                    ],
+                  )
+                : LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[
+                      state.hovered
+                          ? const Color(0xFF484A54)
+                          : SetupGuideColors.faceTop,
+                      state.hovered
+                          ? const Color(0xFF353740)
+                          : SetupGuideColors.faceBottom,
+                    ],
                   ),
-              ],
+            border: Border.all(
+              color: selected
+                  ? accent.withValues(alpha: .72)
+                  : const Color(0x59000000),
+              width: selected ? 2.5 : 1,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                widget.preview,
-                const SizedBox(height: 13),
-                Text(widget.title, style: SetupGuideTypography.cardTitle),
-                const SizedBox(height: 5),
-                Text(widget.subtitle, style: SetupGuideTypography.cardSubtitle),
-              ],
-            ),
+            boxShadow: <BoxShadow>[
+              const BoxShadow(
+                color: Color(0x17FFFFFF),
+                offset: Offset(0, 1),
+                blurStyle: BlurStyle.inner,
+              ),
+              const BoxShadow(
+                color: Color(0x66000000),
+                offset: Offset(0, -1),
+                blurStyle: BlurStyle.inner,
+              ),
+              if (!selected)
+                const BoxShadow(
+                  color: Color(0xA6000000),
+                  blurRadius: 14,
+                  spreadRadius: -8,
+                  offset: Offset(0, 6),
+                ),
+            ],
           ),
-        ),
-      ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              preview,
+              const SizedBox(height: 13),
+              Text(title, style: SetupGuideTypography.cardTitle),
+              const SizedBox(height: 5),
+              Text(subtitle, style: SetupGuideTypography.cardSubtitle),
+            ],
+          ),
+        );
+      },
+    );
+          ),
+        );
+      },
     );
   }
 }
