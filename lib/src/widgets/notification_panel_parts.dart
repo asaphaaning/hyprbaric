@@ -54,11 +54,11 @@ class NotificationCountPill extends StatelessWidget {
       key: const ValueKey<String>('notifications-count-pill'),
       child: HyprBadge.text(
         label: '$count',
-        color: HyprColors.accentSoft.withValues(alpha: 0.34),
+        color: context.hyprPalette.accentSoft.withValues(alpha: 0.34),
         borderColor: HyprColors.popupStroke,
         borderRadius: BorderRadius.circular(4),
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        textColor: HyprColors.accent,
+        textColor: context.hyprPalette.accent,
         style: HyprTypography.compactMonoStrong.copyWith(
           fontSize: HyprTypography.size(10),
           height: 1,

@@ -43,7 +43,7 @@ class NetworkPasswordPrompt extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: <Color>[
-              HyprColors.accent.withValues(alpha: 0.11),
+              context.hyprPalette.accent.withValues(alpha: 0.11),
               Colors.transparent,
             ],
             stops: const <double>[0, 0.5],

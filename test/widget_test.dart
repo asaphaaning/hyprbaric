@@ -4180,12 +4180,18 @@ void main() {
 
     expect(find.widgetWithText(TextField, 'Enter password'), findsOneWidget);
     expect(find.text('JOIN'), findsOneWidget);
-    final InkWell networkRow = tester.widget<InkWell>(
-      find
-          .ancestor(of: find.text('Fiber_2.4G'), matching: find.byType(InkWell))
-          .first,
-    );
-    expect(networkRow.onTap, isNotNull);
+    // The row's tap target is the shared interaction primitive now, not a
+    // bespoke InkWell with every overlay colour turned off.
+    final HyprInteractionRegion networkRow = tester
+        .widget<HyprInteractionRegion>(
+          find
+              .ancestor(
+                of: find.text('Fiber_2.4G'),
+                matching: find.byType(HyprInteractionRegion),
+              )
+              .first,
+        );
+    expect(networkRow.onPressed, isNotNull);
 
     await tester.ensureVisible(
       find.byKey(const ValueKey<String>('network-connect-submit')),

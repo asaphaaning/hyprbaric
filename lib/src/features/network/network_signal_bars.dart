@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/hypr_palette.dart';
 import 'network_chrome.dart';
 
 class NetworkSignalBars extends StatelessWidget {
@@ -20,7 +21,9 @@ class NetworkSignalBars extends StatelessWidget {
       child: CustomPaint(
         painter: NetworkSignalBarsPainter(
           strength: strength,
-          color: active ? NetworkMenuColors.accent : NetworkMenuColors.fg2,
+          color: active
+              ? context.hyprPalette.accentSoft
+              : NetworkMenuColors.fg2,
         ),
       ),
     );

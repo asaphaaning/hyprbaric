@@ -46,144 +46,102 @@ class NetworkEntryTile extends StatefulWidget {
 }
 
 class NetworkEntryTileState extends State<NetworkEntryTile> {
-  bool _hovered = false;
-  bool _pressed = false;
-
-  void _setHovered(bool hovered) {
-    if (_hovered == hovered) {
-      return;
-    }
-    setState(() => _hovered = hovered);
-  }
-
-  void _setPressed(bool pressed) {
-    if (_pressed == pressed) {
-      return;
-    }
-    setState(() => _pressed = pressed);
-  }
-
   @override
   Widget build(BuildContext context) {
     final NetworkEntry entry = widget.entry;
     final bool interactive = !entry.isConnecting;
-    final bool hovered = interactive && _hovered;
-    final bool pressed = interactive && _pressed;
-    final bool lit = hovered || pressed || widget.selected;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Semantics(
-            button: interactive,
+          HyprInteractionRegion(
             enabled: interactive,
-            label: entry.isActive ? '${entry.ssid}, connected' : entry.ssid,
-            child: MouseRegion(
-              cursor: interactive
-                  ? SystemMouseCursors.click
-                  : SystemMouseCursors.basic,
-              onEnter: (_) => _setHovered(true),
-              onExit: (_) {
-                _setHovered(false);
-                _setPressed(false);
-              },
-              child: Listener(
-                onPointerDown: interactive ? (_) => _setPressed(true) : null,
-                onPointerUp: interactive ? (_) => _setPressed(false) : null,
-                onPointerCancel: interactive ? (_) => _setPressed(false) : null,
-                child: HyprGlassFrame(
-                  sheen: lit ? HyprGlassSheen.tileHover : HyprGlassSheen.tile,
-                  rimLight: lit
-                      ? HyprGlassFrame.rimLightStrong
-                      : HyprGlassFrame.rimLightDefault,
-                  borderColor: lit
-                      ? const Color(0x8C000000)
-                      : const Color(0x80000000),
-                  shadows: HyprGlassFrame.tileShadows,
-                  glow: entry.isActive
-                      ? HyprColors.accent.withValues(alpha: 0.16)
-                      : null,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 9,
+            cursor: interactive
+                ? SystemMouseCursors.click
+                : SystemMouseCursors.basic,
+            semanticLabel: entry.isActive
+                ? '${entry.ssid}, connected'
+                : entry.ssid,
+            onPressed: interactive ? widget.onTap : null,
+            builder: (BuildContext context, HyprInteractionState state) {
+              final bool lit = state.active || widget.selected;
+              return HyprGlassFrame(
+                sheen: lit ? HyprGlassSheen.tileHover : HyprGlassSheen.tile,
+                rimLight: lit
+                    ? HyprGlassFrame.rimLightStrong
+                    : HyprGlassFrame.rimLightDefault,
+                borderColor: lit
+                    ? const Color(0x8C000000)
+                    : const Color(0x80000000),
+                shadows: HyprGlassFrame.tileShadows,
+                glow: entry.isActive
+                    ? context.hyprPalette.accent.withValues(alpha: 0.16)
+                    : null,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 9,
+                  ),
+                  child: Row(
+                    children: <Widget>[
+                      NetworkSignalBars(
+                        strength: entry.strength,
+                        active: entry.isActive,
                       ),
-                      child: InkWell(
-                        onTap: interactive ? widget.onTap : null,
-                        hoverColor: Colors.transparent,
-                        focusColor: Colors.transparent,
-                        splashColor: Colors.transparent,
-                        highlightColor: Colors.transparent,
-                        overlayColor: const WidgetStatePropertyAll<Color>(
-                          Colors.transparent,
-                        ),
-                        child: Row(
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
-                            NetworkSignalBars(
-                              strength: entry.strength,
-                              active: entry.isActive,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Text(
-                                    entry.ssid,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    // The reference drops the mono face for
-                                    // SSIDs: inherit, 12px, w600, no
-                                    // tracking.
-                                    style: HyprTypography.popRowStrong.copyWith(
-                                      color: entry.isActive
-                                          ? HyprColors.text
-                                          : NetworkMenuColors.fg1,
-                                      fontSize: HyprTypography.size(12),
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  _NetworkEntryMeta(entry: entry),
-                                ],
+                            Text(
+                              entry.ssid,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              // The reference drops the mono face for
+                              // SSIDs: inherit, 12px, w600, no
+                              // tracking.
+                              style: HyprTypography.popRowStrong.copyWith(
+                                color: entry.isActive
+                                    ? HyprColors.text
+                                    : NetworkMenuColors.fg1,
+                                fontSize: HyprTypography.size(12),
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0,
                               ),
                             ),
-                            const SizedBox(width: 10),
-                            if (entry.secure) ...<Widget>[
-                              const _NetworkSecurityBadge(secure: true),
-                            ] else ...<Widget>[
-                              const _NetworkSecurityBadge(secure: false),
-                            ],
-                            if (entry.isConnecting) ...<Widget>[
-                              const SizedBox(width: 10),
-                              const SizedBox(
-                                width: 10,
-                                height: 10,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 1.4,
-                                ),
-                              ),
-                            ] else if (entry.isActive) ...<Widget>[
-                              const SizedBox(width: 10),
-                              const _NetworkActionBadge(label: 'live'),
-                            ] else if (widget.selected) ...<Widget>[
-                              const SizedBox(width: 10),
-                              const _NetworkActionBadge(label: 'join'),
-                            ],
+                            const SizedBox(height: 2),
+                            _NetworkEntryMeta(entry: entry),
                           ],
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 10),
+                      if (entry.secure) ...<Widget>[
+                        const _NetworkSecurityBadge(secure: true),
+                      ] else ...<Widget>[
+                        const _NetworkSecurityBadge(secure: false),
+                      ],
+                      if (entry.isConnecting) ...<Widget>[
+                        const SizedBox(width: 10),
+                        const SizedBox(
+                          width: 10,
+                          height: 10,
+                          child: CircularProgressIndicator(strokeWidth: 1.4),
+                        ),
+                      ] else if (entry.isActive) ...<Widget>[
+                        const SizedBox(width: 10),
+                        const _NetworkActionBadge(label: 'live'),
+                      ] else if (widget.selected) ...<Widget>[
+                        const SizedBox(width: 10),
+                        const _NetworkActionBadge(label: 'join'),
+                      ],
+                    ],
                   ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
           if (widget.expanded)
             NetworkPasswordPrompt(
@@ -281,7 +239,7 @@ class _NetworkActionBadge extends StatelessWidget {
       color: Colors.transparent,
       padding: HyprSpacing.none,
       borderRadius: HyprRadii.zero,
-      textColor: NetworkMenuColors.accent,
+      textColor: context.hyprPalette.accentSoft,
       style: HyprTypography.compactMonoStrong.copyWith(
         fontSize: HyprTypography.size(9),
         letterSpacing: 0.9,
