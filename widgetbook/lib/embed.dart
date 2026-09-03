@@ -4,16 +4,16 @@ import 'dart:ui_web' as ui_web;
 
 import 'package:flutter/material.dart';
 
-import 'audio/audio_mixer_preview.dart';
-import 'audio/controls_panel_preview.dart';
-import 'audio/network_panel_preview.dart';
-import 'audio/notification_panel_preview.dart';
-import 'audio/power_panel_preview.dart';
-import 'audio/workspace_strip_preview.dart';
+import 'audio/preview_registry.dart';
 import 'embed/embed_theme.dart';
 
 void main() => runWidget(const _EmbedViews());
 
+/// Hosts every landing-page preview as a view of one shared engine.
+///
+/// The page adds a view per preview through `app.addView`, so the whole
+/// landing page pays for one engine and one CanvasKit instead of one per
+/// preview.
 class _EmbedViews extends StatefulWidget {
   const _EmbedViews();
 
@@ -34,6 +34,8 @@ class _EmbedViewsState extends State<_EmbedViews> with WidgetsBindingObserver {
     super.dispose();
   }
 
+  /// Adding or removing a view reports a metrics change, which is how a new
+  /// host element finds its way into [ViewCollection].
   @override
   void didChangeMetrics() => setState(() {});
 
@@ -53,44 +55,39 @@ class _EmbedViewsState extends State<_EmbedViews> with WidgetsBindingObserver {
   }
 }
 
-enum _Preview {
-  mixer(width: 336),
-  controls(width: 432),
-  network(width: 340),
-  power(width: 320),
-  notifications(width: 380),
-  workspaces(width: 340);
-
-  const _Preview({required this.width});
-
-  final double width;
-
-  static _Preview from(_EmbedInitialData? data) {
-    return switch (data?.preview) {
-      'controls' => _Preview.controls,
-      'network' => _Preview.network,
-      'power' => _Preview.power,
-      'notifications' => _Preview.notifications,
-      'workspaces' => _Preview.workspaces,
-      _ => _Preview.mixer,
-    };
-  }
-}
-
+@immutable
 class _Configuration {
   const _Configuration({required this.preview, required this.onReady});
 
-  final _Preview preview;
+  /// Null when the host asked for a preview this build does not carry.
+  final LandingPreview? preview;
   final JSFunction? onReady;
 
   factory _Configuration.from(FlutterView view) {
     final _EmbedInitialData? data =
         ui_web.views.getInitialData(view.viewId) as _EmbedInitialData?;
 
-    return _Configuration(preview: _Preview.from(data), onReady: data?.onReady);
+    return _Configuration(
+      preview: LandingPreview.byName(data?.preview),
+      onReady: data?.onReady,
+    );
   }
 
-  void reportReady() => onReady?.callAsFunction();
+  /// Reports the first painted frame, or the unknown name, back to the page.
+  void report() {
+    final JSFunction? callback = onReady;
+    if (callback == null) {
+      return;
+    }
+
+    final LandingPreview? resolved = preview;
+    callback.callAsFunction(
+      null,
+      resolved == null
+          ? 'Unknown preview requested'.toJS
+          : null,
+    );
+  }
 }
 
 extension type _EmbedInitialData._(JSObject _) implements JSObject {
@@ -109,29 +106,34 @@ class _PreviewEmbed extends StatefulWidget {
 }
 
 class _PreviewEmbedState extends State<_PreviewEmbed> {
-  bool _reportedReady = false;
+  bool _reported = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    if (_reportedReady) {
+    if (_reported) {
       return;
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _reportedReady) {
+      if (!mounted || _reported) {
         return;
       }
 
-      _reportedReady = true;
-      widget.configuration.reportReady();
+      _reported = true;
+      widget.configuration.report();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final _Preview preview = widget.configuration.preview;
+    final LandingPreview? preview = widget.configuration.preview;
+    if (preview == null) {
+      // The page shows its own error state once `report` hands back a reason,
+      // so an unknown name must not quietly render some other panel.
+      return const SizedBox.shrink();
+    }
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -143,16 +145,7 @@ class _PreviewEmbedState extends State<_PreviewEmbed> {
             fit: BoxFit.contain,
             child: SizedBox(
               width: preview.width,
-              child: RepaintBoundary(
-                child: switch (preview) {
-                  _Preview.mixer => const AudioMixerPreview(),
-                  _Preview.controls => const ControlsPanelPreview.landing(),
-                  _Preview.network => const NetworkPanelPreview(),
-                  _Preview.power => const PowerPanelPreview(),
-                  _Preview.notifications => const NotificationPanelPreview(),
-                  _Preview.workspaces => const WorkspaceStripPreview(),
-                },
-              ),
+              child: RepaintBoundary(child: preview.build()),
             ),
           ),
         ),

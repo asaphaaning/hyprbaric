@@ -29,9 +29,19 @@ class _ControlsPanelPreviewState extends State<ControlsPanelPreview> {
   }
 
   @override
+  void didUpdateWidget(ControlsPanelPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Widgetbook swaps the seed when a knob changes, so the local copy has to
+    // follow it rather than stay pinned to whatever initState first saw.
+    if (widget.initialScenario != oldWidget.initialScenario) {
+      _scenario = widget.initialScenario;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ControlsPanel(
-      borderRadius: const BorderRadius.all(Radius.circular(18)),
+      borderRadius: HyprRadii.popoverRadius,
       onCaptureScreenshot: _ignoreScreenshot,
       onPickColor: _noop,
       onToggleRecording: _toggleRecording,

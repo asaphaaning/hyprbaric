@@ -76,7 +76,7 @@ class _AudioMixerPreviewState extends State<AudioMixerPreview>
         );
 
         return AudioPanel(
-          borderRadius: const BorderRadius.all(Radius.circular(18)),
+          borderRadius: HyprRadii.popoverRadius,
           status: AudioFixtures.status(_audio),
           brightnessStatus: AudioFixtures.brightnessStatus(_brightness),
           meterLevels: levels,

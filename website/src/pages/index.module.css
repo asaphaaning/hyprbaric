@@ -741,14 +741,6 @@
   flex: 1;
 }
 
-.workspacePreview {
-  aspect-ratio: 5.3;
-  display: block;
-  height: auto;
-  margin: 6px 0 2px;
-  width: 100%;
-}
-
 .notificationPreview {
   aspect-ratio: .98;
   display: block;

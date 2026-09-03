@@ -1,6 +1,8 @@
 import {useEffect, useRef, useState} from 'react';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 
+import {loadPreviewEngine} from './previewEngine';
+
 import styles from './index.module.css';
 
 function MixerSkeleton() {
@@ -62,19 +64,25 @@ function NotificationsSkeleton() {
   );
 }
 
-function WorkspaceSkeleton() {
-  return (
-    <div aria-hidden="true" className={`${styles.skeleton} ${styles.workspaceSkeleton}`}>
-      <span className={styles.workspacePrevious} />
-      <span className={styles.workspaceIndicators} />
-      <span className={styles.workspaceNext} />
-    </div>
-  );
-}
+const SKELETONS = {
+  mixer: MixerSkeleton,
+  controls: ControlsSkeleton,
+  network: NetworkSkeleton,
+  power: PowerSkeleton,
+  notifications: NotificationsSkeleton,
+};
+
+/**
+ * The preview names this page can render.
+ *
+ * Kept in step with `LandingPreview` in widgetbook/lib/stories/preview_registry.dart
+ * by preview_registry_test.dart, which reads this file.
+ */
+export const PREVIEW_NAMES = Object.keys(SKELETONS);
 
 function useFlutterPreviewVersion() {
   const versionUrl = useBaseUrl('flutter/previews/version.json');
-  const [version, setVersion] = useState(null);
+  const [state, setState] = useState({version: null, missing: false});
 
   useEffect(() => {
     let cancelled = false;
@@ -82,11 +90,20 @@ function useFlutterPreviewVersion() {
     const refresh = async () => {
       try {
         const response = await fetch(`${versionUrl}?now=${Date.now()}`, {cache: 'no-store'});
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const next = await response.json();
 
-        if (!cancelled) setVersion(String(next.version));
-      } catch {
-        // Keep the current preview visible while a rebuild is replacing its files.
+        if (!cancelled) setState({version: String(next.version), missing: false});
+      } catch (error) {
+        // A rebuild replaces these files, so a miss is expected mid-build and
+        // the current preview should stay up. A miss with nothing loaded yet
+        // means the embed was never built, which the caller has to surface
+        // rather than sit on a skeleton forever.
+        if (cancelled) return;
+        setState((current) => current.version
+          ? current
+          : {version: null, missing: true});
+        console.warn(`[hyprbaric] Flutter previews unavailable at ${versionUrl}.`, error);
       }
     };
 
@@ -101,54 +118,111 @@ function useFlutterPreviewVersion() {
     };
   }, [versionUrl]);
 
-  return version;
+  return state;
+}
+
+/** Defers work until the element is near the viewport. */
+function useNearViewport(ref) {
+  const [near, setNear] = useState(false);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return undefined;
+    if (typeof IntersectionObserver !== 'function') {
+      setNear(true);
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setNear(true);
+        observer.disconnect();
+      }
+    }, {rootMargin: '200px'});
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return near;
 }
 
 export default function FlutterDemo({className = '', preview = 'mixer'}) {
-  const shell = useBaseUrl('flutter-preview/');
-  const version = useFlutterPreviewVersion();
-  const source = version ? `${shell}?preview=${preview}&version=${version}` : null;
-  const frame = useRef(null);
-  const [ready, setReady] = useState(false);
+  const bootstrapPath = useBaseUrl('flutter/previews/flutter_bootstrap.js');
+  const {version, missing} = useFlutterPreviewVersion();
+  const host = useRef(null);
+  const near = useNearViewport(host);
+  const [status, setStatus] = useState('pending');
+
+  const Skeleton = SKELETONS[preview] ?? MixerSkeleton;
 
   useEffect(() => {
-    if (!source) return undefined;
+    if (!version || !near) return undefined;
 
-    const element = frame.current;
+    const element = host.current;
     if (!element) return undefined;
 
-    setReady(false);
+    let cancelled = false;
+    let attached = null;
+    let engine = null;
 
-    const receiveStatus = (event) => {
-      if (event.origin !== window.location.origin || event.source !== element.contentWindow) return;
-      if (event.data?.type !== 'hyprbaric-preview-ready') return;
+    setStatus('pending');
 
-      setReady(true);
-    };
-
-    window.addEventListener('message', receiveStatus);
+    loadPreviewEngine(`${bootstrapPath}?v=${version}`)
+      .then((app) => {
+        if (cancelled) return;
+        engine = app;
+        attached = app.addView({
+          hostElement: element,
+          initialData: {
+            preview,
+            onReady: (error) => {
+              if (cancelled) return;
+              if (error) {
+                console.error(`[hyprbaric] ${error}: ${preview}`);
+                setStatus('error');
+                return;
+              }
+              setStatus('ready');
+            },
+          },
+        });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error('[hyprbaric] Flutter preview engine failed to start.', error);
+        setStatus('error');
+      });
 
     return () => {
-      window.removeEventListener('message', receiveStatus);
+      cancelled = true;
+      // Views outlive the React tree unless they are handed back, which leaks
+      // a rendering surface per navigation on a client-routed site.
+      if (engine && attached !== null) engine.removeView(attached);
     };
-  }, [source]);
+  }, [bootstrapPath, version, near, preview]);
+
+  const failed = status === 'error' || missing;
 
   return (
     <div className={`${styles.frame} ${className}`}>
-      {!ready && (
-        preview === 'network' ? <NetworkSkeleton /> : preview === 'controls' ? <ControlsSkeleton /> : preview === 'power' ? <PowerSkeleton /> : preview === 'notifications' ? <NotificationsSkeleton /> : preview === 'workspaces' ? <WorkspaceSkeleton /> : <MixerSkeleton />
+      {status !== 'ready' && !failed && <Skeleton />}
+      {failed && (
+        <div className={styles.unavailable} role="status">
+          <p className={styles.unavailableTitle}>Preview unavailable</p>
+          <p className={styles.unavailableBody}>
+            The {preview} preview could not be loaded. Run
+            {' '}<code>npm run build:flutter-embed</code>{' '}
+            in <code>website/</code> to build it.
+          </p>
+        </div>
       )}
-      {source && (
-        <iframe
-          aria-label={`${preview} module preview`}
-          className={ready ? styles.hostReady : styles.host}
-          loading="lazy"
-          onError={() => setReady(false)}
-          ref={frame}
-          src={source}
-          title={`${preview} module preview`}
-        />
-      )}
+      <div
+        aria-label={`${preview} module preview`}
+        className={status === 'ready' ? styles.hostReady : styles.host}
+        ref={host}
+        role="img"
+      />
     </div>
   );
 }

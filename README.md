@@ -89,10 +89,18 @@ npm start -- --host 127.0.0.1 --port 3001
 
 This creates a debug Flutter embed before Docusaurus starts, then watches the
 application's `lib/` and assets plus Widgetbook's `lib/`, web shell, and
-dependency manifest. Relevant changes rebuild the embed automatically and are
-picked up through a build marker that reloads just the embedded previews. A
+dependency manifest. Relevant changes rebuild the embed automatically, and
+`flutter/previews/version.json` tells the page a complete build is in place. A
 production `npm run build` performs the same integration with a release Flutter
 build.
+
+Every preview on the page is a view of one shared Flutter engine, added through
+`app.addView` once `flutter_bootstrap.js` has booted, so the landing page loads
+CanvasKit and the app bundle once rather than once per preview. The preview
+names live in `widgetbook/lib/stories/preview_registry.dart` and are checked
+against the web component by `widgetbook/test/preview_registry_test.dart`. When
+the embed has not been built, the previews say so instead of showing a
+placeholder indefinitely.
 
 ## Architecture
 

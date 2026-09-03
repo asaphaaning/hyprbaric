@@ -15,12 +15,16 @@ const sources = [
   path.join(project, 'widgetbook', 'web'),
 ].filter(existsSync);
 
+const ignored = [`${path.sep}.dart_tool${path.sep}`, `${path.sep}build${path.sep}`];
+
 let debounce;
 let rebuilding = false;
 let rebuildAgain = false;
 
-function rebuild() {
+async function rebuild() {
   if (rebuilding) {
+    // The build is genuinely concurrent with the watcher now, so an edit that
+    // lands mid-compile has to be picked up once the current one finishes.
     rebuildAgain = true;
     return;
   }
@@ -29,28 +33,39 @@ function rebuild() {
   console.log('\n[flutter-preview] Rebuilding after a shared Flutter source change...');
 
   try {
-    buildFlutterEmbed({mode: 'debug'});
+    await buildFlutterEmbed({mode: 'debug'});
     console.log('[flutter-preview] Landing-page previews updated.');
   } catch (error) {
     console.error(`[flutter-preview] ${error.message}`);
   } finally {
     rebuilding = false;
+  }
 
-    if (rebuildAgain) {
-      rebuildAgain = false;
-      rebuild();
-    }
+  if (rebuildAgain) {
+    rebuildAgain = false;
+    await rebuild();
   }
 }
 
 function scheduleRebuild() {
   clearTimeout(debounce);
-  debounce = setTimeout(rebuild, 250);
+  debounce = setTimeout(() => {
+    rebuild().catch((error) => {
+      console.error(`[flutter-preview] ${error.message}`);
+    });
+  }, 250);
+}
+
+/** Both filters are separator-anchored so a `buildings/` directory is watched. */
+function isIgnored(filename) {
+  if (!filename) return false;
+  const normalized = `${path.sep}${filename}`;
+  return ignored.some((fragment) => normalized.includes(fragment));
 }
 
 const watchers = sources.map((source) =>
   watch(source, {recursive: statSync(source).isDirectory()}, (_event, filename) => {
-    if (filename?.includes('.dart_tool') || filename?.includes(`${path.sep}build${path.sep}`)) return;
+    if (isIgnored(filename)) return;
     scheduleRebuild();
   }),
 );

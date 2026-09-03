@@ -27,7 +27,7 @@ class _PowerPanelPreviewState extends State<PowerPanelPreview> {
   Widget build(BuildContext context) {
     return ProviderScope(
       child: PowerPanel(
-        borderRadius: const BorderRadius.all(Radius.circular(18)),
+        borderRadius: HyprRadii.popoverRadius,
         status: AsyncData<PowerStatus>(_status),
         latestResult: null,
         onSetProfile: _setProfile,

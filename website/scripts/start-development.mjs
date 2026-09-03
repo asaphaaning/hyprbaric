@@ -9,7 +9,13 @@ const docusaurus = path.join(website, 'node_modules', '.bin', 'docusaurus');
 const watcher = path.join(website, 'scripts', 'watch-flutter-embed.mjs');
 
 console.log('[development] Building the shared Flutter previews...');
-buildFlutterEmbed({mode: 'debug'});
+try {
+  await buildFlutterEmbed({mode: 'debug'});
+} catch (error) {
+  // Docusaurus is still worth starting: the previews render their own
+  // "unavailable" state and the watcher rebuilds once the source compiles.
+  console.error(`[development] ${error.message}`);
+}
 
 const children = [
   spawn(process.execPath, [watcher], {cwd: website, stdio: 'inherit'}),

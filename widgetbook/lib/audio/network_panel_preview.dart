@@ -78,7 +78,7 @@ class _NetworkPanelPreviewState extends State<NetworkPanelPreview>
 
         return ProviderScope(
           child: NetworkPanel(
-            borderRadius: const BorderRadius.all(Radius.circular(18)),
+            borderRadius: HyprRadii.popoverRadius,
             status: AsyncData<NetworkStatus>(status),
             latestResult: null,
             onSetWifiEnabled: _setWifiEnabled,

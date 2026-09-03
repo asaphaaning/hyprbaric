@@ -21,7 +21,21 @@ class _NotificationPanelPreviewState extends State<NotificationPanelPreview> {
   @override
   void initState() {
     super.initState();
-    _entries = List<NotificationEntry>.of(
+    _entries = _seed();
+  }
+
+  @override
+  void didUpdateWidget(NotificationPanelPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Widgetbook swaps the seed when a knob changes, so the local copy has to
+    // follow it rather than stay pinned to whatever initState first saw.
+    if (widget.initialStatus != oldWidget.initialStatus) {
+      _entries = _seed();
+    }
+  }
+
+  List<NotificationEntry> _seed() {
+    return List<NotificationEntry>.of(
       (widget.initialStatus ?? NotificationFixtures.populated()).entries,
     );
   }
@@ -29,7 +43,7 @@ class _NotificationPanelPreviewState extends State<NotificationPanelPreview> {
   @override
   Widget build(BuildContext context) {
     return NotificationPanel(
-      borderRadius: const BorderRadius.all(Radius.circular(16)),
+      borderRadius: HyprRadii.popoverRadius,
       status: AsyncValue.data(
         NotificationStatus(
           available: true,

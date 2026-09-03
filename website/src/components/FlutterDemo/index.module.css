@@ -36,6 +36,42 @@
   border: 0;
 }
 
+.unavailable {
+  align-items: center;
+  background: linear-gradient(180deg, #1c2025, #101216);
+  border: 1px solid #2b3037;
+  border-radius: 18px;
+  color: #9aa5af;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  inset: 0;
+  justify-content: center;
+  padding: 8%;
+  position: absolute;
+  text-align: center;
+}
+
+.unavailableTitle {
+  color: #e9f0f6;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.unavailableBody {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.unavailableBody code {
+  background: rgb(255 255 255 / 6%);
+  border-radius: 4px;
+  font-size: 0.95em;
+  padding: 0.1em 0.35em;
+}
+
 .skeleton {
   background: linear-gradient(180deg, #1c2025, #101216);
   border: 1px solid #2b3037;
@@ -129,19 +165,8 @@
 .notificationRowTwo {height: 23%; top: 47%;}
 .notificationRowThree {height: 23%; top: 74%;}
 
-.workspaceSkeleton {
-  border-radius: 10px;
-}
 
-.workspaceSkeleton span {
-  border-radius: 5px;
-  height: 30%;
-  top: 35%;
-}
 
-.workspacePrevious {left: 7%; width: 7%;}
-.workspaceIndicators {left: 20%; right: 20%;}
-.workspaceNext {right: 7%; width: 7%;}
 
 @keyframes shimmer {
   to {transform: translateX(100%);}
