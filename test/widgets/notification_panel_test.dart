@@ -124,6 +124,28 @@ void main() {
       // notification drains away.
       expect(find.text('clear all'), findsOneWidget);
     });
+
+    testWidgets('the notification list rebuilds itself on an interval', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _host(
+          AsyncValue<NotificationStatus>.data(
+            _status(
+              entries: <NotificationEntry>[_entry(1, 'mail', 'New message')],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('2m ago'), findsOneWidget);
+
+      // Relative timestamps go stale the moment they are painted: the list
+      // rebuilds on an interval while the panel stays open.
+      await tester.pump(const Duration(seconds: 61));
+
+      expect(find.text('3m ago'), findsOneWidget);
+    });
   });
 }
 
