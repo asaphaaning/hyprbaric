@@ -38,7 +38,8 @@ void main() {
   });
 
   test('an unknown preview name resolves to nothing rather than the mixer', () {
-    expect(LandingPreview.byName('workspaces'), isNull);
+    expect(LandingPreview.byName('tray'), isNull);
+    expect(LandingPreview.byName('Mixer'), isNull);
     expect(LandingPreview.byName(null), isNull);
     expect(LandingPreview.byName(''), isNull);
     expect(LandingPreview.byName('mixer'), LandingPreview.mixer);

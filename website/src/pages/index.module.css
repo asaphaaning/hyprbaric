@@ -693,6 +693,14 @@
 }
 
 .panelPreview img,
+.workspacePreview {
+  aspect-ratio: 5.3;
+  display: block;
+  height: auto;
+  margin: 6px 0 2px;
+  width: 100%;
+}
+
 .notificationPreview {
   filter: drop-shadow(0 2px 3px rgb(0 0 0 / 50%)) drop-shadow(0 10px 20px rgb(0 0 0 / 50%)) drop-shadow(0 24px 44px rgb(0 0 0 / 40%));
 }
@@ -739,6 +747,14 @@
 
 .smallCard {
   flex: 1;
+}
+
+.workspacePreview {
+  aspect-ratio: 5.3;
+  display: block;
+  height: auto;
+  margin: 6px 0 2px;
+  width: 100%;
 }
 
 .notificationPreview {
