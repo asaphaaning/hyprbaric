@@ -290,7 +290,10 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          setupGuideAutomaticHostProvider.overrideWithValue(false),
+          // The persisted status is complete, so this cannot auto-open. Keep
+          // this view eligible because shared manual requests are intentionally
+          // handled by the elected host only.
+          setupGuideAutomaticHostProvider.overrideWithValue(true),
           setupStatusProvider.overrideWith(
             (_) => Stream<SetupStatus>.value(
               const SetupStatus(state: SetupState.complete),

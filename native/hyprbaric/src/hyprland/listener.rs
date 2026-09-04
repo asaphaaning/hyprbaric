@@ -7,9 +7,7 @@ use hyprland::{
 use tokio::sync::broadcast;
 use tracing::instrument;
 
-use super::{
-    DesktopSnapshot, Error, WorkspaceSnapshot, is_special_workspace, refresh::Refresh,
-};
+use super::{DesktopSnapshot, Error, WorkspaceSnapshot, is_special_workspace, refresh::Refresh};
 
 macro_rules! poke_on {
     ($listener:ident, $method:ident, $refresh:ident) => {{

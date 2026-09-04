@@ -96,6 +96,12 @@ class _WorkspaceStripStory extends StatelessWidget {
         child: WorkspaceStrip(
           status: status,
           settings: settings,
+          resolution: MonitorWorkspaceResolution(
+            activeWorkspaceId: status.id,
+            activeWorkspaceName: status.name,
+            isSpecial: status.isSpecial,
+            monitorName: null,
+          ),
           onPrevious: () {},
           onNext: () {},
           onSelect: (_) {},
@@ -136,6 +142,12 @@ class _InteractiveWorkspaceStripStoryState
         child: WorkspaceStrip(
           status: status,
           settings: WorkspaceFixtures.roman,
+          resolution: MonitorWorkspaceResolution(
+            activeWorkspaceId: active,
+            activeWorkspaceName: '$active',
+            isSpecial: false,
+            monitorName: null,
+          ),
           onPrevious: () => _move(-1),
           onNext: () => _move(1),
           onSelect: (int index) => setState(() => active = index),

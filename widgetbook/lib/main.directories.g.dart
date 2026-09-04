@@ -73,8 +73,6 @@ import 'package:hyprbaric_widgetbook/use_cases/setup/setup_guide_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_setup_setup_guide_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/tray/tray_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_tray_tray_use_cases;
-import 'package:hyprbaric_widgetbook/use_cases/workspaces/workspace_strip_use_cases.dart'
-    as _hyprbaric_widgetbook_use_cases_workspaces_workspace_strip_use_cases;
 import 'package:widgetbook/widgetbook.dart' as _widgetbook;
 
 final directories = <_widgetbook.WidgetbookNode>[
@@ -1775,22 +1773,6 @@ final directories = <_widgetbook.WidgetbookNode>[
                 name: 'Populated',
                 builder: _hyprbaric_widgetbook_use_cases_tray_tray_use_cases
                     .buildPopulatedTrayStrip,
-              ),
-            ],
-          ),
-        ],
-      ),
-      _widgetbook.WidgetbookFolder(
-        name: 'Workspaces',
-        children: [
-          _widgetbook.WidgetbookComponent(
-            name: 'WorkspaceStrip',
-            useCases: [
-              _widgetbook.WidgetbookUseCase(
-                name: 'Interactive strip',
-                builder:
-                    _hyprbaric_widgetbook_use_cases_workspaces_workspace_strip_use_cases
-                        .buildInteractiveWorkspaceStrip,
               ),
             ],
           ),

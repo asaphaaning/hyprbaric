@@ -105,16 +105,25 @@ async fn desktop_snapshot(hostname: &str) -> Result<DesktopSnapshot, HyprError> 
         .await
         .map(HyprDataVec::to_vec)
         .unwrap_or_else(|error| {
-            tracing::warn!(?error, "Failed to read Hyprland workspaces; starting without occupancy");
+            tracing::warn!(
+                ?error,
+                "Failed to read Hyprland workspaces; starting without occupancy"
+            );
             Vec::new()
         });
     let monitors = Monitors::get_async()
         .await
         .map(|monitors| {
-            monitors.into_iter().filter(|monitor| !monitor.disabled).collect::<Vec<_>>()
+            monitors
+                .into_iter()
+                .filter(|monitor| !monitor.disabled)
+                .collect::<Vec<_>>()
         })
         .unwrap_or_else(|error| {
-            tracing::warn!(?error, "Failed to read Hyprland monitors; starting without them");
+            tracing::warn!(
+                ?error,
+                "Failed to read Hyprland monitors; starting without them"
+            );
             Vec::new()
         });
     let active_client = Client::get_active_async().await.ok().flatten();
@@ -122,7 +131,10 @@ async fn desktop_snapshot(hostname: &str) -> Result<DesktopSnapshot, HyprError> 
         .await
         .map(|clients| clients.into_iter().collect::<Vec<_>>())
         .unwrap_or_else(|error| {
-            tracing::warn!(?error, "Failed to read Hyprland clients; starting without them");
+            tracing::warn!(
+                ?error,
+                "Failed to read Hyprland clients; starting without them"
+            );
             Vec::new()
         });
     let occupied = WorkspaceOccupancy::from_occupied_ids(

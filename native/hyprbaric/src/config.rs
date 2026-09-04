@@ -101,10 +101,7 @@ where
 
 /// Edits one module-owned table, rejecting incompatible user configuration.
 #[instrument(skip(apply), err)]
-pub(crate) fn edit_table(
-    name: &'static str,
-    apply: impl FnOnce(&mut Table),
-) -> Result<(), Error> {
+pub(crate) fn edit_table(name: &'static str, apply: impl FnOnce(&mut Table)) -> Result<(), Error> {
     try_edit(|document| {
         if !document.as_table().contains_key(name) {
             document[name] = Item::Table(Table::new());
