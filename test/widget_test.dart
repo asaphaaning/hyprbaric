@@ -36,7 +36,6 @@ import 'package:hyprbaric/src/features/settings/settings_overlay_content.dart';
 import 'package:hyprbaric/src/features/settings/settings_overlay_layout.dart';
 import 'package:hyprbaric/src/features/settings/settings_rows.dart';
 import 'package:hyprbaric/src/features/settings/settings_tabs.dart';
-import 'package:hyprbaric/src/features/setup/setup_guide_state.dart';
 import 'package:hyprbaric/src/features/tray/tray_menu_panel.dart';
 import 'package:hyprbaric/src/features/tray/tray_strip.dart';
 import 'package:hyprbaric/src/hyprbaric.dart';
@@ -59,6 +58,14 @@ const BasicMessageChannel<Object?> _layerShellSetRegionChannel =
       'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setRegion',
       NativeLayerShellHostApi.pigeonChannelCodec,
     );
+
+BasicMessageChannel<Object?> _layerShellSetRegionChannelForView(int viewId) {
+  return BasicMessageChannel<Object?>(
+    'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setRegion.$viewId',
+    NativeLayerShellHostApi.pigeonChannelCodec,
+  );
+}
+
 const BasicMessageChannel<Object?> _layerShellSetKeyboardModeChannel =
     BasicMessageChannel<Object?>(
       'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setKeyboardMode',
@@ -101,19 +108,22 @@ class _RecordingRustDispatcher extends RustCommandDispatcher {
   }
 }
 
-void _setRegionMock(FutureOr<Object?> Function(Object? message)? handler) {
+void _setRegionMock(
+  FutureOr<Object?> Function(Object? message)? handler, {
+  int? viewId,
+}) {
+  final BasicMessageChannel<Object?> channel = viewId == null
+      ? _layerShellSetRegionChannel
+      : _layerShellSetRegionChannelForView(viewId);
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMessageHandler(
-        _layerShellSetRegionChannel.name,
+        channel.name,
         handler == null
             ? null
             : (ByteData? message) async {
-                final Object? decoded = _layerShellSetRegionChannel.codec
-                    .decodeMessage(message);
+                final Object? decoded = channel.codec.decodeMessage(message);
                 final Object? response = await handler(decoded);
-                return _layerShellSetRegionChannel.codec.encodeMessage(
-                  response,
-                );
+                return channel.codec.encodeMessage(response);
               },
       );
 }
@@ -471,10 +481,12 @@ ShortcutSettingsSnapshot _shortcutSettingsSnapshot({
 }
 
 Widget _scopedSurface({required Widget child}) {
-  return MaterialApp(
-    home: Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Center(child: child),
+  return ProviderScope(
+    child: MaterialApp(
+      home: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(child: child),
+      ),
     ),
   );
 }
@@ -1060,7 +1072,7 @@ void main() {
         ),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Zed'), findsOneWidget);
     expect(find.text('bar.tsx'), findsOneWidget);
@@ -1516,6 +1528,7 @@ void main() {
     final WorkspaceSwitch command = const WorkspaceSwitch(
       kind: WorkspaceSwitchKind.absolute,
       value: 5,
+      monitorName: 'DP-2',
     );
 
     expect(
@@ -1643,7 +1656,7 @@ void main() {
         child: const Hyprbaric(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Neovim - hyprbaric'), findsOneWidget);
     expect(find.text('workstation'), findsNothing);
@@ -1669,7 +1682,7 @@ void main() {
         child: const Hyprbaric(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Zed'), findsOneWidget);
     expect(find.text('ZE'), findsOneWidget);
@@ -1697,7 +1710,7 @@ void main() {
         child: const Hyprbaric(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Firefox'), findsOneWidget);
     expect(find.text('firefox'), findsNothing);
@@ -1724,7 +1737,7 @@ void main() {
         child: const Hyprbaric(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Alacritty'), findsOneWidget);
     expect(find.text('AL'), findsOneWidget);
@@ -1751,7 +1764,7 @@ void main() {
         child: const Hyprbaric(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Foot'), findsOneWidget);
     expect(find.text('FO'), findsOneWidget);
@@ -1778,7 +1791,7 @@ void main() {
         child: const Hyprbaric(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Hyprbaric'), findsNothing);
     expect(find.text('Desktop'), findsNothing);
@@ -1806,7 +1819,7 @@ void main() {
         child: const Hyprbaric(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Hyprbaric'), findsNothing);
     expect(find.text('desktop'), findsNothing);
@@ -1832,7 +1845,7 @@ void main() {
         child: const Hyprbaric(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Hyprbaric'), findsNothing);
     expect(find.text('desktop'), findsNothing);
@@ -1858,7 +1871,7 @@ void main() {
         child: const Hyprbaric(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Some Browser'), findsOneWidget);
     expect(find.text('org.example.some-browser.desktop'), findsNothing);
@@ -1884,7 +1897,7 @@ void main() {
         child: const Hyprbaric(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('workstation'), findsOneWidget);
   });
@@ -1973,7 +1986,6 @@ void main() {
     addTearDown(() async {
       await tester.binding.setSurfaceSize(null);
       debugDefaultTargetPlatformOverride = null;
-      LayerShellController.debugResetKeyboardOwners();
       _setRegionMock(null);
       _setKeyboardModeMock(null);
     });
@@ -1981,7 +1993,6 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          setupGuideAutomaticHostProvider.overrideWithValue(false),
           setupStatusProvider.overrideWith(
             (_) => Stream<SetupStatus>.value(
               const SetupStatus(state: SetupState.complete),
@@ -2276,6 +2287,37 @@ void main() {
     expect(
       dispatcher.intents.map((RustIntent intent) => intent.debugLabel),
       contains('appearance_restore_defaults'),
+    );
+  });
+
+  testWidgets('appearance settings can target every monitor', (
+    WidgetTester tester,
+  ) async {
+    final _RecordingRustDispatcher dispatcher = _RecordingRustDispatcher();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          rustCommandDispatcherProvider.overrideWith((ref) => dispatcher),
+        ],
+        child: _scopedSurface(
+          child: const SizedBox(
+            width: 420,
+            height: 360,
+            child: AppearanceSettingsPanel(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.text('All'));
+    await tester.pump();
+
+    expect(
+      dispatcher.intents.map((RustIntent intent) => intent.debugLabel),
+      contains('appearance_monitor:AppearanceMonitorTargetAll()'),
     );
   });
 
@@ -4338,6 +4380,32 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  testWidgets('satellite view ignores process-global hotkeys', (
+    WidgetTester tester,
+  ) async {
+    final StreamController<ShortcutEvent> hotkeys =
+        StreamController<ShortcutEvent>();
+    addTearDown(hotkeys.close);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          layerShellViewRoleProvider.overrideWithValue(
+            LayerShellViewRole.satellite,
+          ),
+          shortcutEventProvider.overrideWith((ref) => hotkeys.stream),
+        ],
+        child: const Hyprbaric(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    hotkeys.add(_shortcut(0, const HotkeyEventToggleSessionLauncher()));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('SESSION'), findsNothing);
+  });
+
   testWidgets('session launcher arrow keys browse actions before confirming', (
     WidgetTester tester,
   ) async {
@@ -5030,6 +5098,45 @@ void main() {
     expect(payloads.single['bar_edge'], 'bottom');
   }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
+  testWidgets('view-scoped region managers use their suffixed channel', (
+    WidgetTester tester,
+  ) async {
+    const int viewId = 42;
+    final List<Map<String, Object?>> payloads = <Map<String, Object?>>[];
+    _setRegionMock((Object? message) {
+      payloads.add(_regionPayloadFromMessage(message));
+      return _pigeonSuccess();
+    }, viewId: viewId);
+    final ProviderContainer container = ProviderContainer(
+      overrides: [
+        layerShellControllerProvider.overrideWithValue(
+          LayerShellController.forView(viewId),
+        ),
+        layerShellRegionManagerProvider.overrideWith(
+          createLayerShellRegionManager,
+        ),
+      ],
+    );
+    addTearDown(() {
+      container.dispose();
+      _setRegionMock(null, viewId: viewId);
+    });
+
+    await container
+        .read(layerShellRegionManagerProvider)
+        .setPassiveRegions(
+          owner: 'setup-guide',
+          regions: const <LayerShellMenuRegion>[
+            LayerShellMenuRegion(
+              rect: Rect.fromLTWH(0, 0, 800, 600),
+              radius: BorderRadius.zero,
+            ),
+          ],
+        );
+
+    expect(payloads, hasLength(1));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
+
   testWidgets('region manager skips duplicate requests', (
     WidgetTester tester,
   ) async {
@@ -5050,6 +5157,33 @@ void main() {
     await tester.pump();
 
     expect(invocationCount, 1);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
+
+  testWidgets('region manager surfaces and retries a failed request', (
+    WidgetTester tester,
+  ) async {
+    int invocationCount = 0;
+    _setRegionMock((Object? message) {
+      invocationCount += 1;
+      if (invocationCount == 1) {
+        return <Object?>['native-error', 'temporary failure', null];
+      }
+      return _pigeonSuccess();
+    });
+
+    final LayerShellRegionManager manager = LayerShellRegionManager(
+      barHeight: 36,
+    );
+    const Rect rect = Rect.fromLTWH(0, 36, 140, 48);
+
+    await expectLater(
+      manager.updateRegion(menuRect: rect, debugLabel: 'first'),
+      throwsA(isA<PlatformException>()),
+    );
+    await manager.updateRegion(menuRect: rect, debugLabel: 'retry');
+    await tester.pump();
+
+    expect(invocationCount, 2);
   }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
   testWidgets('region manager preserves passive regions across menu updates', (
@@ -5169,6 +5303,52 @@ void main() {
         ),
         true,
       );
+      expect(payloads.last['menu'], null);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.linux),
+  );
+
+  testWidgets(
+    'disposing an open dropdown releases its full-surface input region',
+    (WidgetTester tester) async {
+      final List<Map<String, Object?>> payloads = <Map<String, Object?>>[];
+      _setRegionMock((Object? message) {
+        payloads.add(_regionPayloadFromMessage(message));
+        return _pigeonSuccess();
+      });
+      final LayerShellDropdownController controller =
+          LayerShellDropdownController();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: LayerShellDropdown(
+              controller: controller,
+              buttonBuilder:
+                  (
+                    BuildContext context,
+                    LayerShellDropdownController controller, {
+                    required bool isOpen,
+                  }) => const SizedBox(width: 96, height: 32),
+              menuBuilder:
+                  (
+                    BuildContext context,
+                    LayerShellDropdownController controller,
+                  ) => const Material(child: SizedBox(width: 180, height: 160)),
+            ),
+          ),
+        ),
+      );
+      controller.open();
+      await tester.pump();
+      await tester.pump();
+
+      expect(payloads.last['capture_all_clicks'], true);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+
+      expect(payloads.last['capture_all_clicks'], false);
       expect(payloads.last['menu'], null);
     },
     variant: TargetPlatformVariant.only(TargetPlatform.linux),

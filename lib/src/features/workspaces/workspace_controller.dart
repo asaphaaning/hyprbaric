@@ -11,24 +11,24 @@ class WorkspaceController extends _$WorkspaceController {
   @override
   void build() {}
 
-  void previous() {
-    relative(-1);
+  void previous(String? monitorName) {
+    relative(-1, monitorName);
   }
 
-  void next() {
-    relative(1);
+  void next(String? monitorName) {
+    relative(1, monitorName);
   }
 
-  void relative(int delta) {
+  void relative(int delta, String? monitorName) {
     ref
         .read(rustCommandDispatcherProvider)
-        .dispatch(WorkspaceIntent.relative(delta));
+        .dispatch(WorkspaceIntent.relative(delta, monitorName));
   }
 
-  void select(int target) {
+  void select(int target, String? monitorName) {
     ref
         .read(rustCommandDispatcherProvider)
-        .dispatch(WorkspaceIntent.absolute(target));
+        .dispatch(WorkspaceIntent.absolute(target, monitorName));
   }
 }
 

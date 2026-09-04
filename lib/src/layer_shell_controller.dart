@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/foundation.dart';
 
 import 'native/layer_shell_api.g.dart';
@@ -21,26 +23,96 @@ enum LayerShellKeyboardMode {
   final NativeLayerShellKeyboardMode native;
 }
 
-class LayerShellController {
-  LayerShellController._();
+sealed class LayerShellMonitorTarget {
+  const LayerShellMonitorTarget();
 
-  static final NativeLayerShellHostApi _api = NativeLayerShellHostApi();
+  const factory LayerShellMonitorTarget.primary() =
+      LayerShellPrimaryMonitorTarget;
+  const factory LayerShellMonitorTarget.all() = LayerShellAllMonitorTarget;
+  const factory LayerShellMonitorTarget.named(String name) =
+      LayerShellNamedMonitorTarget;
+  const factory LayerShellMonitorTarget.hidden() =
+      LayerShellHiddenMonitorTarget;
+
+  NativeLayerShellMonitorTarget toNative();
+}
+
+class LayerShellPrimaryMonitorTarget extends LayerShellMonitorTarget {
+  const LayerShellPrimaryMonitorTarget();
+
+  @override
+  NativeLayerShellMonitorTarget toNative() => NativeLayerShellMonitorTarget(
+    kind: NativeLayerShellMonitorTargetKind.primary,
+  );
+}
+
+class LayerShellAllMonitorTarget extends LayerShellMonitorTarget {
+  const LayerShellAllMonitorTarget();
+
+  @override
+  NativeLayerShellMonitorTarget toNative() => NativeLayerShellMonitorTarget(
+    kind: NativeLayerShellMonitorTargetKind.all,
+  );
+}
+
+class LayerShellNamedMonitorTarget extends LayerShellMonitorTarget {
+  const LayerShellNamedMonitorTarget(this.name);
+
+  final String name;
+
+  @override
+  NativeLayerShellMonitorTarget toNative() => NativeLayerShellMonitorTarget(
+    kind: NativeLayerShellMonitorTargetKind.named,
+    name: name,
+  );
+}
+
+class LayerShellHiddenMonitorTarget extends LayerShellMonitorTarget {
+  const LayerShellHiddenMonitorTarget();
+
+  @override
+  NativeLayerShellMonitorTarget toNative() => NativeLayerShellMonitorTarget(
+    kind: NativeLayerShellMonitorTargetKind.hidden,
+  );
+}
+
+@immutable
+class LayerShellMonitor {
+  const LayerShellMonitor({
+    required this.name,
+    required this.label,
+    required this.isPrimary,
+    required this.geometry,
+    required this.refreshRateMillihertz,
+  });
+
+  final String name;
+  final String label;
+  final bool isPrimary;
+  final Rect geometry;
+  final int refreshRateMillihertz;
+
+  double get refreshRate => refreshRateMillihertz / 1000;
+}
+
+class LayerShellController {
+  LayerShellController.defaultView() : _api = NativeLayerShellHostApi();
+
+  LayerShellController.forView(int viewId)
+    : _api = NativeLayerShellHostApi(messageChannelSuffix: '$viewId');
+
+  final NativeLayerShellHostApi _api;
 
   static bool get _isSupported =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.linux;
 
-  static Future<void> setLayer(LayerShellLayer layer) =>
+  Future<void> setLayer(LayerShellLayer layer) =>
       _invoke('setLayer', () => _api.setLayer(layer.native));
 
-  static Future<void> setNamespace(String namespace) =>
+  Future<void> setNamespace(String namespace) =>
       _invoke('setNamespace', () => _api.setNamespace(namespace));
 
-  static Future<void> setAnchors({
-    bool? top,
-    bool? bottom,
-    bool? left,
-    bool? right,
-  }) {
+  Future<void> setAnchors({bool? top, bool? bottom, bool? left, bool? right}) {
     if (top == null && bottom == null && left == null && right == null) {
       return Future<void>.value();
     }
@@ -57,12 +129,7 @@ class LayerShellController {
     );
   }
 
-  static Future<void> setMargins({
-    int? top,
-    int? bottom,
-    int? left,
-    int? right,
-  }) {
+  Future<void> setMargins({int? top, int? bottom, int? left, int? right}) {
     if (top == null && bottom == null && left == null && right == null) {
       return Future<void>.value();
     }
@@ -79,29 +146,31 @@ class LayerShellController {
     );
   }
 
-  static Future<void> setExclusiveZone(int zone) =>
+  Future<void> setExclusiveZone(int zone) =>
       _invoke('setExclusiveZone', () => _api.setExclusiveZone(zone));
 
-  static Future<void> setAutoExclusiveZone({required bool enabled}) =>
+  Future<void> setAutoExclusiveZone({required bool enabled}) =>
       _invoke('setAutoExclusiveZone', () => _api.setAutoExclusiveZone(enabled));
 
-  static Future<void> setKeyboardMode(LayerShellKeyboardMode mode) =>
+  Future<void> setKeyboardMode(LayerShellKeyboardMode mode) =>
       _invoke('setKeyboardMode', () => _api.setKeyboardMode(mode.native));
 
-  /// Compositor keyboard claims by owner.
+  /// Compositor keyboard claims by owner, scoped to this view.
   ///
   /// Several overlays (settings, setup guide, launchers, network password)
   /// need exclusive keyboard while open. Each one claims on open and releases
   /// on close; the mode stays exclusive until the last claim is released, so
   /// overlapping overlays cannot strand each other without keyboard access.
-  static final Set<String> _keyboardOwners = <String>{};
+  /// The set lives on the controller because every native view carries its
+  /// own keyboard mode on its own channel.
+  final Set<String> _keyboardOwners = <String>{};
 
-  static Future<void> claimKeyboard(String owner) {
+  Future<void> claimKeyboard(String owner) {
     _keyboardOwners.add(owner);
     return setKeyboardMode(LayerShellKeyboardMode.exclusive);
   }
 
-  static Future<void> releaseKeyboard(String owner) {
+  Future<void> releaseKeyboard(String owner) {
     _keyboardOwners.remove(owner);
     if (_keyboardOwners.isNotEmpty) {
       return Future<void>.value();
@@ -109,10 +178,7 @@ class LayerShellController {
     return setKeyboardMode(LayerShellKeyboardMode.none);
   }
 
-  @visibleForTesting
-  static void debugResetKeyboardOwners() => _keyboardOwners.clear();
-
-  static Future<void> setSize({int? width, int? height}) {
+  Future<void> setSize({int? width, int? height}) {
     if (width == null && height == null) return Future<void>.value();
     return _invoke(
       'setSize',
@@ -120,7 +186,24 @@ class LayerShellController {
     );
   }
 
-  static Future<void> configurePanelDefaults({
+  Future<List<LayerShellMonitor>> listMonitors() async {
+    if (!_isSupported) {
+      return const <LayerShellMonitor>[];
+    }
+    final List<NativeLayerShellMonitor> monitors = await _api.listMonitors();
+    return monitors.map(_monitorFromNative).toList(growable: false);
+  }
+
+  Future<LayerShellMonitor?> currentMonitor() async {
+    if (!_isSupported) {
+      return null;
+    }
+
+    final NativeLayerShellMonitor? monitor = await _api.currentMonitor();
+    return monitor == null ? null : _monitorFromNative(monitor);
+  }
+
+  Future<void> configurePanelDefaults({
     String namespace = 'hyprbaric',
     LayerShellLayer layer = LayerShellLayer.top,
     LayerShellKeyboardMode keyboardMode = LayerShellKeyboardMode.none,
@@ -135,6 +218,7 @@ class LayerShellController {
     int? marginBottom,
     int? marginLeft,
     int? marginRight,
+    LayerShellMonitorTarget monitor = const LayerShellMonitorTarget.primary(),
   }) async {
     if (!_isSupported) {
       return;
@@ -162,16 +246,41 @@ class LayerShellController {
           exclusiveZone: exclusiveZone,
           autoExclusiveZone: autoExclusiveZone,
           keyboardMode: keyboardMode.native,
+          monitor: monitor.toNative(),
         ),
       ),
     );
   }
 
-  static Future<void> _invoke(String method, Future<void> Function() action) {
+  Future<void> setRegion(NativeLayerShellRegionRequest request) =>
+      _invoke('setRegion', () => _api.setRegion(request));
+
+  static Future<void> _invoke(
+    String method,
+    Future<void> Function() action,
+  ) async {
     if (!_isSupported) return Future<void>.value();
-    return action().catchError((Object error, StackTrace stackTrace) {
+    try {
+      await action();
+    } catch (error, stackTrace) {
       debugPrint('Layer shell call $method failed: $error');
       debugPrint('$stackTrace');
-    });
+      Error.throwWithStackTrace(error, stackTrace);
+    }
   }
+}
+
+LayerShellMonitor _monitorFromNative(NativeLayerShellMonitor monitor) {
+  return LayerShellMonitor(
+    name: monitor.name,
+    label: monitor.label,
+    isPrimary: monitor.isPrimary,
+    geometry: Rect.fromLTWH(
+      monitor.x.toDouble(),
+      monitor.y.toDouble(),
+      monitor.width.toDouble(),
+      monitor.height.toDouble(),
+    ),
+    refreshRateMillihertz: monitor.refreshRateMillihertz,
+  );
 }

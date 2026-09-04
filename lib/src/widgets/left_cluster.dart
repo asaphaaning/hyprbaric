@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../bindings/bindings.dart';
+import '../layer_shell_controller.dart';
+import '../state/monitor_workspace.dart';
 import '../state/providers.dart';
 import 'hypr_surface.dart';
 import 'primitives/primitives.dart';
@@ -27,15 +29,31 @@ class LeftCluster extends ConsumerWidget {
     final WorkspaceSettingsStatus workspaceSettings = ref.watch(
       currentWorkspaceSettingsProvider,
     );
+    final LayerShellMonitor? output = ref
+        .watch(layerShellCurrentMonitorProvider)
+        .asData
+        ?.value;
     final Widget workspaceWidget = workspaceStatus.when(
-      data: (WorkspaceStatus status) => WorkspaceStrip(
-        status: status,
-        settings: workspaceSettings,
-        onPrevious: () =>
-            ref.read(workspaceControllerProvider.notifier).previous(),
-        onNext: () => ref.read(workspaceControllerProvider.notifier).next(),
-        onSelect: ref.read(workspaceControllerProvider.notifier).select,
-      ),
+      data: (WorkspaceStatus status) {
+        final MonitorWorkspaceResolution resolution = resolveMonitorWorkspace(
+          status,
+          output,
+        );
+        return WorkspaceStrip(
+          status: status,
+          resolution: resolution,
+          settings: workspaceSettings,
+          onPrevious: () => ref
+              .read(workspaceControllerProvider.notifier)
+              .previous(resolution.monitorName),
+          onNext: () => ref
+              .read(workspaceControllerProvider.notifier)
+              .next(resolution.monitorName),
+          onSelect: (int target) => ref
+              .read(workspaceControllerProvider.notifier)
+              .select(target, resolution.monitorName),
+        );
+      },
       loading: () => const WorkspaceStripPlaceholder(label: '…'),
       error: (_, _) => const WorkspaceStripPlaceholder(label: '!'),
     );

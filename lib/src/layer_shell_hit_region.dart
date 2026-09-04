@@ -1,11 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
+import 'layer_shell_controller.dart';
 import 'native/layer_shell_api.g.dart';
 
 bool _isLinux() => !kIsWeb && defaultTargetPlatform == TargetPlatform.linux;
-
-final NativeLayerShellHostApi _layerShellApi = NativeLayerShellHostApi();
 
 enum LayerShellBarEdge {
   top,
@@ -104,13 +103,17 @@ class _QueuedRegionUpdate {
 class LayerShellRegionManager {
   LayerShellRegionManager({
     required double barHeight,
+    LayerShellController? controller,
     LayerShellBarEdge barEdge = LayerShellBarEdge.top,
   }) : _barHeight = barHeight.round(),
+       _controller = controller ?? LayerShellController.defaultView(),
        _barEdge = barEdge;
 
+  final LayerShellController _controller;
   int _barHeight;
   LayerShellBarEdge _barEdge;
   LayerShellMenuRegion? _menu;
+  Object? _menuOwner;
   bool _captureAllClicks = false;
   final Map<String, List<LayerShellMenuRegion>> _ownedRegions =
       <String, List<LayerShellMenuRegion>>{};
@@ -131,15 +134,24 @@ class LayerShellRegionManager {
   void dispose() {
     _pendingUpdate = null;
     _ownedRegions.clear();
+    _menu = null;
+    _menuOwner = null;
+    _captureAllClicks = false;
   }
 
   Future<void> updateRegion({
     required Rect? menuRect,
     BorderRadius? radius,
     bool captureAllClicks = false,
+    Object? owner,
     String debugLabel = 'layer-shell',
   }) async {
     if (!_isLinux()) {
+      return;
+    }
+
+    if (menuRect == null && _menuOwner != null && _menuOwner != owner) {
+      await _sendMergedRegion(debugLabel);
       return;
     }
 
@@ -149,6 +161,7 @@ class LayerShellRegionManager {
             rect: menuRect,
             radius: radius ?? BorderRadius.zero,
           );
+    _menuOwner = menuRect == null ? null : owner;
     _captureAllClicks = captureAllClicks;
     await _sendMergedRegion(debugLabel);
   }
@@ -190,7 +203,8 @@ class LayerShellRegionManager {
           .toList(growable: false),
       captureAllClicks: _captureAllClicks,
     );
-    if (request == _lastAppliedRequest || request == _pendingUpdate?.request) {
+    if (request == _lastAppliedRequest ||
+        (_flushInProgress && request == _pendingUpdate?.request)) {
       return;
     }
 
@@ -215,10 +229,11 @@ class LayerShellRegionManager {
         }
 
         try {
-          await _layerShellApi.setRegion(nextUpdate.request.toNative());
+          await _controller.setRegion(nextUpdate.request.toNative());
           _lastAppliedRequest = nextUpdate.request;
         } catch (_) {
-          // A dropped region update is recoverable: the next one reapplies it.
+          _pendingUpdate ??= nextUpdate;
+          rethrow;
         }
       }
     } finally {

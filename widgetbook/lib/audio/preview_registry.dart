@@ -5,6 +5,7 @@ import 'controls_panel_preview.dart';
 import 'network_panel_preview.dart';
 import 'notification_panel_preview.dart';
 import 'power_panel_preview.dart';
+import 'workspace_strip_preview.dart';
 
 /// The previews the landing page may embed, keyed by the name it passes.
 ///
@@ -16,7 +17,8 @@ enum LandingPreview {
   controls(name: 'controls', width: 432),
   network(name: 'network', width: 340),
   power(name: 'power', width: 320),
-  notifications(name: 'notifications', width: 380);
+  notifications(name: 'notifications', width: 380),
+  workspaces(name: 'workspaces', width: 340);
 
   const LandingPreview({required this.name, required this.width});
 
@@ -47,6 +49,7 @@ enum LandingPreview {
       LandingPreview.network => const NetworkPanelPreview(),
       LandingPreview.power => const PowerPanelPreview(),
       LandingPreview.notifications => const NotificationPanelPreview(),
+      LandingPreview.workspaces => const WorkspaceStripPreview(),
     };
   }
 }

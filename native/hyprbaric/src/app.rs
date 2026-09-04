@@ -7,7 +7,7 @@ use crate::{
     appearance, audio,
     bootstrap::Components,
     brightness, caffeine, clock, color_picker,
-    hyprland::{self, FocusedWindowSnapshot, WorkspaceSnapshot},
+    hyprland::{self, DesktopSnapshot},
     launcher, modules, night_light, notifications, portals, power, recording, schedule, screenshot,
     session, setup, shortcuts, tray, workspaces,
 };
@@ -66,12 +66,17 @@ pub enum Command {
 }
 
 /// Active workspace requests.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WorkspaceCommand {
     /// Republish current workspace and focused-window state.
     Refresh,
     /// Move by a relative workspace offset.
-    Switch(hyprland::WorkspaceTarget),
+    Switch {
+        /// Workspace to activate.
+        target: hyprland::WorkspaceTarget,
+        /// Output that originated the interaction, when known.
+        output: Option<hyprland::OutputName>,
+    },
 }
 
 /// Network requests whose secrets remain inside the application boundary.
@@ -128,8 +133,7 @@ pub struct App {
 }
 
 struct Inner {
-    workspace: RwLock<WorkspaceSnapshot>,
-    focused_window: RwLock<FocusedWindowSnapshot>,
+    desktop: RwLock<DesktopSnapshot>,
     color_scheme: RwLock<Option<portals::ColorScheme>>,
 }
 
@@ -137,8 +141,7 @@ impl App {
     /// Builds an application from bootstrapped components and initial state.
     pub(crate) fn new(
         components: Components,
-        initial_workspace: WorkspaceSnapshot,
-        initial_focused_window: FocusedWindowSnapshot,
+        initial_desktop: DesktopSnapshot,
         initial_color_scheme: Option<portals::ColorScheme>,
         audio_volume_step: audio::VolumeStep,
         shortcut_configuration: shortcuts::Configuration,
@@ -148,8 +151,7 @@ impl App {
             audio_volume_step,
             shortcut_configuration,
             inner: Arc::new(Inner {
-                workspace: RwLock::new(initial_workspace),
-                focused_window: RwLock::new(initial_focused_window),
+                desktop: RwLock::new(initial_desktop),
                 color_scheme: RwLock::new(initial_color_scheme),
             }),
         }
@@ -333,15 +335,14 @@ impl App {
 
     async fn dispatch_workspace(&self, command: WorkspaceCommand) -> Outcome {
         match command {
-            WorkspaceCommand::Refresh => Outcome::Outputs(vec![
-                Output::Workspace(self.workspace().await),
-                Output::FocusedWindow(self.focused_window().await),
-            ]),
-            WorkspaceCommand::Switch(target) => {
+            WorkspaceCommand::Refresh => {
+                Outcome::Outputs(vec![Output::Desktop(self.desktop().await)])
+            }
+            WorkspaceCommand::Switch { target, output } => {
                 if let Err(error) = self
                     .components
                     .hyprland()
-                    .dispatch(hyprland::Command::SwitchWorkspace(target))
+                    .dispatch(hyprland::Command::SwitchWorkspace { target, output })
                     .await
                 {
                     tracing::error!(%error, ?target, "Failed to switch Hyprland workspace");
@@ -351,24 +352,14 @@ impl App {
         }
     }
 
-    /// Returns the current active workspace projection.
-    pub async fn workspace(&self) -> WorkspaceSnapshot {
-        self.inner.workspace.read().await.clone()
+    /// Returns the latest coherent desktop projection.
+    pub async fn desktop(&self) -> DesktopSnapshot {
+        self.inner.desktop.read().await.clone()
     }
 
-    /// Replaces the active workspace projection after a compositor event.
-    pub async fn set_workspace(&self, snapshot: WorkspaceSnapshot) {
-        *self.inner.workspace.write().await = snapshot;
-    }
-
-    /// Returns the current focused-window projection.
-    pub async fn focused_window(&self) -> FocusedWindowSnapshot {
-        self.inner.focused_window.read().await.clone()
-    }
-
-    /// Replaces the focused-window projection after a compositor event.
-    pub async fn set_focused_window(&self, snapshot: FocusedWindowSnapshot) {
-        *self.inner.focused_window.write().await = snapshot;
+    /// Replaces workspace and focused-window state atomically.
+    pub async fn set_desktop(&self, snapshot: DesktopSnapshot) {
+        *self.inner.desktop.write().await = snapshot;
     }
 
     /// Returns the most recently observed portal color preference.

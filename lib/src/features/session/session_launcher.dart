@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bindings/bindings.dart';
 import '../../layer_shell_controller.dart';
+import '../../state/layer_shell.dart';
 import '../../theme/hypr_tokens.dart';
 import '../../widgets/modal_command_surface.dart';
 import 'session_controller.dart';
@@ -36,6 +37,13 @@ class SessionLauncher extends ConsumerStatefulWidget {
 class _SessionLauncherState extends ConsumerState<SessionLauncher> {
   static const String _keyboardOwner = 'session-launcher';
   final FocusNode _focusNode = FocusNode(debugLabel: 'session-launcher');
+  late final LayerShellController _layerShellController;
+
+  @override
+  void initState() {
+    super.initState();
+    _layerShellController = ref.read(layerShellControllerProvider);
+  }
 
   @override
   void dispose() {
@@ -48,17 +56,17 @@ class _SessionLauncherState extends ConsumerState<SessionLauncher> {
   }
 
   void _handleOpened() {
-    unawaited(LayerShellController.claimKeyboard(_keyboardOwner));
+    unawaited(_layerShellController.claimKeyboard(_keyboardOwner));
   }
 
   void _handleClosing() {
     ref.read(sessionControllerProvider.notifier).closed();
-    unawaited(LayerShellController.releaseKeyboard(_keyboardOwner));
+    unawaited(_layerShellController.releaseKeyboard(_keyboardOwner));
   }
 
   void _handleDismissed() {
     ref.read(sessionControllerProvider.notifier).closed();
-    unawaited(LayerShellController.releaseKeyboard(_keyboardOwner));
+    unawaited(_layerShellController.releaseKeyboard(_keyboardOwner));
   }
 
   bool _canOpen() {

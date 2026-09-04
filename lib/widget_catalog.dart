@@ -8,6 +8,8 @@ export 'src/bindings/bindings.dart'
         AppLauncherResults,
         AppStatus,
         AppearanceMonitorTarget,
+        AppearanceMonitorTargetAll,
+        AppearanceMonitorTargetNamed,
         AppearanceMonitorTargetPrimary,
         AppearancePosition,
         AppearanceStatus,
@@ -35,6 +37,8 @@ export 'src/bindings/bindings.dart'
         ModuleEntry,
         ModuleId,
         ModulesStatus,
+        MonitorFocusedWindowStatus,
+        MonitorWorkspaceStatus,
         NetworkCommand,
         NetworkCommandConnect,
         NetworkCommandOpenSettings,
@@ -167,6 +171,7 @@ export 'src/features/setup/setup_guide_state.dart'
 export 'src/features/tray/tray_menu_panel.dart' show TrayMenuPanel;
 export 'src/features/tray/tray_strip.dart' show TrayStrip;
 export 'src/hyprbaric.dart' show Hyprbaric;
+export 'src/state/monitor_workspace.dart' show MonitorWorkspaceResolution;
 export 'src/state/rust_signals/app.dart' show appStatusProvider;
 export 'src/state/rust_signals/appearance.dart' show appearanceStatusProvider;
 export 'src/state/rust_signals/audio.dart'

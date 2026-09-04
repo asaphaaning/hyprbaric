@@ -176,3 +176,17 @@
   .hostReady {transition: none;}
   .skeleton::after {animation: none;}
 }
+
+.workspaceSkeleton {
+  padding: 0 6%;
+}
+
+.workspaceSkeleton span {
+  border-radius: 8px;
+  top: 28%;
+  height: 44%;
+}
+
+.workspacePrevious {left: 6%; width: 7%;}
+.workspaceIndicators {left: 17%; right: 17%;}
+.workspaceNext {right: 6%; width: 7%;}

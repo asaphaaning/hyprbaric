@@ -19,10 +19,8 @@ use crate::{
 pub enum Output {
     /// The native backend started.
     Started,
-    /// The active Hyprland workspace changed.
-    Workspace(hyprland::WorkspaceSnapshot),
-    /// The focused Hyprland window changed.
-    FocusedWindow(hyprland::FocusedWindowSnapshot),
+    /// Workspace and focused-window state observed together.
+    Desktop(hyprland::DesktopSnapshot),
     /// Appearance state changed.
     Appearance(appearance::Snapshot),
     /// An appearance command completed.
@@ -99,8 +97,7 @@ pub enum Output {
 /// output service instead of one service per feature stream.
 pub struct Subscriptions {
     pub(crate) replay: VecDeque<Output>,
-    pub(crate) workspace: broadcast::Receiver<hyprland::WorkspaceSnapshot>,
-    pub(crate) focused_window: broadcast::Receiver<hyprland::FocusedWindowSnapshot>,
+    pub(crate) desktop: broadcast::Receiver<hyprland::DesktopSnapshot>,
     pub(crate) appearance: broadcast::Receiver<appearance::Snapshot>,
     pub(crate) appearance_reports: broadcast::Receiver<appearance::Report>,
     pub(crate) modules: broadcast::Receiver<modules::Snapshot>,
@@ -142,10 +139,7 @@ impl Subscriptions {
         }
 
         tokio::select! {
-            value = receive(&mut self.workspace, "workspace") => Output::Workspace(value),
-            value = receive(&mut self.focused_window, "focused-window") => {
-                Output::FocusedWindow(value)
-            }
+            value = receive(&mut self.desktop, "desktop") => Output::Desktop(value),
             value = receive(&mut self.appearance, "appearance") => Output::Appearance(value),
             value = receive(&mut self.appearance_reports, "appearance-report") => {
                 Output::AppearanceReport(value)

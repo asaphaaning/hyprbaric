@@ -10,24 +10,24 @@ class ShortcutEvent {
 }
 
 Stream<WorkspaceStatus> _workspaceStream() async* {
-  final latest = WorkspaceStatus.latestRustSignal;
+  final latest = DesktopStatus.latestRustSignal;
   if (latest != null) {
-    yield latest.message;
+    yield latest.message.workspace;
   }
 
-  await for (final rustSignal in WorkspaceStatus.rustSignalStream) {
-    yield rustSignal.message;
+  await for (final rustSignal in DesktopStatus.rustSignalStream) {
+    yield rustSignal.message.workspace;
   }
 }
 
 Stream<FocusedWindowStatus> _focusedWindowStream() async* {
-  final latest = FocusedWindowStatus.latestRustSignal;
+  final latest = DesktopStatus.latestRustSignal;
   if (latest != null) {
-    yield latest.message;
+    yield latest.message.focusedWindow;
   }
 
-  await for (final rustSignal in FocusedWindowStatus.rustSignalStream) {
-    yield rustSignal.message;
+  await for (final rustSignal in DesktopStatus.rustSignalStream) {
+    yield rustSignal.message.focusedWindow;
   }
 }
 
@@ -44,11 +44,6 @@ Stream<PortalStatus> _portalStream() async* {
 
 Stream<ShortcutEvent> _shortcutStream() async* {
   var sequence = 0;
-  final latest = HotkeyEvent.latestRustSignal;
-  if (latest != null) {
-    yield ShortcutEvent(sequence: sequence++, event: latest.message);
-  }
-
   await for (final rustSignal in HotkeyEvent.rustSignalStream) {
     yield ShortcutEvent(sequence: sequence++, event: rustSignal.message);
   }

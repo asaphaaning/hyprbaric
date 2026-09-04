@@ -24,12 +24,14 @@ class SettingsModalOverlay extends ConsumerStatefulWidget {
 class _SettingsModalOverlayState extends ConsumerState<SettingsModalOverlay> {
   static const String _regionOwner = 'settings-modal';
   final FocusNode _focusNode = FocusNode(debugLabel: 'settings-modal');
+  late final LayerShellController _layerShellController;
   late final LayerShellRegionManager _regionManager;
   SettingsTab _tab = SettingsTab.appearance;
 
   @override
   void initState() {
     super.initState();
+    _layerShellController = ref.read(layerShellControllerProvider);
     _regionManager = ref.read(layerShellRegionManagerProvider);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -46,7 +48,7 @@ class _SettingsModalOverlayState extends ConsumerState<SettingsModalOverlay> {
 
   @override
   void dispose() {
-    unawaited(LayerShellController.releaseKeyboard(_regionOwner));
+    unawaited(_layerShellController.releaseKeyboard(_regionOwner));
     _focusNode.dispose();
     unawaited(
       _regionManager.removePassiveRegions(
@@ -59,7 +61,7 @@ class _SettingsModalOverlayState extends ConsumerState<SettingsModalOverlay> {
 
   void _claimKeyboard() {
     _focusNode.requestFocus();
-    unawaited(LayerShellController.claimKeyboard(_regionOwner));
+    unawaited(_layerShellController.claimKeyboard(_regionOwner));
   }
 
   void _scheduleRegionUpdate() {

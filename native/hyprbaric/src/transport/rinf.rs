@@ -5,27 +5,28 @@ use crate::signals::{
     AppStatus, AppearanceCommand, AppearanceCommandResult, AppearanceStatus, AudioCommand,
     AudioCommandResult, AudioStatus, BrightnessCommandResult, BrightnessSetLevel, BrightnessStatus,
     CaffeineCommandResult, CaffeineSetEnabled, CaffeineStatus, CapabilityStatus,
-    ClockCalendarRequest, ClockStatus, ColorPickRequest, ColorPickerCommandResult,
+    ClockCalendarRequest, ClockStatus, ColorPickRequest, ColorPickerCommandResult, DesktopStatus,
     FocusedWindowStatus, HotkeyEvent, ModuleCommand, ModuleCommandResult, ModulesStatus,
-    NetworkCommandResult, NetworkConnectRequest, NetworkScanRequest, NetworkSetWifiEnabled,
-    NetworkSettingsRequest, NetworkStatus, NightLightCommandResult, NightLightSetEnabled,
-    NightLightSetTemperature, NightLightStatus, NotificationClearRequest,
-    NotificationDismissRequest, NotificationSetDoNotDisturb, NotificationStatus, PortalStatus,
-    PowerCommandResult, PowerSetProfile, PowerStatus, RecordingCommandResult, RecordingRequest,
-    RecordingStatus, ScheduleCommand, ScheduleCommandResult, ScheduleStatus,
-    ScreenshotCaptureRequest, ScreenshotCommandResult, SessionActionAvailability, SessionCommand,
-    SessionCommandResult, SetupCommand, SetupCommandResult, SetupStatus,
-    ShortcutSettingsCommandResult, ShortcutSettingsRequest, ShortcutSettingsSnapshot,
-    TrayActivateRequest, TrayMenuItemActivateRequest, TrayMenuStatus, TrayStatus,
-    WorkspaceSettingsCommand, WorkspaceSettingsCommandResult, WorkspaceSettingsStatus,
-    WorkspaceStatus, WorkspaceSwitch, WorkspaceSwitchKind,
+    MonitorFocusedWindowStatus, MonitorWorkspaceStatus, NetworkCommandResult,
+    NetworkConnectRequest, NetworkScanRequest, NetworkSetWifiEnabled, NetworkSettingsRequest,
+    NetworkStatus, NightLightCommandResult, NightLightSetEnabled, NightLightSetTemperature,
+    NightLightStatus, NotificationClearRequest, NotificationDismissRequest,
+    NotificationSetDoNotDisturb, NotificationStatus, PortalStatus, PowerCommandResult,
+    PowerSetProfile, PowerStatus, RecordingCommandResult, RecordingRequest, RecordingStatus,
+    ScheduleCommand, ScheduleCommandResult, ScheduleStatus, ScreenshotCaptureRequest,
+    ScreenshotCommandResult, SessionActionAvailability, SessionCommand, SessionCommandResult,
+    SetupCommand, SetupCommandResult, SetupStatus, ShortcutSettingsCommandResult,
+    ShortcutSettingsRequest, ShortcutSettingsSnapshot, TrayActivateRequest,
+    TrayMenuItemActivateRequest, TrayMenuStatus, TrayStatus, WorkspaceSettingsCommand,
+    WorkspaceSettingsCommandResult, WorkspaceSettingsStatus, WorkspaceStatus, WorkspaceSwitch,
+    WorkspaceSwitchKind,
 };
 use crate::{
     app::{
         App, Command as AppCommand, NetworkCommand as AppNetworkCommand, Outcome, Output,
         WorkspaceCommand as AppWorkspaceCommand,
     },
-    hyprland::{self, FocusedWindowSnapshot, WorkspaceSnapshot},
+    hyprland::{self, DesktopSnapshot, FocusedWindowSnapshot, WorkspaceSnapshot},
 };
 use crate::{
     appearance, audio, brightness, caffeine, capabilities, clock, color_picker, launcher, modules,
@@ -47,8 +48,7 @@ pub(crate) fn send_app_signal() {
 pub(crate) fn publish(output: &Output) {
     match output {
         Output::Started => send_app_signal(),
-        Output::Workspace(snapshot) => send_workspace_signal(snapshot),
-        Output::FocusedWindow(snapshot) => send_focused_window_signal(snapshot),
+        Output::Desktop(snapshot) => send_desktop_signal(snapshot),
         Output::Appearance(snapshot) => send_appearance_signal(snapshot),
         Output::AppearanceReport(report) => send_appearance_command_result(report),
         Output::Modules(snapshot) => send_modules_signal(snapshot),
@@ -90,41 +90,70 @@ pub(crate) fn publish(output: &Output) {
     }
 }
 
-pub(crate) fn send_workspace_signal(snapshot: &WorkspaceSnapshot) {
+fn workspace_signal(snapshot: &WorkspaceSnapshot) -> WorkspaceStatus {
     WorkspaceStatus {
         id: snapshot.id.get(),
         name: snapshot.name.clone(),
         is_special: snapshot.is_special,
         occupied_workspace_ids: snapshot.occupied.ids().map(|id| id.get()).collect(),
-        // Per-output state arrives with the multi-monitor work. Until then a
-        // single bar renders from the compositor-wide fields above.
-        monitors: Vec::new(),
+        monitors: snapshot
+            .monitors
+            .iter()
+            .map(|monitor| MonitorWorkspaceStatus {
+                name: monitor.name.clone(),
+                active_workspace_id: monitor.workspace.id.get(),
+                active_workspace_name: monitor.workspace.name.clone(),
+                is_special: monitor.workspace.is_special(),
+                is_focused: monitor.is_focused,
+                x: monitor.geometry.x,
+                y: monitor.geometry.y,
+                width: monitor.geometry.width,
+                height: monitor.geometry.height,
+                refresh_rate_millihertz: monitor.refresh_rate_millihertz,
+            })
+            .collect(),
     }
-    .send_signal_to_dart();
 }
 
-pub(crate) fn send_focused_window_signal(snapshot: &FocusedWindowSnapshot) {
+fn focused_window_signal(snapshot: &FocusedWindowSnapshot) -> FocusedWindowStatus {
     FocusedWindowStatus {
         app_name: snapshot.app_name.clone(),
         title: snapshot.title.clone(),
         hostname: snapshot.hostname.clone(),
-        monitors: Vec::new(),
+        monitors: snapshot
+            .monitors
+            .iter()
+            .map(|monitor| MonitorFocusedWindowStatus {
+                monitor_name: monitor.monitor_name.clone(),
+                app_name: monitor.app_name.clone(),
+                title: monitor.title.clone(),
+            })
+            .collect(),
+    }
+}
+
+pub(crate) fn send_desktop_signal(snapshot: &DesktopSnapshot) {
+    DesktopStatus {
+        workspace: workspace_signal(&snapshot.workspace),
+        focused_window: focused_window_signal(&snapshot.focused_window),
     }
     .send_signal_to_dart();
 }
 
 pub(crate) async fn handle_workspace_switch(State(context): State<App>, command: WorkspaceSwitch) {
+    let output = command.monitor_name.and_then(hyprland::OutputName::new);
     let command = match command.kind {
         WorkspaceSwitchKind::Relative if command.value == 0 => AppWorkspaceCommand::Refresh,
-        WorkspaceSwitchKind::Relative => {
-            AppWorkspaceCommand::Switch(hyprland::WorkspaceTarget::relative(command.value))
-        }
+        WorkspaceSwitchKind::Relative => AppWorkspaceCommand::Switch {
+            target: hyprland::WorkspaceTarget::relative(command.value),
+            output,
+        },
         WorkspaceSwitchKind::Absolute => {
             let Some(target) = hyprland::WorkspaceTarget::absolute(command.value) else {
                 tracing::warn!(target = command.value, "Ignoring invalid workspace target");
                 return;
             };
-            AppWorkspaceCommand::Switch(target)
+            AppWorkspaceCommand::Switch { target, output }
         }
     };
 

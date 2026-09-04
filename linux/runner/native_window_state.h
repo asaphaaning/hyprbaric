@@ -4,6 +4,7 @@
 #include <cairo/cairo.h>
 #include <gtk/gtk.h>
 
+#include <string>
 #include <vector>
 
 #include "layer_shell_api.g.h"
@@ -29,7 +30,14 @@ struct HitRegionState {
 struct NativeWindowState {
   GtkWindow *window = nullptr;
   GtkWidget *view = nullptr;
+  GdkMonitor *monitor = nullptr;
   gboolean layer_shell_available = FALSE;
+  std::string monitor_name;
+  gboolean monitor_is_primary = FALSE;
+  HyprbaricNativeLayerShellMonitorTargetKind monitor_target =
+      HYPRBARIC_NATIVE_LAYER_SHELL_MONITOR_TARGET_KIND_PRIMARY;
+  std::string named_monitor_target;
+  gboolean first_frame_rendered = FALSE;
   HitRegionState hit_region_state;
   HitRegionState last_applied_hit_region_state;
   gboolean hit_region_apply_scheduled = FALSE;
@@ -39,8 +47,20 @@ struct NativeWindowState {
 
 NativeWindowState *native_window_state_attach(GtkWindow *window,
                                               GtkWidget *view,
-                                              gboolean layer_shell_available);
+                                              GdkMonitor *monitor,
+                                              gboolean layer_shell_available,
+                                              const char *monitor_name,
+                                              gboolean monitor_is_primary);
 
 NativeWindowState *native_window_state_from_window(GtkWindow *window);
+
+void native_window_state_first_frame(NativeWindowState *state);
+
+void native_window_state_set_monitor_target(
+    NativeWindowState *state, HyprbaricNativeLayerShellMonitorTargetKind target,
+    const char *monitor_name);
+
+void native_window_state_set_primary(NativeWindowState *state,
+                                     gboolean is_primary);
 
 #endif // FLUTTER_NATIVE_WINDOW_STATE_H_

@@ -100,10 +100,9 @@ class ModalCommandSurface extends ConsumerStatefulWidget {
 
 class _ModalCommandSurfaceState extends ConsumerState<ModalCommandSurface>
     with SingleTickerProviderStateMixin {
-  LayerShellRegionManager get _regionManager =>
-      ref.read(layerShellRegionManagerProvider);
-
   late final AnimationController _animationController;
+  late final LayerShellRegionManager _regionManager;
+  final Object _regionOwner = Object();
   final GlobalKey _surfaceKey = GlobalKey();
   final GlobalKey _panelKey = GlobalKey();
   bool _isOpen = false;
@@ -115,6 +114,7 @@ class _ModalCommandSurfaceState extends ConsumerState<ModalCommandSurface>
   void initState() {
     super.initState();
     widget.controller._attach(this);
+    _regionManager = ref.read(layerShellRegionManagerProvider);
     _animationController =
         AnimationController(vsync: this, duration: widget.animationDuration)
           ..value = 1
@@ -136,6 +136,14 @@ class _ModalCommandSurfaceState extends ConsumerState<ModalCommandSurface>
   @override
   void dispose() {
     widget.controller._detach(this);
+    unawaited(
+      _regionManager.updateRegion(
+        owner: _regionOwner,
+        menuRect: null,
+        radius: null,
+        debugLabel: '${widget.debugLabel}-disposed',
+      ),
+    );
     _animationController
       ..removeStatusListener(_handleAnimationStatus)
       ..dispose();
@@ -221,6 +229,7 @@ class _ModalCommandSurfaceState extends ConsumerState<ModalCommandSurface>
   Future<void> _updateRegion(_ModalRegionMode mode) async {
     if (mode == _ModalRegionMode.barOnly) {
       await _regionManager.updateRegion(
+        owner: _regionOwner,
         menuRect: null,
         radius: null,
         debugLabel: '${widget.debugLabel}-closed',
@@ -230,6 +239,7 @@ class _ModalCommandSurfaceState extends ConsumerState<ModalCommandSurface>
 
     final Rect? rect = _resolvePanelRect();
     await _regionManager.updateRegion(
+      owner: _regionOwner,
       menuRect: rect,
       radius: rect == null ? null : widget.borderRadius,
       captureAllClicks: rect != null,

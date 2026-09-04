@@ -357,6 +357,7 @@ export default function Home() {
                 <span className={styles.cardLabel}>Workspaces</span>
                 <h3>Workspace indicators</h3>
                 <p>Labels follow whichever style you pick: roman numerals by default, plain numbers otherwise. Click to focus, and set how many stay visible.</p>
+                <FlutterDemo className={styles.workspacePreview} preview="workspaces" />
               </article>
               <article className={styles.smallCard}>
                 <span className={styles.cardLabel}>Notifications</span>

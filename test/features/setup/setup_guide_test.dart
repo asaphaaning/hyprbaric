@@ -24,9 +24,6 @@ const BasicMessageChannel<Object?> _keyboardModeChannel =
     );
 
 void main() {
-  setUp(LayerShellController.debugResetKeyboardOwners);
-  tearDown(LayerShellController.debugResetKeyboardOwners);
-
   testWidgets('only one host opens the guide automatically', (
     WidgetTester tester,
   ) async {
@@ -95,7 +92,7 @@ void main() {
     );
   });
 
-  testWidgets('manual request opens setup on a non-automatic host', (
+  testWidgets('non-host view ignores shared manual setup requests', (
     WidgetTester tester,
   ) async {
     int openingCount = 0;
@@ -130,13 +127,8 @@ void main() {
     await tester.tap(find.text('Launch'));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey<String>('setup-guide')), findsOneWidget);
-    expect(openingCount, 1);
-    final Finder scrim = find.byKey(
-      const ValueKey<String>('setup-guide-scrim'),
-    );
-    expect(tester.getTopLeft(scrim).dy, 43);
-    expect(tester.getSize(scrim), const Size(1200, 757));
+    expect(find.byKey(const ValueKey<String>('setup-guide')), findsNothing);
+    expect(openingCount, 0);
   });
 
   testWidgets('guide preserves the v6 split geometry and control vocabulary', (
@@ -298,7 +290,10 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          setupGuideAutomaticHostProvider.overrideWithValue(false),
+          // The persisted status is complete, so this cannot auto-open. Keep
+          // this view eligible because shared manual requests are intentionally
+          // handled by the elected host only.
+          setupGuideAutomaticHostProvider.overrideWithValue(true),
           setupStatusProvider.overrideWith(
             (_) => Stream<SetupStatus>.value(
               const SetupStatus(state: SetupState.complete),
@@ -383,15 +378,19 @@ void main() {
     });
 
     try {
-      await LayerShellController.claimKeyboard('settings-modal');
-      await LayerShellController.claimKeyboard('setup-guide');
+      // Claims are scoped to the view's controller: one fresh controller
+      // behaves like one fresh bar, with no claims leaking in.
+      final LayerShellController controller =
+          LayerShellController.defaultView();
+      await controller.claimKeyboard('settings-modal');
+      await controller.claimKeyboard('setup-guide');
       // The settings modal closes underneath the guide. Its teardown must
       // not release the guide's still-open claim.
-      await LayerShellController.releaseKeyboard('settings-modal');
+      await controller.releaseKeyboard('settings-modal');
 
       expect(modes, <String>['exclusive', 'exclusive']);
 
-      await LayerShellController.releaseKeyboard('setup-guide');
+      await controller.releaseKeyboard('setup-guide');
 
       expect(modes, <String>['exclusive', 'exclusive', 'none']);
     } finally {

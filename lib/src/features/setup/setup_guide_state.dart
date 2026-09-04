@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../state/layer_shell.dart';
+
 /// Ordered steps in the first-run journey.
 enum SetupStep {
   welcome,
@@ -35,7 +37,9 @@ enum SetupGuideRequest { show }
 /// with every view eligible exactly one host opens the guide. Every host
 /// still stands down its automatic guide once completion settles, so a
 /// redundant open can never linger past the first acknowledged journey.
-final setupGuideAutomaticHostProvider = Provider<bool>((_) => true);
+final setupGuideAutomaticHostProvider = Provider<bool>(
+  (ref) => ref.watch(layerShellViewRoleProvider).handlesGlobalActions,
+);
 
 /// Elects the single view that opens the guide automatically.
 ///

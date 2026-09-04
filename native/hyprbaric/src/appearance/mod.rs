@@ -10,13 +10,17 @@ use serde::Deserialize;
 use tokio::sync::{Mutex, broadcast};
 use tracing::instrument;
 
-pub use domain::{AccentHue, Command, CornerRadius, Opacity, Position, Report, Snapshot};
+pub use domain::{
+    AccentHue, Command, CornerRadius, MonitorName, MonitorTarget, Opacity, Position, Report,
+    Snapshot,
+};
 
 /// Appearance configuration loaded from Hyprbaric TOML.
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(default)]
 pub struct Configuration {
     position: Position,
+    monitor: MonitorTarget,
     opacity: Opacity,
     corner_radius: CornerRadius,
     accent_hue: AccentHue,
@@ -36,6 +40,7 @@ impl Default for Configuration {
     fn default() -> Self {
         Self {
             position: Position::default(),
+            monitor: MonitorTarget::default(),
             opacity: Opacity::default(),
             corner_radius: CornerRadius::default(),
             accent_hue: AccentHue::default(),
@@ -44,19 +49,23 @@ impl Default for Configuration {
 }
 
 impl Configuration {
-    pub const fn position(self) -> Position {
+    pub const fn position(&self) -> Position {
         self.position
     }
 
-    pub const fn opacity(self) -> Opacity {
+    pub fn monitor(&self) -> &MonitorTarget {
+        &self.monitor
+    }
+
+    pub const fn opacity(&self) -> Opacity {
         self.opacity
     }
 
-    pub const fn corner_radius(self) -> CornerRadius {
+    pub const fn corner_radius(&self) -> CornerRadius {
         self.corner_radius
     }
 
-    pub const fn accent_hue(self) -> AccentHue {
+    pub const fn accent_hue(&self) -> AccentHue {
         self.accent_hue
     }
 
@@ -64,6 +73,10 @@ impl Configuration {
         match command {
             Command::SetPosition { position } => Self {
                 position: *position,
+                ..self
+            },
+            Command::SetMonitor { monitor } => Self {
+                monitor: monitor.clone(),
                 ..self
             },
             Command::SetOpacity { opacity } => Self {
@@ -82,9 +95,10 @@ impl Configuration {
         }
     }
 
-    pub const fn snapshot(self) -> Snapshot {
+    pub fn snapshot(&self) -> Snapshot {
         Snapshot {
             position: self.position,
+            monitor: self.monitor.clone(),
             opacity: self.opacity,
             corner_radius: self.corner_radius,
             accent_hue: self.accent_hue,
@@ -100,7 +114,7 @@ impl Appearance {
         let appearance = Arc::new(Self {
             events,
             results,
-            state: Mutex::new(*config),
+            state: Mutex::new(config.clone()),
         });
 
         (appearance, config.snapshot())
@@ -117,8 +131,8 @@ impl Appearance {
     #[instrument(skip(self))]
     pub async fn apply(&self, command: Command) {
         drop(self.results.send(Report::Started(command.clone())));
-        let current = { *self.state.lock().await };
-        let next = match settings::save(&command, current) {
+        let mut state = self.state.lock().await;
+        let next = match settings::save(&command, state.clone()) {
             Ok(next) => next,
             Err(error) => {
                 drop(self.results.send(Report::Failed {
@@ -129,13 +143,12 @@ impl Appearance {
             }
         };
 
-        {
-            let mut state = self.state.lock().await;
-            *state = next;
-        }
+        let snapshot = next.snapshot();
+        *state = next;
+        drop(state);
 
         drop(self.results.send(Report::Saved(command)));
-        drop(self.events.send(next.snapshot()));
+        drop(self.events.send(snapshot));
     }
 }
 
@@ -149,4 +162,6 @@ pub enum Error {
     CornerRadius(#[from] domain::CornerRadiusError),
     #[error(transparent)]
     AccentHue(#[from] domain::AccentHueError),
+    #[error(transparent)]
+    MonitorName(#[from] domain::MonitorNameError),
 }

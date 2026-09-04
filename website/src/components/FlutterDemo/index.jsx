@@ -64,12 +64,23 @@ function NotificationsSkeleton() {
   );
 }
 
+function WorkspaceSkeleton() {
+  return (
+    <div aria-hidden="true" className={`${styles.skeleton} ${styles.workspaceSkeleton}`}>
+      <span className={styles.workspacePrevious} />
+      <span className={styles.workspaceIndicators} />
+      <span className={styles.workspaceNext} />
+    </div>
+  );
+}
+
 const SKELETONS = {
   mixer: MixerSkeleton,
   controls: ControlsSkeleton,
   network: NetworkSkeleton,
   power: PowerSkeleton,
   notifications: NotificationsSkeleton,
+  workspaces: WorkspaceSkeleton,
 };
 
 /**

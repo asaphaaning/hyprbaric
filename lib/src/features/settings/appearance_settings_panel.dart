@@ -52,6 +52,25 @@ class _AppearanceSettingsPanelState
           },
         ),
         const SizedBox(height: 8),
+        _MonitorRow(
+          value: view.monitor,
+          monitors: ref
+              .watch(currentWorkspaceStatusProvider)
+              .maybeWhen(
+                data: (WorkspaceStatus status) => status.monitors,
+                orElse: () => const <MonitorWorkspaceStatus>[],
+              ),
+          onChanged: (AppearanceMonitorTarget monitor) {
+            final AppearanceStatus next = view.copyWith(monitor: monitor);
+            _preview(next);
+            _commit(
+              () => ref
+                  .read(appearanceControllerProvider.notifier)
+                  .setMonitor(monitor),
+            );
+          },
+        ),
+        const SizedBox(height: 8),
         _SliderRow(
           label: 'Opacity',
           valueLabel: '${view.opacity}%',
@@ -159,6 +178,51 @@ class _AppearanceSettingsPanelState
 
   bool _isDefault(AppearanceStatus status) {
     return status == defaultAppearanceStatus;
+  }
+}
+
+class _MonitorRow extends StatelessWidget {
+  const _MonitorRow({
+    required this.value,
+    required this.monitors,
+    required this.onChanged,
+  });
+
+  final AppearanceMonitorTarget value;
+  final List<MonitorWorkspaceStatus> monitors;
+  final ValueChanged<AppearanceMonitorTarget> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return _AppearanceRow(
+      label: 'Monitors',
+      subtitle: 'Choose one display or mirror the bar across every display.',
+      child: Wrap(
+        spacing: 5,
+        runSpacing: 5,
+        children: <Widget>[
+          _SegmentButton(
+            label: 'Primary',
+            selected: value is AppearanceMonitorTargetPrimary,
+            onPressed: () => onChanged(const AppearanceMonitorTargetPrimary()),
+          ),
+          _SegmentButton(
+            label: 'All',
+            selected: value is AppearanceMonitorTargetAll,
+            onPressed: () => onChanged(const AppearanceMonitorTargetAll()),
+          ),
+          for (final MonitorWorkspaceStatus monitor in monitors)
+            _SegmentButton(
+              label: monitor.name,
+              selected:
+                  value is AppearanceMonitorTargetNamed &&
+                  (value as AppearanceMonitorTargetNamed).name == monitor.name,
+              onPressed: () =>
+                  onChanged(AppearanceMonitorTargetNamed(name: monitor.name)),
+            ),
+        ],
+      ),
+    );
   }
 }
 

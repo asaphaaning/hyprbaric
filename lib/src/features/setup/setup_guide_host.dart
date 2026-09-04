@@ -38,6 +38,7 @@ class _SetupGuideHostState extends ConsumerState<SetupGuideHost> {
   late final ProviderSubscription<AsyncValue<SetupCommandResult>>
   _resultSubscription;
   late final ProviderSubscription<SetupGuideRequest?> _requestSubscription;
+  late final ProviderSubscription<bool> _hostSubscription;
 
   /// Captured up front: `ref` cannot be read once the element is unmounting,
   /// and the claim has to be released exactly then.
@@ -65,11 +66,23 @@ class _SetupGuideHostState extends ConsumerState<SetupGuideHost> {
       setupGuideRequestProvider,
       (_, SetupGuideRequest? request) {
         final pending = request;
-        if (pending != null && pending == SetupGuideRequest.show) {
+        if (pending != null &&
+            pending == SetupGuideRequest.show &&
+            ref.read(setupGuideAutomaticHostProvider)) {
           _open(SetupLaunch.manual);
           scheduleMicrotask(
             () => ref.read(setupGuideRequestProvider.notifier).consume(pending),
           );
+        }
+      },
+    );
+    _hostSubscription = ref.listenManual<bool>(
+      setupGuideAutomaticHostProvider,
+      (_, bool isHost) {
+        if (isHost) {
+          ref.read(setupStatusProvider).whenData(_acceptStatus);
+        } else {
+          _standDownAutomatic();
         }
       },
     );
@@ -80,8 +93,21 @@ class _SetupGuideHostState extends ConsumerState<SetupGuideHost> {
     _statusSubscription.close();
     _resultSubscription.close();
     _requestSubscription.close();
+    _hostSubscription.close();
     _election.release(this);
     super.dispose();
+  }
+
+  /// Closes an automatic guide that lost its eligibility or settled
+  /// elsewhere. A manually opened guide belongs to the user and stays.
+  void _standDownAutomatic() {
+    if (_launch == SetupLaunch.automatic) {
+      _awaitingPersistence = false;
+      _appearanceBefore = null;
+      _workspacesBefore = null;
+      _election.release(this);
+      setState(() => _launch = null);
+    }
   }
 
   void _acceptStatus(SetupStatus status) {
@@ -98,13 +124,7 @@ class _SetupGuideHostState extends ConsumerState<SetupGuideHost> {
         // relaunch delivered the persisted outcome of our optimistic close.
         // Automatic guides have nothing left to save, so they stand down. A
         // manually opened guide belongs to the user and stays.
-        if (_launch == SetupLaunch.automatic) {
-          _awaitingPersistence = false;
-          _appearanceBefore = null;
-          _workspacesBefore = null;
-          _election.release(this);
-          setState(() => _launch = null);
-        }
+        _standDownAutomatic();
     }
   }
 

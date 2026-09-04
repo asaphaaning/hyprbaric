@@ -14,6 +14,10 @@ class AppearanceController extends Notifier<void> {
     _dispatch(AppearanceIntent.setPosition(position));
   }
 
+  void setMonitor(AppearanceMonitorTarget monitor) {
+    _dispatch(AppearanceIntent.setMonitor(monitor));
+  }
+
   void setOpacity(int opacity) {
     if (opacity < 20 || opacity > 100) {
       return;

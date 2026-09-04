@@ -19,7 +19,7 @@ use crate::{
     caffeine::Snapshot as CaffeineSnapshot,
     capabilities::Snapshot as CapabilitySnapshot,
     clock::Snapshot as ClockSnapshot,
-    hyprland::{Desktop, FocusedWindowSnapshot, WorkspaceSnapshot},
+    hyprland::{Desktop, DesktopSnapshot},
     launcher::Results as LauncherResults,
     modules::Snapshot as ModulesSnapshot,
     network::Snapshot as NetworkSnapshot,
@@ -74,8 +74,7 @@ pub struct Started {
 
 /// Initial values published before live subscriptions begin.
 pub struct Initial {
-    workspace: WorkspaceSnapshot,
-    focused_window: FocusedWindowSnapshot,
+    desktop: DesktopSnapshot,
     appearance: AppearanceSnapshot,
     modules: ModulesSnapshot,
     workspace_settings: WorkspaceSettingsSnapshot,
@@ -98,16 +97,6 @@ pub struct Initial {
 }
 
 impl Initial {
-    /// Returns the initial active workspace.
-    pub fn workspace(&self) -> &WorkspaceSnapshot {
-        &self.workspace
-    }
-
-    /// Returns the initial focused-window projection.
-    pub fn focused_window(&self) -> &FocusedWindowSnapshot {
-        &self.focused_window
-    }
-
     /// Returns the initial portal color preference.
     pub const fn color_scheme(&self) -> Option<ColorScheme> {
         self.color_scheme
@@ -119,8 +108,7 @@ impl Initial {
 
         let mut outputs = vec![
             Output::Started,
-            Output::Workspace(self.workspace),
-            Output::FocusedWindow(self.focused_window),
+            Output::Desktop(self.desktop),
             Output::Appearance(self.appearance),
             Output::Modules(self.modules),
             Output::WorkspaceSettings(self.workspace_settings),
@@ -153,7 +141,7 @@ impl Components {
     async fn boot(config: &config::Configuration) -> Result<(Self, Initial), Error> {
         let bootstrap_started = Instant::now();
         let phase_started = Instant::now();
-        let (hyprland, initial_workspace, initial_focused_window) = Desktop::connect().await?;
+        let (hyprland, initial_desktop) = Desktop::connect().await?;
         log_bootstrap_phase("hyprland", phase_started.elapsed());
         let phase_started = Instant::now();
         let (appearance, initial_appearance) =
@@ -270,8 +258,7 @@ impl Components {
                 setup,
             },
             Initial {
-                workspace: initial_workspace,
-                focused_window: initial_focused_window,
+                desktop: initial_desktop,
                 appearance: initial_appearance,
                 modules: initial_modules,
                 workspace_settings: initial_workspace_settings,
@@ -302,8 +289,7 @@ impl Components {
 
         crate::app::Subscriptions {
             replay: std::collections::VecDeque::from([crate::app::Output::Tray(tray_snapshot)]),
-            workspace: self.hyprland.subscribe_workspace(),
-            focused_window: self.hyprland.subscribe_focused_window(),
+            desktop: self.hyprland.subscribe(),
             appearance: self.appearance.subscribe(),
             appearance_reports: self.appearance.subscribe_results(),
             modules: self.modules.subscribe(),
@@ -455,8 +441,7 @@ pub async fn boot(config: &config::Configuration) -> Result<Started, Error> {
     let (components, initial) = Components::boot(config).await?;
     let app = crate::app::App::new(
         components,
-        initial.workspace().clone(),
-        initial.focused_window().clone(),
+        initial.desktop.clone(),
         initial.color_scheme(),
         config.audio.volume_step(),
         config.shortcuts.clone(),

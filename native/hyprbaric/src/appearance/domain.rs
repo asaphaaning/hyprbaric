@@ -1,5 +1,7 @@
 //! Bar appearance settings shared by Rust configuration and Flutter UI.
 
+use std::fmt;
+
 use serde::{Deserialize, Deserializer, de};
 
 pub const DEFAULT_OPACITY: u8 = 77;
@@ -14,6 +16,22 @@ pub enum Position {
     Bottom,
 }
 
+/// The monitor set on which the bar should be rendered.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub enum MonitorTarget {
+    /// Render one bar on the compositor's primary monitor.
+    #[default]
+    Primary,
+    /// Render one bar on every connected monitor.
+    All,
+    /// Render one bar on the monitor identified by [`MonitorName`].
+    Named(MonitorName),
+}
+
+/// A non-empty monitor identity reported by the native GTK boundary.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct MonitorName(String);
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Opacity(u8);
 
@@ -23,9 +41,10 @@ pub struct CornerRadius(u8);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AccentHue(u16);
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Snapshot {
     pub position: Position,
+    pub monitor: MonitorTarget,
     pub opacity: Opacity,
     pub corner_radius: CornerRadius,
     pub accent_hue: AccentHue,
@@ -34,6 +53,7 @@ pub struct Snapshot {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Command {
     SetPosition { position: Position },
+    SetMonitor { monitor: MonitorTarget },
     SetOpacity { opacity: Opacity },
     SetCornerRadius { corner_radius: CornerRadius },
     SetAccentHue { accent_hue: AccentHue },
@@ -53,6 +73,60 @@ impl Position {
             Self::Top => "top",
             Self::Bottom => "bottom",
         }
+    }
+}
+
+impl MonitorTarget {
+    /// Parses the compact value persisted in `[appearance].monitor`.
+    pub fn from_config(value: &str) -> Result<Self, MonitorNameError> {
+        match value.trim() {
+            "primary" => Ok(Self::Primary),
+            "all" => Ok(Self::All),
+            name => MonitorName::new(name).map(Self::Named),
+        }
+    }
+
+    /// Returns the compact value persisted in `[appearance].monitor`.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Primary => "primary",
+            Self::All => "all",
+            Self::Named(name) => name.as_str(),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for MonitorTarget {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+        Self::from_config(&value).map_err(de::Error::custom)
+    }
+}
+
+impl MonitorName {
+    /// Creates a monitor identity from the native display label.
+    pub fn new(value: impl Into<String>) -> Result<Self, MonitorNameError> {
+        let value = value.into();
+        let value = value.trim();
+
+        if value.is_empty() || matches!(value, "primary" | "all") {
+            Err(MonitorNameError::Invalid(value.to_owned()))
+        } else {
+            Ok(Self(value.to_owned()))
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Display for MonitorName {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(formatter)
     }
 }
 
@@ -183,9 +257,15 @@ pub enum AccentHueError {
     OutOfRange(u16),
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum MonitorNameError {
+    #[error("monitor name `{0}` is empty or reserved")]
+    Invalid(String),
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{AccentHue, CornerRadius, Opacity};
+    use super::{AccentHue, CornerRadius, MonitorTarget, Opacity};
 
     #[test]
     fn opacity_enforces_configurable_range() {
@@ -207,5 +287,19 @@ mod tests {
     fn accent_hue_accepts_color_wheel_degrees() {
         assert_eq!(AccentHue::new(359).expect("hue should parse").as_u16(), 359);
         assert!(AccentHue::new(360).is_err());
+    }
+
+    #[test]
+    fn monitor_target_preserves_named_monitors() {
+        assert_eq!(
+            MonitorTarget::from_config("Dell U2720Q #2")
+                .expect("monitor target should parse")
+                .as_str(),
+            "Dell U2720Q #2"
+        );
+        assert_eq!(
+            MonitorTarget::from_config("  "),
+            Err(super::MonitorNameError::Invalid(String::new()))
+        );
     }
 }

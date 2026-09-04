@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../bindings/bindings.dart';
+import '../layer_shell_controller.dart';
 import 'appearance.dart';
+import 'monitor_workspace.dart';
 
 /// Immutable configuration describing core bar characteristics.
 class BarConfig {
@@ -61,3 +63,46 @@ final barHeightProvider = Provider<double>((ref) {
 final barPositionProvider = Provider<AppearancePosition>((ref) {
   return ref.watch(barConfigProvider).position;
 });
+
+/// Resolves a persisted connector target into visibility for one native view.
+LayerShellMonitorTarget resolveViewMonitorTarget(
+  AppearanceMonitorTarget configured,
+  WorkspaceStatus? workspace,
+  LayerShellMonitor? output,
+) {
+  return switch (configured) {
+    AppearanceMonitorTargetPrimary() => const LayerShellMonitorTarget.primary(),
+    AppearanceMonitorTargetAll() => const LayerShellMonitorTarget.all(),
+    AppearanceMonitorTargetNamed(:final String name) => _resolveNamedTarget(
+      name,
+      workspace,
+      output,
+    ),
+    _ => const LayerShellMonitorTarget.primary(),
+  };
+}
+
+LayerShellMonitorTarget _resolveNamedTarget(
+  String name,
+  WorkspaceStatus? workspace,
+  LayerShellMonitor? output,
+) {
+  if (workspace == null || output == null) {
+    return const LayerShellMonitorTarget.primary();
+  }
+
+  final bool targetExists = workspace.monitors.any(
+    (MonitorWorkspaceStatus monitor) => monitor.name == name,
+  );
+  if (!targetExists) {
+    return const LayerShellMonitorTarget.primary();
+  }
+
+  final String? currentName = resolveMonitorWorkspace(
+    workspace,
+    output,
+  ).monitorName;
+  return currentName == name
+      ? const LayerShellMonitorTarget.all()
+      : const LayerShellMonitorTarget.hidden();
+}

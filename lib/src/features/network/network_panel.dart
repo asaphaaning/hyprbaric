@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bindings/bindings.dart';
 import '../../layer_shell_controller.dart';
+import '../../state/layer_shell.dart';
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
 import 'network_entry_state.dart';
@@ -14,7 +15,7 @@ import 'network_settings_row.dart';
 import 'network_spectrum.dart';
 import 'network_wifi_section.dart';
 
-class NetworkPanel extends StatefulWidget {
+class NetworkPanel extends ConsumerStatefulWidget {
   const NetworkPanel({
     super.key,
     required this.borderRadius,
@@ -33,10 +34,10 @@ class NetworkPanel extends StatefulWidget {
   final VoidCallback onOpenSettings;
 
   @override
-  State<NetworkPanel> createState() => NetworkPanelState();
+  ConsumerState<NetworkPanel> createState() => NetworkPanelState();
 }
 
-class NetworkPanelState extends State<NetworkPanel> {
+class NetworkPanelState extends ConsumerState<NetworkPanel> {
   static const int _trafficHistoryLength = 50;
   static const String _keyboardOwner = 'network-password';
   final TextEditingController _passwordController = TextEditingController();
@@ -50,6 +51,7 @@ class NetworkPanelState extends State<NetworkPanel> {
   List<double> _uploadHistory = const <double>[];
   List<double> _downloadHistory = const <double>[];
   List<DateTime> _sampleTimes = const <DateTime>[];
+  late final LayerShellController _layerShellController;
   String? _expandedSsid;
   String? _selectedSsid;
   String? _inlineError;
@@ -61,6 +63,7 @@ class NetworkPanelState extends State<NetworkPanel> {
   @override
   void initState() {
     super.initState();
+    _layerShellController = ref.read(layerShellControllerProvider);
     _recordTraffic(widget.status.asData?.value);
   }
 
@@ -141,8 +144,8 @@ class NetworkPanelState extends State<NetworkPanel> {
     }
     unawaited(
       active
-          ? LayerShellController.claimKeyboard(_keyboardOwner)
-          : LayerShellController.releaseKeyboard(_keyboardOwner),
+          ? _layerShellController.claimKeyboard(_keyboardOwner)
+          : _layerShellController.releaseKeyboard(_keyboardOwner),
     );
   }
 

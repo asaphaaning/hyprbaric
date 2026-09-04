@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hyprbaric/src/bindings/bindings.dart';
+import 'package:hyprbaric/src/state/monitor_workspace.dart';
 import 'package:hyprbaric/src/widgets/workspace_strip.dart';
 
 void main() {
@@ -23,6 +24,12 @@ void main() {
               clickable: true,
               visibleRange: WorkspaceVisibleRange.medium,
               visibleCount: 7,
+            ),
+            resolution: const MonitorWorkspaceResolution(
+              activeWorkspaceId: 2,
+              activeWorkspaceName: '2',
+              isSpecial: false,
+              monitorName: null,
             ),
             onPrevious: () {},
             onNext: () {},

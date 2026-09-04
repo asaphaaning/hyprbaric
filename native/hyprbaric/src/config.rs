@@ -5,7 +5,7 @@ use std::{
 };
 
 use serde::{Deserialize, Deserializer, de};
-use toml_edit::DocumentMut;
+use toml_edit::{DocumentMut, Item, Table};
 use tracing::instrument;
 
 use crate::{
@@ -97,6 +97,21 @@ where
     let _guard = edit_lock();
     let path = writable_user_path()?;
     edit_path_fallible(&path, apply)
+}
+
+/// Edits one module-owned table, rejecting incompatible user configuration.
+#[instrument(skip(apply), err)]
+pub(crate) fn edit_table(name: &'static str, apply: impl FnOnce(&mut Table)) -> Result<(), Error> {
+    try_edit(|document| {
+        if !document.as_table().contains_key(name) {
+            document[name] = Item::Table(Table::new());
+        }
+        let table = document[name]
+            .as_table_mut()
+            .ok_or(Error::InvalidTable { name })?;
+        apply(table);
+        Ok(())
+    })
 }
 
 pub(crate) fn edit_path(path: &Path, apply: impl FnOnce(&mut DocumentMut)) -> Result<(), Error> {
@@ -280,6 +295,8 @@ pub enum Error {
         #[source]
         source: toml_edit::TomlError,
     },
+    #[error("configuration item `{name}` must be a table")]
+    InvalidTable { name: &'static str },
     #[error("failed to create user config directory `{}`", path.display())]
     CreateDirectory {
         path: PathBuf,

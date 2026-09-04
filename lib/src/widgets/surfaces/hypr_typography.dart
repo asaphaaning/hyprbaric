@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import 'hypr_colors.dart';
@@ -18,7 +16,12 @@ abstract final class HyprTypography {
     displayColor: HyprColors.text,
   );
 
-  static double size(double reference) => sizeForScale(reference, _viewScale());
+  /// Returns a logical font size.
+  ///
+  /// Flutter projects logical sizes through each owning [FlutterView], so
+  /// applying another view's device-pixel ratio here would make multi-monitor
+  /// typography inconsistent.
+  static double size(double reference) => reference;
 
   static double sizeForScale(double reference, double scale) {
     if (!scale.isFinite || scale <= 0) {
@@ -334,13 +337,5 @@ abstract final class HyprTypography {
             ]
           : style.fontFeatures,
     );
-  }
-
-  static double _viewScale() {
-    final Iterable<FlutterView> views = PlatformDispatcher.instance.views;
-    if (views.isEmpty) {
-      return 1;
-    }
-    return views.first.devicePixelRatio;
   }
 }
