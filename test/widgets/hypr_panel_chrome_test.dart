@@ -44,6 +44,7 @@ void main() {
       );
 
       expect(surface.color, HyprColors.popoverSurface);
+      expect(surface.color, HyprColors.surfaceStrong);
       expect(surface.borderColor, HyprColors.popupStroke);
       expect(constrained.constraints, constraints);
       expect(panelPadding.padding, padding);

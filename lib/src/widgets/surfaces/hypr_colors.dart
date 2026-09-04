@@ -3,7 +3,11 @@ import 'package:flutter/material.dart';
 abstract final class HyprColors {
   static const Color surface = Color(0xB80A1118);
   static const Color surfaceStrong = Color(0xC4071018);
-  static const Color popoverSurface = Colors.transparent;
+  /// The shared dark floor beneath a popover's translucent material.
+  ///
+  /// Keeping this aligned with [surfaceStrong] gives floating panels enough
+  /// contrast to remain legible over a bright wallpaper.
+  static const Color popoverSurface = surfaceStrong;
   static const Color popoverTop = Color(0x570B0D12);
   static const Color popoverBottom = Color(0x6B07090D);
   static const Color surfaceSoft = Color(0xB80F1A22);
