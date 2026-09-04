@@ -50,6 +50,8 @@ impl From<&Snapshot> for signals::AppearanceStatus {
     fn from(snapshot: &Snapshot) -> Self {
         Self {
             position: snapshot.position.into(),
+            // Per-output appearance arrives with the multi-monitor work.
+            monitor: signals::AppearanceMonitorTarget::Primary,
             opacity: snapshot.opacity.as_u8(),
             corner_radius: snapshot.corner_radius.as_u8(),
             accent_hue: snapshot.accent_hue.as_u16(),

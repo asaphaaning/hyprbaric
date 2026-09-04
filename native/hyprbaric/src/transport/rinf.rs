@@ -34,6 +34,12 @@ use crate::{
     setup, shortcuts, tray, workspaces,
 };
 use rinf::RustSignal;
+
+/// Volume adjustment carried by a hotkey event, in percent.
+///
+/// Fixed here until the configurable step arrives with the multi-monitor work,
+/// which replaces this with the value from audio settings.
+const DEFAULT_VOLUME_STEP: u8 = 5;
 use rinf_router::State;
 
 pub(crate) fn send_app_signal() {
@@ -96,6 +102,9 @@ pub(crate) fn send_workspace_signal(snapshot: &WorkspaceSnapshot) {
         name: snapshot.name.clone(),
         is_special: snapshot.is_special,
         occupied_workspace_ids: snapshot.occupied.ids().map(|id| id.get()).collect(),
+        // Per-output state arrives with the multi-monitor work. Until then a
+        // single bar renders from the compositor-wide fields above.
+        monitors: Vec::new(),
     }
     .send_signal_to_dart();
 }
@@ -105,6 +114,7 @@ pub(crate) fn send_focused_window_signal(snapshot: &FocusedWindowSnapshot) {
         app_name: snapshot.app_name.clone(),
         title: snapshot.title.clone(),
         hostname: snapshot.hostname.clone(),
+        monitors: Vec::new(),
     }
     .send_signal_to_dart();
 }
@@ -523,8 +533,12 @@ pub(crate) async fn activate_shortcut(context: App, shortcut: shortcuts::Shortcu
                 UiAction::ToggleControls => HotkeyEvent::ToggleControls {},
                 UiAction::OpenBarSettings => HotkeyEvent::OpenBarSettings {},
                 UiAction::ToggleSessionLauncher => HotkeyEvent::ToggleSessionLauncher {},
-                UiAction::VolumeUp => HotkeyEvent::VolumeUp {},
-                UiAction::VolumeDown => HotkeyEvent::VolumeDown {},
+                UiAction::VolumeUp => HotkeyEvent::VolumeUp {
+                    step: DEFAULT_VOLUME_STEP,
+                },
+                UiAction::VolumeDown => HotkeyEvent::VolumeDown {
+                    step: DEFAULT_VOLUME_STEP,
+                },
                 UiAction::ToggleMute => HotkeyEvent::ToggleMute {},
                 UiAction::BrightnessUp => HotkeyEvent::BrightnessUp {},
                 UiAction::BrightnessDown => HotkeyEvent::BrightnessDown {},
