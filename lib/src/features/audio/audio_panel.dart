@@ -5,6 +5,7 @@ import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
 import 'audio_chrome.dart';
+import 'audio_meter_levels.dart';
 import 'audio_mixer_layout.dart';
 
 class AudioPanel extends StatelessWidget {
@@ -17,6 +18,10 @@ class AudioPanel extends StatelessWidget {
     required this.onSetMuted,
     required this.onSetBrightness,
     required this.onOpenMixer,
+
+    /// Live signal levels for the channel ladders and master rail. Null in
+    /// the bar, where every meter follows its endpoint volume.
+    this.meterLevels,
   });
 
   final BorderRadius borderRadius;
@@ -26,6 +31,7 @@ class AudioPanel extends StatelessWidget {
   final void Function(AudioEndpointKind kind, {required bool muted}) onSetMuted;
   final ValueChanged<int> onSetBrightness;
   final VoidCallback onOpenMixer;
+  final AudioMeterLevels? meterLevels;
 
   @override
   Widget build(BuildContext context) {
@@ -54,8 +60,9 @@ class AudioPanel extends StatelessWidget {
             onSetVolume: onSetVolume,
             onSetMuted: onSetMuted,
             onSetBrightness: onSetBrightness,
+            meterLevels: meterLevels,
           ),
-          AudioMasterRail(output: output),
+          AudioMasterRail(output: output, meterLevel: meterLevels?.output),
           AudioMixerFooter(input: input, onOpenMixer: onOpenMixer),
           if (status.isLoading)
             const Padding(

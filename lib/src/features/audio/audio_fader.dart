@@ -43,12 +43,18 @@ class AudioFader extends StatefulWidget {
     required this.accent,
     required this.onPreviewVolume,
     required this.onSetVolume,
+
+    /// Live signal level for the meter ladder, independent of the fader
+    /// position. The landing page animates demonstration levels through
+    /// this; the bar leaves it null so the ladder follows the volume.
+    this.meterLevel,
   });
 
   final AudioEndpoint endpoint;
   final Color accent;
   final ValueChanged<int> onPreviewVolume;
   final void Function(AudioEndpointKind kind, int volume) onSetVolume;
+  final double? meterLevel;
 
   @override
   State<AudioFader> createState() => AudioFaderState();
@@ -139,7 +145,7 @@ class AudioFaderState extends State<AudioFader> {
               width: AudioFaderMetrics.meterWidth,
               child: CustomPaint(
                 painter: HyprSegmentedMeterPainter(
-                  value: endpoint.muted ? 0 : _volume / 100,
+                  value: endpoint.muted ? 0 : (widget.meterLevel ?? _volume / 100),
                   ramp: ramp,
                   segments: AudioFaderMetrics.meterSegments,
                   direction: HyprMeterDirection.bottomToTop,

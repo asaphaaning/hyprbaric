@@ -24,6 +24,10 @@ class AudioChannelStrip extends StatefulWidget {
     required this.fallbackName,
     required this.onSetVolume,
     required this.onSetMuted,
+
+    /// Live signal level for this channel's meter ladder. See
+    /// [AudioFader.meterLevel].
+    this.meterLevel,
   });
 
   final AudioMixerChannel channel;
@@ -31,6 +35,7 @@ class AudioChannelStrip extends StatefulWidget {
   final String fallbackName;
   final void Function(AudioEndpointKind kind, int volume) onSetVolume;
   final void Function(AudioEndpointKind kind, {required bool muted}) onSetMuted;
+  final double? meterLevel;
 
   @override
   State<AudioChannelStrip> createState() => AudioChannelStripState();
@@ -97,6 +102,7 @@ class AudioChannelStripState extends State<AudioChannelStrip> {
                     onPreviewVolume: (int volume) =>
                         _preview.show(volume, scope: value.id),
                     onSetVolume: widget.onSetVolume,
+                    meterLevel: widget.meterLevel,
                   ),
           ),
           const SizedBox(height: HyprSpacing.xl),

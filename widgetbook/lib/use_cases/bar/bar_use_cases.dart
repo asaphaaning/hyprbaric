@@ -4,7 +4,7 @@ import 'package:riverpod/misc.dart' show Override;
 import 'package:hyprbaric/widget_catalog.dart';
 import 'package:widgetbook_annotation/widgetbook_annotation.dart';
 
-import '../audio/audio_fixtures.dart';
+import '../../audio/audio_fixtures.dart';
 import '../notifications/notification_fixtures.dart';
 import '../power/power_fixtures.dart';
 import '../settings/settings_fixtures.dart';

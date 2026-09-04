@@ -361,8 +361,6 @@ class AppLauncherIconFile extends StatelessWidget {
           width: dimension,
           height: dimension,
           fit: BoxFit.contain,
-          placeholderBuilder: (_) => fallback,
-          errorBuilder: (_, _, _) => fallback,
         ),
       );
     }

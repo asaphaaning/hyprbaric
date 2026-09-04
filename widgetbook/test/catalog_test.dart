@@ -4,8 +4,8 @@ import 'package:hyprbaric/widget_catalog.dart';
 import 'package:hyprbaric_widgetbook/catalog/catalog_theme.dart';
 import 'package:hyprbaric_widgetbook/main.directories.g.dart'
     as generated_catalog;
+import 'package:hyprbaric_widgetbook/audio/audio_fixtures.dart';
 import 'package:hyprbaric_widgetbook/use_cases/audio/audio_atom_use_cases.dart';
-import 'package:hyprbaric_widgetbook/use_cases/audio/audio_fixtures.dart';
 import 'package:hyprbaric_widgetbook/use_cases/audio/audio_panel_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/bar/bar_cluster_button_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/bar/bar_cluster_use_cases.dart';
@@ -210,7 +210,7 @@ void main() {
     );
 
     await tester.tap(find.bySemanticsLabel('Mute Built-in · Analog Stereo'));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     final AudioChannelStrip output = tester.widget<AudioChannelStrip>(
       find.byWidgetPredicate(

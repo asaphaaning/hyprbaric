@@ -107,6 +107,7 @@ export 'src/features/audio/audio_chrome.dart'
     show AudioMessage, audioDecibelReadout;
 export 'src/features/audio/audio_fader.dart'
     show AudioDisabledFader, AudioFader;
+export 'src/features/audio/audio_meter_levels.dart' show AudioMeterLevels;
 export 'src/features/audio/audio_mixer_layout.dart'
     show AudioMasterRail, AudioMixerFooter, AudioMixerHeader, AudioMixerStage;
 export 'src/features/audio/audio_panel.dart' show AudioPanel;

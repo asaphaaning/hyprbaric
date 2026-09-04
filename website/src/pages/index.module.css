@@ -707,6 +707,12 @@
   width: auto;
 }
 
+.flutterPreview {
+  aspect-ratio: .6;
+  margin-bottom: auto;
+  margin-top: clamp(12px, 1.6vw, 24px);
+}
+
 .stack {
   display: flex;
   flex-direction: column;
@@ -879,6 +885,13 @@
   to { opacity: 1; transform: none; }
 }
 
+@media (min-width: 997px) {
+  .flutterPreview {
+    align-self: center;
+    width: calc(100% - 8px);
+  }
+}
+
 @media (max-width: 996px) {
   .hero,
   .configuration {
@@ -1005,6 +1018,15 @@
     aspect-ratio: auto;
     height: min(70vw, 360px);
     padding: 16px;
+  }
+
+  .flutterPreview {
+    aspect-ratio: .6;
+    height: auto;
+    margin-inline: auto;
+    margin-top: 12px;
+    max-width: 336px;
+    padding-block: 4px 12px;
   }
 
   .configuration {
