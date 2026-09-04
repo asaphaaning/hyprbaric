@@ -21,6 +21,7 @@ class HyprPopoverPanel extends StatelessWidget {
   final Color color;
 
   /// Material painted instead of [color], for surfaces that are not flat.
+  /// Doubled as a chassis wash over [color] and under [child].
   final Gradient? gradient;
 
   final Color borderColor;
@@ -32,10 +33,23 @@ class HyprPopoverPanel extends StatelessWidget {
       color: color,
       gradient: gradient,
       borderColor: borderColor,
-      child: ConstrainedBox(
-        constraints: constraints,
-        child: Padding(padding: padding, child: child),
+      child: _chassis(
+        ConstrainedBox(
+          constraints: constraints,
+          child: Padding(padding: padding, child: child),
+        ),
       ),
+    );
+  }
+
+  Widget _chassis(Widget child) {
+    final Gradient? wash = gradient;
+    if (wash == null) {
+      return child;
+    }
+    return DecoratedBox(
+      decoration: BoxDecoration(gradient: wash),
+      child: child,
     );
   }
 }

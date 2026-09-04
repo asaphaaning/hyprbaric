@@ -360,7 +360,7 @@ class RightCluster extends ConsumerWidget {
               LayerShellDropdown(
                 controller: notificationController,
                 menuRadius: audioRadius,
-                menuWidth: 360,
+                menuWidth: kNotificationPanelWidth,
                 horizontalAnchor: LayerShellDropdownAnchor.right,
                 buttonBuilder:
                     (
@@ -389,7 +389,7 @@ class RightCluster extends ConsumerWidget {
                               return NotificationPanel(
                                 borderRadius: audioRadius,
                                 status: ref.watch(
-                                  currentNotificationStatusProvider,
+                                  currentNotificationSignalProvider,
                                 ),
                                 onDismiss: onDismissNotification,
                                 onClearAll: onClearNotifications,

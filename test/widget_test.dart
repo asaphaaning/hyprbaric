@@ -46,6 +46,7 @@ import 'package:hyprbaric/src/widgets/center_cluster.dart';
 import 'package:hyprbaric/src/widgets/hypr_surface.dart';
 import 'package:hyprbaric/src/widgets/layer_shell_dropdown.dart';
 import 'package:hyprbaric/src/widgets/left_cluster.dart';
+import 'package:hyprbaric/src/widgets/notification_panel.dart';
 import 'package:hyprbaric/src/widgets/primitives/primitives.dart';
 import 'package:hyprbaric/src/widgets/right_cluster.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
@@ -3613,7 +3614,7 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
 
-      expect(find.text('no new notifications'), findsOneWidget);
+      expect(find.text('No notifications'), findsOneWidget);
     },
   );
 
@@ -3645,6 +3646,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('SLACK'), findsOneWidget);
+    // End to end guard on the width reconciliation: the panel must actually
+    // fill the slot LayerShellDropdown gives it, not merely ask to.
+    expect(
+      tester.getSize(find.byType(NotificationPanel)).width,
+      kNotificationPanelWidth,
+    );
 
     notifications.add(
       const NotificationStatus(
@@ -3658,7 +3665,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('SLACK'), findsNothing);
-    expect(find.text('no new notifications'), findsOneWidget);
+    expect(find.text('No notifications'), findsOneWidget);
   });
 
   testWidgets('output mute control shows the volume OSD', (
