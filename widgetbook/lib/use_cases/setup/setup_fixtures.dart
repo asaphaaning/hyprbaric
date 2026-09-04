@@ -26,6 +26,7 @@ abstract final class SetupFixtures {
   /// A guide run that has already committed a translucent, magenta bar.
   static const AppearanceStatus appearanceTuned = AppearanceStatus(
     position: AppearancePosition.bottom,
+    monitor: AppearanceMonitorTargetPrimary(),
     opacity: 46,
     cornerRadius: 18,
     accentHue: 310,

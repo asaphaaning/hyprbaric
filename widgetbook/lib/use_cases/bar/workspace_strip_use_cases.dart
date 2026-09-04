@@ -128,6 +128,7 @@ class _InteractiveWorkspaceStripStoryState
       name: '$active',
       isSpecial: false,
       occupiedWorkspaceIds: WorkspaceFixtures.occupied.occupiedWorkspaceIds,
+      monitors: const [],
     );
 
     return CatalogCanvas(

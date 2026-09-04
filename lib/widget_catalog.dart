@@ -7,6 +7,8 @@ export 'src/bindings/bindings.dart'
         AppLauncherPhase,
         AppLauncherResults,
         AppStatus,
+        AppearanceMonitorTarget,
+        AppearanceMonitorTargetPrimary,
         AppearancePosition,
         AppearanceStatus,
         AudioEndpoint,
@@ -102,7 +104,7 @@ export 'src/bindings/bindings.dart'
 export 'src/features/audio/audio_channel_strip.dart'
     show AudioChannelStrip, AudioDbReadout, AudioMixerChannel, AudioMuteButton;
 export 'src/features/audio/audio_chrome.dart'
-    show AudioMessage, AudioMixerDivider, audioDecibelReadout;
+    show AudioMessage, audioDecibelReadout;
 export 'src/features/audio/audio_fader.dart'
     show AudioDisabledFader, AudioFader;
 export 'src/features/audio/audio_mixer_layout.dart'
@@ -200,9 +202,9 @@ export 'src/widgets/notification_panel.dart' show NotificationPanel;
 export 'src/widgets/notification_panel_parts.dart'
     show
         NotificationCountPill,
-        NotificationEmptyState,
         NotificationHeader,
-        NotificationList;
+        NotificationList,
+        NotificationPlaceholder;
 export 'src/widgets/notification_row.dart' show NotificationRow;
 export 'src/widgets/osd_overlay.dart'
     show
@@ -218,8 +220,6 @@ export 'src/widgets/primitives/hypr_badge.dart' show HyprBadge;
 export 'src/widgets/primitives/hypr_command_button.dart'
     show HyprCommandButton, HyprCommandButtonVariant;
 export 'src/widgets/primitives/hypr_empty_state.dart' show HyprEmptyState;
-export 'src/widgets/primitives/hypr_glass_frame.dart'
-    show HyprGlassFrame, HyprGlassSheen;
 export 'src/widgets/primitives/hypr_glyph_badge.dart' show HyprGlyphBadge;
 export 'src/widgets/primitives/hypr_hardware_toggle.dart'
     show HyprHardwareToggle;

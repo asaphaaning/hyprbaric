@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hyprbaric/widget_catalog.dart';
 import 'package:widgetbook_annotation/widgetbook_annotation.dart';
 
@@ -73,7 +74,7 @@ class _NotificationPanelStory extends StatelessWidget {
     return CatalogCanvas(
       child: NotificationPanel(
         borderRadius: const BorderRadius.all(Radius.circular(16)),
-        status: status,
+        status: AsyncValue.data(status),
         onDismiss: (_) {},
         onClearAll: _noop,
       ),
@@ -106,11 +107,13 @@ class _InteractiveNotificationPanelStoryState
     return CatalogCanvas(
       child: NotificationPanel(
         borderRadius: const BorderRadius.all(Radius.circular(16)),
-        status: NotificationStatus(
-          available: true,
-          entries: entries,
-          unreadCount: entries.length,
-          dndEnabled: false,
+        status: AsyncValue.data(
+          NotificationStatus(
+            available: true,
+            entries: entries,
+            unreadCount: entries.length,
+            dndEnabled: false,
+          ),
         ),
         onDismiss: (int id) {
           setState(() {

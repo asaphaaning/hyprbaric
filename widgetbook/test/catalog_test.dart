@@ -105,7 +105,7 @@ void main() {
         home: Builder(builder: buildAudioChromeAtoms),
       ),
     );
-    expect(find.byType(AudioMixerDivider), findsOneWidget);
+    expect(find.byType(HyprPanelDivider), findsOneWidget);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -909,7 +909,7 @@ void main() {
       ),
     );
     expect(find.byType(OsdReadoutView), findsNWidgets(3));
-    expect(find.textContaining('-∞', findRichText: true), findsOneWidget);
+    expect(find.textContaining('−∞', findRichText: true), findsOneWidget);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -927,7 +927,7 @@ void main() {
       ),
     );
     expect(find.byType(OsdScale), findsNWidgets(2));
-    expect(find.text('-12'), findsOneWidget);
+    expect(find.text('-18'), findsOneWidget);
 
     await tester.pumpWidget(
       MaterialApp(

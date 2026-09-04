@@ -152,7 +152,6 @@ Widget buildAudioMuteButtonStates(BuildContext context) {
         Expanded(
           child: AudioMuteButton(
             muted: false,
-            enabled: true,
             label: 'Mute output',
             onPressed: _noop,
           ),
@@ -161,7 +160,6 @@ Widget buildAudioMuteButtonStates(BuildContext context) {
         Expanded(
           child: AudioMuteButton(
             muted: true,
-            enabled: true,
             label: 'Unmute output',
             onPressed: _noop,
           ),
@@ -170,7 +168,6 @@ Widget buildAudioMuteButtonStates(BuildContext context) {
         Expanded(
           child: AudioMuteButton(
             muted: true,
-            enabled: false,
             label: 'No output device',
             onPressed: null,
           ),
@@ -343,19 +340,19 @@ Widget buildAudioMasterRailStates(BuildContext context) {
 Widget buildAudioMixerFooter(BuildContext context) {
   return const CatalogFrame(
     width: 420,
-    child: AudioMixerFooter(onOpenMixer: _noop),
+    child: AudioMixerFooter(input: null, onOpenMixer: _noop),
   );
 }
 
 @UseCase(
   name: 'Vertical divider',
-  type: AudioMixerDivider,
+  type: HyprPanelDivider,
   path: '[Building blocks]/Audio',
 )
 Widget buildAudioChromeAtoms(BuildContext context) {
   return const CatalogFrame(
     width: 420,
-    child: SizedBox(height: 44, child: Center(child: AudioMixerDivider())),
+    child: SizedBox(height: 44, child: Center(child: HyprPanelDivider())),
   );
 }
 

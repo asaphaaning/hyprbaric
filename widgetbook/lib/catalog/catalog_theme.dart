@@ -13,6 +13,7 @@ final ThemeData catalogTheme = catalogThemeFor(HyprPalette.fallback);
 abstract final class CatalogPalettes {
   static const AppearanceStatus _cyan = AppearanceStatus(
     position: AppearancePosition.top,
+    monitor: AppearanceMonitorTargetPrimary(),
     opacity: 90,
     cornerRadius: 12,
     accentHue: 197,
@@ -20,6 +21,7 @@ abstract final class CatalogPalettes {
 
   static const AppearanceStatus _magenta = AppearanceStatus(
     position: AppearancePosition.top,
+    monitor: AppearanceMonitorTargetPrimary(),
     opacity: 46,
     cornerRadius: 18,
     accentHue: 310,
@@ -27,6 +29,7 @@ abstract final class CatalogPalettes {
 
   static const AppearanceStatus _amber = AppearanceStatus(
     position: AppearancePosition.top,
+    monitor: AppearanceMonitorTargetPrimary(),
     opacity: 77,
     cornerRadius: 12,
     accentHue: 40,

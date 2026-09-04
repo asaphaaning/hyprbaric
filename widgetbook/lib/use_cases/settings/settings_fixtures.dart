@@ -4,6 +4,7 @@ import 'package:hyprbaric/widget_catalog.dart';
 abstract final class SettingsFixtures {
   static const AppearanceStatus appearanceDefault = AppearanceStatus(
     position: AppearancePosition.top,
+    monitor: AppearanceMonitorTargetPrimary(),
     opacity: 77,
     cornerRadius: 12,
     accentHue: 197,
@@ -11,6 +12,7 @@ abstract final class SettingsFixtures {
 
   static const AppearanceStatus appearanceCustom = AppearanceStatus(
     position: AppearancePosition.bottom,
+    monitor: AppearanceMonitorTargetPrimary(),
     opacity: 68,
     cornerRadius: 16,
     accentHue: 275,

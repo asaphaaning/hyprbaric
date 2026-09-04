@@ -7,6 +7,7 @@ abstract final class WorkspaceFixtures {
     name: '3',
     isSpecial: false,
     occupiedWorkspaceIds: <int>[1, 2, 3, 5, 8],
+    monitors: [],
   );
 
   static const WorkspaceStatus special = WorkspaceStatus(
@@ -14,6 +15,7 @@ abstract final class WorkspaceFixtures {
     name: 'magic',
     isSpecial: true,
     occupiedWorkspaceIds: <int>[1, 2, 4],
+    monitors: [],
   );
 
   static const WorkspaceSettingsStatus roman = WorkspaceSettingsStatus(

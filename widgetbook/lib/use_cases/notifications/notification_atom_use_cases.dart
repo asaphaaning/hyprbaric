@@ -108,7 +108,7 @@ Widget buildNotificationRowUrgencies(BuildContext context) {
 
 @UseCase(
   name: 'Available and unavailable',
-  type: NotificationEmptyState,
+  type: NotificationPlaceholder,
   path: '[Building blocks]/Notifications',
 )
 Widget buildNotificationEmptyStates(BuildContext context) {
@@ -117,11 +117,11 @@ Widget buildNotificationEmptyStates(BuildContext context) {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        NotificationEmptyState(available: true),
+        NotificationPlaceholder(label: 'No notifications'),
         SizedBox(height: HyprSpacing.loose),
-        NotificationEmptyState(
-          available: false,
-          message: 'notification service is offline',
+        NotificationPlaceholder(
+          label: 'Notifications unavailable',
+          subtitle: 'notification service is offline',
         ),
       ],
     ),
