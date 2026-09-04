@@ -349,6 +349,7 @@ class RightCluster extends ConsumerWidget {
                               caffeineStatus: caffeineStatus,
                               onSetCaffeine: onSetCaffeine,
                               recordingStatus: recordingStatus,
+                              shortcutLabels: ref.watch(shortcutLabelsProvider),
                             );
                           },
                     );

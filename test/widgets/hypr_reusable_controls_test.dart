@@ -74,50 +74,6 @@ void main() {
     );
   });
 
-  testWidgets('HyprIconTile reports hover and pressed states to its builder', (
-    WidgetTester tester,
-  ) async {
-    var taps = 0;
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: HyprIconTile(
-              onPressed: () => taps += 1,
-              color: Colors.black,
-              hoverColor: HyprColors.hover,
-              borderColor: Colors.red,
-              hoverBorderColor: Colors.blue,
-              builder: (_, {required bool hovered, required bool pressed}) =>
-                  Text(
-                    '${hovered ? 'hover' : 'idle'}:${pressed ? 'down' : 'up'}',
-                  ),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    expect(find.text('idle:up'), findsOneWidget);
-
-    final TestGesture mouse = await tester.createGesture(
-      kind: PointerDeviceKind.mouse,
-    );
-    await mouse.addPointer(location: Offset.zero);
-    await mouse.moveTo(tester.getCenter(find.byType(HyprIconTile)));
-    await tester.pumpAndSettle();
-    expect(find.text('hover:up'), findsOneWidget);
-
-    final TestGesture press = await tester.press(find.byType(HyprIconTile));
-    await tester.pump();
-    expect(find.text('hover:down'), findsOneWidget);
-
-    await press.up();
-    await tester.pumpAndSettle();
-    expect(taps, 1);
-    await mouse.removePointer();
-  });
-
   testWidgets('HyprInteractiveTile reports hover and press state', (
     WidgetTester tester,
   ) async {

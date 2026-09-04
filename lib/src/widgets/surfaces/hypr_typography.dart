@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import 'hypr_colors.dart';
+import 'hypr_console_colors.dart';
 
 abstract final class HyprTypography {
   static const String uiFamily = 'Inter';
@@ -228,6 +229,68 @@ abstract final class HyprTypography {
     fontSize: size(9),
     fontWeight: FontWeight.w500,
     letterSpacing: 0.4,
+    fontFeatures: tabularNumbers,
+  );
+
+  // Console chassis. Roles for the engraved chrome shared by the quick
+  // controls console and anything else mounted in the same shell.
+
+  /// Engraved tray heading inside a console chassis.
+  static TextStyle get consoleSection => TextStyle(
+    fontFamily: monoFamily,
+    fontFamilyFallback: <String>['monospace'],
+    color: HyprConsoleColors.label,
+    fontSize: size(10.5),
+    fontWeight: FontWeight.w600,
+    height: 1,
+    letterSpacing: 1.05,
+    shadows: const <Shadow>[
+      Shadow(color: Color(0xBF000000), offset: Offset(0, 1), blurRadius: 2),
+    ],
+  );
+
+  /// Silkscreened caption under a console control.
+  static TextStyle get consoleCaption => TextStyle(
+    fontFamily: monoFamily,
+    fontFamilyFallback: <String>['monospace'],
+    color: HyprConsoleColors.textMuted,
+    fontSize: size(10),
+    fontWeight: FontWeight.w700,
+    height: 1,
+    letterSpacing: 1.45,
+  );
+
+  /// [consoleCaption] for the narrow faces of a capture pad or rocker.
+  static TextStyle get consoleCaptionTight => TextStyle(
+    fontFamily: monoFamily,
+    fontFamilyFallback: <String>['monospace'],
+    color: HyprConsoleColors.textFaint,
+    fontSize: size(9),
+    fontWeight: FontWeight.w700,
+    height: 1,
+    letterSpacing: 1.5,
+  );
+
+  /// Chord hint stamped onto a console face.
+  static TextStyle get consoleShortcut => TextStyle(
+    fontFamily: monoFamily,
+    fontFamilyFallback: <String>['monospace'],
+    color: HyprConsoleColors.textFaint,
+    fontSize: size(8),
+    fontWeight: FontWeight.w600,
+    height: 1,
+    letterSpacing: 0.3,
+  );
+
+  /// Numeric readout behind a console well.
+  static TextStyle get consoleReadout => TextStyle(
+    fontFamily: monoFamily,
+    fontFamilyFallback: <String>['monospace'],
+    color: HyprConsoleColors.textMuted,
+    fontSize: size(16),
+    fontWeight: FontWeight.w600,
+    height: 1,
+    letterSpacing: 0.65,
     fontFeatures: tabularNumbers,
   );
 
