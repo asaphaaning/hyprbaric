@@ -37,9 +37,8 @@ class NetworkEntryTile extends StatefulWidget {
   final VoidCallback onCancel;
   final VoidCallback onSubmit;
 
-  /// Height one collapsed tile occupies in the list: the 46px glass plate
-  /// plus the 10px gap below it.
-  static const double collapsedExtent = 56;
+  /// Height one collapsed plate and its reference 8px list gap occupy.
+  static const double collapsedExtent = 60;
 
   @override
   State<NetworkEntryTile> createState() => NetworkEntryTileState();
@@ -51,7 +50,7 @@ class NetworkEntryTileState extends State<NetworkEntryTile> {
     final NetworkEntry entry = widget.entry;
     final bool interactive = !entry.isConnecting;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -153,7 +152,7 @@ class NetworkEntryTileState extends State<NetworkEntryTile> {
               errorMessage: widget.errorMessage,
               onToggleVisibility: widget.onTogglePasswordVisibility,
               onCancel: widget.onCancel,
-              onSubmit: widget.onSubmit,
+               onSubmit: widget.onSubmit,
             ),
         ],
       ),
@@ -172,7 +171,7 @@ class _NetworkEntryMeta extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         Text(
-          networkStrengthLabel(entry.strength),
+          networkBandLabel(entry),
           style: HyprTypography.compactMono.copyWith(
             color: NetworkMenuColors.fg3,
             fontSize: HyprTypography.size(9),
@@ -190,7 +189,7 @@ class _NetworkEntryMeta extends StatelessWidget {
         ),
         const SizedBox(width: 5),
         Text(
-          entry.secure ? 'WPA' : 'OPEN',
+          entry.secure ? 'WPA2' : 'OPEN',
           style: HyprTypography.compactMono.copyWith(
             color: NetworkMenuColors.fg3,
             fontSize: HyprTypography.size(9),
@@ -210,23 +209,28 @@ class _NetworkSecurityBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HyprInlineTag(
-      label: secure ? '⊠' : '◌',
-      color: Colors.black.withValues(alpha: 0.45),
-      borderColor: const Color(0x993C4652),
-      textColor: NetworkMenuColors.fg3,
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-      borderRadius: BorderRadius.circular(2),
-      uppercase: false,
-      style: HyprTypography.compactMonoStrong.copyWith(
-        fontSize: HyprTypography.size(8.5),
-        letterSpacing: 0.85,
-        height: 1,
+    return DecoratedBox(
+      decoration: const ShapeDecoration(
+        color: NetworkWifiColors.badge,
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.all(Radius.circular(2)),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+        child: Text(
+          secure ? 'WPA2' : 'OPEN',
+          style: HyprTypography.compactMonoStrong.copyWith(
+            color: NetworkMenuColors.fg3,
+            fontSize: HyprTypography.size(8),
+            letterSpacing: 0.8,
+            height: 1,
+          ),
+        ),
       ),
     );
   }
 }
-
 class _NetworkActionBadge extends StatelessWidget {
   const _NetworkActionBadge({required this.label});
 

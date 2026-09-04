@@ -22,6 +22,16 @@ abstract final class ControlsFixtures {
     recordingStatus: RecordingStatusIdle(),
   );
 
+  static const ControlsScenario landing = ControlsScenario(
+    dndEnabled: false,
+    nightLightStatus: NightLightStatusAvailable(
+      enabled: true,
+      temperature: 3500,
+    ),
+    caffeineStatus: CaffeineStatusAvailable(enabled: false),
+    recordingStatus: RecordingStatusIdle(),
+  );
+
   static const ControlsScenario selectingRecording = ControlsScenario(
     dndEnabled: false,
     nightLightStatus: NightLightStatusAvailable(

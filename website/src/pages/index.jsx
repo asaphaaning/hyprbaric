@@ -49,7 +49,6 @@ const modules = [
     label: 'Network',
     title: 'Traffic and Wi-Fi',
     text: 'Throughput and ping, the Wi-Fi networks in range, and your interface addresses.',
-    image: 'img/reference/pop-network-cut.png',
   },
   {
     label: 'Volume',
@@ -67,7 +66,6 @@ const modules = [
     label: 'Power',
     title: 'Battery and power profiles',
     text: 'Charge level and time remaining, and the active power profile.',
-    image: 'img/reference/pop-power-cut.png',
   },
 ];
 
@@ -197,8 +195,14 @@ function ModuleCard({module}) {
       <span className={styles.cardLabel}>{module.label}</span>
       <h3>{module.title}</h3>
       <p>{module.text}</p>
-      {module.label === 'Volume' ? (
-        <FlutterDemo className={styles.flutterPreview} />
+      {module.label === 'Network' ? (
+        <FlutterDemo className={styles.networkPreview} preview="network" />
+      ) : module.label === 'Volume' ? (
+        <FlutterDemo className={styles.mixerPreview} />
+      ) : module.label === 'Controls' ? (
+        <FlutterDemo className={styles.controlsPreview} preview="controls" />
+      ) : module.label === 'Power' ? (
+        <FlutterDemo className={styles.powerPreview} preview="power" />
       ) : (
         <div className={styles.panelPreview}><img src={imageUrl} alt={`${module.label} panel`} /></div>
       )}
@@ -323,7 +327,6 @@ function BarCloseup() {
 
 export default function Home() {
   const desktop = useBaseUrl('img/reference/desktop.png');
-  const notifications = useBaseUrl('img/reference/pop-notifications-cut.png');
   const config = `[appearance]\nposition = "top"\nopacity = 77\ncorner_radius = 12\naccent_hue = 197\n\n[workspaces]\nindicator_style = "roman"\nclickable = true\nvisible_range = "medium"\n\n[network]\ntraffic_refresh_interval = "1s"\nfull_refresh_interval = "8s"`;
 
   return (
@@ -354,13 +357,12 @@ export default function Home() {
                 <span className={styles.cardLabel}>Workspaces</span>
                 <h3>Workspace indicators</h3>
                 <p>Labels follow whichever style you pick: roman numerals by default, plain numbers otherwise. Click to focus, and set how many stay visible.</p>
-                <div className={styles.workspaceSample}><span>I</span><span>II</span><b>III</b><span>IV</span><span>V</span><span>VI</span><span>VII</span></div>
               </article>
               <article className={styles.smallCard}>
                 <span className={styles.cardLabel}>Notifications</span>
                 <h3>Notification centre</h3>
                 <p>A compact current-session inbox with a clear-all action.</p>
-                <img className={styles.notificationPreview} src={notifications} alt="Notification centre panel" />
+                <FlutterDemo className={styles.notificationPreview} preview="notifications" />
               </article>
             </div>
             <aside className={styles.guideCard}>

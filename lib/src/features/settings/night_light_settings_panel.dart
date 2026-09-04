@@ -64,7 +64,7 @@ class _NightLightSettingsPanelState
     return status.when(
       data: (NightLightStatus status) =>
           _buildStatus(status, schedule.asData?.value),
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: HyprSpinner.panel()),
       error: (Object error, StackTrace stackTrace) => HyprEmptyState(
         symbol: 'NITE',
         message: 'Night light unavailable: $error',

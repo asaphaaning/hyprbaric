@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
+import 'battery_meter_geometry.dart';
+import 'power_colors.dart';
 import 'power_formatting.dart';
 import 'power_profile_pad.dart';
 
@@ -140,41 +142,96 @@ class _LedBar extends StatelessWidget {
         height: 18,
         child: Padding(
           padding: const EdgeInsets.all(3),
-          child: Row(
-            children: List<Widget>.generate(20, (int index) {
-              final double threshold = (index + 1) / 20 * 100;
-              final bool lit = active && threshold <= percentage;
-              final Color color = !lit
-                  ? const Color(0xFF202A33)
-                  : threshold < 30
-                  ? const Color(0xFFE05F55)
-                  : threshold < 60
-                  ? const Color(0xFFE7C34A)
-                  : const Color(0xFF55D982);
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(left: index == 0 ? 0 : 2),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(1),
-                      boxShadow: lit
-                          ? <BoxShadow>[
-                              BoxShadow(
-                                color: color.withValues(alpha: 0.72),
-                                blurRadius: 4,
-                              ),
-                            ]
-                          : null,
-                    ),
-                  ),
-                ),
-              );
-            }),
+          child: SizedBox.expand(
+            child: CustomPaint(
+              key: const ValueKey<String>('battery-charge-meter'),
+              painter: _BatteryChargeMeterPainter(
+                percentage: percentage,
+                active: active,
+              ),
+            ),
           ),
         ),
       ),
     );
+  }
+}
+
+/// Paints the charge segments as a single canvas rather than a flex row.
+///
+/// Twenty `Expanded` children each carrying their own decoration and shadow
+/// cost twenty render objects and twenty shadow layers for a meter that is one
+/// strip of colour. One canvas draws it in a single pass and lets the segments
+/// stay legible when the strip is laid out narrower than its usual width.
+class _BatteryChargeMeterPainter extends CustomPainter {
+  const _BatteryChargeMeterPainter({
+    required this.percentage,
+    required this.active,
+  });
+
+  final int percentage;
+  final bool active;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) {
+      return;
+    }
+
+    final BatteryMeterGeometry geometry = BatteryMeterGeometry.forWidth(
+      size.width,
+    );
+    if (!geometry.isPaintable) {
+      return;
+    }
+
+    final int charge = percentage.clamp(0, 100);
+    for (
+      int index = 0;
+      index < BatteryMeterGeometry.segmentCount;
+      index += 1
+    ) {
+      final double threshold =
+          (index + 1) / BatteryMeterGeometry.segmentCount * 100;
+      final bool lit = active && threshold <= charge;
+      final Color color = lit
+          ? PowerColors.forCharge(threshold)
+          : PowerColors.unlit;
+      final RRect segment = RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          geometry.offsetOf(index),
+          0,
+          geometry.segmentWidth,
+          size.height,
+        ),
+        const Radius.circular(HyprRadii.hairline),
+      );
+
+      if (lit) {
+        canvas.drawRRect(
+          segment,
+          Paint()
+            ..color = color.withValues(alpha: 0.50)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
+        );
+      }
+
+      canvas.drawRRect(segment, Paint()..color = color);
+      canvas.drawLine(
+        Offset(segment.left + 0.5, 0.5),
+        Offset(segment.right - 0.5, 0.5),
+        Paint()
+          ..color = lit
+              ? PowerColors.segmentHighlight
+              : PowerColors.segmentHighlightDim
+          ..strokeWidth = 0.7,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BatteryChargeMeterPainter oldDelegate) {
+    return oldDelegate.percentage != percentage || oldDelegate.active != active;
   }
 }
 
@@ -222,15 +279,13 @@ class _Readout extends StatelessWidget {
                   TextSpan(
                     text: value,
                     style: HyprTypography.compactMonoStrong.copyWith(
-                      color: const Color(0xFFE7C34A),
+                      color: PowerColors.low,
                       fontSize: HyprTypography.size(19),
                       fontWeight: FontWeight.w600,
                       height: 1,
                       shadows: <Shadow>[
                         Shadow(
-                          color: const Color(
-                            0xFFE7C34A,
-                          ).withValues(alpha: 0.45),
+                          color: PowerColors.low.withValues(alpha: 0.45),
                           blurRadius: 6,
                         ),
                       ],

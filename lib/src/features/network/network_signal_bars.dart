@@ -16,8 +16,8 @@ class NetworkSignalBars extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 14,
-      height: 14,
+      width: 18,
+      height: 18,
       child: CustomPaint(
         painter: NetworkSignalBarsPainter(
           strength: strength,
@@ -44,9 +44,9 @@ class NetworkSignalBarsPainter extends CustomPainter {
     final int litBars = strength <= 0
         ? 0
         : (strength.clamp(0, 100) / 25).ceil().clamp(1, 4);
-    const double barWidth = 2.5;
+    const double barWidth = 3;
     const double gap = 2;
-    const List<double> heights = <double>[4, 7, 10, 13];
+    const List<double> heights = <double>[5, 9, 13, 17];
     final double left = (size.width - (barWidth * 4 + gap * 3)) / 2;
     final double bottom = size.height;
 

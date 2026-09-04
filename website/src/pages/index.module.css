@@ -707,8 +707,26 @@
   width: auto;
 }
 
-.flutterPreview {
+.mixerPreview {
   aspect-ratio: .6;
+  margin-bottom: auto;
+  margin-top: clamp(12px, 1.6vw, 24px);
+}
+
+.networkPreview {
+  aspect-ratio: .56;
+  margin-bottom: auto;
+  margin-top: clamp(12px, 1.6vw, 24px);
+}
+
+.powerPreview {
+  aspect-ratio: .95;
+  margin-bottom: auto;
+  margin-top: clamp(12px, 1.6vw, 24px);
+}
+
+.controlsPreview {
+  aspect-ratio: .65;
   margin-bottom: auto;
   margin-top: clamp(12px, 1.6vw, 24px);
 }
@@ -723,30 +741,8 @@
   flex: 1;
 }
 
-.workspaceSample {
-  align-items: center;
-  background: #07080a;
-  border: 1px solid #1d2024;
-  border-radius: 10px;
-  box-shadow: inset 0 2px 8px rgb(0 0 0 / 90%);
-  color: #6d7178;
-  display: flex;
-  font-family: var(--ifm-font-family-monospace);
-  font-size: 12px;
-  gap: 8px;
-  padding: 9px 12px;
-}
-
-.workspaceSample b {
-  background: rgb(77 140 232 / 18%);
-  border: 1px solid rgb(120 180 255 / 35%);
-  border-radius: 6px;
-  box-shadow: 0 0 10px rgb(80 150 255 / 35%), inset 0 1px 0 rgb(255 255 255 / 12%);
-  color: #a8dcff;
-  padding: 2px 7px;
-}
-
 .notificationPreview {
+  aspect-ratio: .98;
   display: block;
   height: auto;
   margin: 6px 0 2px;
@@ -886,7 +882,10 @@
 }
 
 @media (min-width: 997px) {
-  .flutterPreview {
+  .mixerPreview,
+  .controlsPreview,
+  .networkPreview,
+  .powerPreview {
     align-self: center;
     width: calc(100% - 8px);
   }
@@ -1020,12 +1019,38 @@
     padding: 16px;
   }
 
-  .flutterPreview {
+  .mixerPreview {
     aspect-ratio: .6;
     height: auto;
     margin-inline: auto;
     margin-top: 12px;
     max-width: 336px;
+    padding-block: 4px 12px;
+  }
+
+  .networkPreview {
+    aspect-ratio: .56;
+    height: auto;
+    margin-inline: auto;
+    margin-top: 12px;
+    max-width: 340px;
+    padding-block: 4px 12px;
+  }
+
+  .powerPreview {
+    aspect-ratio: .76;
+    height: auto;
+    margin-inline: auto;
+    margin-top: 12px;
+    max-width: 320px;
+    padding-block: 4px 12px;
+  }
+
+  .controlsPreview {
+    height: auto;
+    margin-inline: auto;
+    margin-top: 12px;
+    max-width: 432px;
     padding-block: 4px 12px;
   }
 

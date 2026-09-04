@@ -46,20 +46,14 @@ class HyprInsetBorderPainter extends CustomPainter {
 
     if (frame == HyprSurfaceFrame.popover) {
       _drawPopoverStroke(canvas, size);
-      // Held clear of the corner curves: a full-width line has to be cut off
-      // by the clip mid-arc, which shows up as a broken nub in the corner.
-      final double corner =
-          borderRadius.resolve(TextDirection.ltr).topLeft.x + 2;
-      _drawInsetLine(
-        canvas,
-        Rect.fromLTWH(corner, 2, size.width - corner * 2, 1),
-        const <Color>[
-          Color(0x00FFFFFF),
-          HyprColors.popupInset,
-          HyprColors.popupInset,
-          Color(0x00FFFFFF),
-        ],
-      );
+      _drawCornerSafeInsetLine(canvas, size, top: 2);
+      return;
+    }
+
+    if (frame == HyprSurfaceFrame.card) {
+      // A card sits inside a panel and carries no ring of its own, so the
+      // single inset line is the whole treatment.
+      _drawCornerSafeInsetLine(canvas, size, top: 1);
       return;
     }
 
@@ -111,6 +105,31 @@ class HyprInsetBorderPainter extends CustomPainter {
       resolved.toRSuperellipse(outerRect.deflate(1.5)),
       innerPaint,
     );
+  }
+
+  /// Draws the inset line inboard of the corner arcs.
+  ///
+  /// Held clear of the corner curves: a full-width line has to be cut off by
+  /// the clip mid-arc, which shows up as a broken nub in the corner. A line
+  /// laid on the clip boundary itself is half eaten by antialiasing, so the
+  /// caller's [top] is always at least one logical pixel inside.
+  void _drawCornerSafeInsetLine(
+    Canvas canvas,
+    Size size, {
+    required double top,
+  }) {
+    final double corner = borderRadius.resolve(TextDirection.ltr).topLeft.x + 2;
+    final double width = size.width - corner * 2;
+    if (width <= 0) {
+      return;
+    }
+
+    _drawInsetLine(canvas, Rect.fromLTWH(corner, top, width, 1), const <Color>[
+      Color(0x00FFFFFF),
+      HyprColors.popupInset,
+      HyprColors.popupInset,
+      Color(0x00FFFFFF),
+    ]);
   }
 
   void _drawInsetLine(Canvas canvas, Rect rect, List<Color> colors) {

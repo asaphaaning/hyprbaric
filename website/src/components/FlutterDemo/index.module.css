@@ -31,6 +31,47 @@
   transition: opacity 180ms ease-out;
 }
 
+.host,
+.hostReady {
+  border: 0;
+}
+
+.unavailable {
+  align-items: center;
+  background: linear-gradient(180deg, #1c2025, #101216);
+  border: 1px solid #2b3037;
+  border-radius: 18px;
+  color: #9aa5af;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  inset: 0;
+  justify-content: center;
+  padding: 8%;
+  position: absolute;
+  text-align: center;
+}
+
+.unavailableTitle {
+  color: #e9f0f6;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.unavailableBody {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.unavailableBody code {
+  background: rgb(255 255 255 / 6%);
+  border-radius: 4px;
+  font-size: 0.95em;
+  padding: 0.1em 0.35em;
+}
+
 .skeleton {
   background: linear-gradient(180deg, #1c2025, #101216);
   border: 1px solid #2b3037;
@@ -62,6 +103,70 @@
 .skeletonRailLeft {left: 29%;}
 .skeletonRailRight {right: 29%;}
 .skeletonMaster {border-radius: 4px; bottom: 8%; height: 2%; left: 22%; right: 18%;}
+
+.controlsSkeleton {
+  padding: 4%;
+}
+
+.controlsSkeleton span {
+  border-radius: 10px;
+  left: 4%;
+  right: 4%;
+}
+
+.controlsCapture {height: 26%; top: 7%;}
+.controlsInspect {height: 14%; top: 39%;}
+.controlsToggles {height: 27%; top: 59%;}
+.controlsSettings {bottom: 5%; height: 7%;}
+
+.networkSkeleton {
+  padding: 4%;
+}
+
+.networkSkeleton span {
+  border-radius: 9px;
+  left: 5%;
+  right: 5%;
+}
+
+.networkScope {height: 18%; top: 4%;}
+.networkParameters {height: 15%; top: 25%;}
+.networkWifi {height: 28%; top: 45%;}
+.networkInterfaces {height: 16%; top: 77%;}
+.networkSettings {bottom: 3%; height: 3%;}
+
+.powerSkeleton {
+  padding: 5%;
+}
+
+.powerSkeleton span {
+  border-radius: 8px;
+  left: 6%;
+  right: 6%;
+}
+
+.powerMeter {height: 25%; top: 9%;}
+.powerReadouts {height: 19%; top: 38%;}
+.powerTelemetry {height: 7%; top: 61%;}
+.powerProfiles {bottom: 8%; height: 18%;}
+
+.notificationsSkeleton {
+  padding: 4%;
+}
+
+.notificationsSkeleton span {
+  border-radius: 8px;
+  left: 5%;
+  right: 5%;
+}
+
+.notificationsHeader {height: 10%; top: 5%;}
+.notificationRowOne {height: 23%; top: 20%;}
+.notificationRowTwo {height: 23%; top: 47%;}
+.notificationRowThree {height: 23%; top: 74%;}
+
+
+
 
 @keyframes shimmer {
   to {transform: translateX(100%);}

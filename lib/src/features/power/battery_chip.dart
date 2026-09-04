@@ -4,6 +4,7 @@ import 'package:iconsax_flutter/iconsax_flutter.dart';
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/right_cluster_buttons.dart';
+import 'power_colors.dart';
 import 'power_formatting.dart';
 
 class BatteryChip extends StatelessWidget {
@@ -118,12 +119,12 @@ class BatteryIcon extends StatelessWidget {
 
 Color batteryFillColor(int percentage) {
   if (percentage < 20) {
-    return const Color(0xFFE05F55);
+    return PowerColors.critical;
   }
   if (percentage < 40) {
-    return const Color(0xFFE7C34A);
+    return PowerColors.low;
   }
-  return const Color(0xFF55D982);
+  return PowerColors.healthy;
 }
 
 class _BatteryIconPainter extends CustomPainter {

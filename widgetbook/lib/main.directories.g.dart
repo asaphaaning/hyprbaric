@@ -428,17 +428,6 @@ final directories = <_widgetbook.WidgetbookNode>[
             ],
           ),
           _widgetbook.WidgetbookComponent(
-            name: 'HyprConsoleChassis',
-            useCases: [
-              _widgetbook.WidgetbookUseCase(
-                name: 'Translucent chassis',
-                builder:
-                    _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases
-                        .buildControlChassis,
-              ),
-            ],
-          ),
-          _widgetbook.WidgetbookComponent(
             name: 'HyprConsoleSectionLabel',
             useCases: [
               _widgetbook.WidgetbookUseCase(
@@ -501,6 +490,17 @@ final directories = <_widgetbook.WidgetbookNode>[
                 builder:
                     _hyprbaric_widgetbook_use_cases_primitives_shared_primitives_use_cases
                         .buildInteractiveTileStates,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'HyprPopoverPanel',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Translucent chassis',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases
+                        .buildControlChassis,
               ),
             ],
           ),

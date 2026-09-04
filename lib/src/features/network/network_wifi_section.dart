@@ -254,7 +254,8 @@ class _NetworkWifiList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // The list itself is bare: each tile carries its own glass frame.
+    // The list itself is bare: each SSID owns its floating plate and any
+    // selected secured network attaches its password drawer directly below it.
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: child,

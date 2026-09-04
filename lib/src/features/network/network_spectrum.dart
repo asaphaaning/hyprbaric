@@ -202,63 +202,101 @@ class NetworkParameter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(0, 7, 0, 8),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0x0DFFFFFF))),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: <Widget>[
-              Text(
-                label,
-                style: HyprTypography.popRow.copyWith(
-                  color: NetworkMenuColors.fg1,
-                  fontSize: HyprTypography.size(11),
-                  letterSpacing: 0.11,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  value,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.right,
-                  style: HyprTypography.compactMonoStrong.copyWith(
-                    color: _tone,
-                    fontSize: HyprTypography.size(11),
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0,
-                    height: 1.12,
-                    fontFeatures: HyprTypography.tabularNumbers,
-                  ),
-                ),
-              ),
+    const BorderRadius radius = HyprRadii.compactRadius;
+
+    return ClipRSuperellipse(
+      borderRadius: radius,
+      child: DecoratedBox(
+        decoration: const ShapeDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: <Color>[
+              NetworkMenuColors.metricTop,
+              NetworkMenuColors.metricBottom,
             ],
           ),
-          const SizedBox(height: 5),
-          if (progress != null)
-            _ParameterRail(progress: progress!, color: _tone)
-          else
-            const SizedBox(height: 2),
-          const SizedBox(height: 5),
-          Text(
-            detail.toUpperCase(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: HyprTypography.compactMono.copyWith(
-              color: NetworkMenuColors.fg3.withValues(alpha: 0.68),
-              fontSize: HyprTypography.size(8),
-              letterSpacing: 0.64,
-              height: 1,
-            ),
+          shape: RoundedSuperellipseBorder(
+            borderRadius: radius,
+            side: BorderSide(color: NetworkMenuColors.metricBorder),
           ),
-        ],
+        ),
+        child: Stack(
+          children: <Widget>[
+            // The card's top highlight comes from the shared inset border so
+            // it stays inboard of the corner arcs and off the clip boundary.
+            const Positioned.fill(
+              child: IgnorePointer(
+                child: HyprInsetBorder(
+                  borderRadius: radius,
+                  borderColor: NetworkMenuColors.metricBorder,
+                  frame: HyprSurfaceFrame.card,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(9, 7, 9, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: <Widget>[
+                      Text(
+                        label,
+                        style: HyprTypography.popRow.copyWith(
+                          color: NetworkMenuColors.fg1,
+                          fontSize: HyprTypography.size(11),
+                          letterSpacing: 0.11,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      // Ellipsis rather than a scale-down fit: shrinking the
+                      // glyphs would undo the device-pixel snapping in
+                      // HyprTypography.size and break tabular alignment
+                      // between neighbouring cards.
+                      Expanded(
+                        child: Text(
+                          value,
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: HyprTypography.compactMonoStrong.copyWith(
+                            color: _tone,
+                            fontSize: HyprTypography.size(11),
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0,
+                            height: 1.12,
+                            fontFeatures: HyprTypography.tabularNumbers,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  if (progress != null)
+                    _ParameterRail(progress: progress!, color: _tone)
+                  else
+                    const SizedBox(height: 2),
+                  const SizedBox(height: 5),
+                  Text(
+                    detail.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: HyprTypography.compactMono.copyWith(
+                      color: NetworkMenuColors.fg3.withValues(alpha: 0.68),
+                      fontSize: HyprTypography.size(8),
+                      letterSpacing: 0.64,
+                      height: 1,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

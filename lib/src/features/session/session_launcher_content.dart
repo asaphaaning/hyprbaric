@@ -31,11 +31,9 @@ class SessionLauncherCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HyprSurface(
+    return HyprPopoverSurface(
       borderRadius: borderRadius,
-      color: HyprColors.popoverSurface,
       borderColor: HyprColors.popupStroke,
-      frame: HyprSurfaceFrame.popover,
       child: ConstrainedBox(
         constraints: const BoxConstraints(minWidth: 240, maxWidth: 240),
         child: Padding(

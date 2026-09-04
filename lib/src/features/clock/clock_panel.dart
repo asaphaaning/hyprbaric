@@ -19,11 +19,9 @@ class ClockPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HyprSurface(
+    return HyprPopoverSurface(
       borderRadius: borderRadius,
-      color: HyprColors.popoverSurface,
       borderColor: HyprColors.popupStroke,
-      frame: HyprSurfaceFrame.popover,
       child: SizedBox(
         width: 260,
         child: Padding(

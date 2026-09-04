@@ -13,9 +13,12 @@ abstract final class NotificationPalette {
   static const Color placeholderFill = Color(0x66000000);
   static const Color placeholderStroke = Color(0x8C000000);
   static const Color tileHovered = Color(0xEB121314);
+  static const Color tilePressed = Color(0xF00C0D10);
+  static const Color tileBorder = Color(0x00000000);
+  static const Color well = Color(0xF007080B);
 }
 
-enum NotificationTilePhase { idle, hovered }
+enum NotificationTilePhase { idle, hovered, pressed }
 
 @immutable
 class NotificationTileStyle {
@@ -35,14 +38,20 @@ class NotificationTileStyle {
     return switch (phase) {
       NotificationTilePhase.idle => const NotificationTileStyle(
         base: NotificationPalette.tile,
-        topLight: Color(0x09FFFFFF),
-        border: Color(0x8C000000),
-        shadow: Color(0x66000000),
+        topLight: Color(0x0EFFFFFF),
+        border: NotificationPalette.tileBorder,
+        shadow: Color(0x52000000),
       ),
       NotificationTilePhase.hovered => const NotificationTileStyle(
         base: NotificationPalette.tileHovered,
-        topLight: Color(0x0EFFFFFF),
-        border: Color(0x99000000),
+        topLight: Color(0x13FFFFFF),
+        border: NotificationPalette.tileBorder,
+        shadow: Color(0x57000000),
+      ),
+      NotificationTilePhase.pressed => const NotificationTileStyle(
+        base: NotificationPalette.tilePressed,
+        topLight: Color(0x00000000),
+        border: NotificationPalette.tileBorder,
         shadow: Color(0x66000000),
       ),
     };

@@ -3,6 +3,7 @@ import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
+import '../../widgets/primitives/primitives.dart';
 import 'control_capture_pads.dart';
 import 'control_inspect_button.dart';
 import 'control_rocker.dart';
@@ -65,10 +66,10 @@ class ControlsPanel extends StatelessWidget {
     final ControlAvailability nightLight = nightLightStatus.availability;
     final ControlAvailability caffeine = caffeineStatus.availability;
 
-    return HyprConsoleChassis(
+    return HyprPopoverPanel(
       borderRadius: borderRadius,
       constraints: const BoxConstraints(minWidth: 432, maxWidth: 432),
-      padding: const EdgeInsets.all(17),
+      padding: const EdgeInsets.all(12),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

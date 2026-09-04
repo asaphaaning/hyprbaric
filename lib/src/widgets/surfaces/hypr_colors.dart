@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 abstract final class HyprColors {
   static const Color surface = Color(0xB80A1118);
   static const Color surfaceStrong = Color(0xC4071018);
-  static const Color popoverSurface = Color(0xE6071018);
+  static const Color popoverSurface = Colors.transparent;
+  static const Color popoverTop = Color(0x570B0D12);
+  static const Color popoverBottom = Color(0x6B07090D);
   static const Color surfaceSoft = Color(0xB80F1A22);
   static const Color fill = Color(0x101E9BCF);
   static const Color hover = Color(0x0FFFFFFF);

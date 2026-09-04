@@ -166,13 +166,18 @@ class AudioMixerStage extends StatelessWidget {
 class _BrightnessDeck extends StatelessWidget {
   const _BrightnessDeck({required this.illumination});
 
+  static const double _paintHeight = 197;
+
   final double illumination;
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
       painter: _BrightnessDeckPainter(illumination: illumination),
-      child: const SizedBox(height: 151),
+      // The console removes a circular clearance for the knob. Keep this
+      // field taller than that clearance so the deck, not the desktop, is
+      // visible all the way around the lower arc.
+      child: const SizedBox(height: _paintHeight),
     );
   }
 }
@@ -184,7 +189,7 @@ class _BrightnessDeckPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Rect bounds = Offset.zero & size;
+    final Rect deckBounds = Rect.fromLTWH(0, 0, size.width, 196.5);
     final Paint deckPaint = Paint()
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
@@ -195,7 +200,7 @@ class _BrightnessDeckPainter extends CustomPainter {
           AudioMixerColors.deckBottom,
         ],
         stops: <double>[0, 0.48, 1],
-      ).createShader(bounds);
+      ).createShader(deckBounds);
     final RRect deck = RRect.fromRectAndCorners(
       Rect.fromLTWH(0, 0, size.width, 131),
       topLeft: const Radius.circular(16),
@@ -209,9 +214,9 @@ class _BrightnessDeckPainter extends CustomPainter {
 
     canvas.save();
     canvas.clipPath(silhouette);
-    canvas.drawRect(bounds, deckPaint);
+    canvas.drawRect(deckBounds, deckPaint);
     canvas.drawRect(
-      bounds,
+      deckBounds,
       Paint()
         ..shader = const RadialGradient(
           center: Alignment(-0.42, -0.92),
@@ -222,7 +227,7 @@ class _BrightnessDeckPainter extends CustomPainter {
             Colors.transparent,
           ],
           stops: <double>[0, 0.42, 1],
-        ).createShader(bounds),
+        ).createShader(deckBounds),
     );
 
     if (illumination > 0) {

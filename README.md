@@ -67,11 +67,40 @@ dart run build_runner build
 flutter run -d linux
 ```
 
-The same catalog can run in a browser with `flutter run -d chrome`.
+The same catalog can run in a browser with `flutter run -d chrome`, or on a
+fixed local port with:
 
-The documentation landing page embeds its interactive audio mixer directly
-from this catalog. Running `npm run build` in `website/` compiles the Flutter
-preview first, including the shared responsive layout and animated meters.
+```sh
+cd widgetbook
+flutter run -d web-server --web-hostname 127.0.0.1 --web-port 3002
+```
+
+The documentation landing page embeds its interactive audio mixer and quick
+controls directly from this catalog. These previews import the same production
+widgets as the application through Widgetbook's local `hyprbaric` dependency.
+
+For landing-page development, run the real Docusaurus application:
+
+```sh
+cd website
+npm install
+npm start -- --host 127.0.0.1 --port 3001
+```
+
+This creates a debug Flutter embed before Docusaurus starts, then watches the
+application's `lib/` and assets plus Widgetbook's `lib/`, web shell, and
+dependency manifest. Relevant changes rebuild the embed automatically, and
+`flutter/previews/version.json` tells the page a complete build is in place. A
+production `npm run build` performs the same integration with a release Flutter
+build.
+
+Every preview on the page is a view of one shared Flutter engine, added through
+`app.addView` once `flutter_bootstrap.js` has booted, so the landing page loads
+CanvasKit and the app bundle once rather than once per preview. The preview
+names live in `widgetbook/lib/stories/preview_registry.dart` and are checked
+against the web component by `widgetbook/test/preview_registry_test.dart`. When
+the embed has not been built, the previews say so instead of showing a
+placeholder indefinitely.
 
 ## Architecture
 
