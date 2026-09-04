@@ -75,11 +75,7 @@ impl Controller {
             }
         }
 
-        if devices.is_empty() {
-            return Err(first_error.unwrap_or(Error::NoDevice));
-        }
-
-        Ok(sorted_devices(devices))
+        finish_discovery(sorted_devices(devices), first_error)
     }
 
     /// Discovers DDC/CI displays.
@@ -100,12 +96,7 @@ impl Controller {
             }
         }
 
-        let devices = deduplicate_devices(devices);
-        if devices.is_empty() {
-            return Err(first_error.unwrap_or(Error::NoDevice));
-        }
-
-        Ok(devices)
+        finish_discovery(deduplicate_devices(devices), first_error)
     }
 
     /// Reads a known brightness [`Device`].
@@ -476,6 +467,25 @@ fn percent_from_u32(value: u32) -> Percent {
     Percent::new(value.min(100) as u8)
 }
 
+/// Finishes a backend scan while preserving the distinction between absence and
+/// failure.
+///
+/// An empty device list is a normal result: desktop systems commonly have no
+/// `/sys/class/backlight` entry, and external displays are optional. A failed
+/// scan only remains an [`Error`] when it yielded no usable device.
+fn finish_discovery(
+    devices: Vec<Device>,
+    first_error: Option<Error>,
+) -> Result<Vec<Device>, Error> {
+    if devices.is_empty()
+        && let Some(error) = first_error
+    {
+        return Err(error);
+    }
+
+    Ok(devices)
+}
+
 impl Error {
     fn from_brightness_crate(source: brightness_crate::Error) -> Self {
         let message = source.to_string();
@@ -564,5 +574,25 @@ Display 2
         let id = DeviceId::ddc(&display.bus, &display.fingerprint);
 
         assert_eq!(id.ddc_bus(), Some("12"));
+    }
+
+    #[test]
+    fn absent_devices_are_a_successful_discovery() {
+        let devices =
+            finish_discovery(Vec::new(), None).expect("absence is a normal discovery result");
+
+        assert!(devices.is_empty());
+    }
+
+    #[test]
+    fn failed_empty_discovery_preserves_the_backend_error() {
+        let result = finish_discovery(
+            Vec::new(),
+            Some(Error::Unsupported {
+                backend: "backlight",
+            }),
+        );
+
+        assert!(matches!(result, Err(Error::Unsupported { .. })));
     }
 }

@@ -39,8 +39,9 @@ void main() {
 
     // The tint is translucent, so the chassis must sit on the popover's own
     // baseline colour rather than replacing it with transparency.
-    expect(surface.color, HyprColors.popoverSurface);
-    expect(surface.borderColor, HyprColors.popupStroke);
+      expect(surface.color, HyprColors.popoverSurface);
+      expect(surface.color, HyprColors.surfaceStrong);
+      expect(surface.borderColor, HyprColors.popupStroke);
     expect(gradient.colors, <Color>[
       HyprChassisRamp.console.top,
       HyprChassisRamp.console.bottom,
