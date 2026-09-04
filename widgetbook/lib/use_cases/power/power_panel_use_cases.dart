@@ -4,7 +4,7 @@ import 'package:hyprbaric/widget_catalog.dart';
 import 'package:widgetbook_annotation/widgetbook_annotation.dart';
 
 import '../../catalog/catalog_frame.dart';
-import '../../stories/power_panel_preview.dart';
+import '../../audio/power_panel_preview.dart';
 import 'power_fixtures.dart';
 
 @UseCase(

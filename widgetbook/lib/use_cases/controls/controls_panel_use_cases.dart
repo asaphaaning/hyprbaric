@@ -3,7 +3,7 @@ import 'package:hyprbaric/widget_catalog.dart';
 import 'package:widgetbook_annotation/widgetbook_annotation.dart';
 
 import '../../catalog/catalog_frame.dart';
-import '../../stories/controls_panel_preview.dart';
+import '../../audio/controls_panel_preview.dart';
 import 'controls_fixtures.dart';
 
 @UseCase(name: 'Ready', type: ControlsPanel, path: '[Widgets]/Controls')

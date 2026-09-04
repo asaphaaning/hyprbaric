@@ -6,13 +6,14 @@ import 'package:hyprbaric/src/widgets/hypr_surface.dart';
 import 'package:hyprbaric/src/widgets/primitives/primitives.dart';
 
 void main() {
-  testWidgets('the controls panel sits on the shared popover contrast floor', (
+  testWidgets('console chassis tints the shared popover surface', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Center(
-          child: HyprPopoverPanel(
+          child: HyprConsoleChassis(
+            key: const ValueKey<String>('chassis'),
             borderRadius: BorderRadius.circular(16),
             constraints: const BoxConstraints.tightFor(width: 200),
             padding: EdgeInsets.zero,
@@ -28,7 +29,7 @@ void main() {
     final DecoratedBox chassis = tester.widget<DecoratedBox>(
       find
           .descendant(
-            of: find.byType(HyprPopoverSurface),
+            of: find.byKey(const ValueKey<String>('chassis')),
             matching: find.byType(DecoratedBox),
           )
           .last,
@@ -36,18 +37,15 @@ void main() {
     final BoxDecoration decoration = chassis.decoration as BoxDecoration;
     final LinearGradient gradient = decoration.gradient! as LinearGradient;
 
-    // The console no longer carries a chassis tint of its own: it would
-    // double-darken the shared popover tint underneath it.
-    expect(surface.color, isNull);
-    expect(
-      tester.widget<HyprGlassSurface>(find.byType(HyprGlassSurface)).color,
-      HyprColors.surfaceStrong,
-    );
+    // The tint is translucent, so the chassis must sit on the popover's own
+    // baseline colour rather than replacing it with transparency.
+    expect(surface.color, HyprColors.popoverSurface);
     expect(surface.borderColor, HyprColors.popupStroke);
     expect(gradient.colors, <Color>[
       HyprChassisRamp.console.top,
       HyprChassisRamp.console.bottom,
     ]);
+    expect(gradient.colors.every((Color color) => color.a < 0.5), isTrue);
   });
 
   test('console wells are lit from above', () {

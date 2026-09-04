@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:hyprbaric/audio_embed.dart';
+import 'package:hyprbaric/widget_catalog.dart';
 
 import 'audio_fixtures.dart';
 

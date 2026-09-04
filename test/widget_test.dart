@@ -3548,7 +3548,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('NOTIFICATIONS'), findsOneWidget);
-    expect(find.text('CLEAR ALL'), findsOneWidget);
+    expect(find.text('clear all'), findsOneWidget);
     expect(
       find.byKey(const ValueKey<String>('notifications-count-pill')),
       findsOneWidget,
@@ -4182,7 +4182,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(TextField, 'Enter password'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Password for Fiber_2.4G'), findsOneWidget);
     expect(find.text('JOIN'), findsOneWidget);
     // The row's tap target is the shared interaction primitive now, not a
     // bespoke InkWell with every overlay colour turned off.

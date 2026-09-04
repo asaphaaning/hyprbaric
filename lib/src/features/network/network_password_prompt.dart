@@ -55,24 +55,23 @@ class NetworkPasswordPrompt extends StatelessWidget {
           shape: const RoundedSuperellipseBorder(
             borderRadius: BorderRadius.all(Radius.circular(10)),
           ),
+          shadows: const <BoxShadow>[
+            BoxShadow(
+              color: NetworkWifiColors.cast,
+              blurRadius: 2,
+              offset: Offset(0, 1),
+            ),
+            BoxShadow(
+              color: NetworkWifiColors.castStrong,
+              blurRadius: 7,
+              offset: Offset(0, 3),
+              spreadRadius: -3,
+            ),
+          ],
         ),
-        shadows: <BoxShadow>[
-          BoxShadow(
-            color: NetworkWifiColors.cast,
-            blurRadius: 2,
-            offset: Offset(0, 1),
-          ),
-          BoxShadow(
-            color: NetworkWifiColors.castStrong,
-            blurRadius: 7,
-            offset: Offset(0, 3),
-            spreadRadius: -3,
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
-        child: AnimatedSize(
+          child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+          child: AnimatedSize(
           duration: HyprMotion.popup,
           curve: HyprMotion.popupCurve,
           alignment: Alignment.topCenter,
@@ -88,6 +87,7 @@ class NetworkPasswordPrompt extends StatelessWidget {
                   onCancel: onCancel,
                   onSubmit: onSubmit,
                 ),
+          ),
         ),
       ),
     );

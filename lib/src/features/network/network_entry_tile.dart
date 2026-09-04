@@ -152,31 +152,11 @@ class NetworkEntryTileState extends State<NetworkEntryTile> {
               errorMessage: widget.errorMessage,
               onToggleVisibility: widget.onTogglePasswordVisibility,
               onCancel: widget.onCancel,
-              onSubmit: widget.onSubmit,
+               onSubmit: widget.onSubmit,
             ),
         ],
       ),
     );
-  }
-
-  NetworkWifiTilePhase _phaseFor({
-    required NetworkEntry entry,
-    required bool hovered,
-    required bool pressed,
-  }) {
-    if (widget.expanded) {
-      return NetworkWifiTilePhase.expanded;
-    }
-    if (entry.isActive) {
-      return NetworkWifiTilePhase.active;
-    }
-    if (pressed) {
-      return NetworkWifiTilePhase.pressed;
-    }
-    if (hovered) {
-      return NetworkWifiTilePhase.hovered;
-    }
-    return NetworkWifiTilePhase.idle;
   }
 }
 
@@ -251,118 +231,6 @@ class _NetworkSecurityBadge extends StatelessWidget {
     );
   }
 }
-
-class _NetworkWifiTileSurface extends StatelessWidget {
-  const _NetworkWifiTileSurface({
-    required this.radius,
-    required this.phase,
-    required this.style,
-    required this.child,
-  });
-
-  final BorderRadius radius;
-  final NetworkWifiTilePhase phase;
-  final NetworkWifiTileStyle style;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool pressed = phase == NetworkWifiTilePhase.pressed;
-
-    return AnimatedContainer(
-      duration: HyprMotion.hover,
-      curve: HyprMotion.hoverCurve,
-      decoration: ShapeDecoration(
-        color: style.fill,
-        shape: RoundedSuperellipseBorder(borderRadius: radius),
-        shadows: pressed
-            ? null
-            : <BoxShadow>[
-                BoxShadow(
-                  color: style.cast,
-                  blurRadius: 2,
-                  offset: const Offset(0, 1),
-                ),
-                BoxShadow(
-                  color: NetworkWifiColors.castStrong,
-                  blurRadius: phase == NetworkWifiTilePhase.hovered ? 11 : 7,
-                  offset: const Offset(0, 3),
-                  spreadRadius: -3,
-                ),
-              ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: <Widget>[
-          if (style.glow case final Color glow)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: RadialGradient(
-                      center: const Alignment(-0.65, 0),
-                      radius: 1.25,
-                      colors: <Color>[glow, Colors.transparent],
-                      stops: const <double>[0, 1],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          if (!pressed)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(
-                  painter: _NetworkWifiTileRimPainter(
-                    borderRadius: radius,
-                    color: style.rim,
-                  ),
-                ),
-              ),
-            ),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-class _NetworkWifiTileRimPainter extends CustomPainter {
-  const _NetworkWifiTileRimPainter({
-    required this.borderRadius,
-    required this.color,
-  });
-
-  final BorderRadius borderRadius;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.width <= 2 || size.height <= 4) {
-      return;
-    }
-
-    final Paint paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-
-    canvas.save();
-    canvas.clipRect(Rect.fromLTWH(0, 0, size.width, 4));
-    canvas.drawRSuperellipse(
-      borderRadius.toRSuperellipse((Offset.zero & size).deflate(0.5)),
-      paint,
-    );
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant _NetworkWifiTileRimPainter oldDelegate) {
-    return oldDelegate.borderRadius != borderRadius ||
-        oldDelegate.color != color;
-  }
-}
-
 class _NetworkActionBadge extends StatelessWidget {
   const _NetworkActionBadge({required this.label});
 

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hyprbaric/widget_catalog.dart';
 import 'package:hyprbaric_widgetbook/catalog/catalog_theme.dart';
-import 'package:hyprbaric_widgetbook/stories/preview_registry.dart';
+import 'package:hyprbaric_widgetbook/audio/preview_registry.dart';
 
 /// Reads the preview names the web component is prepared to render.
 List<String> _webPreviewNames() {
