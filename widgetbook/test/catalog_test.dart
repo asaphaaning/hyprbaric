@@ -1118,7 +1118,6 @@ void main() {
         'AudioFader',
         'AudioMasterRail',
         'AudioMessage',
-        'AudioMixerDivider',
         'AudioMixerFooter',
         'AudioMixerHeader',
         'AudioMixerStage',
@@ -1126,6 +1125,7 @@ void main() {
         'BrightnessControl',
         'BrightnessKnob',
         'BrightnessKnobReadout',
+        'HyprPanelDivider',
       ]),
     );
   });
