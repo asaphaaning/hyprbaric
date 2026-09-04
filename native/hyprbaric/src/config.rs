@@ -9,14 +9,15 @@ use toml_edit::DocumentMut;
 use tracing::instrument;
 
 use crate::{
-    appearance, brightness, modules, network, night_light, power, schedule, setup, shortcuts,
-    workspaces,
+    appearance, audio, brightness, modules, network, night_light, power, schedule, setup,
+    shortcuts, workspaces,
 };
 
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct Configuration {
     pub appearance: appearance::Configuration,
+    pub audio: audio::Configuration,
     pub brightness: brightness::Configuration,
     pub modules: modules::Configuration,
     pub network: network::Configuration,
@@ -375,5 +376,13 @@ mod tests {
         );
 
         let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn configuration_accepts_audio_volume_step() {
+        let config = toml::from_str::<Configuration>("[audio]\nvolume_step = 9")
+            .expect("audio configuration should parse");
+
+        assert_eq!(config.audio.volume_step().as_u8(), 9);
     }
 }

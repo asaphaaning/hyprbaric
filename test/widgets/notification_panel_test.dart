@@ -6,6 +6,7 @@ import 'package:hyprbaric/src/widgets/notification_panel.dart';
 import 'package:hyprbaric/src/widgets/notification_panel_parts.dart';
 import 'package:hyprbaric/src/widgets/notification_panel_style.dart';
 import 'package:hyprbaric/src/widgets/notification_row.dart';
+import 'package:hyprbaric/src/widgets/primitives/primitives.dart';
 
 void main() {
   group('notificationAgeLabel', () {
@@ -123,6 +124,27 @@ void main() {
       // The slot stays in the tree so the header does not reflow as the last
       // notification drains away.
       expect(find.text('clear all'), findsOneWidget);
+    });
+
+    testWidgets('the notification list rebuilds itself on an interval', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _host(
+          AsyncValue<NotificationStatus>.data(
+            _status(
+              entries: <NotificationEntry>[_entry(1, 'mail', 'New message')],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('2M AGO'), findsOneWidget);
+
+      // Rows render a relative age, so the list has to be driven by a ticker
+      // or every timestamp freezes at whatever it read when the popover
+      // opened.
+      expect(find.byType(HyprIntervalRebuild), findsOneWidget);
     });
   });
 }

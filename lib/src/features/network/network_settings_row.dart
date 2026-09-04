@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:iconsax_flutter/iconsax_flutter.dart';
 
-import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
 import 'network_chrome.dart';
 
@@ -11,34 +11,14 @@ class NetworkSettingsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HyprActionRow(
+    return HyprPlateButton(
+      label: 'NETWORK SETTINGS',
+      icon: Iconsax.setting_2_copy,
       semanticLabel: 'Network settings',
       onPressed: onPressed,
-      borderRadius: BorderRadius.circular(7),
-      hoverColor: NetworkMenuColors.hover,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      title: 'Network settings…',
-      titleColor: NetworkMenuColors.fg2,
-      hoverTitleColor: NetworkMenuColors.fg1,
-      titleStyle: HyprTypography.popRow.copyWith(
-        fontSize: HyprTypography.size(12.5),
-        fontWeight: FontWeight.w500,
-      ),
-      leadingBuilder:
-          (
-            BuildContext context, {
-            required bool hovered,
-            required bool selected,
-          }) {
-            return Text(
-              '⚙',
-              style: HyprTypography.compactMono.copyWith(
-                color: hovered ? NetworkMenuColors.fg2 : NetworkMenuColors.fg3,
-                fontSize: HyprTypography.size(12.5),
-                height: 1,
-              ),
-            );
-          },
+      labelColor: NetworkMenuColors.fg1,
+      iconColor: NetworkMenuColors.fg2,
+      trailingColor: NetworkMenuColors.fg3,
     );
   }
 }

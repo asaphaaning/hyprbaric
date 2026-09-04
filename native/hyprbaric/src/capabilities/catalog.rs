@@ -138,7 +138,7 @@ pub(super) const DEFINITIONS: &[Definition] = &[
     Definition {
         capability: Capability::Notifications,
         label: "Desktop notifications",
-        detail: "Notification server integration hosted by Hyprbaric.",
+        detail: "Freedesktop notification server hosted by Hyprbaric, with observer fallback for an existing server.",
         tier: Tier::Optional,
         probes: &[Probe::AlwaysAvailable],
         features: &["notifications", "do not disturb"],

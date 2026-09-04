@@ -43,21 +43,33 @@ class NetworkPanelState extends State<NetworkPanel> {
   final FocusNode _passwordFocusNode = FocusNode(
     debugLabel: 'network-password',
   );
-  final List<double> _uploadHistory = <double>[];
-  final List<double> _downloadHistory = <double>[];
+  // Rebuilt rather than mutated on every sample. The painter holds these
+  // lists and compares them to decide whether to repaint, so a buffer edited
+  // in place would leave it comparing one list against itself and the trace
+  // would never advance past its first frame.
+  List<double> _uploadHistory = const <double>[];
+  List<double> _downloadHistory = const <double>[];
+  List<DateTime> _sampleTimes = const <DateTime>[];
   String? _expandedSsid;
   String? _selectedSsid;
   String? _inlineError;
-  String? _lastTrafficSignature;
+  NetworkStatus? _lastSampledStatus;
   bool? _pendingWifiEnabled;
   bool _passwordKeyboardActive = false;
   bool _showPassword = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _recordTraffic(widget.status.asData?.value);
+  }
 
   @override
   void didUpdateWidget(covariant NetworkPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
     final NetworkStatus? status = widget.status.asData?.value;
     final NetworkStatus? oldStatus = oldWidget.status.asData?.value;
+    _recordTraffic(status);
     if (_pendingWifiEnabled != null &&
         status != null &&
         status != oldStatus &&
@@ -206,31 +218,77 @@ class NetworkPanelState extends State<NetworkPanel> {
     setState(_clearNetworkEntryState);
   }
 
-  void _recordTraffic(NetworkTraffic traffic) {
-    final String signature =
-        '${traffic.upload.bytesPerSecond}:${traffic.download.bytesPerSecond}';
-    if (_lastTrafficSignature == signature) {
+  /// Records one sample per snapshot that arrives from Rust.
+  ///
+  /// Sampling is keyed on the snapshot rather than on the byte counts. An idle
+  /// link reports the same rate every tick, and skipping those readings froze
+  /// the trace instead of scrolling a flat line across it.
+  ///
+  /// No `setState` here on purpose: both callers already sit inside a build
+  /// pass for this element, so the new series is picked up by the build that
+  /// follows.
+  void _recordTraffic(NetworkStatus? status) {
+    if (identical(status, _lastSampledStatus)) {
       return;
     }
-    _lastTrafficSignature = signature;
+    _lastSampledStatus = status;
+
+    final NetworkTraffic traffic = status?.traffic ?? _emptyTraffic();
     final double upload = megabytesPerSecond(traffic.upload.bytesPerSecond);
     final double download = megabytesPerSecond(traffic.download.bytesPerSecond);
-    if (_uploadHistory.isEmpty) {
-      _uploadHistory.addAll(List<double>.filled(_trafficHistoryLength, upload));
-      _downloadHistory.addAll(
-        List<double>.filled(_trafficHistoryLength, download),
-      );
-      return;
-    }
-    _appendTrafficSample(_uploadHistory, upload);
-    _appendTrafficSample(_downloadHistory, download);
+
+    _uploadHistory = _appendTrafficSample(_uploadHistory, upload);
+    _downloadHistory = _appendTrafficSample(_downloadHistory, download);
+    _sampleTimes = _appendSample<DateTime>(_sampleTimes, DateTime.now());
   }
 
-  void _appendTrafficSample(List<double> samples, double value) {
-    samples.add(value);
-    if (samples.length > _trafficHistoryLength) {
-      samples.removeRange(0, samples.length - _trafficHistoryLength);
+  List<double> _appendTrafficSample(List<double> samples, double value) {
+    // The window opens already full so the trace spans the scope from the
+    // first sample rather than growing in from the left edge.
+    if (samples.isEmpty) {
+      return List<double>.filled(_trafficHistoryLength, value, growable: false);
     }
+    return _appendSample<double>(samples, value);
+  }
+
+  List<T> _appendSample<T>(List<T> samples, T value) {
+    final int start = samples.length >= _trafficHistoryLength
+        ? samples.length - _trafficHistoryLength + 1
+        : 0;
+    return <T>[...samples.sublist(start), value];
+  }
+
+  /// The time the full scope width represents.
+  ///
+  /// The poll cadence is configurable in TOML, so this cannot be assumed from
+  /// the sample count. The observed cadence is measured and multiplied out
+  /// across the window, which is correct once the buffer has filled and stays
+  /// correct while it is still warming up behind the opening prefill.
+  Duration? get _trafficWindow {
+    if (_sampleTimes.length < 2) {
+      return null;
+    }
+    final int spanMicroseconds = _sampleTimes.last
+        .difference(_sampleTimes.first)
+        .inMicroseconds;
+    final double cadence = spanMicroseconds / (_sampleTimes.length - 1);
+
+    return Duration(
+      microseconds: (cadence * (_trafficHistoryLength - 1)).round(),
+    );
+  }
+
+  NetworkTraffic _emptyTraffic() {
+    return NetworkTraffic(
+      upload: NetworkTransfer(
+        bytesPerSecond: Uint64(BigInt.zero),
+        totalBytes: Uint64(BigInt.zero),
+      ),
+      download: NetworkTransfer(
+        bytesPerSecond: Uint64(BigInt.zero),
+        totalBytes: Uint64(BigInt.zero),
+      ),
+    );
   }
 
   @override
@@ -242,19 +300,7 @@ class NetworkPanelState extends State<NetworkPanel> {
     final bool scanning = status?.scanning ?? widget.status.isLoading;
     final List<NetworkEntry> networks = status?.networks ?? const [];
     final List<NetworkInterface> interfaces = status?.interfaces ?? const [];
-    final NetworkTraffic traffic =
-        status?.traffic ??
-        NetworkTraffic(
-          upload: NetworkTransfer(
-            bytesPerSecond: Uint64(BigInt.zero),
-            totalBytes: Uint64(BigInt.zero),
-          ),
-          download: NetworkTransfer(
-            bytesPerSecond: Uint64(BigInt.zero),
-            totalBytes: Uint64(BigInt.zero),
-          ),
-        );
-    _recordTraffic(traffic);
+    final NetworkTraffic traffic = status?.traffic ?? _emptyTraffic();
     final String? message = status?.message;
 
     return HyprPopoverPanel(
@@ -262,7 +308,10 @@ class NetworkPanelState extends State<NetworkPanel> {
       constraints: const BoxConstraints(
         minWidth: 340,
         maxWidth: 340,
-        maxHeight: 640,
+        // Only a safety net for short screens: it has to clear the fixed
+        // sections plus four Wi-Fi rows, or it, rather than the list's own
+        // cap, decides how many rows are visible.
+        maxHeight: 900,
       ),
       padding: const EdgeInsets.all(10),
       child: Column(
@@ -270,30 +319,37 @@ class NetworkPanelState extends State<NetworkPanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           NetworkSpectrumPanel(
-            traffic: traffic,
             uploadHistory: _uploadHistory,
             downloadHistory: _downloadHistory,
+            window: _trafficWindow,
           ),
-          NetworkPingRow(pingMs: traffic.pingMs),
+          const SizedBox(height: 10),
+          NetworkParameterBank(
+            traffic: traffic,
+            interface: interfaces.isEmpty ? null : interfaces.first,
+          ),
           const HyprSectionBreak(),
-          NetworkWifiSection(
-            devicePresent: devicePresent,
-            wifiEnabled: wifiEnabled,
-            scanning: scanning,
-            networks: networks,
-            expandedSsid: _expandedSsid,
-            selectedSsid: _selectedSsid,
-            passwordController: _passwordController,
-            passwordFocusNode: _passwordFocusNode,
-            showPassword: _showPassword,
-            inlineError: _inlineError,
-            onToggleWifiEnabled: () => _setWifiEnabled(!wifiEnabled),
-            onToggleEntry: _toggleEntry,
-            onTogglePasswordVisibility: () {
-              setState(() => _showPassword = !_showPassword);
-            },
-            onCancelPasswordPrompt: _cancelPasswordPrompt,
-            onSubmit: _submit,
+          // The Wi-Fi section is what gives way when the popover is short.
+          Flexible(
+            child: NetworkWifiSection(
+              devicePresent: devicePresent,
+              wifiEnabled: wifiEnabled,
+              scanning: scanning,
+              networks: networks,
+              expandedSsid: _expandedSsid,
+              selectedSsid: _selectedSsid,
+              passwordController: _passwordController,
+              passwordFocusNode: _passwordFocusNode,
+              showPassword: _showPassword,
+              inlineError: _inlineError,
+              onToggleWifiEnabled: () => _setWifiEnabled(!wifiEnabled),
+              onToggleEntry: _toggleEntry,
+              onTogglePasswordVisibility: () {
+                setState(() => _showPassword = !_showPassword);
+              },
+              onCancelPasswordPrompt: _cancelPasswordPrompt,
+              onSubmit: _submit,
+            ),
           ),
           const HyprSectionBreak(),
           NetworkInterfacesSection(interfaces: interfaces),

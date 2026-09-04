@@ -42,8 +42,8 @@ void main() {
     expect(surface.color, HyprColors.popoverSurface);
     expect(surface.borderColor, HyprColors.popupStroke);
     expect(gradient.colors, <Color>[
-      HyprConsoleColors.chassisTop,
-      HyprConsoleColors.chassisBottom,
+      HyprChassisRamp.console.top,
+      HyprChassisRamp.console.bottom,
     ]);
     expect(gradient.colors.every((Color color) => color.a < 0.5), isTrue);
   });

@@ -5,9 +5,15 @@
 //! [`Report`]. PipeWire and command-line process details stay in the backend
 //! boundary.
 
+use serde::{Deserialize, Deserializer};
+
 /// A clamped audio volume percentage.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Percent(u8);
+
+/// A volume adjustment step normalized to `0..=100` percent.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct VolumeStep(u8);
 
 /// The default PipeWire endpoint class controlled by Hyprbaric.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -101,6 +107,42 @@ impl Percent {
     /// Returns the clamped integer percentage.
     pub const fn as_u8(self) -> u8 {
         self.0
+    }
+}
+
+impl VolumeStep {
+    /// Default adjustment applied by volume-up and volume-down shortcuts.
+    pub const DEFAULT: Self = Self(5);
+
+    /// Creates a step by clamping an integer to `0..=100`.
+    pub const fn new(value: i64) -> Self {
+        if value < 0 {
+            Self(0)
+        } else if value > 100 {
+            Self(100)
+        } else {
+            Self(value as u8)
+        }
+    }
+
+    /// Returns the normalized percentage step.
+    pub const fn as_u8(self) -> u8 {
+        self.0
+    }
+}
+
+impl Default for VolumeStep {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+impl<'de> Deserialize<'de> for VolumeStep {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        i64::deserialize(deserializer).map(Self::new)
     }
 }
 

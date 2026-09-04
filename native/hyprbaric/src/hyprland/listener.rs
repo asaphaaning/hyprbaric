@@ -1,78 +1,65 @@
 //! Hyprland event-listener boundary.
 
-use std::{sync::Arc, time::Duration};
-
 use hyprland::{
-    data::{Client, Workspace},
+    data::Client,
     event_listener::{
         AsyncEventListener, WindowEventData, WindowTitleEventData, WorkspaceEventData,
     },
     prelude::*,
     shared::WorkspaceType,
 };
-use tokio::sync::{Mutex, broadcast};
-use tokio::task::JoinHandle;
+use tokio::sync::broadcast;
 use tracing::instrument;
 
 use super::{
-    Error, FocusedWindowSnapshot, WorkspaceSnapshot, is_special_workspace, workspace_occupancy,
+    Error, FocusedWindowSnapshot, WorkspaceOccupancy, WorkspaceSnapshot, occupancy::Occupancy,
 };
-
-/// How long to wait after the last window-moved event before refreshing.
-///
-/// Drags emit move storms; occupancy only matters once the window settles.
-const MOVE_DEBOUNCE: Duration = Duration::from_millis(400);
 
 /// Runs compositor observation until Hyprland closes the event listener.
 #[instrument(name = "hyprbaric::hyprland::listener::run", skip_all, fields(%hostname), err)]
 pub(super) async fn run(
     workspace_sender: broadcast::Sender<WorkspaceSnapshot>,
     focused_window_sender: broadcast::Sender<FocusedWindowSnapshot>,
+    initial_occupancy: WorkspaceOccupancy,
     hostname: String,
 ) -> Result<(), Error> {
     let mut listener = AsyncEventListener::new();
-    let workspace_sender_clone = workspace_sender.clone();
+    let occupancy = Occupancy::spawn(workspace_sender.clone(), initial_occupancy);
+
+    // The switch is published straight away with the occupancy already on
+    // hand: the highlight must not wait on a compositor round trip. The
+    // refresh that follows corrects the dots a moment later.
+    let workspace_occupancy = occupancy.clone();
     listener.add_workspace_changed_handler(move |event: WorkspaceEventData| {
-        let sender = workspace_sender_clone.clone();
+        let sender = workspace_sender.clone();
+        let occupancy = workspace_occupancy.clone();
         Box::pin(async move {
             let (name, is_special) = workspace_name(event.name);
-            refresh_workspace(sender, event.id, name, is_special).await;
+            drop(sender.send(WorkspaceSnapshot::new(
+                event.id,
+                name,
+                is_special,
+                occupancy.latest(),
+            )));
+            occupancy.poke();
         })
     });
 
-    let occupancy_sender = workspace_sender.clone();
+    let window_occupancy = occupancy.clone();
     listener.add_window_opened_handler(move |_| {
-        let sender = occupancy_sender.clone();
-        Box::pin(async move { refresh_active_workspace(sender).await })
+        let occupancy = window_occupancy.clone();
+        Box::pin(async move { occupancy.poke() })
     });
 
-    let occupancy_sender = workspace_sender.clone();
+    let window_occupancy = occupancy.clone();
     listener.add_window_closed_handler(move |_| {
-        let sender = occupancy_sender.clone();
-        Box::pin(async move { refresh_active_workspace(sender).await })
+        let occupancy = window_occupancy.clone();
+        Box::pin(async move { occupancy.poke() })
     });
 
-    listener.add_window_moved_handler({
-        let sender = workspace_sender.clone();
-        let pending: Arc<Mutex<Option<JoinHandle<()>>>> = Arc::new(Mutex::new(None));
-
-        move |_| {
-            let sender = sender.clone();
-            let pending = pending.clone();
-
-            Box::pin(async move {
-                let mut slot = pending.lock().await;
-
-                if let Some(previous) = slot.take() {
-                    previous.abort();
-                }
-
-                *slot = Some(tokio::spawn(async move {
-                    tokio::time::sleep(MOVE_DEBOUNCE).await;
-                    refresh_active_workspace(sender).await;
-                }));
-            })
-        }
+    listener.add_window_moved_handler(move |_| {
+        let occupancy = occupancy.clone();
+        Box::pin(async move { occupancy.poke() })
     });
 
     let active_window_hostname = hostname.clone();
@@ -102,38 +89,6 @@ pub(super) async fn run(
         .start_listener_async()
         .await
         .map_err(Error::Listener)
-}
-
-async fn refresh_active_workspace(sender: broadcast::Sender<WorkspaceSnapshot>) {
-    let workspace = match Workspace::get_active_async().await {
-        Ok(workspace) => workspace,
-        Err(error) => {
-            tracing::warn!(?error, "Failed to refresh active Hyprland workspace");
-            return;
-        }
-    };
-    let is_special = is_special_workspace(workspace.id);
-
-    refresh_workspace(sender, workspace.id, workspace.name, is_special).await;
-}
-
-/// Publishes a workspace snapshot with fresh occupancy.
-///
-/// Occupancy is last-known-good: when the refresh fails the previous snapshot
-/// stands and the failure is only logged. The next workspace or window event
-/// retries.
-async fn refresh_workspace(
-    sender: broadcast::Sender<WorkspaceSnapshot>,
-    id: i32,
-    name: String,
-    is_special: bool,
-) {
-    match workspace_occupancy().await {
-        Ok(occupancy) => {
-            drop(sender.send(WorkspaceSnapshot::new(id, name, is_special, occupancy)));
-        }
-        Err(error) => tracing::warn!(?error, "Failed to refresh Hyprland workspace occupancy"),
-    }
 }
 
 async fn refresh_focused_window(

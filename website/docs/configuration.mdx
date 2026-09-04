@@ -9,7 +9,7 @@ hyprbaric starts with useful defaults. You can configure it two ways: use the **
 
 Open **Settings** from the bar menu or with the **Bar settings** shortcut (`Super + Shift + C`). Changes made there are applied immediately and persisted to `config.toml`. Manual TOML changes take effect after restarting hyprbaric.
 
-The GUI covers what most people change regularly, across five tabs that map onto TOML tables one for one. The [Settings window](./settings-window) walkthrough documents every control and the table each tab writes. Runtime tuning such as network polling, brightness discovery, and power refresh cadence has no GUI control and is TOML only.
+The GUI covers what most people change regularly, across five tabs that map onto TOML tables one for one. The [Settings window](./settings-window) walkthrough documents every control and the table each tab writes. Runtime tuning such as the volume shortcut step, network polling, brightness discovery, and power refresh cadence has no GUI control and is TOML only.
 
 ## Create your config file
 
@@ -51,7 +51,7 @@ stop_hour = 7
 
 Dropping every line but `[workspaces] visible_range = "large"` would still leave that table's `indicator_style = "roman"` and `clickable = true` in place.
 
-Nine tables make up the entire TOML surface. [Configuration surfaces](./configuration-reference#configuration-surfaces) lists them against what each one controls and which settings tab manages it, and the rest of that page covers every key, value, and default.
+Ten tables make up the entire TOML surface. [Configuration surfaces](./configuration-reference#configuration-surfaces) lists them against what each one controls and which settings tab manages it, and the rest of that page covers every key, value, and default.
 
 ## What is configured outside TOML
 
@@ -59,6 +59,6 @@ Plenty of behavior is shaped by the host instead: environment variables, capture
 
 ## When a value is rejected
 
-Values are checked while the file loads. A file that parses as TOML but holds an out-of-range value stops startup and is logged with its path, rather than falling back to defaults, so check the log when a change appears to have been ignored. An unknown table or key is ignored instead.
+Values are checked while the file loads. A file that parses as TOML but holds an out-of-range value normally stops startup and is logged with its path, rather than falling back to defaults. The volume shortcut step is deliberately clamped to `0..=100` instead. Check the log when a change appears to have been ignored; an unknown table or key is ignored.
 
 [Validation](./configuration-reference#validation) lists every constraint with accepted and rejected examples.

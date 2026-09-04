@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../../widgets/hypr_surface.dart';
@@ -128,42 +126,16 @@ class ControlRecordPad extends StatefulWidget {
 }
 
 class _ControlRecordPadState extends State<ControlRecordPad> {
-  Timer? _ticker;
-
-  @override
-  void initState() {
-    super.initState();
-    _syncTicker();
-  }
-
-  @override
-  void didUpdateWidget(covariant ControlRecordPad oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _syncTicker();
-  }
-
-  @override
-  void dispose() {
-    _ticker?.cancel();
-    super.dispose();
-  }
-
-  void _syncTicker() {
-    final bool wanted = widget.startedAtMs != null;
-    if (wanted && _ticker == null) {
-      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-        setState(() {});
-      });
-      return;
-    }
-    if (!wanted && _ticker != null) {
-      _ticker?.cancel();
-      _ticker = null;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    // Only while a recording is running does the elapsed label change.
+    return HyprIntervalRebuild(
+      enabled: widget.startedAtMs != null,
+      builder: _buildPad,
+    );
+  }
+
+  Widget _buildPad(BuildContext context) {
     final bool enabled = widget.enabled;
 
     return RepaintBoundary(

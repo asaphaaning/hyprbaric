@@ -40,7 +40,7 @@ class AudioPanel extends StatelessWidget {
       borderRadius: borderRadius,
       constraints: const BoxConstraints(minWidth: 336, maxWidth: 336),
       padding: EdgeInsets.zero,
-      gradient: AudioMixerColors.chassis,
+      gradient: HyprChassisRamp.mixer.gradient,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -128,9 +128,7 @@ class WorkspaceButton extends StatelessWidget {
     final bool active = this.active;
     final bool occupied = this.occupied;
     final HyprPalette palette = context.hyprPalette;
-    final Color foreground = active
-        ? palette.accentSoft
-        : HyprColors.textFaint;
+    final Color foreground = active ? palette.accentSoft : HyprColors.textFaint;
     final BorderSide border = active
         ? BorderSide(
             color: palette.accentSoft.withValues(alpha: 0.40),

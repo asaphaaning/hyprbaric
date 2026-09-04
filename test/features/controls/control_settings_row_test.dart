@@ -21,11 +21,16 @@ void main() {
     );
     final ShapeDecoration faceDecoration = face.decoration! as ShapeDecoration;
 
-    expect(frameDecoration.color, const Color(0xFF24262A));
+    // The gasket is a single flat slab: one solid tone, no gradient and no
+    // drop shadow to lift it off the tray.
+    expect(frameDecoration.color, const Color(0xFF16181D));
     expect(frameDecoration.gradient, isNull);
     expect(frameDecoration.shadows, isNull);
+
+    // All of the face's lighting rides in its gradient; inner shadows offset
+    // the wrong way in Flutter, so none are used.
     expect(faceDecoration.gradient, isA<LinearGradient>());
-    expect(faceDecoration.shadows, isNotEmpty);
+    expect(faceDecoration.shadows, isNull);
   });
 
   testWidgets('the settings row shows a chord only when one is bound', (

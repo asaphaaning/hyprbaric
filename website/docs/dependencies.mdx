@@ -54,7 +54,7 @@ A capability reports **Ready** when every probe passes, **Missing** when an opti
 
 **Screenshots** prefer `grimblast` when it is installed and fall back to `grim`. `slurp` is required either way, because region selection goes through it.
 
-**Notifications** and **System tray** are always reported as available because hyprbaric hosts them itself over D-Bus. If the panel stays empty, the cause is on the session bus rather than in a missing package.
+**Notifications** and **System tray** are always reported as available because hyprbaric hosts them itself over D-Bus. Hyprbaric claims `org.freedesktop.Notifications` when it is free and observes an existing owner without replacing it otherwise. Sandboxed applications additionally depend on a selected XDG Notification portal backend. If the panel stays empty, inspect the user session bus and portal selection rather than looking for a hyprbaric notification-daemon package.
 
 **XDG user directories** only affects *where* captures are written. Without `xdg-user-dir`, captures fall back to `~/Pictures/Screenshots` and `~/Videos/Recordings`.
 

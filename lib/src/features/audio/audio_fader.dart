@@ -235,6 +235,7 @@ class _FaderTrack extends StatelessWidget {
                 value: value,
                 ramp: ramp,
                 emphasized: emphasized,
+                highlight: context.hyprPalette.accentSoft,
                 muted: muted,
               ),
             ),
@@ -285,6 +286,7 @@ class AudioDisabledFader extends StatelessWidget {
                 value: 0,
                 ramp: ramp,
                 emphasized: false,
+                highlight: context.hyprPalette.accentSoft,
                 muted: true,
               ),
             ),
@@ -301,12 +303,17 @@ class AudioFaderPainter extends CustomPainter {
     required this.value,
     required this.ramp,
     required this.emphasized,
+    required this.highlight,
     required this.muted,
   });
 
   final double value;
   final HyprLevelRamp ramp;
   final bool emphasized;
+
+  /// The UI accent, distinct from [accent], which identifies the channel.
+  /// Taken from the palette so it follows the configured hue.
+  final Color highlight;
   final bool muted;
 
   @override
@@ -366,9 +373,7 @@ class AudioFaderPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = emphasized ? 1 : 0.75
-        ..color = emphasized
-            ? AudioMixerColors.accentBorder
-            : AudioMixerColors.handleBorder,
+        ..color = emphasized ? highlight : AudioMixerColors.handleBorder,
     );
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -384,6 +389,7 @@ class AudioFaderPainter extends CustomPainter {
     return value != oldDelegate.value ||
         ramp != oldDelegate.ramp ||
         emphasized != oldDelegate.emphasized ||
+        highlight != oldDelegate.highlight ||
         muted != oldDelegate.muted;
   }
 }

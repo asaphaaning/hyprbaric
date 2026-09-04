@@ -26,6 +26,39 @@ const BasicMessageChannel<Object?> _keyboardModeChannel =
 void main() {
   setUp(LayerShellController.debugResetKeyboardOwners);
   tearDown(LayerShellController.debugResetKeyboardOwners);
+
+  testWidgets('only one host opens the guide automatically', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          setupGuideAutomaticHostProvider.overrideWithValue(true),
+          setupStatusProvider.overrideWith(
+            (_) => Stream<SetupStatus>.value(
+              const SetupStatus(state: SetupState.required),
+            ),
+          ),
+        ],
+        child: _surface(
+          const Stack(
+            fit: StackFit.expand,
+            children: <Widget>[SetupGuideHost(), SetupGuideHost()],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Every native view builds its own host against the same container, and
+    // the status is replayed to each. Without an election a multi-monitor
+    // session would open the journey on every bar at once.
+    expect(find.byKey(const ValueKey<String>('setup-guide')), findsOneWidget);
+  });
+
   testWidgets('required setup opens once on the automatic host', (
     WidgetTester tester,
   ) async {

@@ -1,0 +1,76 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hyprbaric/src/features/network/network_spectrum.dart';
+
+void main() {
+  group('NetworkSpectrumPainter', () {
+    test('repaints when the series advances by value', () {
+      // The panel used to hand the painter one buffer it mutated in place, so
+      // comparing by identity always said "nothing changed" and the trace
+      // froze on its first frame.
+      const NetworkSpectrumPainter first = NetworkSpectrumPainter(
+        uploadHistory: <double>[1, 2, 3],
+        downloadHistory: <double>[1, 1, 1],
+      );
+      const NetworkSpectrumPainter second = NetworkSpectrumPainter(
+        uploadHistory: <double>[2, 3, 4],
+        downloadHistory: <double>[1, 1, 1],
+      );
+
+      expect(second.shouldRepaint(first), isTrue);
+    });
+
+    test('holds still when the series is unchanged', () {
+      const NetworkSpectrumPainter first = NetworkSpectrumPainter(
+        uploadHistory: <double>[1, 2, 3],
+        downloadHistory: <double>[4, 5, 6],
+      );
+      const NetworkSpectrumPainter second = NetworkSpectrumPainter(
+        uploadHistory: <double>[1, 2, 3],
+        downloadHistory: <double>[4, 5, 6],
+      );
+
+      // Equal by value, so a separate instance is not a reason to repaint.
+      expect(second.shouldRepaint(first), isFalse);
+    });
+  });
+
+  group('scope time base', () {
+    testWidgets('reports the measured window rather than a fixed label', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: NetworkSpectrumPanel(
+              uploadHistory: <double>[1, 2],
+              downloadHistory: <double>[1, 2],
+              window: Duration(seconds: 50),
+            ),
+          ),
+        ),
+      );
+
+      // The poll cadence is configurable, so the axis cannot claim a constant.
+      expect(find.text('50 s'), findsOneWidget);
+      expect(find.text('20 s'), findsNothing);
+    });
+
+    testWidgets('shows a placeholder before the window can be measured', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: NetworkSpectrumPanel(
+              uploadHistory: <double>[1, 2],
+              downloadHistory: <double>[1, 2],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('--'), findsOneWidget);
+    });
+  });
+}

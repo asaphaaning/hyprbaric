@@ -11,6 +11,10 @@ import 'setup_guide_state.dart';
 
 /// Owns the setup journey for one Flutter view.
 ///
+/// Automatic opening is elected: every view builds a host against the same
+/// container, but only the election winner opens the journey, so a
+/// multi-monitor session does not onboard every bar at once.
+///
 /// The guide closes optimistically when the user finishes or skips, while
 /// persistence settles asynchronously: a failure toasts and reopens for a
 /// retry, and completion settling elsewhere stands down automatic guides.
@@ -35,9 +39,14 @@ class _SetupGuideHostState extends ConsumerState<SetupGuideHost> {
   _resultSubscription;
   late final ProviderSubscription<SetupGuideRequest?> _requestSubscription;
 
+  /// Captured up front: `ref` cannot be read once the element is unmounting,
+  /// and the claim has to be released exactly then.
+  late final SetupGuideHostElection _election;
+
   @override
   void initState() {
     super.initState();
+    _election = ref.read(setupGuideHostElectionProvider.notifier);
     _statusSubscription = ref.listenManual<AsyncValue<SetupStatus>>(
       setupStatusProvider,
       (_, AsyncValue<SetupStatus> next) {
@@ -71,6 +80,7 @@ class _SetupGuideHostState extends ConsumerState<SetupGuideHost> {
     _statusSubscription.close();
     _resultSubscription.close();
     _requestSubscription.close();
+    _election.release(this);
     super.dispose();
   }
 
@@ -78,7 +88,9 @@ class _SetupGuideHostState extends ConsumerState<SetupGuideHost> {
     switch (status.state) {
       case SetupState.required:
         if (ref.read(setupGuideAutomaticHostProvider)) {
-          _open(SetupLaunch.automatic);
+          if (_election.claim(this)) {
+            _open(SetupLaunch.automatic);
+          }
         }
       case SetupState.complete:
       case SetupState.disabled:
@@ -90,6 +102,7 @@ class _SetupGuideHostState extends ConsumerState<SetupGuideHost> {
           _awaitingPersistence = false;
           _appearanceBefore = null;
           _workspacesBefore = null;
+          _election.release(this);
           setState(() => _launch = null);
         }
     }

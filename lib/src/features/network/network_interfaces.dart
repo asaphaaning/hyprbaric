@@ -43,42 +43,80 @@ class _NetworkInterfaceRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
-      child: DecoratedBox(
-        decoration: ShapeDecoration(
-          color: const Color(0x22091017),
-          shape: RoundedSuperellipseBorder(
-            borderRadius: BorderRadius.circular(7),
-            side: const BorderSide(color: NetworkMenuColors.cardBorder),
+      // A sunk well rather than an outlined card: `--st-well` over `--st-sink`.
+      child: ClipRSuperellipse(
+        borderRadius: BorderRadius.circular(6),
+        child: DecoratedBox(
+          decoration: const ShapeDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[Color(0x70010102), Color(0x66020305)],
+            ),
+            shape: RoundedSuperellipseBorder(
+              borderRadius: BorderRadius.all(Radius.circular(6)),
+            ),
           ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          child: Row(
+          child: Stack(
             children: <Widget>[
-              Expanded(
-                child: Text(
-                  interface.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: HyprTypography.compactMono.copyWith(
-                    color: NetworkMenuColors.fg2,
-                    fontSize: HyprTypography.size(11),
+              // `inset 0 2px 4px oklch(0 0 0 / 0.6)`.
+              const Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[Color(0x99000000), Color(0x00000000)],
+                      stops: <double>[0, 0.35],
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 92,
-                child: Text(
-                  interface.address ?? '-',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.right,
-                  style: HyprTypography.compactMonoStrong.copyWith(
-                    fontSize: HyprTypography.size(11),
-                    fontWeight: FontWeight.w500,
-                  ),
+              // `inset 0 -1px 0 oklch(1 0 0 / 0.05)`.
+              const Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: ColoredBox(
+                  color: Color(0x0DFFFFFF),
+                  child: SizedBox(height: 1),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        interface.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: HyprTypography.compactMono.copyWith(
+                          color: NetworkMenuColors.fg2,
+                          fontSize: HyprTypography.size(11),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: 92,
+                      child: Text(
+                        interface.address ?? '-',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: HyprTypography.compactMonoStrong.copyWith(
+                          color: NetworkMenuColors.fg1,
+                          fontSize: HyprTypography.size(11),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

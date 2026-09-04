@@ -28,13 +28,42 @@ enum SetupLaunch { automatic, manual }
 /// An intentional request to show the guide from application UI.
 enum SetupGuideRequest { show }
 
-/// Whether this view hosts automatic onboarding.
+/// Whether this view may host automatic onboarding.
 ///
-/// Single-view builds leave this true. A multi-view embedding must override
-/// it so exactly one view reports true; every host still stands down its
-/// automatic guide once completion settles, so a redundant open can never
-/// linger past the first acknowledged journey.
+/// This is the policy switch; the election below is the tie-break between
+/// the views eligible under it. Single-view builds leave this true, and even
+/// with every view eligible exactly one host opens the guide. Every host
+/// still stands down its automatic guide once completion settles, so a
+/// redundant open can never linger past the first acknowledged journey.
 final setupGuideAutomaticHostProvider = Provider<bool>((_) => true);
+
+/// Elects the single view that opens the guide automatically.
+///
+/// Every native view builds its own [SetupGuideHost] against the same
+/// container, and the persisted status is replayed to each one, so without an
+/// election a multi-monitor session opens the journey on every bar at once.
+class SetupGuideHostElection extends Notifier<Object?> {
+  @override
+  Object? build() => null;
+
+  /// Claims automatic hosting for [candidate], if nobody holds it.
+  bool claim(Object candidate) {
+    state ??= candidate;
+    return identical(state, candidate);
+  }
+
+  /// Releases the claim so a surviving view can take over.
+  void release(Object candidate) {
+    if (identical(state, candidate)) {
+      state = null;
+    }
+  }
+}
+
+final setupGuideHostElectionProvider =
+    NotifierProvider<SetupGuideHostElection, Object?>(
+      SetupGuideHostElection.new,
+    );
 
 final setupGuideRequestProvider =
     NotifierProvider<SetupGuideRequestController, SetupGuideRequest?>(

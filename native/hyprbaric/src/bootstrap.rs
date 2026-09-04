@@ -458,6 +458,7 @@ pub async fn boot(config: &config::Configuration) -> Result<Started, Error> {
         initial.workspace().clone(),
         initial.focused_window().clone(),
         initial.color_scheme(),
+        config.audio.volume_step(),
         config.shortcuts.clone(),
     );
 

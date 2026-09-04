@@ -4,8 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../bindings/bindings.dart';
 import 'hypr_surface.dart';
 import 'notification_panel_parts.dart';
-import 'notification_panel_style.dart';
-import 'primitives/primitives.dart';
 
 /// Width of the notification centre.
 ///
@@ -37,23 +35,19 @@ class NotificationPanel extends StatelessWidget {
     final NotificationStatus? snapshot = status.asData?.value;
     final List<NotificationEntry> entries = snapshot?.entries ?? const [];
 
-    return HyprPopoverPanel(
+    // The same instrument shell the controls panel and the mixer sit in, on
+    // its own ramp. This used to rebuild the surface, gradient, constraints
+    // and padding by hand.
+    return HyprConsoleChassis(
       borderRadius: borderRadius,
-      borderColor: HyprColors.popupStroke,
+      ramp: HyprChassisRamp.notifications,
+      surfaceColor: const Color(0xE6070E17),
       constraints: const BoxConstraints(
         minWidth: kNotificationPanelWidth,
         maxWidth: kNotificationPanelWidth,
         maxHeight: 388,
       ),
       padding: HyprSpacing.panelAll,
-      gradient: const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: <Color>[
-          NotificationPalette.chassisTop,
-          NotificationPalette.chassisBottom,
-        ],
-      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

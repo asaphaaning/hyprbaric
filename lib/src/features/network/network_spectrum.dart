@@ -1,108 +1,69 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 
-import '../../bindings/bindings.dart';
+import '../../bindings/bindings.dart' hide listEquals;
 import '../../widgets/hypr_surface.dart';
-import '../../widgets/primitives/primitives.dart';
 import 'network_chrome.dart';
 import 'network_formatting.dart';
 
 class NetworkSpectrumPanel extends StatelessWidget {
   const NetworkSpectrumPanel({
     super.key,
-    required this.traffic,
     required this.uploadHistory,
     required this.downloadHistory,
+    this.window,
   });
 
-  final NetworkTraffic traffic;
   final List<double> uploadHistory;
   final List<double> downloadHistory;
 
+  /// The real time the samples span, measured by the panel that collects them.
+  ///
+  /// The poll cadence is configurable, so the axis cannot be labelled from the
+  /// sample count alone.
+  final Duration? window;
+
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0x96384D5A)),
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[
-            Color(0xFF04080D),
-            Color(0xFF07111B),
-            Color(0xFF0C1824),
-          ],
-          stops: <double>[0, 0.56, 1],
-        ),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(color: Color(0x99000000), blurRadius: 2),
-          BoxShadow(
-            color: Color(0x2200B8FF),
-            blurRadius: 18,
-            spreadRadius: -10,
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: SizedBox(
-          height: 120,
+    return SizedBox(
+      height: 104,
+      child: HyprGlassFrame(
+        fill: const Color(0xEB07080A),
+        vignette: true,
+        child: SizedBox.expand(
           child: Stack(
             children: <Widget>[
               Positioned.fill(
                 child: CustomPaint(
-                  painter: _NetworkSpectrumPainter(
+                  painter: NetworkSpectrumPainter(
                     uploadHistory: uploadHistory,
                     downloadHistory: downloadHistory,
                   ),
                 ),
               ),
-              Positioned(
-                top: 8,
-                left: 10,
-                right: 10,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: <Widget>[
-                    _NetworkSpectrumPill(
-                      label: '↑ UP',
-                      transfer: traffic.upload,
-                      suffix: 'tx',
-                    ),
-                    _NetworkSpectrumPill(
-                      label: '↓ DOWN',
-                      transfer: traffic.download,
-                      suffix: 'rx',
-                      alignEnd: true,
-                    ),
-                  ],
-                ),
+              const Positioned(
+                left: 9,
+                top: 7,
+                child: _ScopeLabel('TX', color: NetworkMenuColors.tx),
+              ),
+              const Positioned(
+                left: 9,
+                bottom: 7,
+                child: _ScopeLabel('RX', color: NetworkMenuColors.rx),
               ),
               Positioned(
-                left: 8,
-                right: 8,
-                bottom: 4,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: <Widget>[
-                    for (final String label in const <String>[
-                      '-20s',
-                      '-15s',
-                      '-10s',
-                      '-5s',
-                      'now',
-                    ])
-                      Text(
-                        label,
-                        style: HyprTypography.compactMono.copyWith(
-                          color: NetworkMenuColors.fg3.withValues(alpha: 0.5),
-                          fontSize: HyprTypography.size(8),
-                          letterSpacing: 0.32,
-                        ),
-                      ),
-                  ],
+                right: 9,
+                bottom: 7,
+                child: Text(
+                  _windowLabel(window),
+                  style: HyprTypography.compactMono.copyWith(
+                    color: NetworkMenuColors.fg3.withValues(alpha: 0.62),
+                    fontSize: HyprTypography.size(7.5),
+                    letterSpacing: 0.9,
+                    height: 1,
+                  ),
                 ),
               ),
             ],
@@ -113,37 +74,247 @@ class NetworkSpectrumPanel extends StatelessWidget {
   }
 }
 
-class _NetworkSpectrumPill extends StatelessWidget {
-  const _NetworkSpectrumPill({
-    required this.label,
-    required this.transfer,
-    required this.suffix,
-    this.alignEnd = false,
-  });
+/// Formats the scope's time base, or a placeholder until it can be measured.
+String _windowLabel(Duration? window) {
+  if (window == null || window.inSeconds < 1) {
+    return '--';
+  }
+  if (window.inSeconds < 90) {
+    return '${window.inSeconds} s';
+  }
+  return '${window.inMinutes} min';
+}
+
+class _ScopeLabel extends StatelessWidget {
+  const _ScopeLabel(this.label, {required this.color});
 
   final String label;
-  final NetworkTransfer transfer;
-  final String suffix;
-  final bool alignEnd;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return HyprMetricCard(
-      label: label,
-      value: formatTransferRateValue(transfer.bytesPerSecond),
-      unit: formatTransferRateUnit(transfer.bytesPerSecond),
-      detail: '${formatBytes(transfer.totalBytes)} $suffix',
-      alignEnd: alignEnd,
-      borderColor: NetworkMenuColors.cardBorder,
-      labelColor: NetworkMenuColors.fg3,
-      unitColor: NetworkMenuColors.fg3,
-      detailColor: NetworkMenuColors.fg3,
+    return Text(
+      label,
+      style: HyprTypography.compactMonoStrong.copyWith(
+        color: color,
+        fontSize: HyprTypography.size(7.5),
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.35,
+        height: 1,
+      ),
     );
   }
 }
 
-class _NetworkSpectrumPainter extends CustomPainter {
-  const _NetworkSpectrumPainter({
+class NetworkParameterBank extends StatelessWidget {
+  const NetworkParameterBank({
+    super.key,
+    required this.traffic,
+    required this.interface,
+  });
+
+  final NetworkTraffic traffic;
+  final NetworkInterface? interface;
+
+  @override
+  Widget build(BuildContext context) {
+    final double upload = megabytesPerSecond(traffic.upload.bytesPerSecond);
+    final double download = megabytesPerSecond(traffic.download.bytesPerSecond);
+    final int? latency = traffic.pingMs;
+
+    return Column(
+      children: <Widget>[
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Expanded(
+              child: NetworkParameter(
+                label: 'Upstream',
+                value: '${upload.toStringAsFixed(2)} MB/s',
+                detail: '${formatBytes(traffic.upload.totalBytes)} sent',
+                progress: (upload / 32).clamp(0, 1),
+                tone: NetworkParameterTone.tx,
+              ),
+            ),
+            const SizedBox(width: 22),
+            Expanded(
+              child: NetworkParameter(
+                label: 'Downstream',
+                value: '${download.toStringAsFixed(2)} MB/s',
+                detail: '${formatBytes(traffic.download.totalBytes)} received',
+                progress: (download / 32).clamp(0, 1),
+                tone: NetworkParameterTone.rx,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Expanded(
+              child: NetworkParameter(
+                label: 'Latency',
+                value: latency == null ? '—' : '$latency ms',
+                detail: 'round trip',
+                progress: latency == null ? 0 : (latency * 0.014).clamp(0, 1),
+                tone: NetworkParameterTone.rx,
+              ),
+            ),
+            const SizedBox(width: 22),
+            Expanded(
+              child: NetworkParameter(
+                label: 'Interface',
+                value: interface?.name ?? '—',
+                detail: interface?.address ?? 'link unavailable',
+                tone: NetworkParameterTone.rx,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+enum NetworkParameterTone { tx, rx }
+
+class NetworkParameter extends StatelessWidget {
+  const NetworkParameter({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.detail,
+    required this.tone,
+    this.progress,
+  });
+
+  final String label;
+  final String value;
+  final String detail;
+  final NetworkParameterTone tone;
+  final double? progress;
+
+  Color get _tone => switch (tone) {
+    NetworkParameterTone.tx => NetworkMenuColors.tx,
+    NetworkParameterTone.rx => NetworkMenuColors.rx,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(0, 7, 0, 8),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0x0DFFFFFF))),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: <Widget>[
+              Text(
+                label,
+                style: HyprTypography.popRow.copyWith(
+                  color: NetworkMenuColors.fg1,
+                  fontSize: HyprTypography.size(11),
+                  letterSpacing: 0.11,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  value,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: HyprTypography.compactMonoStrong.copyWith(
+                    color: _tone,
+                    fontSize: HyprTypography.size(11),
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0,
+                    height: 1.12,
+                    fontFeatures: HyprTypography.tabularNumbers,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          if (progress != null)
+            _ParameterRail(progress: progress!, color: _tone)
+          else
+            const SizedBox(height: 2),
+          const SizedBox(height: 5),
+          Text(
+            detail.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: HyprTypography.compactMono.copyWith(
+              color: NetworkMenuColors.fg3.withValues(alpha: 0.68),
+              fontSize: HyprTypography.size(8),
+              letterSpacing: 0.64,
+              height: 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParameterRail extends StatelessWidget {
+  const _ParameterRail({required this.progress, required this.color});
+
+  final double progress;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 2,
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          return Stack(
+            children: <Widget>[
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(1),
+                  ),
+                ),
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(1),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.50),
+                        blurRadius: 5,
+                      ),
+                    ],
+                  ),
+                  child: SizedBox(
+                    width: constraints.maxWidth * progress.clamp(0, 1),
+                    height: 2,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class NetworkSpectrumPainter extends CustomPainter {
+  const NetworkSpectrumPainter({
     required this.uploadHistory,
     required this.downloadHistory,
   });
@@ -153,74 +324,26 @@ class _NetworkSpectrumPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Rect rect = Offset.zero & size;
-    canvas.drawRect(
-      rect,
-      Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[
-            Color(0xFF02060A),
-            Color(0xFF07111B),
-            Color(0xFF102334),
-          ],
-          stops: <double>[0, 0.58, 1],
-        ).createShader(rect),
-    );
-
-    final Paint lowerGlow = Paint()
-      ..shader = RadialGradient(
-        center: const Alignment(0, 1.15),
-        radius: 1.05,
-        colors: <Color>[
-          HyprColors.accent.withValues(alpha: 0.22),
-          const Color(0xFF245B7A).withValues(alpha: 0.10),
-          Colors.transparent,
-        ],
-        stops: const <double>[0, 0.38, 1],
-      ).createShader(rect);
-    canvas.drawRect(rect, lowerGlow);
-
-    final Paint topVignette = Paint()
-      ..shader = RadialGradient(
-        center: const Alignment(0, -1.05),
-        radius: 1.25,
-        colors: <Color>[
-          Colors.black.withValues(alpha: 0.78),
-          Colors.transparent,
-        ],
-      ).createShader(rect);
-    canvas.drawRect(rect, topVignette);
-
+    // No base fill: the glass frame behind supplies the surface, and an
+    // opaque rect here would bury its sheen and rim light.
     final Paint grid = Paint()
-      ..color = Colors.white.withValues(alpha: 0.035)
+      ..color = Colors.white.withValues(alpha: 0.045)
       ..strokeWidth = 1;
-    for (int index = 1; index < 10; index += 1) {
-      final double x = size.width * index / 10;
+    for (double x = 0; x < size.width; x += 32) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), grid);
     }
-    for (int index = 1; index < 4; index += 1) {
-      final double y = size.height * index / 4;
+    for (double y = 0; y < size.height; y += 17) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
-    }
-
-    final Paint fineGrid = Paint()
-      ..color = HyprColors.accent.withValues(alpha: 0.018)
-      ..strokeWidth = 1;
-    for (int index = 1; index < 20; index += 1) {
-      final double x = size.width * index / 20;
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), fineGrid);
     }
 
     final double midY = size.height / 2;
     final Paint center = Paint()
-      ..color = const Color(0x805F6A78)
+      ..color = Colors.white.withValues(alpha: 0.13)
       ..strokeWidth = 1;
-    for (double x = 0; x < size.width; x += 8) {
+    for (double x = 0; x < size.width; x += 6) {
       canvas.drawLine(
         Offset(x, midY),
-        Offset(math.min(x + 4, size.width), midY),
+        Offset(math.min(x + 3, size.width), midY),
         center,
       );
     }
@@ -229,14 +352,16 @@ class _NetworkSpectrumPainter extends CustomPainter {
       canvas,
       size,
       samples: uploadHistory,
-      color: HyprColors.accent,
+      maximum: 6,
+      color: NetworkMenuColors.tx,
       up: true,
     );
     _drawHistory(
       canvas,
       size,
       samples: downloadHistory,
-      color: NetworkMenuColors.good,
+      maximum: 16,
+      color: NetworkMenuColors.rx,
       up: false,
     );
   }
@@ -245,6 +370,7 @@ class _NetworkSpectrumPainter extends CustomPainter {
     Canvas canvas,
     Size size, {
     required List<double> samples,
+    required double maximum,
     required Color color,
     required bool up,
   }) {
@@ -253,23 +379,23 @@ class _NetworkSpectrumPainter extends CustomPainter {
     }
     const double pad = 6;
     final double midY = size.height / 2;
-    final double height = midY - pad;
-    final double maxValue = math.max(0.1, samples.reduce(math.max));
-    final List<Offset> points = _historyPoints(
-      size: size,
-      samples: samples,
-      maxValue: maxValue,
-      midY: midY,
-      height: height,
-      up: up,
-    );
+    final double height = midY - pad - 2;
+    final List<Offset> points = <Offset>[
+      for (int index = 0; index < samples.length; index += 1)
+        Offset(
+          pad + (size.width - pad * 2) * index / (samples.length - 1),
+          midY +
+              (up ? -1 : 1) * (samples[index] / maximum).clamp(0, 1) * height,
+        ),
+    ];
     final Path line = _spline(points);
     final Path fill = Path()
       ..moveTo(points.first.dx, midY)
       ..lineTo(points.first.dx, points.first.dy);
     _appendSpline(fill, points);
-    fill.lineTo(size.width, midY);
-    fill.close();
+    fill
+      ..lineTo(points.last.dx, midY)
+      ..close();
 
     canvas.drawPath(
       fill,
@@ -278,68 +404,28 @@ class _NetworkSpectrumPainter extends CustomPainter {
           begin: up ? Alignment.topCenter : Alignment.bottomCenter,
           end: Alignment.center,
           colors: <Color>[
-            color.withValues(alpha: up ? 0.24 : 0.20),
-            color.withValues(alpha: 0.025),
+            color.withValues(alpha: 0.35),
+            color.withValues(alpha: 0.02),
           ],
-        ).createShader(Offset.zero & size)
-        ..style = PaintingStyle.fill,
+        ).createShader(Offset.zero & size),
     );
-
     canvas.drawPath(
       line,
       Paint()
-        ..color = color.withValues(alpha: 0.26)
-        ..strokeWidth = 9
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8)
+        ..color = color.withValues(alpha: 0.46)
+        ..strokeWidth = 5
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4)
         ..style = PaintingStyle.stroke,
     );
     canvas.drawPath(
       line,
       Paint()
-        ..color = color.withValues(alpha: 0.44)
-        ..strokeWidth = 4.4
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3)
-        ..style = PaintingStyle.stroke,
-    );
-    canvas.drawPath(
-      line,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: <Color>[
-            color.withValues(alpha: 0.66),
-            color.withValues(alpha: 1),
-          ],
-        ).createShader(Offset.zero & size)
-        ..strokeWidth = 1.55
+        ..color = color
+        ..strokeWidth = 1.2
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
         ..style = PaintingStyle.stroke,
     );
-  }
-
-  List<Offset> _historyPoints({
-    required Size size,
-    required List<double> samples,
-    required double maxValue,
-    required double midY,
-    required double height,
-    required bool up,
-  }) {
-    return <Offset>[
-      for (int index = 0; index < samples.length; index += 1)
-        Offset(
-          size.width * index / (samples.length - 1),
-          up
-              ? midY - (samples[index] / maxValue).clamp(0.0, 1.0) * height
-              : midY + (samples[index] / maxValue).clamp(0.0, 1.0) * height,
-        ),
-    ];
   }
 
   Path _spline(List<Offset> points) {
@@ -349,67 +435,25 @@ class _NetworkSpectrumPainter extends CustomPainter {
   }
 
   void _appendSpline(Path path, List<Offset> points) {
-    if (points.length < 2) {
-      return;
-    }
     for (int index = 0; index < points.length - 1; index += 1) {
-      final Offset p0 = points[math.max(0, index - 1)];
-      final Offset p1 = points[index];
-      final Offset p2 = points[index + 1];
-      final Offset p3 = points[math.min(points.length - 1, index + 2)];
-      final Offset c1 = p1 + (p2 - p0) * (1 / 6);
-      final Offset c2 = p2 - (p3 - p1) * (1 / 6);
-      path.cubicTo(c1.dx, c1.dy, c2.dx, c2.dy, p2.dx, p2.dy);
+      final Offset current = points[index];
+      final Offset next = points[index + 1];
+      final double midpoint = (current.dx + next.dx) / 2;
+      path.quadraticBezierTo(
+        current.dx,
+        current.dy,
+        midpoint,
+        (current.dy + next.dy) / 2,
+      );
     }
+    path.lineTo(points.last.dx, points.last.dy);
   }
 
   @override
-  bool shouldRepaint(covariant _NetworkSpectrumPainter oldDelegate) {
-    return true;
-  }
-}
-
-class NetworkPingRow extends StatelessWidget {
-  const NetworkPingRow({super.key, required this.pingMs});
-
-  final int? pingMs;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),
-      child: Row(
-        children: <Widget>[
-          Text(
-            'Ping',
-            style: HyprTypography.popRow.copyWith(
-              color: NetworkMenuColors.fg2,
-              fontSize: HyprTypography.size(11.5),
-            ),
-          ),
-          const Spacer(),
-          Text(
-            pingMs == null ? '-' : '$pingMs ms',
-            style: HyprTypography.compactMonoStrong.copyWith(
-              color: _pingColor(pingMs),
-              fontSize: HyprTypography.size(11),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _pingColor(int? pingMs) {
-    if (pingMs == null) {
-      return NetworkMenuColors.fg3;
-    }
-    if (pingMs < 20) {
-      return NetworkMenuColors.good;
-    }
-    if (pingMs < 50) {
-      return NetworkMenuColors.warning;
-    }
-    return HyprColors.danger;
+  bool shouldRepaint(covariant NetworkSpectrumPainter oldDelegate) {
+    // Compared by value. `!=` on a List is identity, which was always false
+    // while the panel handed the painter the same buffer every frame.
+    return !listEquals(oldDelegate.uploadHistory, uploadHistory) ||
+        !listEquals(oldDelegate.downloadHistory, downloadHistory);
   }
 }

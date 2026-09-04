@@ -46,9 +46,13 @@ class HyprInsetBorderPainter extends CustomPainter {
 
     if (frame == HyprSurfaceFrame.popover) {
       _drawPopoverStroke(canvas, size);
+      // Held clear of the corner curves: a full-width line has to be cut off
+      // by the clip mid-arc, which shows up as a broken nub in the corner.
+      final double corner =
+          borderRadius.resolve(TextDirection.ltr).topLeft.x + 2;
       _drawInsetLine(
         canvas,
-        Rect.fromLTWH(2, 2, size.width - 4, 1),
+        Rect.fromLTWH(corner, 2, size.width - corner * 2, 1),
         const <Color>[
           Color(0x00FFFFFF),
           HyprColors.popupInset,
@@ -91,22 +95,18 @@ class HyprInsetBorderPainter extends CustomPainter {
     );
   }
 
+  /// Only the inner ring is painted here. The outer ring rides on the
+  /// surface's unclipped decoration instead: a stroke sitting on the clip
+  /// boundary is half cut away, and the clip and stroke approximate the
+  /// superellipse differently, so the arc breaks up in the corners.
   void _drawPopoverStroke(Canvas canvas, Size size) {
     final BorderRadius resolved = borderRadius.resolve(TextDirection.ltr);
     final Rect outerRect = Offset.zero & size;
-    final Paint outerPaint = Paint()
-      ..color = HyprColors.popupOuterRing
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
     final Paint innerPaint = Paint()
       ..color = borderColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
 
-    canvas.drawRSuperellipse(
-      resolved.toRSuperellipse(outerRect.deflate(0.5)),
-      outerPaint,
-    );
     canvas.drawRSuperellipse(
       resolved.toRSuperellipse(outerRect.deflate(1.5)),
       innerPaint,
