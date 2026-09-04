@@ -149,17 +149,6 @@ final directories = <_widgetbook.WidgetbookNode>[
             ],
           ),
           _widgetbook.WidgetbookComponent(
-            name: 'AudioMixerDivider',
-            useCases: [
-              _widgetbook.WidgetbookUseCase(
-                name: 'Vertical divider',
-                builder:
-                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
-                        .buildAudioChromeAtoms,
-              ),
-            ],
-          ),
-          _widgetbook.WidgetbookComponent(
             name: 'AudioMixerFooter',
             useCases: [
               _widgetbook.WidgetbookUseCase(
@@ -233,6 +222,17 @@ final directories = <_widgetbook.WidgetbookNode>[
                 builder:
                     _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
                         .buildBrightnessKnobReadoutStates,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'HyprPanelDivider',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Vertical divider',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
+                        .buildAudioChromeAtoms,
               ),
             ],
           ),
@@ -625,17 +625,6 @@ final directories = <_widgetbook.WidgetbookNode>[
             ],
           ),
           _widgetbook.WidgetbookComponent(
-            name: 'NotificationEmptyState',
-            useCases: [
-              _widgetbook.WidgetbookUseCase(
-                name: 'Available and unavailable',
-                builder:
-                    _hyprbaric_widgetbook_use_cases_notifications_notification_atom_use_cases
-                        .buildNotificationEmptyStates,
-              ),
-            ],
-          ),
-          _widgetbook.WidgetbookComponent(
             name: 'NotificationHeader',
             useCases: [
               _widgetbook.WidgetbookUseCase(
@@ -654,6 +643,17 @@ final directories = <_widgetbook.WidgetbookNode>[
                 builder:
                     _hyprbaric_widgetbook_use_cases_notifications_notification_atom_use_cases
                         .buildNotificationList,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'NotificationPlaceholder',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Available and unavailable',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_notifications_notification_atom_use_cases
+                        .buildNotificationEmptyStates,
               ),
             ],
           ),
