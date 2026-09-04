@@ -1,6 +1,4 @@
-import 'dart:io' show File;
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
@@ -348,7 +346,6 @@ class AppLauncherIconFile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final File file = File(path);
     final String lowerPath = path.toLowerCase();
     final int cacheDimension =
         (dimension * MediaQuery.devicePixelRatioOf(context)).ceil();
@@ -356,25 +353,26 @@ class AppLauncherIconFile extends StatelessWidget {
     if (lowerPath.endsWith('.svg')) {
       return SizedBox.square(
         dimension: dimension,
-        child: SvgPicture.file(
-          file,
+        child: hyprLocalSvg(
+          path: path,
           width: dimension,
           height: dimension,
           fit: BoxFit.contain,
+          fallback: fallback,
         ),
       );
     }
 
     return SizedBox.square(
       dimension: dimension,
-      child: Image.file(
-        file,
+      child: hyprLocalImage(
+        path: path,
         width: dimension,
         height: dimension,
+        fallback: fallback,
         cacheWidth: cacheDimension,
         cacheHeight: cacheDimension,
         fit: BoxFit.contain,
-        errorBuilder: (_, _, _) => fallback,
       ),
     );
   }
