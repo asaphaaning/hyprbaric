@@ -5,7 +5,6 @@ import 'package:hyprbaric_widgetbook/catalog/catalog_theme.dart';
 import 'package:hyprbaric_widgetbook/main.directories.g.dart'
     as generated_catalog;
 import 'package:hyprbaric_widgetbook/audio/audio_fixtures.dart';
-import 'package:hyprbaric_widgetbook/audio/audio_mixer_preview.dart';
 import 'package:hyprbaric_widgetbook/use_cases/audio/audio_atom_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/audio/audio_panel_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/bar/bar_cluster_button_use_cases.dart';
