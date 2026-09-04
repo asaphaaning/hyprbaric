@@ -7,6 +7,14 @@ pub enum AppearancePosition {
     Bottom,
 }
 
+/// Which outputs an appearance setting applies to.
+#[derive(Serialize, Deserialize, SignalPiece, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum AppearanceMonitorTarget {
+    Primary,
+    All,
+    Named { name: String },
+}
+
 #[derive(Serialize, Deserialize, DartSignal, SignalPiece, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum AppearanceCommand {
     SetPosition { position: AppearancePosition },
@@ -19,6 +27,7 @@ pub enum AppearanceCommand {
 #[derive(Serialize, RustSignal)]
 pub struct AppearanceStatus {
     pub position: AppearancePosition,
+    pub monitor: AppearanceMonitorTarget,
     pub opacity: u8,
     pub corner_radius: u8,
     pub accent_hue: u16,
