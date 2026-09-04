@@ -16,7 +16,6 @@ export 'hypr_panel_chrome.dart';
 export 'hypr_panel_divider.dart';
 export 'hypr_panel_header.dart';
 export 'hypr_plate_button.dart';
-export 'hypr_plate_button.dart';
 export 'hypr_popover_panel.dart';
 export 'hypr_preview_value.dart';
 export 'hypr_section_label.dart';

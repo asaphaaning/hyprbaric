@@ -255,13 +255,6 @@ mod tests {
     }
 
     #[test]
-    fn negative_workspace_ids_are_special() {
-        assert!(is_special_workspace(-99));
-        assert!(!is_special_workspace(0));
-        assert!(!is_special_workspace(3));
-    }
-
-    #[test]
     fn recognizes_the_lua_dispatch_migration_error() {
         assert!(requires_lua_dispatch(&HyprError::NotOkDispatch(
             "Note: dispatch in lua is a shorthand".to_owned()

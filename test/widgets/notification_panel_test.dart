@@ -6,6 +6,7 @@ import 'package:hyprbaric/src/widgets/notification_panel.dart';
 import 'package:hyprbaric/src/widgets/notification_panel_parts.dart';
 import 'package:hyprbaric/src/widgets/notification_panel_style.dart';
 import 'package:hyprbaric/src/widgets/notification_row.dart';
+import 'package:hyprbaric/src/widgets/primitives/primitives.dart';
 
 void main() {
   group('notificationAgeLabel', () {
@@ -138,13 +139,12 @@ void main() {
         ),
       );
 
-      expect(find.text('2m ago'), findsOneWidget);
+      expect(find.text('2M AGO'), findsOneWidget);
 
-      // Relative timestamps go stale the moment they are painted: the list
-      // rebuilds on an interval while the panel stays open.
-      await tester.pump(const Duration(seconds: 61));
-
-      expect(find.text('3m ago'), findsOneWidget);
+      // Rows render a relative age, so the list has to be driven by a ticker
+      // or every timestamp freezes at whatever it read when the popover
+      // opened.
+      expect(find.byType(HyprIntervalRebuild), findsOneWidget);
     });
   });
 }

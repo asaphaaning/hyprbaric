@@ -1,7 +1,5 @@
 //! Hyprland event-listener boundary.
 
-use std::{sync::Arc, time::Duration};
-
 use hyprland::{
     data::Client,
     event_listener::{
@@ -10,8 +8,7 @@ use hyprland::{
     prelude::*,
     shared::WorkspaceType,
 };
-use tokio::sync::{Mutex, broadcast};
-use tokio::task::JoinHandle;
+use tokio::sync::broadcast;
 use tracing::instrument;
 
 use super::{

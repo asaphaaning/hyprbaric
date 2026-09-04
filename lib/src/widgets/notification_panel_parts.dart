@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../bindings/bindings.dart';
@@ -68,7 +66,7 @@ class NotificationCountPill extends StatelessWidget {
   }
 }
 
-class NotificationList extends StatefulWidget {
+class NotificationList extends StatelessWidget {
   const NotificationList({
     super.key,
     required this.entries,
@@ -85,47 +83,32 @@ class NotificationList extends StatefulWidget {
   final ValueChanged<int> onDismiss;
 
   @override
-  State<NotificationList> createState() => _NotificationListState();
-}
-
-class _NotificationListState extends State<NotificationList> {
-  Timer? _ageTimer;
-  late DateTime _now;
-
-  @override
-  void initState() {
-    super.initState();
-    _now = DateTime.now();
-    _ageTimer = Timer.periodic(NotificationList.ageTick, (_) {
-      if (!mounted) {
-        return;
-      }
-      setState(() => _now = DateTime.now());
-    });
-  }
-
-  @override
-  void dispose() {
-    _ageTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      shrinkWrap: true,
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      itemCount: widget.entries.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 14),
-      itemBuilder: (BuildContext context, int index) {
-        final NotificationEntry entry = widget.entries[index];
-        return NotificationRow(
-          // Identity hygiene. Lazy slivers rebuild state per index slot either
-          // way, so this buys correctness only if the list stops being lazy.
-          key: ValueKey<int>(entry.id),
-          entry: entry,
-          now: _now,
-          onDismiss: () => widget.onDismiss(entry.id),
+    // Rows render a relative age, so the list rebuilds on an interval while
+    // the panel is open or every timestamp freezes at whatever it read when
+    // the popover opened.
+    return HyprIntervalRebuild(
+      interval: ageTick,
+      builder: (BuildContext context) {
+        final DateTime now = DateTime.now();
+
+        return ListView.separated(
+          shrinkWrap: true,
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          itemCount: entries.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 14),
+          itemBuilder: (BuildContext context, int index) {
+            final NotificationEntry entry = entries[index];
+
+            return NotificationRow(
+              // Identity hygiene. Lazy slivers rebuild state per index slot either
+              // way, so this buys correctness only if the list stops being lazy.
+              key: ValueKey<int>(entry.id),
+              entry: entry,
+              now: now,
+              onDismiss: () => onDismiss(entry.id),
+            );
+          },
         );
       },
     );

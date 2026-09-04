@@ -414,10 +414,6 @@ class _ChoiceCard extends StatelessWidget {
         );
       },
     );
-          ),
-        );
-      },
-    );
   }
 }
 

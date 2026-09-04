@@ -90,13 +90,7 @@ class NotificationPanel extends StatelessWidget {
       );
     }
     return Flexible(
-      // Rows render a relative age, so the list has to be rebuilt while the
-      // panel is open or every timestamp freezes at whatever it read when
-      // the popover opened.
-      child: HyprIntervalRebuild(
-        builder: (BuildContext context) =>
-            NotificationList(entries: entries, onDismiss: onDismiss),
-      ),
+      child: NotificationList(entries: entries, onDismiss: onDismiss),
     );
   }
 }

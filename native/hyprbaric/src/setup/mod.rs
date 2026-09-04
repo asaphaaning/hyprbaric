@@ -332,7 +332,10 @@ mod tests {
 
         let source = fs::read_to_string(&path).expect("config should be readable");
         assert!(source.contains("completed = true"));
-        assert!(source.contains("startup = \"once\""));
+        // Completing records the fact, never a policy: the override file
+        // starts without a startup key, so completing must not freeze the
+        // current default into it.
+        assert!(!source.contains("startup"));
         assert_eq!(
             events.try_recv().expect("status should be published"),
             Status::Complete
