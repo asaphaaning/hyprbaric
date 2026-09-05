@@ -123,6 +123,34 @@ abstract final class HyprTypography {
     letterSpacing: 0,
   );
 
+  /// A heading on the global menu bar.
+  static TextStyle get globalMenuTitle => TextStyle(
+    fontFamily: uiFamily,
+    color: HyprColors.textMuted,
+    fontSize: size(11.5),
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.06,
+  );
+
+  /// A row inside an open menu.
+  static TextStyle get globalMenuItem => TextStyle(
+    fontFamily: uiFamily,
+    color: HyprColors.textMuted,
+    fontSize: size(12),
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0,
+  );
+
+  /// The accelerator printed at the end of a menu row.
+  static TextStyle get globalMenuKey => TextStyle(
+    fontFamily: monoFamily,
+    fontFamilyFallback: <String>['monospace'],
+    color: HyprColors.textFaint,
+    fontSize: size(10.5),
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.42,
+  );
+
   static TextStyle get popMeta => TextStyle(
     fontFamily: monoFamily,
     fontFamilyFallback: <String>['monospace'],

@@ -313,6 +313,34 @@ mod tests {
         }
     }
 
+    /// Proves the name Qt looks for is actually owned once the registrar runs.
+    ///
+    /// Ignored by default because it needs a session bus, which CI has no
+    /// reason to provide. Run it against a live session with
+    /// `cargo test registrar -- --ignored`.
+    #[tokio::test]
+    #[ignore = "requires a session bus"]
+    async fn serving_the_registrar_owns_the_name_qt_looks_for() {
+        let registrar = super::Registrar::serve(true)
+            .await
+            .expect("the registrar should serve")
+            .expect("serving is enabled");
+
+        let connection = zbus::Connection::session()
+            .await
+            .expect("a session bus should be reachable");
+        let proxy = zbus::fdo::DBusProxy::new(&connection)
+            .await
+            .expect("the bus driver should answer");
+        let owned = proxy
+            .name_has_owner(super::NAME.try_into().expect("a valid bus name"))
+            .await
+            .expect("the bus driver should answer");
+
+        assert!(owned, "{} should have an owner", super::NAME);
+        drop(registrar);
+    }
+
     #[test]
     fn a_registered_window_resolves_to_its_menu() {
         let windows = Windows::default();

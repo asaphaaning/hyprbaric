@@ -43,6 +43,13 @@ pub struct Configuration {
     pub plugin_path: Option<PathBuf>,
     /// Repository hyprpm builds the companion from.
     pub repository: String,
+    /// Where enabling the global menu used to live.
+    ///
+    /// Kept so a configuration written against the older key keeps working
+    /// rather than silently losing its menus. [`Configuration::enabled`] folds
+    /// it into the module switch that replaced it.
+    #[serde(default)]
+    enabled: Option<bool>,
 }
 
 /// How far the companion got toward being usable.
@@ -75,11 +82,24 @@ impl Default for Configuration {
         Self {
             plugin_path: None,
             repository: REPOSITORY.to_owned(),
+            enabled: None,
         }
     }
 }
 
 impl Configuration {
+    /// Whether the global menu is on, honouring the key this table used to own.
+    pub fn enabled(&self, module: bool) -> bool {
+        if self.enabled == Some(true) && !module {
+            tracing::warn!(
+                "`[global_menu] enabled` has moved to `[modules.global_menu] enabled`; \
+                 honouring the old key for now"
+            );
+        }
+
+        module || self.enabled == Some(true)
+    }
+
     fn plugin_path(&self) -> Result<PathBuf, Error> {
         match &self.plugin_path {
             Some(path) => Ok(path.clone()),
@@ -317,6 +337,22 @@ mod tests {
             configuration.plugin_path.as_deref(),
             Some(Path::new("/opt/hyprbaric/custom-menu.so"))
         );
+    }
+
+    #[test]
+    fn the_module_switch_turns_the_global_menu_on() {
+        let configuration = Configuration::default();
+
+        assert!(configuration.enabled(true));
+        assert!(!configuration.enabled(false));
+    }
+
+    #[test]
+    fn the_key_this_table_used_to_own_still_turns_it_on() {
+        let configuration =
+            toml::from_str::<Configuration>("enabled = true\n").expect("legacy key should parse");
+
+        assert!(configuration.enabled(false));
     }
 
     #[test]
