@@ -7,9 +7,9 @@ import '../../catalog/catalog_frame.dart';
 
 /// Chords in these stories stand in for the user's own bindings, which the
 /// live panel reads from the keybinding snapshot.
-const String _regionChord = 'Super+⇧+S';
-const String _recordChord = 'Super+⇧+R';
-const String _pickChord = 'Super+⇧+P';
+const String _regionChord = 'Super+Shift+S';
+const String _recordChord = 'Super+Shift+R';
+const String _pickChord = 'Super+Shift+P';
 
 const ControlAvailability _unavailable = ControlAvailability.unavailable(
   'Not available yet',
@@ -236,7 +236,7 @@ Widget buildControlRockerStates(BuildContext context) {
 Widget buildControlSettingsRow(BuildContext context) {
   return const CatalogFrame(
     width: 460,
-    child: ControlSettingsRow(onPressed: _noop, shortcut: 'Super+⇧+C'),
+    child: ControlSettingsRow(onPressed: _noop, shortcut: 'Super+Shift+C'),
   );
 }
 

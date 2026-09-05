@@ -118,26 +118,15 @@ class _RockerSwitch extends StatelessWidget {
     return AnimatedContainer(
       duration: HyprMotion.switcher,
       curve: HyprMotion.switchInCurve,
-      width: 36,
+      width: 50,
       height: 18,
       padding: const EdgeInsets.all(1.5),
       decoration: ShapeDecoration(
-        // Both states declare the same axis so toggling animates the tint
-        // without swinging the highlight from vertical to horizontal.
-        gradient: value
-            ? LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: <Color>[
-                  accent.withValues(alpha: enabled ? 0.38 : 0.18),
-                  accent.withValues(alpha: enabled ? 0.22 : 0.12),
-                ],
-              )
-            : const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: <Color>[Color(0xFF101116), Color(0xFF08090D)],
-              ),
+        // Flat, not graded: the reference well is one even tone, and a
+        // vertical falloff here dulled the lit tint by the bottom edge.
+        color: value
+            ? accent.withValues(alpha: enabled ? 0.32 : 0.16)
+            : const Color(0xFF101116),
         shadows: <BoxShadow>[
           const BoxShadow(
             color: Color(0xC8000000),
@@ -161,30 +150,16 @@ class _RockerSwitch extends StatelessWidget {
         curve: HyprMotion.switchInCurve,
         alignment: value ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
-          width: 16,
+          width: 19,
           height: 15,
           decoration: ShapeDecoration(
-            gradient: value
-                ? LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: <Color>[
-                      Color.lerp(accent, Colors.white, 0.44)!,
-                      Color.lerp(accent, Colors.white, 0.12)!,
-                      Color.lerp(accent, Colors.black, 0.14)!,
-                    ],
-                    stops: const <double>[0, 0.5, 1],
-                  )
-                : const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: <Color>[
-                      Color(0xFFABADB1),
-                      Color(0xFF74767C),
-                      Color(0xFF4A4C51),
-                    ],
-                    stops: <double>[0, 0.5, 1],
-                  ),
+            // The cap is a solid moulded key, not a metallic barrel: the
+            // three-stop gradient this used to carry shaded the bottom two
+            // thirds so far down that the unlit cap read charcoal instead of
+            // light grey. The drop shadow below supplies the dimension.
+            color: value
+                ? Color.lerp(accent, Colors.white, 0.44)!
+                : const Color(0xFFABADB1),
             shadows: <BoxShadow>[
               const BoxShadow(
                 color: Color(0xB8000000),

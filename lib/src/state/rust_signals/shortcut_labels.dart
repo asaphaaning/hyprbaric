@@ -48,13 +48,17 @@ final shortcutLabelsProvider = Provider<Map<ShortcutSettingId, String>>((
 /// Rust's own `display` spells modifiers out for the keybindings editor
 /// (`LOGO+SHIFT+S`). A console face has room for roughly a dozen characters,
 /// so this uses the shorter spelling the rest of the UI already reads.
+///
+/// Every modifier is a word: the `⇧` glyph this once used for shift is
+/// illegible at the 8px the chord badges render at, where it reads as a dot
+/// between two words rather than as a key.
 String shortcutChordLabel(ShortcutBindingView binding) {
   return <String>[
     for (final ShortcutModifier modifier in binding.modifiers)
       switch (modifier) {
         ShortcutModifier.logo => 'Super',
         ShortcutModifier.ctrl => 'Ctrl',
-        ShortcutModifier.shift => '⇧',
+        ShortcutModifier.shift => 'Shift',
         ShortcutModifier.alt => 'Alt',
         ShortcutModifier.num => 'Num',
       },
