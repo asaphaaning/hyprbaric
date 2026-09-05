@@ -222,6 +222,53 @@ void main() {
     );
   });
 
+  testWidgets('opening a submenu leaves the menu it came from where it was', (
+    WidgetTester tester,
+  ) async {
+    _answerRegionChannel();
+    await tester.pumpWidget(
+      _surface(
+        overrides: [
+          rustCommandDispatcherProvider.overrideWith(
+            (ref) => _RecordingDispatcher(),
+          ),
+          globalMenuStatusProvider.overrideWith(
+            (ref) => Stream<GlobalMenuStatus>.value(_twoHeadings),
+          ),
+          _section(_file, <GlobalMenuItem>[
+            _item(label: 'Open Recent', submenu: _recent),
+          ]),
+          _section(_recent, <GlobalMenuItem>[
+            _item(
+              label: 'bar.tsx',
+              activation: const GlobalMenuItemIdDbusMenu(id: 21),
+            ),
+          ]),
+        ],
+        child: const SizedBox(width: 600, child: GlobalMenuBar()),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text('File'));
+    await tester.pumpAndSettle();
+
+    final Offset before = tester.getTopLeft(find.text('Open Recent'));
+
+    final TestGesture pointer = await tester.createGesture(
+      kind: PointerDeviceKind.mouse,
+    );
+    await pointer.addPointer(location: Offset.zero);
+    addTearDown(pointer.removePointer);
+    await pointer.moveTo(tester.getCenter(find.text('Open Recent')));
+    await tester.pumpAndSettle();
+
+    // The row under the pointer must still be the row the pointer chose. A
+    // menu that shifts as it grows hands the click to whatever slid into its
+    // place while the hand was still moving.
+    expect(find.text('bar.tsx'), findsOneWidget);
+    expect(tester.getTopLeft(find.text('Open Recent')), before);
+  });
+
   testWidgets('the bar renders a heading for every exported section', (
     WidgetTester tester,
   ) async {
