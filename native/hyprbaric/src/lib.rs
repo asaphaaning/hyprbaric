@@ -41,6 +41,19 @@ async fn run() -> Result<(), Error> {
         tracing::warn!(%error, "Could not load the configured AppMenu companion");
     }
 
+    // Gated on the same switch as the companion, and held for the process
+    // lifetime. Owning the registrar name is what stops Qt applications from
+    // drawing their own menu bars, so claiming it while the bar renders no
+    // menus would leave those applications with no menu bar at all. Dropping
+    // it releases the name and they draw their own again.
+    let _registrar = match global_menu::Registrar::serve(&config.global_menu).await {
+        Ok(registrar) => registrar,
+        Err(error) => {
+            tracing::warn!(%error, "Could not serve the AppMenu registrar");
+            None
+        }
+    };
+
     let bootstrap::Started { app, initial } = bootstrap::boot(&config).await?;
 
     for output in initial.into_outputs() {

@@ -6,8 +6,10 @@
 //! Flutter.
 
 mod plugin;
+mod registrar;
 
 pub use plugin::Configuration;
+pub use registrar::Registrar;
 
 use std::{collections::HashMap, env, process::Stdio};
 
