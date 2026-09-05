@@ -32,3 +32,17 @@ final globalMenuSectionProvider =
           .map((signal) => signal.message)
           .where((status) => status.section == section);
     });
+
+/// How far the compositor half of the global menu has got.
+final globalMenuIntegrationProvider = StreamProvider<GlobalMenuIntegrationStatus>(
+  (ref) async* {
+    final latest = GlobalMenuIntegrationStatus.latestRustSignal;
+    if (latest != null) {
+      yield latest.message;
+    }
+
+    await for (final signal in GlobalMenuIntegrationStatus.rustSignalStream) {
+      yield signal.message;
+    }
+  },
+);

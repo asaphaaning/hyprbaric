@@ -6,10 +6,10 @@ use crate::signals::{
     AudioCommandResult, AudioStatus, BrightnessCommandResult, BrightnessSetLevel, BrightnessStatus,
     CaffeineCommandResult, CaffeineSetEnabled, CaffeineStatus, CapabilityStatus,
     ClockCalendarRequest, ClockStatus, ColorPickRequest, ColorPickerCommandResult, DesktopStatus,
-    FocusedWindowStatus, GlobalMenuActivateRequest, GlobalMenuItem, GlobalMenuItemId,
-    GlobalMenuItemKind, GlobalMenuRequest, GlobalMenuSection, GlobalMenuSectionId,
-    GlobalMenuSectionRequest, GlobalMenuSectionStatus, GlobalMenuStatus, HotkeyEvent,
-    ModuleCommand, ModuleCommandResult, ModulesStatus, MonitorFocusedWindowStatus,
+    FocusedWindowStatus, GlobalMenuActivateRequest, GlobalMenuIntegrationStatus, GlobalMenuItem,
+    GlobalMenuItemId, GlobalMenuItemKind, GlobalMenuRequest, GlobalMenuSection,
+    GlobalMenuSectionId, GlobalMenuSectionRequest, GlobalMenuSectionStatus, GlobalMenuStatus,
+    HotkeyEvent, ModuleCommand, ModuleCommandResult, ModulesStatus, MonitorFocusedWindowStatus,
     MonitorWorkspaceStatus, NetworkCommandResult, NetworkConnectRequest, NetworkScanRequest,
     NetworkSetWifiEnabled, NetworkSettingsRequest, NetworkStatus, NightLightCommandResult,
     NightLightSetEnabled, NightLightSetTemperature, NightLightStatus, NotificationClearRequest,
@@ -168,6 +168,23 @@ fn item_id(id: &GlobalMenuItemId) -> global_menu::ItemId {
             action: action.clone(),
         },
     }
+}
+
+/// Publishes how far the global menu's compositor half has got.
+pub(crate) fn publish_global_menu_integration(progress: global_menu::Progress) {
+    match progress {
+        global_menu::Progress::Disabled => GlobalMenuIntegrationStatus::Disabled,
+        global_menu::Progress::Preparing => GlobalMenuIntegrationStatus::Preparing,
+        global_menu::Progress::Ready => GlobalMenuIntegrationStatus::Ready,
+        global_menu::Progress::Blocked {
+            message,
+            instruction,
+        } => GlobalMenuIntegrationStatus::Blocked {
+            message,
+            instruction,
+        },
+    }
+    .send_signal_to_dart();
 }
 
 /// Publishes one typed application output at the RINF boundary.

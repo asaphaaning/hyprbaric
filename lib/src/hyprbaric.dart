@@ -693,9 +693,19 @@ class _BarViewState extends ConsumerState<_BarView> {
                         Expanded(
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: modules.isEnabled(ModuleId.activeWindowTitle)
-                                ? const CenterCluster(
+                            child:
+                                modules.isEnabled(
+                                      ModuleId.activeWindowTitle,
+                                    ) ||
+                                    modules.isEnabled(ModuleId.globalMenu)
+                                ? CenterCluster(
                                     maxWidth: _centerClusterMaxWidth,
+                                    showGlobalMenu: modules.isEnabled(
+                                      ModuleId.globalMenu,
+                                    ),
+                                    showWindowTitle: modules.isEnabled(
+                                      ModuleId.activeWindowTitle,
+                                    ),
                                   )
                                 : const SizedBox.shrink(),
                           ),

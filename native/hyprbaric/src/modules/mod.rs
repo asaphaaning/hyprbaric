@@ -20,6 +20,7 @@ pub struct Configuration {
     system_tray: ModuleSettings,
     notifications: ModuleSettings,
     audio_display: ModuleSettings,
+    global_menu: ModuleSettings,
 }
 
 /// Shared module visibility runtime handle.
@@ -37,8 +38,9 @@ impl Default for Configuration {
         Self {
             active_window_title: ModuleSettings::default(),
             system_tray: ModuleSettings::default(),
-            notifications: ModuleSettings::default(),
-            audio_display: ModuleSettings::default(),
+            notifications: ModuleSettings::ENABLED,
+            audio_display: ModuleSettings::ENABLED,
+            global_menu: ModuleSettings::DISABLED,
         }
     }
 }
@@ -54,6 +56,7 @@ impl Configuration {
             Module::SystemTray => self.system_tray,
             Module::Notifications => self.notifications,
             Module::AudioDisplay => self.audio_display,
+            Module::GlobalMenu => self.global_menu,
         }
     }
 
@@ -91,6 +94,10 @@ impl Configuration {
             },
             Module::AudioDisplay => Self {
                 audio_display: self.audio_display.with_enabled(enabled),
+                ..self
+            },
+            Module::GlobalMenu => Self {
+                global_menu: self.global_menu.with_enabled(enabled),
                 ..self
             },
         }
@@ -155,12 +162,15 @@ mod tests {
     use super::{Command, Configuration, Module};
 
     #[test]
-    fn defaults_enable_every_module() {
+    fn defaults_show_every_module_the_user_need_not_opt_into() {
         let config = Configuration::default();
 
         for module in Module::ALL {
-            assert!(config.enabled(module));
+            assert_eq!(config.enabled(module), module.default_enabled());
         }
+
+        assert!(config.enabled(Module::SystemTray));
+        assert!(!config.enabled(Module::GlobalMenu));
     }
 
     #[test]

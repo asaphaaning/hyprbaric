@@ -54,9 +54,9 @@ impl Registrar {
     /// A name owned by another registrar, such as Plasma's, is left alone: Qt
     /// only needs the name to exist, so yielding to an existing owner still
     /// leaves applications exporting their menus.
-    #[instrument(name = "hyprbaric::global_menu::registrar::serve", skip_all, err)]
-    pub async fn serve(configuration: &super::Configuration) -> Result<Option<Self>, Error> {
-        if !configuration.enabled {
+    #[instrument(name = "hyprbaric::global_menu::registrar::serve", err)]
+    pub async fn serve(enabled: bool) -> Result<Option<Self>, Error> {
+        if !enabled {
             tracing::debug!("The AppMenu registrar is disabled by configuration");
             return Ok(None);
         }

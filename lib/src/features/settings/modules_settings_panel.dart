@@ -67,6 +67,11 @@ const List<_ModuleRowData> _moduleRows = <_ModuleRowData>[
     label: 'Audio & Display',
     subtitle: 'Show mixer and brightness control.',
   ),
+  _ModuleRowData(
+    module: ModuleId.globalMenu,
+    label: 'Global menu',
+    subtitle: "Show the focused app's menu bar.",
+  ),
 ];
 
 class _ModuleRow extends StatelessWidget {

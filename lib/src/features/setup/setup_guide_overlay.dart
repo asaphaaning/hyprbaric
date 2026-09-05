@@ -237,6 +237,21 @@ class _SetupGuideOverlayState extends ConsumerState<SetupGuideOverlay> {
                                   )
                                   .setIndicatorStyle(style);
                             },
+                        globalMenuEnabled: ref
+                            .watch(currentModulesProvider)
+                            .isEnabled(ModuleId.globalMenu),
+                        globalMenuIntegration: ref
+                            .watch(globalMenuIntegrationProvider)
+                            .asData
+                            ?.value,
+                        onGlobalMenuChanged: (bool enabled) {
+                          ref
+                              .read(modulesControllerProvider.notifier)
+                              .setEnabled(
+                                ModuleId.globalMenu,
+                                enabled: enabled,
+                              );
+                        },
                       ),
                     );
                   },
