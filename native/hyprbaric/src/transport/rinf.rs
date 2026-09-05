@@ -6,8 +6,10 @@ use crate::signals::{
     AudioCommandResult, AudioStatus, BrightnessCommandResult, BrightnessSetLevel, BrightnessStatus,
     CaffeineCommandResult, CaffeineSetEnabled, CaffeineStatus, CapabilityStatus,
     ClockCalendarRequest, ClockStatus, ColorPickRequest, ColorPickerCommandResult, DesktopStatus,
-    FocusedWindowStatus, GlobalMenuItem, GlobalMenuRequest, GlobalMenuSection, GlobalMenuStatus,
-    HotkeyEvent, ModuleCommand, ModuleCommandResult, ModulesStatus, MonitorFocusedWindowStatus,
+    FocusedWindowStatus, GlobalMenuActivateRequest, GlobalMenuItem, GlobalMenuItemId,
+    GlobalMenuItemKind, GlobalMenuRequest, GlobalMenuSection, GlobalMenuSectionId,
+    GlobalMenuSectionRequest, GlobalMenuSectionStatus, GlobalMenuStatus, HotkeyEvent,
+    ModuleCommand, ModuleCommandResult, ModulesStatus, MonitorFocusedWindowStatus,
     MonitorWorkspaceStatus, NetworkCommandResult, NetworkConnectRequest, NetworkScanRequest,
     NetworkSetWifiEnabled, NetworkSettingsRequest, NetworkStatus, NightLightCommandResult,
     NightLightSetEnabled, NightLightSetTemperature, NightLightStatus, NotificationClearRequest,
@@ -49,28 +51,10 @@ pub(crate) async fn handle_global_menu_request(State(_): State<App>, _: GlobalMe
         Ok(menu) => {
             tracing::debug!(
                 sections = menu.sections.len(),
-                "Read focused application's AppMenu"
+                "Read the focused application's menu headings"
             );
             GlobalMenuStatus {
-                sections: menu
-                    .sections
-                    .into_iter()
-                    .map(|section| GlobalMenuSection {
-                        id: section.id,
-                        label: section.label,
-                        enabled: section.enabled,
-                        items: section
-                            .items
-                            .into_iter()
-                            .map(|item| GlobalMenuItem {
-                                id: item.id,
-                                label: item.label,
-                                enabled: item.enabled,
-                                separator: item.separator,
-                            })
-                            .collect(),
-                    })
-                    .collect(),
+                sections: menu.sections.iter().map(section).collect(),
                 message: None,
             }
             .send_signal_to_dart()
@@ -83,6 +67,106 @@ pub(crate) async fn handle_global_menu_request(State(_): State<App>, _: GlobalMe
             }
             .send_signal_to_dart();
         }
+    }
+}
+
+pub(crate) async fn handle_global_menu_section_request(
+    State(_): State<App>,
+    request: GlobalMenuSectionRequest,
+) {
+    let id = section_id(&request.section);
+    match global_menu::section(&id).await {
+        Ok(items) => {
+            tracing::debug!(items = items.len(), "Read a menu section");
+            GlobalMenuSectionStatus {
+                section: request.section,
+                items: items.iter().map(item).collect(),
+                message: None,
+            }
+            .send_signal_to_dart()
+        }
+        Err(error) => {
+            tracing::debug!(%error, "Could not read a menu section");
+            GlobalMenuSectionStatus {
+                section: request.section,
+                items: Vec::new(),
+                message: Some(error.to_string()),
+            }
+            .send_signal_to_dart();
+        }
+    }
+}
+
+pub(crate) async fn handle_global_menu_activate_request(
+    State(_): State<App>,
+    request: GlobalMenuActivateRequest,
+) {
+    if let Err(error) = global_menu::activate(&item_id(&request.item)).await {
+        tracing::warn!(%error, "Could not activate a menu item");
+    }
+}
+
+fn section(section: &global_menu::Section) -> GlobalMenuSection {
+    GlobalMenuSection {
+        id: section_signal_id(&section.id),
+        label: section.label.clone(),
+        enabled: section.enabled,
+    }
+}
+
+fn item(item: &global_menu::Item) -> GlobalMenuItem {
+    GlobalMenuItem {
+        label: item.label.clone(),
+        enabled: item.enabled,
+        kind: match item.kind {
+            global_menu::ItemKind::Standard => GlobalMenuItemKind::Standard,
+            global_menu::ItemKind::Separator => GlobalMenuItemKind::Separator,
+            global_menu::ItemKind::Checkmark { checked } => {
+                GlobalMenuItemKind::Checkmark { checked }
+            }
+            global_menu::ItemKind::Radio { selected } => GlobalMenuItemKind::Radio { selected },
+        },
+        shortcut: item.shortcut.clone(),
+        activation: item.activation.as_ref().map(item_signal_id),
+        submenu: item.submenu.as_ref().map(section_signal_id),
+    }
+}
+
+fn section_signal_id(id: &global_menu::SectionId) -> GlobalMenuSectionId {
+    match id {
+        global_menu::SectionId::DbusMenu { id } => GlobalMenuSectionId::DbusMenu { id: *id },
+        global_menu::SectionId::Gtk { group, menu } => GlobalMenuSectionId::Gtk {
+            group: *group,
+            menu: *menu,
+        },
+    }
+}
+
+fn section_id(id: &GlobalMenuSectionId) -> global_menu::SectionId {
+    match id {
+        GlobalMenuSectionId::DbusMenu { id } => global_menu::SectionId::DbusMenu { id: *id },
+        GlobalMenuSectionId::Gtk { group, menu } => global_menu::SectionId::Gtk {
+            group: *group,
+            menu: *menu,
+        },
+    }
+}
+
+fn item_signal_id(id: &global_menu::ItemId) -> GlobalMenuItemId {
+    match id {
+        global_menu::ItemId::DbusMenu { id } => GlobalMenuItemId::DbusMenu { id: *id },
+        global_menu::ItemId::Gtk { action } => GlobalMenuItemId::Gtk {
+            action: action.clone(),
+        },
+    }
+}
+
+fn item_id(id: &GlobalMenuItemId) -> global_menu::ItemId {
+    match id {
+        GlobalMenuItemId::DbusMenu { id } => global_menu::ItemId::DbusMenu { id: *id },
+        GlobalMenuItemId::Gtk { action } => global_menu::ItemId::Gtk {
+            action: action.clone(),
+        },
     }
 }
 

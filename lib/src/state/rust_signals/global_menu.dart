@@ -13,7 +13,22 @@ Stream<GlobalMenuStatus> _globalMenuStatusStream() async* {
   }
 }
 
-/// Focused application menu projected by the native AppMenu bridge.
+/// Focused application headings projected by the native AppMenu bridge.
 final globalMenuStatusProvider = StreamProvider<GlobalMenuStatus>(
   (ref) => _globalMenuStatusStream(),
 );
+
+/// Rows of one heading, delivered when Rust has read them.
+///
+/// Menus populate lazily: an application fills a section's rows only once
+/// something announces the section is opening, so rows are requested per
+/// heading rather than read with the bar.
+final globalMenuSectionProvider =
+    StreamProvider.family<GlobalMenuSectionStatus, GlobalMenuSectionId>((
+      ref,
+      GlobalMenuSectionId section,
+    ) {
+      return GlobalMenuSectionStatus.rustSignalStream
+          .map((signal) => signal.message)
+          .where((status) => status.section == section);
+    });
