@@ -6,10 +6,10 @@ import '../../state/rust_signals/compositor.dart';
 import '../../state/rust_signals/global_menu.dart';
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/layer_shell_dropdown.dart';
-import '../../widgets/primitives/primitives.dart';
 import '../rust_commands.dart';
+import 'global_menu_section.dart';
 
-/// Compact macOS-style menu bar for the focused application's AppMenu.
+/// Compact macOS-style menu bar for the focused application's menu.
 class GlobalMenuBar extends ConsumerStatefulWidget {
   const GlobalMenuBar({super.key});
 
@@ -20,8 +20,8 @@ class GlobalMenuBar extends ConsumerStatefulWidget {
 class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
   late final ProviderSubscription<AsyncValue<FocusedWindowStatus>>
   _focusedWindowSubscription;
-  final Map<int, LayerShellDropdownController> _sectionControllers =
-      <int, LayerShellDropdownController>{};
+  final Map<GlobalMenuSectionId, LayerShellDropdownController>
+  _sectionControllers = <GlobalMenuSectionId, LayerShellDropdownController>{};
 
   @override
   void initState() {
@@ -44,7 +44,13 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
         .dispatch(const GlobalMenuIntent.refresh());
   }
 
-  void _toggleSection(LayerShellDropdownController controller) {
+  /// Opens one heading, closing whichever other heading was open.
+  ///
+  /// The rows are asked for on every open rather than cached: an application
+  /// decides what a menu contains at the moment it is shown, so a remembered
+  /// answer would go stale as soon as its state changed.
+  void _toggleSection(GlobalMenuSectionId section) {
+    final LayerShellDropdownController controller = _controllerFor(section);
     if (controller.isOpen) {
       controller.close();
       return;
@@ -55,12 +61,37 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
         openController.close();
       }
     }
+
+    ref
+        .read(rustCommandDispatcherProvider)
+        .dispatch(GlobalMenuIntent.openSection(section));
     controller.open();
+  }
+
+  LayerShellDropdownController _controllerFor(GlobalMenuSectionId section) =>
+      _sectionControllers.putIfAbsent(
+        section,
+        LayerShellDropdownController.new,
+      );
+
+  /// Drops controllers for headings the focused window no longer exports.
+  ///
+  /// Focus moves between applications constantly, and every application brings
+  /// its own headings, so retaining them would grow this map for the lifetime
+  /// of the bar. A controller holds nothing but a link to its dropdown, which
+  /// detaches itself when the dropdown leaves the tree, so forgetting it here
+  /// is the whole of the cleanup.
+  void _retainSections(Iterable<GlobalMenuSectionId> sections) {
+    final Set<GlobalMenuSectionId> live = sections.toSet();
+    _sectionControllers.removeWhere(
+      (section, _) => !live.contains(section),
+    );
   }
 
   @override
   void dispose() {
     _focusedWindowSubscription.close();
+    _sectionControllers.clear();
     super.dispose();
   }
 
@@ -71,6 +102,7 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
         .asData
         ?.value;
     final sections = status?.sections ?? const <GlobalMenuSection>[];
+    _retainSections(sections.map((section) => section.id));
 
     if (sections.isEmpty) {
       return const SizedBox.shrink();
@@ -86,10 +118,7 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
             for (final section in sections)
               _GlobalMenuSectionButton(
                 section: section,
-                controller: _sectionControllers.putIfAbsent(
-                  section.id,
-                  LayerShellDropdownController.new,
-                ),
+                controller: _controllerFor(section.id),
                 onToggle: _toggleSection,
               ),
           ],
@@ -108,17 +137,13 @@ class _GlobalMenuSectionButton extends StatelessWidget {
 
   final GlobalMenuSection section;
   final LayerShellDropdownController controller;
-  final ValueChanged<LayerShellDropdownController> onToggle;
-
-  bool get _hasActionableItems => section.items.any((item) => !item.separator);
-
-  bool get _canOpen => section.enabled && _hasActionableItems;
+  final ValueChanged<GlobalMenuSectionId> onToggle;
 
   @override
   Widget build(BuildContext context) {
     return LayerShellDropdown(
       controller: controller,
-      menuWidth: 280,
+      menuWidth: 320,
       verticalGap: 6,
       horizontalAnchor: LayerShellDropdownAnchor.center,
       menuRadius: HyprRadii.popoverRadius,
@@ -132,14 +157,14 @@ class _GlobalMenuSectionButton extends StatelessWidget {
               button: true,
               label: section.label,
               child: InkWell(
-                onTap: _canOpen ? () => onToggle(controller) : null,
+                onTap: section.enabled ? () => onToggle(section.id) : null,
                 borderRadius: BorderRadius.circular(6),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 7),
                   child: Text(
                     section.label,
                     style: HyprTypography.barMono.copyWith(
-                      color: _canOpen
+                      color: section.enabled
                           ? (isOpen ? HyprColors.text : HyprColors.textMuted)
                           : HyprColors.textFaint,
                     ),
@@ -150,42 +175,9 @@ class _GlobalMenuSectionButton extends StatelessWidget {
           },
       menuBuilder:
           (BuildContext context, LayerShellDropdownController controller) {
-            return HyprPopoverPanel(
-              borderRadius: HyprRadii.popoverRadius,
-              constraints: const BoxConstraints(minWidth: 240, maxWidth: 280),
-              padding: const EdgeInsets.all(6),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  for (final item in section.items)
-                    if (item.separator)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: HyprColors.border.withValues(alpha: 0.72),
-                            borderRadius: BorderRadius.circular(99),
-                          ),
-                          child: const SizedBox(
-                            height: 1,
-                            width: double.infinity,
-                          ),
-                        ),
-                      )
-                    else
-                      HyprActionRow(
-                        title: item.label,
-                        enabled: item.enabled,
-                        onPressed: item.enabled ? controller.close : null,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 7,
-                        ),
-                        borderRadius: BorderRadius.circular(6),
-                        titleStyle: HyprTypography.popRow,
-                      ),
-                ],
-              ),
+            return GlobalMenuSectionPanel(
+              section: section.id,
+              onActivated: controller.close,
             );
           },
     );

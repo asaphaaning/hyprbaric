@@ -14,7 +14,8 @@ use crate::{
         self, activate_shortcut, handle_app_launch_request, handle_app_launcher_query,
         handle_appearance_command, handle_audio_command, handle_brightness_set_level,
         handle_caffeine_set_enabled, handle_clock_calendar_request, handle_color_pick_request,
-        handle_global_menu_request, handle_module_command, handle_network_connect_request,
+        handle_global_menu_activate_request, handle_global_menu_request,
+        handle_global_menu_section_request, handle_module_command, handle_network_connect_request,
         handle_network_scan_request, handle_network_set_wifi_enabled,
         handle_network_settings_request, handle_night_light_set_enabled,
         handle_night_light_set_temperature, handle_notification_clear_request,
@@ -70,6 +71,8 @@ async fn router(ctx: Context<App>) -> supervised::ServiceOutcome {
         .route(logged(handle_screenshot_capture_request))
         .route(logged(handle_color_pick_request))
         .route(logged(handle_global_menu_request))
+        .route(logged(handle_global_menu_section_request))
+        .route(logged(handle_global_menu_activate_request))
         .route(logged(handle_tray_activate_request))
         .route(logged(handle_tray_menu_item_activate_request))
         .route(logged(handle_clock_calendar_request))

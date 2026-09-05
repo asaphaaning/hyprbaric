@@ -13,7 +13,7 @@ This is the complete configuration surface read by hyprbaric. Every table and fi
 | Top-level table | Purpose | Managed in Settings |
 | --- | --- | --- |
 | `[appearance]` | Bar placement and visual treatment. | Appearance |
-| `[global_menu]` | Whether to load the bundled AppMenu companion at boot. | No |
+| `[global_menu]` | Whether the focused window's menu is shown on the bar. | No |
 | `[modules.*]` | Which modules are shown on the bar. | Modules |
 | `[workspaces]` | Workspace indicator presentation and interaction. | Workspaces |
 | `[night_light]` | Desired night light state and temperature. | Display |
@@ -88,12 +88,28 @@ enabled = true
 
 | Key | Values | Default | Effect |
 | --- | --- | --- | --- |
-| `enabled` | Boolean | `false` | Loads the Hyprbaric AppMenu plugin during startup when it is not already present in Hyprland. |
+| `enabled` | Boolean | `false` | Loads the Hyprbaric AppMenu plugin during startup when it is not already present in Hyprland, and owns the AppMenu registrar name. |
 | `plugin_path` | Absolute or relative shared-library path | Unset | Replaces the plugin bundled at `lib/hyprbaric-appmenu.so`; useful for a locally built companion. |
 
 Failure to load the enabled companion is logged but does not stop the bar. GTK
 and Qt applications that do not export a menu still render the ordinary focused
 window title.
+
+### What enabling this changes in your applications
+
+Enabling global menus moves menu bars out of application windows. Qt asks
+whether `com.canonical.AppMenu.Registrar` is owned on the session bus to decide
+whether the desktop displays its menus for it, so Hyprbaric owns that name while
+the feature is on. Qt applications started afterwards stop drawing their own
+menu bar and export it instead.
+
+That is why the feature is opt-in and why both halves share one switch. Owning
+the name without rendering the menus would leave those applications with no menu
+bar at all. Turning the setting off and restarting Hyprbaric releases the name,
+and applications started after that draw their own menu bars again.
+
+Applications already running when the setting changes keep whichever menu bar
+they started with, so restart them to see the change.
 
 ## Workspaces
 
