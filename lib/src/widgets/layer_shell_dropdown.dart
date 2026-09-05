@@ -32,6 +32,8 @@ class LayerShellDropdown extends ConsumerStatefulWidget {
     this.horizontalAnchor = LayerShellDropdownAnchor.center,
     this.menuWidth,
     this.verticalGap = 8,
+    this.menuOffset = Offset.zero,
+    this.onClosed,
   });
 
   final LayerShellDropdownController? controller;
@@ -39,6 +41,17 @@ class LayerShellDropdown extends ConsumerStatefulWidget {
   final LayerShellDropdownAnchor horizontalAnchor;
   final double? menuWidth;
   final double verticalGap;
+
+  /// Nudge applied to the menu's resting position.
+  ///
+  /// A panel whose own padding should fall outside the button it hangs from,
+  /// such as a menu bar aligning its first label under its heading, shifts by
+  /// that padding rather than by moving the button.
+  final Offset menuOffset;
+
+  /// Called whenever the menu leaves the screen, including a dismissal from
+  /// the barrier, so an owner tracking which menu is open stays in step.
+  final VoidCallback? onClosed;
   final Duration animationDuration;
   final Curve animationCurve;
   final LayerShellDropdownTransition transition;
@@ -215,11 +228,11 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
                 CompositedTransformFollower(
                   link: _buttonLayerLink,
                   showWhenUnlinked: false,
-                  targetAnchor: Alignment.bottomCenter,
-                  followerAnchor: Alignment.topCenter,
+                  targetAnchor: _followerTarget,
+                  followerAnchor: _followerAnchor,
                   offset: Offset(
-                    _menuOffsetX,
-                    _verticalMenuOffset(overlayState),
+                    _menuOffsetX + widget.menuOffset.dx,
+                    _verticalMenuOffset(overlayState) + widget.menuOffset.dy,
                   ),
                   child: KeyedSubtree(
                     key: measureTransitionBounds ? _menuKey : null,
@@ -247,6 +260,23 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
     _scheduleRegionUpdate(_RegionSyncMode.exactMenu);
   }
 
+  /// Where the menu attaches on the button, when the menu sizes itself.
+  ///
+  /// The width-anchored path resolves this arithmetically; without a declared
+  /// width the follower does it, and it honours the same anchor so the two
+  /// paths do not disagree about which edge a menu hangs from.
+  Alignment get _followerTarget => switch (widget.horizontalAnchor) {
+    LayerShellDropdownAnchor.left => Alignment.bottomLeft,
+    LayerShellDropdownAnchor.center => Alignment.bottomCenter,
+    LayerShellDropdownAnchor.right => Alignment.bottomRight,
+  };
+
+  Alignment get _followerAnchor => switch (widget.horizontalAnchor) {
+    LayerShellDropdownAnchor.left => Alignment.topLeft,
+    LayerShellDropdownAnchor.center => Alignment.topCenter,
+    LayerShellDropdownAnchor.right => Alignment.topRight,
+  };
+
   void _close() {
     if (!_isOpen && !_animationController.isAnimating) {
       return;
@@ -254,6 +284,7 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
     setState(() {
       _isOpen = false;
     });
+    widget.onClosed?.call();
     _animationController.stop();
     _animationController.value = 0.0;
     _removeOverlay();
@@ -273,6 +304,7 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
     } else {
       _isOpen = false;
     }
+    widget.onClosed?.call();
     _animationController.stop();
     _animationController.value = 0.0;
     _removeOverlay();

@@ -43,7 +43,9 @@ async fn run() -> Result<(), Error> {
     // mean compiling against Hyprland's headers, so it runs on its own and
     // reports where it got to. Held for the process lifetime: releasing the
     // registrar name gives applications their own menu bars back.
-    let global_menu = config.modules.enabled(modules::Module::GlobalMenu);
+    let global_menu = config
+        .global_menu
+        .enabled(config.modules.enabled(modules::Module::GlobalMenu));
     let _registrar = match global_menu::Registrar::serve(global_menu).await {
         Ok(registrar) => registrar,
         Err(error) => {
