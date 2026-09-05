@@ -2,13 +2,34 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hyprbaric/src/bindings/bindings.dart';
 import 'package:hyprbaric/src/features/global_menu/global_menu_bar.dart';
 import 'package:hyprbaric/src/features/global_menu/global_menu_section.dart';
 import 'package:hyprbaric/src/features/rust_commands.dart';
+import 'package:hyprbaric/src/native/layer_shell_api.g.dart';
 import 'package:hyprbaric/src/state/rust_signals/global_menu.dart';
+
+const BasicMessageChannel<Object?> _regionChannel = BasicMessageChannel<Object?>(
+  'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setRegion',
+  NativeLayerShellHostApi.pigeonChannelCodec,
+);
+
+/// Answers the region channel so the dropdown's position correction actually
+/// iterates. Without a handler the call never completes, the correction runs
+/// once, and a menu that chases its own position looks perfectly still.
+void _answerRegionChannel() {
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMessageHandler(_regionChannel.name, (ByteData? message) async {
+        return _regionChannel.codec.encodeMessage(<Object?>[null]);
+      });
+  addTearDown(
+    () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMessageHandler(_regionChannel.name, null),
+  );
+}
 
 class _RecordingDispatcher extends RustCommandDispatcher {
   final List<RustIntent> intents = <RustIntent>[];
@@ -258,6 +279,45 @@ void main() {
 
     expect(find.text('File'), findsOneWidget);
     expect(find.text('Edit'), findsOneWidget);
+  });
+
+  testWidgets('an open menu hangs from the heading that opened it', (
+    WidgetTester tester,
+  ) async {
+    _answerRegionChannel();
+    await tester.pumpWidget(
+      _surface(
+        overrides: [
+          rustCommandDispatcherProvider.overrideWith(
+            (ref) => _RecordingDispatcher(),
+          ),
+          globalMenuStatusProvider.overrideWith(
+            (ref) => Stream<GlobalMenuStatus>.value(_twoHeadings),
+          ),
+          _section(_edit, <GlobalMenuItem>[
+            _item(
+              label: 'Undo',
+              activation: const GlobalMenuItemIdDbusMenu(id: 2),
+            ),
+          ]),
+        ],
+        child: const SizedBox(width: 600, child: GlobalMenuBar()),
+      ),
+    );
+    await tester.pump();
+
+    final Offset heading = tester.getTopLeft(find.text('Edit'));
+    await tester.tap(find.text('Edit'));
+    await tester.pumpAndSettle();
+
+    // A menu bar's menus hang from their own heading. Centring them on the
+    // bar, or leaving them where a previous anchor put them, is the difference
+    // between a menu bar and a row of unrelated popovers.
+    final Offset panel = tester.getTopLeft(
+      find.byType(GlobalMenuSectionPanel),
+    );
+    expect(panel.dx, closeTo(heading.dx, 24));
+    expect(panel.dy, greaterThan(heading.dy));
   });
 
   testWidgets('the bar shows nothing when the window exports no menu', (

@@ -410,7 +410,19 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
       0.0,
       math.max(0.0, overlayBox.size.width - menuBox.size.width),
     );
-    final double offsetX = adjustedLeft - topLeft.dx;
+    // The measured position already contains the offset applied last frame,
+    // so the correction accumulates rather than replaces it. Replacing it
+    // makes the menu chase its own compensation: the reveal transition centres
+    // the menu inside a full-width box, so the correction is never zero, and
+    // `x = A - P` then alternates between the two positions every frame for as
+    // long as the menu stays open.
+    //
+    // Only the follower is placed by this offset. The width-anchored overlay
+    // positions itself and reads nothing here, so its correction stays
+    // absolute; accumulating there would drift without bound.
+    final double offsetX = widget.menuWidth == null
+        ? _menuOffsetX + (adjustedLeft - topLeft.dx)
+        : adjustedLeft - topLeft.dx;
     if ((_menuOffsetX - offsetX).abs() > 0.5) {
       _menuOffsetX = offsetX;
       _overlayEntry?.markNeedsBuild();
@@ -477,11 +489,13 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
     required Rect buttonRect,
     required double menuWidth,
   }) {
-    return switch (widget.horizontalAnchor) {
-      LayerShellDropdownAnchor.left => buttonRect.left,
-      LayerShellDropdownAnchor.center => buttonRect.center.dx - (menuWidth / 2),
-      LayerShellDropdownAnchor.right => buttonRect.right - menuWidth,
-    };
+    return widget.menuOffset.dx +
+        switch (widget.horizontalAnchor) {
+          LayerShellDropdownAnchor.left => buttonRect.left,
+          LayerShellDropdownAnchor.center =>
+            buttonRect.center.dx - (menuWidth / 2),
+          LayerShellDropdownAnchor.right => buttonRect.right - menuWidth,
+        };
   }
 
   @override

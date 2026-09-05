@@ -1067,11 +1067,7 @@ void main() {
           child: const SizedBox(
             width: 520,
             height: 40,
-            child: CenterCluster(
-              maxWidth: 500,
-              showGlobalMenu: false,
-              showWindowTitle: true,
-            ),
+            child: CenterCluster(maxWidth: 500),
           ),
         ),
       ),
@@ -4188,7 +4184,10 @@ void main() {
 
     expect(find.text('Fiber_5G'), findsOneWidget);
 
-    await tester.tapAt(const Offset(400, 120));
+    // Derived rather than hardcoded: a fixed coordinate only stays outside the
+    // popup for as long as the popup keeps landing in one particular place.
+    final Rect popup = tester.getRect(find.text('Fiber_5G'));
+    await tester.tapAt(Offset(popup.left - 40, popup.bottom + 80));
     await tester.pump();
     await tester.pumpAndSettle();
 
