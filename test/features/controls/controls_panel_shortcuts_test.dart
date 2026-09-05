@@ -11,23 +11,23 @@ void main() {
     await tester.pumpWidget(
       _panel(
         shortcutLabels: const <ShortcutSettingId, String>{
-          ShortcutSettingId.captureRegion: 'Super+⇧+S',
+          ShortcutSettingId.captureRegion: 'Super+Shift+S',
           ShortcutSettingId.captureWindow: 'Super+Print',
           ShortcutSettingId.captureFullScreen: 'Print',
-          ShortcutSettingId.colorPick: 'Super+⇧+P',
-          ShortcutSettingId.toggleRecording: 'Super+⇧+R',
-          ShortcutSettingId.barSettings: 'Super+⇧+C',
+          ShortcutSettingId.colorPick: 'Super+Shift+P',
+          ShortcutSettingId.toggleRecording: 'Super+Shift+R',
+          ShortcutSettingId.barSettings: 'Super+Shift+C',
         },
       ),
     );
     await tester.pump();
 
-    expect(find.text('Super+⇧+S'), findsOneWidget);
+    expect(find.text('Super+Shift+S'), findsOneWidget);
     expect(find.text('Super+Print'), findsOneWidget);
     expect(find.text('Print'), findsOneWidget);
-    expect(find.text('Super+⇧+P'), findsOneWidget);
-    expect(find.text('Super+⇧+R'), findsOneWidget);
-    expect(find.text('Super+⇧+C'), findsOneWidget);
+    expect(find.text('Super+Shift+P'), findsOneWidget);
+    expect(find.text('Super+Shift+R'), findsOneWidget);
+    expect(find.text('Super+Shift+C'), findsOneWidget);
   });
 
   testWidgets('a control with no known binding stamps no chord at all', (
@@ -36,7 +36,7 @@ void main() {
     await tester.pumpWidget(
       _panel(
         shortcutLabels: const <ShortcutSettingId, String>{
-          ShortcutSettingId.captureRegion: 'Super+⇧+S',
+          ShortcutSettingId.captureRegion: 'Super+Shift+S',
         },
       ),
     );
@@ -44,7 +44,7 @@ void main() {
 
     // Everything else the panel used to hardcode is simply absent rather than
     // guessed: a wrong chord teaches the user a keystroke that does nothing.
-    expect(find.text('Super+⇧+S'), findsOneWidget);
+    expect(find.text('Super+Shift+S'), findsOneWidget);
     expect(find.textContaining('Mod'), findsNothing);
     expect(find.text('PrtSc'), findsNothing);
     expect(find.text('MAGNIFY'), findsOneWidget);
@@ -57,9 +57,9 @@ void main() {
       _panel(
         shortcutLabels: const <ShortcutSettingId, String>{
           ShortcutSettingId.barSettings:
-              'Super+Ctrl+Alt+⇧+Num+BACKSLASH_AND_THEN_SOME',
+              'Super+Ctrl+Alt+Shift+Num+BACKSLASH_AND_THEN_SOME',
           ShortcutSettingId.captureRegion:
-              'Super+Ctrl+Alt+⇧+Num+BACKSLASH_AND_THEN_SOME',
+              'Super+Ctrl+Alt+Shift+Num+BACKSLASH_AND_THEN_SOME',
         },
       ),
     );
@@ -80,7 +80,7 @@ void main() {
       display: 'LOGO+SHIFT+S',
     );
 
-    expect(shortcutChordLabel(binding), 'Super+⇧+S');
+    expect(shortcutChordLabel(binding), 'Super+Shift+S');
   });
 }
 

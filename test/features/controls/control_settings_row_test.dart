@@ -43,17 +43,17 @@ void main() {
     );
 
     expect(find.text('BAR SETTINGS'), findsOneWidget);
-    expect(find.text('Super+⇧+C'), findsNothing);
+    expect(find.text('Super+Shift+C'), findsNothing);
 
     await tester.pumpWidget(
       const MaterialApp(
         home: Center(
-          child: ControlSettingsRow(onPressed: _ignore, shortcut: 'Super+⇧+C'),
+          child: ControlSettingsRow(onPressed: _ignore, shortcut: 'Super+Shift+C'),
         ),
       ),
     );
 
-    expect(find.text('Super+⇧+C'), findsOneWidget);
+    expect(find.text('Super+Shift+C'), findsOneWidget);
   });
 
   testWidgets('the settings row announces itself as one button', (
@@ -64,7 +64,7 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(
         home: Center(
-          child: ControlSettingsRow(onPressed: _ignore, shortcut: 'Super+⇧+C'),
+          child: ControlSettingsRow(onPressed: _ignore, shortcut: 'Super+Shift+C'),
         ),
       ),
     );
@@ -73,7 +73,7 @@ void main() {
     // hint and the chevron underneath it must not be read out with it.
     expect(find.bySemanticsLabel('Bar settings'), findsOneWidget);
     expect(find.bySemanticsLabel('BAR SETTINGS'), findsNothing);
-    expect(find.bySemanticsLabel('Super+⇧+C'), findsNothing);
+    expect(find.bySemanticsLabel('Super+Shift+C'), findsNothing);
 
     handle.dispose();
   });
