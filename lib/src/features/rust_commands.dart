@@ -28,6 +28,22 @@ sealed class RustIntent {
   void send();
 }
 
+sealed class GlobalMenuIntent extends RustIntent {
+  const GlobalMenuIntent();
+
+  const factory GlobalMenuIntent.refresh() = _GlobalMenuRefreshIntent;
+}
+
+class _GlobalMenuRefreshIntent extends GlobalMenuIntent {
+  const _GlobalMenuRefreshIntent();
+
+  @override
+  String get debugLabel => 'global_menu_refresh';
+
+  @override
+  void send() => const GlobalMenuRequest().sendSignalToRust();
+}
+
 sealed class SetupIntent extends RustIntent {
   const SetupIntent();
 

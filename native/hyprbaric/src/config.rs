@@ -9,8 +9,8 @@ use toml_edit::{DocumentMut, Item, Table};
 use tracing::instrument;
 
 use crate::{
-    appearance, audio, brightness, modules, network, night_light, power, schedule, setup,
-    shortcuts, workspaces,
+    appearance, audio, brightness, global_menu, modules, network, night_light, power, schedule,
+    setup, shortcuts, workspaces,
 };
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -19,6 +19,7 @@ pub struct Configuration {
     pub appearance: appearance::Configuration,
     pub audio: audio::Configuration,
     pub brightness: brightness::Configuration,
+    pub global_menu: global_menu::Configuration,
     pub modules: modules::Configuration,
     pub network: network::Configuration,
     pub night_light: night_light::Configuration,
@@ -324,7 +325,7 @@ mod tests {
 
     use serde::Deserialize;
 
-    use crate::setup;
+    use crate::{global_menu, setup};
 
     use super::{Cadence, Configuration};
 
@@ -364,6 +365,18 @@ mod tests {
             .expect("scalar setup should degrade instead of failing");
 
         assert_eq!(configuration.setup, setup::Configuration::default());
+    }
+
+    #[test]
+    fn configuration_accepts_enabled_global_menu_loading() {
+        let configuration = toml::from_str::<Configuration>("[global_menu]\nenabled = true\n")
+            .expect("global-menu configuration should parse");
+
+        assert!(configuration.global_menu.enabled);
+        assert_eq!(
+            configuration.global_menu.plugin_path,
+            global_menu::Configuration::default().plugin_path
+        );
     }
 
     #[test]
