@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,7 +23,14 @@ abstract final class _Bar {
 
 /// The focused application's menu headings, macOS-style.
 class GlobalMenuBar extends ConsumerStatefulWidget {
-  const GlobalMenuBar({super.key});
+  const GlobalMenuBar({super.key, this.showLeadingDivider = true});
+
+  /// Whether to draw the rule separating the menu from what precedes it.
+  ///
+  /// The menu draws its own divider because only it knows whether the focused
+  /// window exports any headings; a neighbour drawing one would leave a rule
+  /// hanging beside nothing every time a window has no menu.
+  final bool showLeadingDivider;
 
   @override
   ConsumerState<GlobalMenuBar> createState() => _GlobalMenuBarState();
@@ -238,27 +243,26 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
     return Focus(
       focusNode: _focusNode,
       onKeyEvent: _onKey,
-      child: SizedBox(
-        height: 36,
-        // Centred while the headings fit, scrollable once they do not. A bare
-        // scroll view fills its viewport and lays its row out from the left,
-        // which put the menu somewhere other than where the window title sits
-        // and made the centre of the bar jump as the two swapped.
-        child: LayoutBuilder(
-          builder: (BuildContext context, BoxConstraints constraints) {
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: _Bar.rowPadding),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minWidth: math.max(
-                    0,
-                    constraints.maxWidth - _Bar.rowPadding * 2,
-                  ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          if (widget.showLeadingDivider)
+            const HyprDivider(
+              height: 16,
+              margin: EdgeInsets.symmetric(horizontal: 8),
+            ),
+          Flexible(
+            child: SizedBox(
+              height: 36,
+              // Scrolls rather than pushing its neighbours when an application
+              // exports more headings than the bar has room for.
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: _Bar.rowPadding,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
                     for (final GlobalMenuSection section in sections)
                       Padding(
@@ -281,9 +285,9 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
                   ],
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }
