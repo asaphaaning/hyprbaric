@@ -74,3 +74,23 @@ pub struct GlobalMenuItem {
     pub activation: Option<GlobalMenuItemId>,
     pub submenu: Option<GlobalMenuSectionId>,
 }
+
+/// How the compositor-side half of the global menu is doing.
+///
+/// Installing the companion can take minutes and can end somewhere only the
+/// user can take further, so the bar reports the state rather than failing
+/// quietly.
+#[derive(Serialize, RustSignal)]
+pub enum GlobalMenuIntegrationStatus {
+    /// The global menu module is switched off.
+    Disabled,
+    /// The companion is being installed or rebuilt.
+    Preparing,
+    /// The companion is loaded and menus can be read.
+    Ready,
+    /// Installation stopped on something the bar cannot resolve itself.
+    Blocked {
+        message: String,
+        instruction: Option<String>,
+    },
+}

@@ -8,10 +8,23 @@ import '../state/providers.dart';
 import 'hypr_surface.dart';
 import 'primitives/primitives.dart';
 
+/// The bar's centre: the focused window's menu, or its title.
+///
+/// Both are ways of naming what is focused, so they share the centre rather
+/// than competing for it. A window that exports a menu shows the menu, and
+/// everything else falls back to the title, which is why enabling the menu
+/// does not take the centre away from applications that have none.
 class CenterCluster extends ConsumerWidget {
-  const CenterCluster({super.key, required this.maxWidth});
+  const CenterCluster({
+    super.key,
+    required this.maxWidth,
+    required this.showGlobalMenu,
+    required this.showWindowTitle,
+  });
 
   final double maxWidth;
+  final bool showGlobalMenu;
+  final bool showWindowTitle;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -19,8 +32,9 @@ class CenterCluster extends ConsumerWidget {
       currentWindowDisplayProvider,
     );
     final bool hasMenu =
-        ref.watch(globalMenuStatusProvider).asData?.value.sections.isNotEmpty ??
-        false;
+        showGlobalMenu &&
+        (ref.watch(globalMenuStatusProvider).asData?.value.sections.isNotEmpty ??
+            false);
 
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
@@ -33,8 +47,9 @@ class CenterCluster extends ConsumerWidget {
             child: Stack(
               alignment: Alignment.center,
               children: <Widget>[
-                const GlobalMenuBar(),
-                if (!hasMenu) _WindowTitleChip(display: display),
+                if (showGlobalMenu) const GlobalMenuBar(),
+                if (showWindowTitle && !hasMenu)
+                  _WindowTitleChip(display: display),
               ],
             ),
           ),

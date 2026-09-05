@@ -325,7 +325,7 @@ mod tests {
 
     use serde::Deserialize;
 
-    use crate::{global_menu, setup};
+    use crate::{modules, setup};
 
     use super::{Cadence, Configuration};
 
@@ -368,14 +368,33 @@ mod tests {
     }
 
     #[test]
-    fn configuration_accepts_enabled_global_menu_loading() {
-        let configuration = toml::from_str::<Configuration>("[global_menu]\nenabled = true\n")
-            .expect("global-menu configuration should parse");
+    fn the_global_menu_module_is_off_until_it_is_asked_for() {
+        let configuration =
+            toml::from_str::<Configuration>("").expect("empty configuration should parse");
 
-        assert!(configuration.global_menu.enabled);
+        assert!(!configuration.modules.enabled(modules::Module::GlobalMenu));
+        assert!(configuration.modules.enabled(modules::Module::SystemTray));
+    }
+
+    #[test]
+    fn the_global_menu_module_can_be_turned_on_like_any_other() {
+        let configuration =
+            toml::from_str::<Configuration>("[modules.global_menu]\nenabled = true\n")
+                .expect("module configuration should parse");
+
+        assert!(configuration.modules.enabled(modules::Module::GlobalMenu));
+    }
+
+    #[test]
+    fn the_global_menu_table_carries_only_how_to_obtain_the_companion() {
+        let configuration = toml::from_str::<Configuration>(
+            "[global_menu]\nplugin_path = \"/opt/hyprbaric/custom.so\"\n",
+        )
+        .expect("global-menu configuration should parse");
+
         assert_eq!(
             configuration.global_menu.plugin_path,
-            global_menu::Configuration::default().plugin_path
+            Some(std::path::PathBuf::from("/opt/hyprbaric/custom.so"))
         );
     }
 

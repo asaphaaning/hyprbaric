@@ -29,6 +29,34 @@ Widget buildLayoutSetupGuide(BuildContext context) {
   );
 }
 
+@UseCase(name: 'Global menu', type: SetupGuideCard, path: '[Widgets]/Setup')
+Widget buildGlobalMenuSetupGuide(BuildContext context) {
+  return const _SetupGuideStory(
+    step: SetupStep.globalMenu,
+    globalMenuEnabled: true,
+    globalMenuIntegration: GlobalMenuIntegrationStatusReady(),
+  );
+}
+
+@UseCase(
+  name: 'Global menu blocked',
+  type: SetupGuideCard,
+  path: '[Widgets]/Setup',
+)
+Widget buildGlobalMenuBlockedSetupGuide(BuildContext context) {
+  return const _SetupGuideStory(
+    step: SetupStep.globalMenu,
+    globalMenuEnabled: true,
+    globalMenuIntegration: GlobalMenuIntegrationStatusBlocked(
+      message:
+          'The bundled AppMenu companion does not fit this version of '
+          "Hyprland, and rebuilding it needs hyprpm's store, which does not "
+          'exist yet.',
+      instruction: 'hyprpm add https://github.com/asaphaaning/Hyprbaric',
+    ),
+  );
+}
+
 @UseCase(name: 'Interactive', type: SetupGuideCard, path: '[Widgets]/Setup')
 Widget buildInteractiveSetupGuide(BuildContext context) {
   return const _InteractiveSetupGuideStory();
@@ -58,11 +86,15 @@ class _SetupGuideStory extends StatelessWidget {
     required this.step,
     this.appearance = SetupFixtures.appearanceDefault,
     this.workspaces = SetupFixtures.workspacesRoman,
+    this.globalMenuEnabled = false,
+    this.globalMenuIntegration,
   });
 
   final SetupStep step;
   final AppearanceStatus appearance;
   final WorkspaceSettingsStatus workspaces;
+  final bool globalMenuEnabled;
+  final GlobalMenuIntegrationStatus? globalMenuIntegration;
 
   @override
   Widget build(BuildContext context) {
@@ -71,6 +103,8 @@ class _SetupGuideStory extends StatelessWidget {
         step: step,
         appearance: appearance,
         workspaces: workspaces,
+        globalMenuEnabled: globalMenuEnabled,
+        globalMenuIntegration: globalMenuIntegration,
       ),
     );
   }
@@ -250,6 +284,9 @@ Widget _guideCard({
   ValueChanged<int>? onAccentCommitted,
   ValueChanged<AppearancePosition>? onPositionChanged,
   ValueChanged<WorkspaceIndicatorStyle>? onWorkspaceStyleChanged,
+  bool globalMenuEnabled = false,
+  GlobalMenuIntegrationStatus? globalMenuIntegration,
+  ValueChanged<bool>? onGlobalMenuChanged,
 }) {
   const double width = 980;
   const double height = 600;
@@ -264,6 +301,9 @@ Widget _guideCard({
     ),
     controls: _controls(
       step: step,
+      globalMenuEnabled: globalMenuEnabled,
+      globalMenuIntegration: globalMenuIntegration,
+      onGlobalMenuChanged: onGlobalMenuChanged,
       appearance: appearance,
       workspaces: workspaces,
       onStepSelected: onStepSelected,
@@ -292,6 +332,9 @@ Widget _controls({
   ValueChanged<int>? onAccentCommitted,
   ValueChanged<AppearancePosition>? onPositionChanged,
   ValueChanged<WorkspaceIndicatorStyle>? onWorkspaceStyleChanged,
+  bool globalMenuEnabled = false,
+  GlobalMenuIntegrationStatus? globalMenuIntegration,
+  ValueChanged<bool>? onGlobalMenuChanged,
 }) {
   return SetupGuideControls(
     step: step,
@@ -302,6 +345,9 @@ Widget _controls({
     onBack: onBack ?? _noop,
     onNext: onNext ?? _noop,
     onSkip: _noop,
+    globalMenuEnabled: globalMenuEnabled,
+    globalMenuIntegration: globalMenuIntegration,
+    onGlobalMenuChanged: onGlobalMenuChanged ?? _ignore<bool>,
     onOpacityPreview: onOpacityPreview ?? _ignore<int>,
     onOpacityCommitted: onOpacityCommitted ?? _ignore<int>,
     onAccentPreview: onAccentPreview ?? _ignore<int>,

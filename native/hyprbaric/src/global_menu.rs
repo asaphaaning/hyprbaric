@@ -13,7 +13,7 @@
 mod plugin;
 mod registrar;
 
-pub use plugin::Configuration;
+pub use plugin::{Blocker, Configuration, Readiness};
 pub use registrar::Registrar;
 
 use std::{
@@ -32,10 +32,13 @@ use zbus::{
     zvariant::{OwnedValue, Structure, Type, Value},
 };
 
-/// Loads the configured compositor companion before any menu is read.
-#[instrument(name = "hyprbaric::global_menu::plugin::load", err)]
-pub async fn load_companion(configuration: &Configuration) -> Result<(), plugin::Error> {
-    plugin::load(configuration).await
+/// Installs the compositor companion, rebuilding it if the bundle no longer fits.
+///
+/// This can take minutes when hyprpm has to compile, so callers run it away
+/// from startup and report its outcome when it settles.
+#[instrument(name = "hyprbaric::global_menu::install", skip_all, err)]
+pub async fn install_companion(configuration: &Configuration) -> Result<Readiness, plugin::Error> {
+    plugin::install(configuration).await
 }
 
 /// The headings the focused application exports.
@@ -811,5 +814,46 @@ mod tests {
         assert_eq!(item.kind, ItemKind::Separator);
         assert_eq!(item.activation, None);
         assert_eq!(item.submenu, None);
+    }
+}
+
+/// Where the compositor half of the global menu got to.
+///
+/// Installation is slow and can end somewhere only the user can take further,
+/// so the outcome is a reportable state rather than a silent failure.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Progress {
+    /// The module is switched off.
+    Disabled,
+    /// The companion is being installed or rebuilt.
+    Preparing,
+    /// The companion is loaded and menus can be read.
+    Ready,
+    /// Installation stopped on something the bar cannot resolve itself.
+    Blocked {
+        message: String,
+        instruction: Option<String>,
+    },
+}
+
+impl Progress {
+    /// Reports an installation that could not run to a conclusion.
+    pub fn failed(error: &plugin::Error) -> Self {
+        Self::Blocked {
+            message: error.to_string(),
+            instruction: None,
+        }
+    }
+}
+
+impl From<Readiness> for Progress {
+    fn from(readiness: Readiness) -> Self {
+        match readiness {
+            Readiness::Ready => Self::Ready,
+            Readiness::Blocked(blocker) => Self::Blocked {
+                message: blocker.message(),
+                instruction: blocker.instruction(),
+            },
+        }
     }
 }

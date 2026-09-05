@@ -1067,7 +1067,11 @@ void main() {
           child: const SizedBox(
             width: 520,
             height: 40,
-            child: CenterCluster(maxWidth: 500),
+            child: CenterCluster(
+              maxWidth: 500,
+              showGlobalMenu: false,
+              showWindowTitle: true,
+            ),
           ),
         ),
       ),
@@ -2113,6 +2117,7 @@ void main() {
                   ModuleEntry(module: ModuleId.systemTray, enabled: false),
                   ModuleEntry(module: ModuleId.notifications, enabled: true),
                   ModuleEntry(module: ModuleId.audioDisplay, enabled: true),
+                  ModuleEntry(module: ModuleId.globalMenu, enabled: false),
                 ],
               ),
             ),
@@ -2134,7 +2139,8 @@ void main() {
     expect(find.text('System tray'), findsOneWidget);
     expect(find.text('Notifications'), findsOneWidget);
     expect(find.text('Audio & Display'), findsOneWidget);
-    expect(find.text('Off'), findsOneWidget);
+    expect(find.text('Global menu'), findsOneWidget);
+    expect(find.text('Off'), findsNWidgets(2));
     expect(find.text('On'), findsNWidgets(3));
   });
 

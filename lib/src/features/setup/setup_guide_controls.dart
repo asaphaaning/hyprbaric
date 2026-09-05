@@ -23,6 +23,9 @@ class SetupGuideControls extends StatelessWidget {
     required this.onAccentCommitted,
     required this.onPositionChanged,
     required this.onWorkspaceStyleChanged,
+    required this.globalMenuEnabled,
+    required this.globalMenuIntegration,
+    required this.onGlobalMenuChanged,
   });
 
   final SetupStep step;
@@ -39,6 +42,9 @@ class SetupGuideControls extends StatelessWidget {
   final ValueChanged<int> onAccentCommitted;
   final ValueChanged<AppearancePosition> onPositionChanged;
   final ValueChanged<WorkspaceIndicatorStyle> onWorkspaceStyleChanged;
+  final bool globalMenuEnabled;
+  final GlobalMenuIntegrationStatus? globalMenuIntegration;
+  final ValueChanged<bool> onGlobalMenuChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -251,7 +257,67 @@ class SetupGuideControls extends StatelessWidget {
         ),
       ],
     ),
+    SetupStep.globalMenu => Column(
+      children: <Widget>[
+        _ControlWell(
+          title: 'Global menu',
+          subtitle: "Show the focused window's menus on the bar.",
+          trailing: _Segmented(
+            options: <_SegmentOption>[
+              _SegmentOption(
+                label: 'Off',
+                selected: !globalMenuEnabled,
+                onPressed: () => onGlobalMenuChanged(false),
+              ),
+              _SegmentOption(
+                label: 'On',
+                selected: globalMenuEnabled,
+                onPressed: () => onGlobalMenuChanged(true),
+              ),
+            ],
+          ),
+        ),
+        if (globalMenuEnabled) ...<Widget>[
+          const SizedBox(height: 14),
+          _GlobalMenuIntegrationNote(status: globalMenuIntegration),
+        ],
+      ],
+    ),
   };
+}
+
+/// Says where the compositor half of the global menu has got to.
+///
+/// Turning the module on is instant, but the companion behind it may need
+/// building, so the guide reports progress instead of appearing to do nothing.
+class _GlobalMenuIntegrationNote extends StatelessWidget {
+  const _GlobalMenuIntegrationNote({required this.status});
+
+  final GlobalMenuIntegrationStatus? status;
+
+  @override
+  Widget build(BuildContext context) {
+    final (String headline, String? detail) = switch (status) {
+      GlobalMenuIntegrationStatusReady() => (
+        'Ready. Restart an application to see its menu move up here.',
+        null,
+      ),
+      GlobalMenuIntegrationStatusBlocked(
+        :final String message,
+        :final String? instruction,
+      ) =>
+        (message, instruction),
+      _ => ('Setting up the compositor plugin…', null),
+    };
+
+    return _ControlWell(
+      title: headline,
+      subtitle: detail == null
+          ? 'Applications already running keep the menu bar they started with.'
+          : 'Run this once, then reopen this step: $detail',
+      trailing: const SizedBox.shrink(),
+    );
+  }
 }
 
 String _title(SetupStep step) => switch (step) {
@@ -259,6 +325,7 @@ String _title(SetupStep step) => switch (step) {
   SetupStep.transparency => 'Frosted, or flat?',
   SetupStep.accent => 'Pick an accent',
   SetupStep.layout => 'Where should it live?',
+  SetupStep.globalMenu => 'One menu bar,\nnot every window',
 };
 
 String _subtitle(SetupStep step) => switch (step) {
@@ -269,6 +336,8 @@ String _subtitle(SetupStep step) => switch (step) {
   SetupStep.accent =>
     'One hue drives glows, active states, meters, and highlights across the whole bar.',
   SetupStep.layout => 'Dock the bar, then choose how workspaces are labelled.',
+  SetupStep.globalMenu =>
+    'Move application menus out of their windows and onto the bar, the way macOS does. Qt and KDE applications support this well; GTK ones vary, and windows without a menu keep showing their title instead.',
 };
 
 class _FeatureList extends StatelessWidget {

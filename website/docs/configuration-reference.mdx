@@ -13,7 +13,7 @@ This is the complete configuration surface read by hyprbaric. Every table and fi
 | Top-level table | Purpose | Managed in Settings |
 | --- | --- | --- |
 | `[appearance]` | Bar placement and visual treatment. | Appearance |
-| `[global_menu]` | Whether the focused window's menu is shown on the bar. | No |
+| `[global_menu]` | Where the global menu's compositor plugin comes from. | Global menu |
 | `[modules.*]` | Which modules are shown on the bar. | Modules |
 | `[workspaces]` | Workspace indicator presentation and interaction. | Workspaces |
 | `[night_light]` | Desired night light state and temperature. | Display |
@@ -88,12 +88,44 @@ enabled = true
 
 | Key | Values | Default | Effect |
 | --- | --- | --- | --- |
-| `enabled` | Boolean | `false` | Loads the Hyprbaric AppMenu plugin during startup when it is not already present in Hyprland, and owns the AppMenu registrar name. |
 | `plugin_path` | Absolute or relative shared-library path | Unset | Replaces the plugin bundled at `lib/hyprbaric-appmenu.so`; useful for a locally built companion. |
+| `repository` | Git URL | Hyprbaric's repository | Where hyprpm builds the companion from when the bundled one no longer fits Hyprland. |
 
-Failure to load the enabled companion is logged but does not stop the bar. GTK
-and Qt applications that do not export a menu still render the ordinary focused
-window title.
+Whether the menu appears is a module, not a key here:
+
+```toml
+[modules.global_menu]
+enabled = true
+```
+
+It is the one module that is off by default. Failure to obtain the companion is
+reported in the setup guide but does not stop the bar, and applications that
+export no menu still render the ordinary focused window title.
+
+### How the companion is obtained
+
+The companion is a compositor plugin, compiled against Hyprland's internals, so
+it only loads into the version it was built for. Hyprbaric tries two sources in
+the order that costs least:
+
+1. **The bundled plugin**, carried in the release at `lib/hyprbaric-appmenu.so`.
+   Loading it needs no privileges, no toolchain and no network, and this is what
+   almost every launch uses.
+2. **hyprpm**, Hyprland's own plugin manager, which rebuilds the companion from
+   this repository's `hyprpm.toml` against the headers of the installed
+   compositor. This is the answer to a Hyprland upgrade leaving the bundled
+   plugin behind, and Hyprbaric falls back to it automatically, in the
+   background, when Hyprland refuses the bundled one.
+
+hyprpm keeps its store in `/var/cache/hyprpm`, which it creates with a
+privileged command on first use. A desktop session has no terminal to answer
+that prompt on, so Hyprbaric does not raise it behind your back. If the fallback
+is ever needed before hyprpm has run at all, the setup guide asks you to run
+this once:
+
+```sh
+hyprpm add https://github.com/asaphaaning/Hyprbaric
+```
 
 ### What enabling this changes in your applications
 

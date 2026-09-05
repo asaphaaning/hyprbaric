@@ -111,7 +111,11 @@ class _CenterClusterStory extends StatelessWidget {
         child: _BarChrome(
           child: SizedBox(
             width: 520,
-            child: const CenterCluster(maxWidth: 420),
+            child: const CenterCluster(
+              maxWidth: 420,
+              showGlobalMenu: false,
+              showWindowTitle: true,
+            ),
           ),
         ),
       ),

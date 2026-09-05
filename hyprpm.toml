@@ -1,0 +1,31 @@
+# Plugin repository manifest for hyprpm, Hyprland's plugin manager.
+#
+# The companion is a compositor plugin compiled against Hyprland's own headers,
+# so it cannot ship as one prebuilt binary the way the bar does. hyprpm builds
+# it against the installed Hyprland and rebuilds it when that changes.
+#
+#   hyprpm add https://github.com/asaphaaning/Hyprbaric
+#   hyprpm enable hyprbaric-appmenu
+#   hyprpm reload
+#
+# Hyprbaric runs this itself when global menus are enabled; the commands are
+# here for anyone who would rather drive it by hand.
+
+[repository]
+name = "Hyprbaric"
+authors = ["asaphaaning"]
+
+# One pin per Hyprland release, mapping that release to the plugin commit built
+# against it. hyprpm checks out the pinned commit when it recognises the running
+# Hyprland, which is what keeps a compositor upgrade from loading a plugin built
+# for different internals.
+commit_pins = []
+
+[hyprbaric-appmenu]
+description = "Qt and GTK AppMenu protocol bridge for Hyprbaric's global menu"
+authors = ["asaphaaning"]
+output = "hyprland-appmenu/build/hyprbaric-appmenu.so"
+build = [
+    "cmake -S hyprland-appmenu -B hyprland-appmenu/build -DHYPRBARIC_APPMENU_BUILD_PROBES=OFF",
+    "cmake --build hyprland-appmenu/build",
+]

@@ -37,22 +37,36 @@ mod workspaces;
 async fn run() -> Result<(), Error> {
     let config = config::Configuration::load()?;
 
-    if let Err(error) = global_menu::load_companion(&config.global_menu).await {
-        tracing::warn!(%error, "Could not load the configured AppMenu companion");
-    }
-
-    // Gated on the same switch as the companion, and held for the process
-    // lifetime. Owning the registrar name is what stops Qt applications from
-    // drawing their own menu bars, so claiming it while the bar renders no
-    // menus would leave those applications with no menu bar at all. Dropping
-    // it releases the name and they draw their own again.
-    let _registrar = match global_menu::Registrar::serve(&config.global_menu).await {
+    // The global menu has two halves that fail independently. The registrar is
+    // immediate and is what makes applications export their menus at all, so it
+    // is claimed before the bar boots. Obtaining the compositor companion can
+    // mean compiling against Hyprland's headers, so it runs on its own and
+    // reports where it got to. Held for the process lifetime: releasing the
+    // registrar name gives applications their own menu bars back.
+    let global_menu = config.modules.enabled(modules::Module::GlobalMenu);
+    let _registrar = match global_menu::Registrar::serve(global_menu).await {
         Ok(registrar) => registrar,
         Err(error) => {
             tracing::warn!(%error, "Could not serve the AppMenu registrar");
             None
         }
     };
+
+    transport::rinf::publish_global_menu_integration(match global_menu {
+        true => global_menu::Progress::Preparing,
+        false => global_menu::Progress::Disabled,
+    });
+
+    if global_menu {
+        let configuration = config.global_menu.clone();
+        tokio::spawn(async move {
+            let progress = match global_menu::install_companion(&configuration).await {
+                Ok(readiness) => global_menu::Progress::from(readiness),
+                Err(error) => global_menu::Progress::failed(&error),
+            };
+            transport::rinf::publish_global_menu_integration(progress);
+        });
+    }
 
     let bootstrap::Started { app, initial } = bootstrap::boot(&config).await?;
 
