@@ -12,6 +12,7 @@ mod capabilities;
 mod clock;
 mod color_picker;
 mod config;
+mod global_menu;
 mod hyprland;
 mod launcher;
 mod modules;
@@ -35,6 +36,11 @@ mod workspaces;
 
 async fn run() -> Result<(), Error> {
     let config = config::Configuration::load()?;
+
+    if let Err(error) = global_menu::load_companion(&config.global_menu).await {
+        tracing::warn!(%error, "Could not load the configured AppMenu companion");
+    }
+
     let bootstrap::Started { app, initial } = bootstrap::boot(&config).await?;
 
     for output in initial.into_outputs() {

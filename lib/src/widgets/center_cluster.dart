@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../features/global_menu/global_menu_bar.dart';
 import '../state/providers.dart';
 import 'hypr_surface.dart';
 import 'primitives/primitives.dart';
@@ -17,6 +18,9 @@ class CenterCluster extends ConsumerWidget {
     final FocusedWindowDisplay display = ref.watch(
       currentWindowDisplayProvider,
     );
+    final bool hasMenu =
+        ref.watch(globalMenuStatusProvider).asData?.value.sections.isNotEmpty ??
+        false;
 
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
@@ -26,7 +30,13 @@ class CenterCluster extends ConsumerWidget {
           alignment: Alignment.center,
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: clusterWidth),
-            child: _WindowTitleChip(display: display),
+            child: Stack(
+              alignment: Alignment.center,
+              children: <Widget>[
+                const GlobalMenuBar(),
+                if (!hasMenu) _WindowTitleChip(display: display),
+              ],
+            ),
           ),
         );
       },

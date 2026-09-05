@@ -13,6 +13,7 @@ This is the complete configuration surface read by hyprbaric. Every table and fi
 | Top-level table | Purpose | Managed in Settings |
 | --- | --- | --- |
 | `[appearance]` | Bar placement and visual treatment. | Appearance |
+| `[global_menu]` | Whether to load the bundled AppMenu companion at boot. | No |
 | `[modules.*]` | Which modules are shown on the bar. | Modules |
 | `[workspaces]` | Workspace indicator presentation and interaction. | Workspaces |
 | `[night_light]` | Desired night light state and temperature. | Display |
@@ -22,8 +23,9 @@ This is the complete configuration surface read by hyprbaric. Every table and fi
 | `[network]` | NetworkManager and traffic refresh cadence. | No |
 | `[brightness]` | Backlight polling and DDC discovery/write policy. | No |
 | `[power]` | Battery and power-profile refresh cadence. | No |
+| `[setup]` | First-run setup-guide persistence and startup policy. | Setup guide |
 
-Nothing outside these ten tables is read from `config.toml`. An unknown table or key is ignored. A known key with an invalid value stops startup and is logged with the offending path.
+Nothing outside these twelve tables is read from `config.toml`. An unknown table or key is ignored. A known key with an invalid value stops startup and is logged with the offending path.
 
 For file locations, precedence, and when changes are applied, see [Configuration](./configuration). For the environment variables, capture destinations, and host capabilities that are configured outside TOML, see [Environment and files](./environment) and [Dependencies and capabilities](./dependencies).
 
@@ -72,6 +74,26 @@ enabled = true
 | `[modules.system_tray]` | `enabled` | `true` | Shows StatusNotifier tray items. |
 | `[modules.notifications]` | `enabled` | `true` | Shows the notification indicator and center entry point. |
 | `[modules.audio_display]` | `enabled` | `true` | Shows the Audio & Display popup anchor. |
+
+## Global menu
+
+Global menus remain opt-in while the companion protocol is maturing. Enable it
+to have Hyprbaric load the plugin carried in its Linux bundle before the bar
+starts reading focused applications:
+
+```toml title="config.toml"
+[global_menu]
+enabled = true
+```
+
+| Key | Values | Default | Effect |
+| --- | --- | --- | --- |
+| `enabled` | Boolean | `false` | Loads the Hyprbaric AppMenu plugin during startup when it is not already present in Hyprland. |
+| `plugin_path` | Absolute or relative shared-library path | Unset | Replaces the plugin bundled at `lib/hyprbaric-appmenu.so`; useful for a locally built companion. |
+
+Failure to load the enabled companion is logged but does not stop the bar. GTK
+and Qt applications that do not export a menu still render the ordinary focused
+window title.
 
 ## Workspaces
 

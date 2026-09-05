@@ -6,20 +6,20 @@ use crate::signals::{
     AudioCommandResult, AudioStatus, BrightnessCommandResult, BrightnessSetLevel, BrightnessStatus,
     CaffeineCommandResult, CaffeineSetEnabled, CaffeineStatus, CapabilityStatus,
     ClockCalendarRequest, ClockStatus, ColorPickRequest, ColorPickerCommandResult, DesktopStatus,
-    FocusedWindowStatus, HotkeyEvent, ModuleCommand, ModuleCommandResult, ModulesStatus,
-    MonitorFocusedWindowStatus, MonitorWorkspaceStatus, NetworkCommandResult,
-    NetworkConnectRequest, NetworkScanRequest, NetworkSetWifiEnabled, NetworkSettingsRequest,
-    NetworkStatus, NightLightCommandResult, NightLightSetEnabled, NightLightSetTemperature,
-    NightLightStatus, NotificationClearRequest, NotificationDismissRequest,
-    NotificationSetDoNotDisturb, NotificationStatus, PortalStatus, PowerCommandResult,
-    PowerSetProfile, PowerStatus, RecordingCommandResult, RecordingRequest, RecordingStatus,
-    ScheduleCommand, ScheduleCommandResult, ScheduleStatus, ScreenshotCaptureRequest,
-    ScreenshotCommandResult, SessionActionAvailability, SessionCommand, SessionCommandResult,
-    SetupCommand, SetupCommandResult, SetupStatus, ShortcutSettingsCommandResult,
-    ShortcutSettingsRequest, ShortcutSettingsSnapshot, TrayActivateRequest,
-    TrayMenuItemActivateRequest, TrayMenuStatus, TrayStatus, WorkspaceSettingsCommand,
-    WorkspaceSettingsCommandResult, WorkspaceSettingsStatus, WorkspaceStatus, WorkspaceSwitch,
-    WorkspaceSwitchKind,
+    FocusedWindowStatus, GlobalMenuItem, GlobalMenuRequest, GlobalMenuSection, GlobalMenuStatus,
+    HotkeyEvent, ModuleCommand, ModuleCommandResult, ModulesStatus, MonitorFocusedWindowStatus,
+    MonitorWorkspaceStatus, NetworkCommandResult, NetworkConnectRequest, NetworkScanRequest,
+    NetworkSetWifiEnabled, NetworkSettingsRequest, NetworkStatus, NightLightCommandResult,
+    NightLightSetEnabled, NightLightSetTemperature, NightLightStatus, NotificationClearRequest,
+    NotificationDismissRequest, NotificationSetDoNotDisturb, NotificationStatus, PortalStatus,
+    PowerCommandResult, PowerSetProfile, PowerStatus, RecordingCommandResult, RecordingRequest,
+    RecordingStatus, ScheduleCommand, ScheduleCommandResult, ScheduleStatus,
+    ScreenshotCaptureRequest, ScreenshotCommandResult, SessionActionAvailability, SessionCommand,
+    SessionCommandResult, SetupCommand, SetupCommandResult, SetupStatus,
+    ShortcutSettingsCommandResult, ShortcutSettingsRequest, ShortcutSettingsSnapshot,
+    TrayActivateRequest, TrayMenuItemActivateRequest, TrayMenuStatus, TrayStatus,
+    WorkspaceSettingsCommand, WorkspaceSettingsCommandResult, WorkspaceSettingsStatus,
+    WorkspaceStatus, WorkspaceSwitch, WorkspaceSwitchKind,
 };
 use crate::{
     app::{
@@ -29,9 +29,9 @@ use crate::{
     hyprland::{self, DesktopSnapshot, FocusedWindowSnapshot, WorkspaceSnapshot},
 };
 use crate::{
-    appearance, audio, brightness, caffeine, capabilities, clock, color_picker, launcher, modules,
-    network, night_light, notifications, portals, power, recording, schedule, screenshot, session,
-    setup, shortcuts, tray, workspaces,
+    appearance, audio, brightness, caffeine, capabilities, clock, color_picker, global_menu,
+    launcher, modules, network, night_light, notifications, portals, power, recording, schedule,
+    screenshot, session, setup, shortcuts, tray, workspaces,
 };
 use rinf::RustSignal;
 
@@ -42,6 +42,48 @@ pub(crate) fn send_app_signal() {
         version: env!("CARGO_PKG_VERSION").to_owned(),
     }
     .send_signal_to_dart();
+}
+
+pub(crate) async fn handle_global_menu_request(State(_): State<App>, _: GlobalMenuRequest) {
+    match global_menu::read().await {
+        Ok(menu) => {
+            tracing::debug!(
+                sections = menu.sections.len(),
+                "Read focused application's AppMenu"
+            );
+            GlobalMenuStatus {
+                sections: menu
+                    .sections
+                    .into_iter()
+                    .map(|section| GlobalMenuSection {
+                        id: section.id,
+                        label: section.label,
+                        enabled: section.enabled,
+                        items: section
+                            .items
+                            .into_iter()
+                            .map(|item| GlobalMenuItem {
+                                id: item.id,
+                                label: item.label,
+                                enabled: item.enabled,
+                                separator: item.separator,
+                            })
+                            .collect(),
+                    })
+                    .collect(),
+                message: None,
+            }
+            .send_signal_to_dart()
+        }
+        Err(error) => {
+            tracing::debug!(%error, "Focused window has no readable AppMenu");
+            GlobalMenuStatus {
+                sections: Vec::new(),
+                message: Some(error.to_string()),
+            }
+            .send_signal_to_dart();
+        }
+    }
 }
 
 /// Publishes one typed application output at the RINF boundary.

@@ -6,6 +6,7 @@ export 'rust_signals/capabilities.dart';
 export 'rust_signals/clock.dart';
 export 'rust_signals/color_picker.dart';
 export 'rust_signals/compositor.dart';
+export 'rust_signals/global_menu.dart';
 export 'rust_signals/launcher.dart';
 export 'rust_signals/modules.dart';
 export 'rust_signals/network.dart';
