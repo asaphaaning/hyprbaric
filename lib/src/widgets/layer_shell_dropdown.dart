@@ -241,6 +241,7 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
                       animationCurve: widget.animationCurve,
                       transition: widget.transition,
                       transitionAlignment: widget.transitionAlignment,
+                      revealAlignment: _revealAlignment,
                       child: transitionChild,
                     ),
                   ),
@@ -269,6 +270,16 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
     LayerShellDropdownAnchor.left => Alignment.bottomLeft,
     LayerShellDropdownAnchor.center => Alignment.bottomCenter,
     LayerShellDropdownAnchor.right => Alignment.bottomRight,
+  };
+
+  /// Where the menu rests inside the box the follower gives it.
+  ///
+  /// Matching the anchor makes the menu land where it belongs on its first
+  /// frame, so the correction below has nothing to do but keep it on screen.
+  Alignment get _revealAlignment => switch (widget.horizontalAnchor) {
+    LayerShellDropdownAnchor.left => Alignment.topLeft,
+    LayerShellDropdownAnchor.center => Alignment.topCenter,
+    LayerShellDropdownAnchor.right => Alignment.topRight,
   };
 
   Alignment get _followerAnchor => switch (widget.horizontalAnchor) {
