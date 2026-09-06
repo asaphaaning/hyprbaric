@@ -141,6 +141,16 @@ abstract final class HyprTypography {
     letterSpacing: 0,
   );
 
+  /// A caption naming a run of menu rows.
+  static TextStyle get globalMenuGroup => TextStyle(
+    fontFamily: monoFamily,
+    fontFamilyFallback: <String>['monospace'],
+    color: HyprColors.textFaint,
+    fontSize: size(8.5),
+    fontWeight: FontWeight.w700,
+    letterSpacing: 1.7,
+  );
+
   /// The accelerator printed at the end of a menu row.
   static TextStyle get globalMenuKey => TextStyle(
     fontFamily: monoFamily,
