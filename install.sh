@@ -2,7 +2,7 @@
 # Hyprbaric's release installer. Fetch this file over HTTPS and pipe it to sh.
 set -eu
 
-repository='asaphaaning/Hyprbaric'
+repository='asaphaaning/hyprbaric'
 api_base="${HYPRBARIC_INSTALL_API_BASE:-https://api.github.com/repos/${repository}}"
 os_release="${HYPRBARIC_INSTALL_OS_RELEASE:-/etc/os-release}"
 
@@ -12,7 +12,7 @@ Install the latest Hyprbaric Linux release package.
 
 Usage:
   curl --proto '=https' --tlsv1.2 -sSf \
-    https://raw.githubusercontent.com/asaphaaning/Hyprbaric/master/install.sh | sh
+    https://raw.githubusercontent.com/asaphaaning/hyprbaric/master/install.sh | sh
 
 Options:
   --version TAG  Install a specific release tag, for example v0.1.0.
@@ -114,7 +114,7 @@ release_urls="${temporary_directory}/release-urls"
 
 say "looking up ${release_tag} release"
 if ! download "$release_endpoint" "$release_json"; then
-  die 'could not fetch a published Hyprbaric release. See https://github.com/asaphaaning/Hyprbaric/releases for available downloads.'
+  die 'could not fetch a published Hyprbaric release. See https://github.com/asaphaaning/hyprbaric/releases for available downloads.'
 fi
 
 sed -n 's/^[[:space:]]*"browser_download_url":[[:space:]]*"\(https:\/\/github\.com\/[^"]*\)".*/\1/p' \

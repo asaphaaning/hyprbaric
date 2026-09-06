@@ -32,7 +32,7 @@ export default function Navbar() {
           ))}
         </nav>
         <div className="hyprNavbarSearch"><SearchBar /></div>
-        <a className="hyprGithubButton" href="https://github.com/asaphaaning/Hyprbaric">GitHub</a>
+        <a className="hyprGithubButton" href="https://github.com/asaphaaning/hyprbaric">GitHub</a>
       </div>
     </header>
   );

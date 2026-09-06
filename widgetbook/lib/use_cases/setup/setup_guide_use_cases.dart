@@ -52,7 +52,7 @@ Widget buildGlobalMenuBlockedSetupGuide(BuildContext context) {
           'The bundled AppMenu companion does not fit this version of '
           "Hyprland, and rebuilding it needs hyprpm's store, which does not "
           'exist yet.',
-      instruction: 'hyprpm add https://github.com/asaphaaning/Hyprbaric',
+      instruction: 'hyprpm add https://github.com/asaphaaning/hyprbaric',
     ),
   );
 }

@@ -7,11 +7,11 @@ const options = [
     id: 'quick',
     label: 'Automatic',
     description: 'Detects your distribution, downloads its native package, verifies it, and installs it.',
-    copy: "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/Hyprbaric/master/install.sh | sh",
+    copy: "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/hyprbaric/master/install.sh | sh",
     code: (
       <>
         <span className={styles.comment}># download the latest package for this Linux distribution</span>{'\n'}
-        curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/Hyprbaric/master/install.sh | sh
+        curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/hyprbaric/master/install.sh | sh
       </>
     ),
   },
@@ -19,11 +19,11 @@ const options = [
     id: 'deb',
     label: 'Debian · Ubuntu',
     description: 'Installs the release DEB with apt, including its declared runtime dependencies.',
-    copy: "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/Hyprbaric/master/install.sh | sh",
+    copy: "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/hyprbaric/master/install.sh | sh",
     code: (
       <>
         <span className={styles.comment}># Debian and Ubuntu are detected automatically; the installer selects the DEB</span>{'\n'}
-        curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/Hyprbaric/master/install.sh | sh
+        curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/hyprbaric/master/install.sh | sh
       </>
     ),
   },
@@ -31,11 +31,11 @@ const options = [
     id: 'pacman',
     label: 'Arch · Manjaro',
     description: 'Installs the release Pacman package with pacman.',
-    copy: "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/Hyprbaric/master/install.sh | sh",
+    copy: "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/hyprbaric/master/install.sh | sh",
     code: (
       <>
         <span className={styles.comment}># Arch-based distributions are detected automatically; the installer selects the Pacman package</span>{'\n'}
-        curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/Hyprbaric/master/install.sh | sh
+        curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/hyprbaric/master/install.sh | sh
       </>
     ),
   },
@@ -43,11 +43,11 @@ const options = [
     id: 'rpm',
     label: 'Fedora · openSUSE',
     description: 'Installs the release RPM with dnf or zypper.',
-    copy: "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/Hyprbaric/master/install.sh | sh",
+    copy: "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/hyprbaric/master/install.sh | sh",
     code: (
       <>
         <span className={styles.comment}># Fedora and openSUSE are detected automatically; the installer selects the RPM</span>{'\n'}
-        curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/Hyprbaric/master/install.sh | sh
+        curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/hyprbaric/master/install.sh | sh
       </>
     ),
   },
@@ -55,11 +55,11 @@ const options = [
     id: 'appimage',
     label: 'Other Linux',
     description: 'Installs the AppImage in ~/.local/bin when no native package matches.',
-    copy: "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/Hyprbaric/master/install.sh | sh",
+    copy: "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/hyprbaric/master/install.sh | sh",
     code: (
       <>
         <span className={styles.comment}># Other x86_64 Linux distributions receive the self-contained AppImage</span>{'\n'}
-        curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/Hyprbaric/master/install.sh | sh
+        curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/hyprbaric/master/install.sh | sh
       </>
     ),
   },
