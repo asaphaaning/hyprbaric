@@ -334,12 +334,12 @@ class _GlobalMenuTitleState extends State<_GlobalMenuTitle> {
             required bool isOpen,
           }) {
             final Color color = !widget.section.enabled
-                ? HyprColors.textFaint
+                ? GlobalMenuInk.disabled
                 : isOpen
-                ? Color.lerp(HyprColors.text, HyprColors.accent, 0.3)!
+                ? GlobalMenuInk.openHeading
                 : _hovered
-                ? HyprColors.text
-                : HyprColors.textMuted;
+                ? GlobalMenuInk.bright
+                : GlobalMenuInk.quiet;
 
             return Semantics(
               button: true,
@@ -355,28 +355,29 @@ class _GlobalMenuTitleState extends State<_GlobalMenuTitle> {
                   }
                 },
                 onExit: (_) => setState(() => _hovered = false),
-                child: GestureDetector(
+                // Menus open on press, not release, the way a menu bar has
+                // always behaved: the button goes down and the menu is already
+                // there to be dragged through.
+                child: Listener(
                   behavior: HitTestBehavior.opaque,
-                  onTap: widget.section.enabled
-                      ? () => widget.onToggle(widget.section.id)
+                  onPointerDown: widget.section.enabled
+                      ? (_) => widget.onToggle(widget.section.id)
                       : null,
-                  child: AnimatedContainer(
-                    duration: _Bar.tint,
-                    curve: Curves.easeOut,
+                  child: SizedBox(
                     height: _Bar.titleHeight,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: _Bar.titlePadding,
-                    ),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: isOpen ? HyprColors.hover : Colors.transparent,
-                      borderRadius: BorderRadius.circular(_Bar.titleRadius),
-                    ),
-                    child: Text(
-                      widget.section.label,
-                      maxLines: 1,
-                      style: HyprTypography.globalMenuTitle.copyWith(
-                        color: color,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: _Bar.titlePadding,
+                      ),
+                      child: Center(
+                        child: AnimatedDefaultTextStyle(
+                          duration: _Bar.tint,
+                          curve: Curves.easeOut,
+                          style: HyprTypography.globalMenuTitle.copyWith(
+                            color: color,
+                          ),
+                          child: Text(widget.section.label, maxLines: 1),
+                        ),
                       ),
                     ),
                   ),

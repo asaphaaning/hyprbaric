@@ -23,6 +23,7 @@ pub enum GlobalMenuItemId {
 pub enum GlobalMenuItemKind {
     Standard,
     Separator,
+    Group,
     Checkmark { checked: bool },
     Radio { selected: bool },
 }
