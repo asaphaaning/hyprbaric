@@ -111,15 +111,23 @@ class _RockerSwitch extends StatelessWidget {
   final bool value;
   final bool enabled;
 
+  /// Same footprint as [HyprHardwareToggle]: a short well, not a stretched
+  /// pill that fills the rocker face.
+  static const double width = 36;
+  static const double height = 18;
+  static const double capWidth = 20;
+  static const double capHeight = 15;
+
   @override
   Widget build(BuildContext context) {
     final Color accent = context.hyprPalette.accent;
 
     return AnimatedContainer(
+      key: const ValueKey<String>('control-rocker-switch'),
       duration: HyprMotion.switcher,
       curve: HyprMotion.switchInCurve,
-      width: 50,
-      height: 18,
+      width: width,
+      height: height,
       padding: const EdgeInsets.all(1.5),
       decoration: ShapeDecoration(
         // Flat, not graded: the reference well is one even tone, and a
@@ -150,8 +158,8 @@ class _RockerSwitch extends StatelessWidget {
         curve: HyprMotion.switchInCurve,
         alignment: value ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
-          width: 19,
-          height: 15,
+          width: capWidth,
+          height: capHeight,
           decoration: ShapeDecoration(
             // The cap is a solid moulded key, not a metallic barrel: the
             // three-stop gradient this used to carry shaded the bottom two

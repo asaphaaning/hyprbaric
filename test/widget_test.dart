@@ -3808,6 +3808,14 @@ void main() {
       tester.getSize(find.byType(ControlSettingsRow)).height,
       ControlSettingsRow.height,
     );
+    expect(
+      tester
+          .getSize(
+            find.byKey(const ValueKey<String>('control-rocker-switch')).first,
+          )
+          .width,
+      36,
+    );
 
     await tester.tap(find.text('REGION'));
     await tester.pump();
@@ -4229,7 +4237,10 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(TextField, 'Password for Fiber_2.4G'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextField, 'Password for Fiber_2.4G'),
+      findsOneWidget,
+    );
     expect(find.text('JOIN'), findsOneWidget);
     // The row's tap target is the shared interaction primitive now, not a
     // bespoke InkWell with every overlay colour turned off.

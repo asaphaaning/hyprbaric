@@ -10,6 +10,7 @@ use tokio::sync::broadcast;
 use tracing::instrument;
 
 mod domain;
+mod exec;
 mod listener;
 mod refresh;
 
@@ -18,6 +19,7 @@ pub use domain::{
     MonitorWorkspace, OutputGeometry, OutputName, OutputTransform, WorkspaceOccupancy,
     WorkspaceSnapshot, WorkspaceTarget,
 };
+pub(crate) use exec::start_user;
 
 /// Live Hyprland desktop observation.
 pub struct Desktop {

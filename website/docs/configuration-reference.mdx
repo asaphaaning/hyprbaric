@@ -102,6 +102,10 @@ It is the one module that is off by default. Failure to obtain the companion is
 reported in the setup guide but does not stop the bar, and applications that
 export no menu still render the ordinary focused window title.
 
+Which applications export a menu, and which ones still need Firefox prefs or a
+GTK module, is covered in [Global menu](./global-menu). The rest of this
+section is the configuration surface and what owning the registrar name does.
+
 ### How the companion is obtained
 
 The companion is a compositor plugin, compiled against Hyprland's internals, so
@@ -141,7 +145,9 @@ bar at all. Turning the setting off and restarting Hyprbaric releases the name,
 and applications started after that draw their own menu bars again.
 
 Applications already running when the setting changes keep whichever menu bar
-they started with, so restart them to see the change.
+they started with, so restart them to see the change. Firefox, traditional GTK
+menubars, and apps without a menubar at all need extra steps or will never
+export; see [Global menu](./global-menu).
 
 ## Workspaces
 
@@ -331,4 +337,6 @@ For completeness, these are deliberately outside the configuration file:
 | Screenshot and recording destinations | XDG user directories. See [Environment and files](./environment#where-captures-are-saved). |
 | Log verbosity and format | `RUST_LOG`, `HYPRBARIC_LOG`, `RUST_LOG_STYLE`. |
 | Terminal used for terminal desktop entries | `$TERMINAL`, with a built-in fallback list. |
+| Click-to-focus for the global menu | Hyprland `follow_mouse` and `float_switch_override_focus`. See [Click to focus](./global-menu#click-to-focus). |
+| Classic GTK menubars on the global menu | Hyprland `GTK_MODULES` and `UBUNTU_MENUPROXY`. See [GTK AppMenu module](./global-menu#gtk-appmenu-module). |
 | Which features are available at all | Installed backends. See [Dependencies and capabilities](./dependencies). |

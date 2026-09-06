@@ -84,6 +84,16 @@ No such line means no file was found anywhere and the built-in defaults are in u
 
 A file that parses as TOML but holds an out-of-range value stops startup instead of falling back to defaults, and the failure names the offending path. See [Validation](./configuration-reference#validation) for the constraints and what a rejected value looks like.
 
+## The global menu vanishes on the way to the bar
+
+Hyprland's default hover-focus is changing the focused window as the cursor crosses tiles and floating palettes. The bar follows that focus, so the headings you were reaching for belong to a different application by the time you arrive. Set `follow_mouse = 0` and `float_switch_override_focus = 0` as described in [Click to focus](./global-menu#click-to-focus).
+
+## The global menu shows a title instead of menus
+
+The bar is working. The focused application is not exporting a menu hyprbaric can read. Qt and KDE applications need a restart after the module is enabled. Firefox needs two `about:config` prefs. Traditional GTK menubars need `GTK_MODULES=appmenu-gtk-module` and `UBUNTU_MENUPROXY=1` in Hyprland, then a restart of that app. Headerbar applications have nothing to export. Native-Wayland Electron apps (VS Code, Discord, Slack, …) also have nothing to export until Electron speaks the Wayland AppMenu protocol; see [Electron and Chromium](./global-menu#electron-and-chromium).
+
+[Global menu](./global-menu) is the end-to-end path, including the `hyprctl` and `busctl` checks that distinguish a missing companion from an application that never published.
+
 ## A control is greyed out
 
 That is the capability probe reporting a missing backend rather than a fault. **Settings → About → System** lists every capability and its current state, and the disabled control itself names what was not found. [Dependencies and capabilities](./dependencies) maps each one to the package that provides it.

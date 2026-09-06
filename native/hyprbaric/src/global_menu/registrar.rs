@@ -7,12 +7,14 @@
 //! compositor companion advertises, even though Wayland clients publish their
 //! endpoint through the compositor rather than through this interface.
 //!
-//! X11 clients do register here, so the table this keeps is also the XWayland
-//! half of endpoint discovery.
+//! X11 and XWayland clients still register here with an X11 window identifier.
+//! Traditional GTK menus injected by `appmenu-gtk-module` take that path, so
+//! this table is the fallback half of endpoint discovery when the companion
+//! has no Wayland association for the focused window.
 
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, OnceLock},
 };
 
 use futures_util::StreamExt;
@@ -33,12 +35,14 @@ pub struct Registration {
     pub service: String,
     /// The `com.canonical.dbusmenu` object it exports.
     pub path: String,
+    /// The registering process, when the bus driver could name it.
+    pub pid: Option<u32>,
 }
 
+/// The live registrar table, shared with the focused-window reader.
+static DIRECTORY: OnceLock<Windows> = OnceLock::new();
+
 /// The live registrar, owning the bus name for as long as it is held.
-///
-/// The registrations it keeps are read back over D-Bus rather than in process:
-/// nothing here consumes them until XWayland windows join endpoint discovery.
 pub struct Registrar {
     _connection: zbus::Connection,
 }
@@ -62,6 +66,7 @@ impl Registrar {
         }
 
         let windows = Windows::default();
+        let _ = DIRECTORY.set(windows.clone());
         let connection = zbus::connection::Builder::session()
             .map_err(Error::Connect)?
             .serve_at(PATH, Interface::new(windows.clone()))
@@ -89,6 +94,16 @@ impl Registrar {
     }
 }
 
+/// The menu a registrar client published for the focused window, if any.
+///
+/// Window identity is preferred: that is the key GTK's X11 module registers
+/// with. Process identity is the fallback when Hyprland could not name the
+/// X11 window, which is enough for single-window applications and for
+/// multi-window ones whose menus share a path.
+pub fn lookup(window: Option<WindowId>, pid: Option<u32>) -> Option<Registration> {
+    DIRECTORY.get()?.find(window, pid)
+}
+
 /// The registrations, shared between the interface and its readers.
 #[derive(Clone, Default)]
 struct Windows(Arc<Mutex<HashMap<WindowId, Registration>>>);
@@ -114,6 +129,41 @@ impl Windows {
             .collect::<Vec<_>>();
         all.sort_by_key(|(window, _)| window.0);
         all
+    }
+
+    /// Resolves a focused window against the registrar table.
+    fn find(&self, window: Option<WindowId>, pid: Option<u32>) -> Option<Registration> {
+        if let Some(window) = window {
+            if let Some(registration) = self.get(window) {
+                return Some(registration);
+            }
+        }
+
+        pid.and_then(|pid| self.by_pid(pid))
+    }
+
+    /// The menu last registered by this process, when several windows share it.
+    fn by_pid(&self, pid: u32) -> Option<Registration> {
+        let mut matches = self
+            .lock()
+            .iter()
+            .filter(|(_, registration)| registration.pid == Some(pid))
+            .map(|(window, registration)| (*window, registration.clone()))
+            .collect::<Vec<_>>();
+
+        if matches.is_empty() {
+            return None;
+        }
+
+        let identical = matches.iter().all(|(_, registration)| {
+            registration.service == matches[0].1.service && registration.path == matches[0].1.path
+        });
+        if identical {
+            return Some(matches.remove(0).1);
+        }
+
+        matches.sort_by_key(|(window, _)| window.0);
+        matches.pop().map(|(_, registration)| registration)
     }
 
     /// Drops every window a departed bus name had registered.
@@ -160,6 +210,7 @@ impl Interface {
     async fn register_window(
         &self,
         #[zbus(header)] header: zbus::message::Header<'_>,
+        #[zbus(connection)] connection: &zbus::Connection,
         #[zbus(signal_emitter)] emitter: zbus::object_server::SignalEmitter<'_>,
         window: u32,
         menu: OwnedObjectPath,
@@ -169,12 +220,22 @@ impl Interface {
             return;
         };
 
+        let pid = match zbus::fdo::DBusProxy::new(connection).await {
+            Ok(proxy) => match zbus::names::BusName::try_from(service.as_str()) {
+                Ok(name) => proxy.get_connection_unix_process_id(name).await.ok(),
+                Err(_) => None,
+            },
+            Err(_) => None,
+        };
+
         let registration = Registration {
             service,
             path: menu.as_str().to_owned(),
+            pid,
         };
         tracing::debug!(
             window,
+            pid,
             service = %registration.service,
             path = %registration.path,
             "Registered an X11 AppMenu"
@@ -310,6 +371,14 @@ mod tests {
         Registration {
             service: service.to_owned(),
             path: "/MenuBar/1".to_owned(),
+            pid: None,
+        }
+    }
+
+    fn registration_for(service: &str, pid: u32) -> Registration {
+        Registration {
+            pid: Some(pid),
+            ..registration(service)
         }
     }
 
@@ -377,5 +446,49 @@ mod tests {
 
         assert_eq!(departed, vec![WindowId(1), WindowId(2)]);
         assert_eq!(windows.get(WindowId(3)), Some(registration(":1.6")));
+    }
+
+    #[test]
+    fn a_window_identifier_wins_over_process_identity() {
+        let windows = Windows::default();
+        windows.insert(WindowId(1), registration_for(":1.1", 10));
+        windows.insert(WindowId(2), registration_for(":1.2", 10));
+
+        assert_eq!(
+            windows.find(Some(WindowId(1)), Some(10)),
+            Some(registration_for(":1.1", 10))
+        );
+    }
+
+    #[test]
+    fn a_process_with_one_menu_path_resolves_without_a_window() {
+        let windows = Windows::default();
+        windows.insert(WindowId(1), registration_for(":1.5", 42));
+        windows.insert(WindowId(2), registration_for(":1.5", 42));
+
+        assert_eq!(
+            windows.find(None, Some(42)),
+            Some(registration_for(":1.5", 42))
+        );
+        assert_eq!(windows.find(None, Some(7)), None);
+    }
+
+    #[test]
+    fn a_process_with_distinct_menus_prefers_the_latest_window() {
+        let windows = Windows::default();
+        let first = Registration {
+            service: ":1.8".to_owned(),
+            path: "/MenuBar/1".to_owned(),
+            pid: Some(9),
+        };
+        let later = Registration {
+            service: ":1.8".to_owned(),
+            path: "/MenuBar/2".to_owned(),
+            pid: Some(9),
+        };
+        windows.insert(WindowId(3), first);
+        windows.insert(WindowId(8), later.clone());
+
+        assert_eq!(windows.find(None, Some(9)), Some(later));
     }
 }
