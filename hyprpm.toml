@@ -4,7 +4,7 @@
 # so it cannot ship as one prebuilt binary the way the bar does. hyprpm builds
 # it against the installed Hyprland and rebuilds it when that changes.
 #
-#   hyprpm add https://github.com/asaphaaning/Hyprbaric
+#   hyprpm add https://github.com/asaphaaning/hyprbaric
 #   hyprpm enable hyprbaric-appmenu
 #   hyprpm reload
 #

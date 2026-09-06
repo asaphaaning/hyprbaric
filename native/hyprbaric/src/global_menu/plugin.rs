@@ -30,7 +30,7 @@ const PLUGIN_NAME: &str = "Hyprbaric AppMenu";
 const BUNDLED_PLUGIN: &str = "hyprbaric-appmenu.so";
 const HYPRPM_PLUGIN: &str = "hyprbaric-appmenu";
 const HYPRPM_STATE_STORE: &str = "/var/cache/hyprpm";
-const REPOSITORY: &str = "https://github.com/asaphaaning/Hyprbaric";
+const REPOSITORY: &str = "https://github.com/asaphaaning/hyprbaric";
 
 /// Global-menu companion settings loaded from `[global_menu]`.
 ///

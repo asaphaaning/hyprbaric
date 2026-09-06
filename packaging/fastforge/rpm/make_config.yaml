@@ -5,7 +5,7 @@ vendor: Hyprbaric
 packager: Hyprbaric maintainers
 packagerEmail: fh@frederikhaaning.dk
 license: AGPL-3.0-only
-url: https://github.com/asaphaaning/Hyprbaric
+url: https://github.com/asaphaaning/hyprbaric
 build_arch: x86_64
 icon: packaging/assets/hyprbaric.png
 metainfo: packaging/assets/hyprbaric.metainfo.xml

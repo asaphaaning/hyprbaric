@@ -12,35 +12,35 @@ const installOptions = [
     tool: 'Recommended',
     label: 'Linux · auto-detect',
     detail: 'Detects your distribution and installs its verified release package.',
-    command: "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/Hyprbaric/master/install.sh | sh",
+    command: "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/hyprbaric/master/install.sh | sh",
   },
   {
     name: 'Debian / Ubuntu',
     tool: 'DEB package',
     label: 'Debian · Ubuntu',
     detail: 'Downloads the latest DEB and installs its runtime dependencies with apt.',
-    command: "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/Hyprbaric/master/install.sh | sh",
+    command: "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/hyprbaric/master/install.sh | sh",
   },
   {
     name: 'Arch / Manjaro',
     tool: 'Pacman package',
     label: 'Arch · Manjaro',
     detail: 'Downloads the latest Pacman package and installs it with pacman.',
-    command: "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/Hyprbaric/master/install.sh | sh",
+    command: "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/hyprbaric/master/install.sh | sh",
   },
   {
     name: 'Fedora / openSUSE',
     tool: 'RPM package',
     label: 'Fedora · openSUSE',
     detail: 'Downloads the latest RPM and installs it with dnf or zypper.',
-    command: "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/Hyprbaric/master/install.sh | sh",
+    command: "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/hyprbaric/master/install.sh | sh",
   },
   {
     name: 'Other Linux',
     tool: 'AppImage',
     label: 'Linux · AppImage',
     detail: 'Uses the self-contained AppImage when no native package matches.',
-    command: "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/Hyprbaric/master/install.sh | sh",
+    command: "curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/hyprbaric/master/install.sh | sh",
   },
 ];
 
@@ -154,7 +154,7 @@ function InstallCommand() {
       </div>
       <div className={styles.installDetail}>
         <span>{selected.detail}</span>
-        <a href="https://github.com/asaphaaning/Hyprbaric/releases/latest">Direct downloads →</a>
+        <a href="https://github.com/asaphaaning/hyprbaric/releases/latest">Direct downloads →</a>
       </div>
       {open && (
         <div className={styles.installMenu}>
@@ -338,7 +338,7 @@ export default function Home() {
             <p>Built on Flutter and Rust.</p>
             <div className={styles.actions}>
               <Link className={styles.primaryAction} to="/docs/installation">Install the latest release</Link>
-              <a className={styles.secondaryAction} href="https://github.com/asaphaaning/Hyprbaric/releases/latest">Download packages</a>
+              <a className={styles.secondaryAction} href="https://github.com/asaphaaning/hyprbaric/releases/latest">Download packages</a>
             </div>
             <InstallCommand />
           </div>
