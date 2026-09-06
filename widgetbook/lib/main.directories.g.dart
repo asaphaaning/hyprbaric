@@ -29,6 +29,8 @@ import 'package:hyprbaric_widgetbook/use_cases/controls/control_atom_use_cases.d
     as _hyprbaric_widgetbook_use_cases_controls_control_atom_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/controls/controls_panel_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_controls_controls_panel_use_cases;
+import 'package:hyprbaric_widgetbook/use_cases/global_menu/global_menu_use_cases.dart'
+    as _hyprbaric_widgetbook_use_cases_global_menu_global_menu_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/launcher/app_launcher_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_launcher_app_launcher_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/network/network_panel_use_cases.dart'
@@ -1157,6 +1159,12 @@ final directories = <_widgetbook.WidgetbookNode>[
                     _hyprbaric_widgetbook_use_cases_bar_bar_cluster_use_cases
                         .buildRomanLeftCluster,
               ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'With global menu',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_bar_bar_cluster_use_cases
+                        .buildGlobalMenuLeftCluster,
+              ),
             ],
           ),
           _widgetbook.WidgetbookComponent(
@@ -1246,6 +1254,39 @@ final directories = <_widgetbook.WidgetbookNode>[
                 builder:
                     _hyprbaric_widgetbook_use_cases_controls_controls_panel_use_cases
                         .buildUnavailableControlsPanel,
+              ),
+            ],
+          ),
+        ],
+      ),
+      _widgetbook.WidgetbookFolder(
+        name: 'Global menu',
+        children: [
+          _widgetbook.WidgetbookComponent(
+            name: 'GlobalMenuBar',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Empty',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_global_menu_global_menu_use_cases
+                        .buildEmptyGlobalMenuBar,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Menu bar',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_global_menu_global_menu_use_cases
+                        .buildGlobalMenuBar,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'GlobalMenuSectionPanel',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Open menu',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_global_menu_global_menu_use_cases
+                        .buildGlobalMenuPanel,
               ),
             ],
           ),
@@ -1676,6 +1717,18 @@ final directories = <_widgetbook.WidgetbookNode>[
                 builder:
                     _hyprbaric_widgetbook_use_cases_setup_setup_guide_use_cases
                         .buildAccentSetupGuide,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Global menu',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_setup_setup_guide_use_cases
+                        .buildGlobalMenuSetupGuide,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Global menu blocked',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_setup_setup_guide_use_cases
+                        .buildGlobalMenuBlockedSetupGuide,
               ),
               _widgetbook.WidgetbookUseCase(
                 name: 'Interactive',
