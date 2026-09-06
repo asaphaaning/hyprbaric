@@ -90,7 +90,7 @@ Hyprland's default hover-focus is changing the focused window as the cursor cros
 
 ## The global menu shows a title instead of menus
 
-The bar is working. The focused application is not exporting a menu hyprbaric can read. Qt and KDE applications need a restart after the module is enabled. Firefox needs two `about:config` prefs. GIMP and other traditional GTK menubars need `GTK_MODULES=appmenu-gtk-module` and `UBUNTU_MENUPROXY=1` in Hyprland, then a restart of that app; the setup guide does not write those. Headerbar applications have nothing to export. Native-Wayland Electron apps (VS Code, Discord, Slack, …) also have nothing to export until Electron speaks the Wayland AppMenu protocol; see [Electron and Chromium](./global-menu#electron-and-chromium).
+The bar is working. The focused application is not exporting a menu hyprbaric can read. Qt and KDE applications need a restart after the module is enabled. Firefox needs two `about:config` prefs. GIMP and other traditional GTK menubars need `GTK_MODULES=appmenu-gtk-module` and `UBUNTU_MENUPROXY=1` in Hyprland, then a restart of that app; the setup guide does not write those. Swing needs JAyatana injected into that JVM on X11; [Java / JAyatana](./global-menu#java--jayatana). JetBrains 2026.1 on native Wayland has nothing to export; [JetBrains](./global-menu#jetbrains). Headerbar applications have nothing to export. Native-Wayland Electron apps (VS Code, Discord, Slack, …) also have nothing to export until Electron speaks the Wayland AppMenu protocol; see [Electron and Chromium](./global-menu#electron-and-chromium).
 
 [Global menu](./global-menu) is the end-to-end path, including the `hyprctl` and `busctl` checks that distinguish a missing companion from an application that never published.
 

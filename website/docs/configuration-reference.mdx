@@ -102,8 +102,8 @@ It is the one module that is off by default. Failure to obtain the companion is
 reported in the setup guide but does not stop the bar, and applications that
 export no menu still render the ordinary focused window title.
 
-Which applications export a menu, and which ones still need Firefox prefs or a
-GTK module, is covered in [Global menu](./global-menu). The rest of this
+Which applications export a menu, and which ones still need Firefox prefs, a
+GTK module, or a Java agent, is covered in [Global menu](./global-menu). The rest of this
 section is the configuration surface and what owning the registrar name does.
 
 ### How the companion is obtained
@@ -146,8 +146,8 @@ and applications started after that draw their own menu bars again.
 
 Applications already running when the setting changes keep whichever menu bar
 they started with, so restart them to see the change. Firefox, traditional GTK
-menubars, and apps without a menubar at all need extra steps or will never
-export; see [Global menu](./global-menu).
+menubars, Swing, JetBrains on native Wayland, and apps without a menubar at all
+need extra steps or will never export; see [Global menu](./global-menu).
 
 ## Workspaces
 
@@ -339,4 +339,5 @@ For completeness, these are deliberately outside the configuration file:
 | Terminal used for terminal desktop entries | `$TERMINAL`, with a built-in fallback list. |
 | Click-to-focus for the global menu | Hyprland `follow_mouse` and `float_switch_override_focus`. See [Click to focus](./global-menu#click-to-focus). |
 | Classic GTK menubars on the global menu | Hyprland `GTK_MODULES` and `UBUNTU_MENUPROXY`. See [GTK AppMenu module](./global-menu#gtk-appmenu-module). |
+| Swing menubars on the global menu | Per-JVM JAyatana agent on X11. See [Java / JAyatana](./global-menu#java--jayatana). |
 | Which features are available at all | Installed backends. See [Dependencies and capabilities](./dependencies). |

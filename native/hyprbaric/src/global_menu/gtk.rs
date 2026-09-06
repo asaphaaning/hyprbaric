@@ -87,11 +87,12 @@ impl Action {
 }
 
 /// Projects one GTK menu dictionary through the action group GTK would use.
-pub(super) fn item(entry: &HashMap<String, OwnedValue>, actions: &Actions) -> Item {
-    let submenu = gtk_link(entry, ":submenu").map(|link| SectionId::Gtk {
-        group: link.group,
-        menu: link.menu,
-    });
+///
+/// `app_menu` keeps nested submenu addresses on [`SectionId::GtkAppMenu`] so
+/// they do not collide with the menubar's `(group, menu)` pairs.
+pub(super) fn item(entry: &HashMap<String, OwnedValue>, actions: &Actions, app_menu: bool) -> Item {
+    let submenu =
+        gtk_link(entry, ":submenu").map(|link| SectionId::gtk(link.group, link.menu, app_menu));
     let action_name = entry
         .get("action")
         .and_then(|value| value.downcast_ref::<&str>().ok())
@@ -272,10 +273,14 @@ pub(super) trait GtkActions {
 
 #[cfg(test)]
 mod tests {
-    use super::{Action, Actions, Description, decode_target, encode_target, item, parse_accel};
-    use crate::global_menu::{ItemId, ItemKind};
+    use super::{Action, Actions, Description, decode_target, encode_target, parse_accel};
+    use crate::global_menu::{Item, ItemId, ItemKind};
     use std::collections::HashMap;
     use zbus::zvariant::{OwnedValue, Type, Value};
+
+    fn item(entry: &HashMap<String, OwnedValue>, actions: &Actions) -> Item {
+        super::item(entry, actions, false)
+    }
 
     fn entry(attributes: &[(&str, Value<'static>)]) -> HashMap<String, OwnedValue> {
         attributes

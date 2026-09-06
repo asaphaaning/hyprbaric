@@ -38,22 +38,75 @@ struct X11Window {
   uint32_t xid = 0;
 };
 
+/// A mapped window and the owner Hyprland reports for it.
+///
+/// Save/Open/Preferences dialogs take focus but do not export a menu. The
+/// bar walks this link to the document window that still does.
+struct ParentLink {
+  std::string address;
+  std::string parent;
+};
+
 class Registry;
 
 /// GTK's D-Bus menu and action paths, published for one wl_surface.
+///
+/// `gtk_shell1` can name both an application menu and a menubar. The bar
+/// keeps them distinct: `menu_path` is the menubar when one exists, otherwise
+/// the app menu. `app_menu_path` is set only when both were published.
 struct GtkEndpoint {
   std::string service;
   std::string menu_path;
+  std::string app_menu_path;
   std::string application_path;
   std::string window_path;
   std::optional<std::string> window_address;
+};
+
+/// A client `wl_surface` as known to Hyprland at bind time.
+///
+/// AppMenu and `gtk_surface1` objects can outlive that `wl_surface`.
+/// `CWLSurfaceResource::fromResource` dereferences the resource without a
+/// liveness check, so later IPC must not call it on a stored pointer. The weak
+/// handle expires with the compositor object; the protocol id is kept for
+/// snapshot output after the surface is gone.
+struct BoundSurface {
+  WP<CWLSurfaceResource> resource;
+  uint32_t id = 0;
+
+  static BoundSurface from(wl_resource *surface) {
+    BoundSurface bound;
+    if (!surface)
+      return bound;
+
+    bound.id = wl_resource_get_id(surface);
+
+    if (PROTO::compositor) {
+      PROTO::compositor->forEachSurface(
+          [&](const SP<CWLSurfaceResource> &candidate) {
+            if (bound.resource || !candidate)
+              return;
+
+            const auto wrapper = candidate->getResource();
+            if (wrapper && wrapper->resource() == surface)
+              bound.resource = candidate;
+          });
+    }
+
+    if (!bound.resource && wl_resource_get_user_data(surface))
+      bound.resource = CWLSurfaceResource::fromResource(surface);
+
+    return bound;
+  }
+
+  SP<CWLSurfaceResource> lock() const { return resource.lock(); }
 };
 
 /// One GTK shell surface bound to a wl_surface.
 struct GtkSurface {
   Registry *owner = nullptr;
   wl_resource *resource = nullptr;
-  wl_resource *surface = nullptr;
+  BoundSurface surface;
   std::optional<GtkEndpoint> endpoint;
 };
 
@@ -61,7 +114,7 @@ struct GtkSurface {
 struct Menu {
   Registry *owner = nullptr;
   wl_resource *resource = nullptr;
-  wl_resource *surface = nullptr;
+  BoundSurface surface;
   std::optional<Endpoint> endpoint;
 };
 
@@ -85,16 +138,18 @@ public:
     const auto menus = endpoints();
     const auto gtk_surfaces = gtk_endpoints();
     const auto x11 = x11_windows();
+    const auto parents = parent_links();
 
     if (format == FORMAT_JSON)
-      return snapshot_json(menus, gtk_surfaces, x11);
+      return snapshot_json(menus, gtk_surfaces, x11, parents);
 
-    if (menus.empty() && gtk_surfaces.empty() && x11.empty())
+    if (menus.empty() && gtk_surfaces.empty() && x11.empty() &&
+        parents.empty())
       return "No AppMenu endpoints.\n";
 
     std::string result;
     for (const auto *menu : menus) {
-      result += "surface=" + std::to_string(wl_resource_get_id(menu->surface));
+      result += "surface=" + std::to_string(menu->surface.id);
       if (const auto address = address_for(*menu))
         result += " address=" + *address;
       result += " service=" + menu->endpoint->service;
@@ -102,16 +157,24 @@ public:
     }
 
     for (const auto *surface : gtk_surfaces) {
-      result += "surface=" + std::to_string(wl_resource_get_id(surface->surface));
+      result += "surface=" + std::to_string(surface->surface.id);
       if (const auto address = address_for(*surface))
         result += " address=" + *address;
       result += " kind=gtk service=" + surface->endpoint->service;
-      result += " menubar=" + surface->endpoint->menu_path + "\n";
+      result += " menubar=" + surface->endpoint->menu_path;
+      if (!surface->endpoint->app_menu_path.empty())
+        result += " appmenu=" + surface->endpoint->app_menu_path;
+      result += "\n";
     }
 
     for (const auto &window : x11) {
       result += "kind=x11 address=" + window.address;
       result += " xid=" + std::to_string(window.xid) + "\n";
+    }
+
+    for (const auto &link : parents) {
+      result += "kind=parent address=" + link.address;
+      result += " parent=" + link.parent + "\n";
     }
 
     return result;
@@ -152,7 +215,7 @@ private:
     auto menu = std::make_unique<Menu>();
     menu->owner = registry;
     menu->resource = resource;
-    menu->surface = surface;
+    menu->surface = BoundSurface::from(surface);
 
     auto *state = menu.get();
     registry->menus_.emplace(resource, std::move(menu));
@@ -192,7 +255,7 @@ private:
     auto gtk_surface = std::make_unique<GtkSurface>();
     gtk_surface->owner = registry;
     gtk_surface->resource = resource;
-    gtk_surface->surface = surface;
+    gtk_surface->surface = BoundSurface::from(surface);
 
     auto *state = gtk_surface.get();
     registry->gtk_surfaces_.emplace(resource, std::move(gtk_surface));
@@ -214,16 +277,23 @@ private:
     if (!surface)
       return;
 
-    const auto *menu_path = menubar_path && *menubar_path ? menubar_path
-                                                           : app_menu_path;
-    if (!menu_path || !service_name || !*service_name) {
+    const auto nonempty = [](const char *value) { return value && *value; };
+    const auto menubar = nonempty(menubar_path) ? menubar_path : "";
+    const auto app_menu = nonempty(app_menu_path) ? app_menu_path : "";
+    const auto *menu_path = *menubar ? menubar : app_menu;
+    if (!*menu_path || !service_name || !*service_name) {
       surface->endpoint.reset();
       return;
     }
 
+    const auto *extra_app_menu =
+        (*menubar && *app_menu && std::string(menubar) != app_menu) ? app_menu
+                                                                    : "";
+
     surface->endpoint = GtkEndpoint{
         .service = service_name,
         .menu_path = menu_path,
+        .app_menu_path = extra_app_menu,
         .application_path = application_path ? application_path : "",
         .window_path = window_path ? window_path : "",
         .window_address = surface->owner->window_address(surface->surface),
@@ -304,8 +374,7 @@ private:
 
     std::sort(result.begin(), result.end(),
               [](const Menu *left, const Menu *right) {
-                return wl_resource_get_id(left->surface) <
-                       wl_resource_get_id(right->surface);
+                return left->surface.id < right->surface.id;
               });
 
     return result;
@@ -322,8 +391,7 @@ private:
 
     std::sort(result.begin(), result.end(),
               [](const GtkSurface *left, const GtkSurface *right) {
-                return wl_resource_get_id(left->surface) <
-                       wl_resource_get_id(right->surface);
+                return left->surface.id < right->surface.id;
               });
 
     return result;
@@ -334,8 +402,10 @@ private:
   /// GTK often calls `set_dbus_properties` before the compositor has created a
   /// window for that `wl_surface`, so a lookup at request time can miss. The
   /// snapshot path asks again, and `present` retries after the window is shown.
-  std::optional<std::string> window_address(wl_resource *surface) const {
-    const auto surface_resource = CWLSurfaceResource::fromResource(surface);
+  /// If the client has already destroyed the surface, the weak handle expires
+  /// and the cached address from the last successful lookup is used instead.
+  std::optional<std::string> window_address(const BoundSurface &surface) const {
+    const auto surface_resource = surface.lock();
     if (!surface_resource)
       return std::nullopt;
 
@@ -361,7 +431,7 @@ private:
   }
 
   std::optional<std::string>
-  live_or_cached(wl_resource *surface,
+  live_or_cached(const BoundSurface &surface,
                  const std::optional<std::string> &cached) const {
     if (auto live = window_address(surface))
       return live;
@@ -415,6 +485,28 @@ private:
     return result;
   }
 
+  std::vector<ParentLink> parent_links() const {
+    std::vector<ParentLink> result;
+    const auto &windows = Desktop::windowState()->windows();
+    result.reserve(windows.size());
+
+    for (const auto &window : windows) {
+      if (!window)
+        continue;
+
+      const auto parent = window->parent();
+      if (!parent)
+        continue;
+
+      result.push_back(ParentLink{
+          .address = address_of(window),
+          .parent = address_of(parent),
+      });
+    }
+
+    return result;
+  }
+
   void close() {
     while (!gtk_surfaces_.empty())
       wl_resource_destroy(gtk_surfaces_.begin()->first);
@@ -442,7 +534,8 @@ private:
   std::string snapshot_json(
       const std::vector<const Menu *> &menus,
       const std::vector<const GtkSurface *> &gtk_surfaces,
-      const std::vector<X11Window> &x11) const {
+      const std::vector<X11Window> &x11,
+      const std::vector<ParentLink> &parents) const {
     std::string result = "[";
     bool first = true;
     const auto comma = [&] {
@@ -453,8 +546,7 @@ private:
 
     for (const auto *menu : menus) {
       comma();
-      result +=
-          "{\"surface\":" + std::to_string(wl_resource_get_id(menu->surface));
+      result += "{\"surface\":" + std::to_string(menu->surface.id);
       if (const auto address = address_for(*menu)) {
         result += ",\"address\":\"";
         result += *address;
@@ -467,8 +559,7 @@ private:
 
     for (const auto *surface : gtk_surfaces) {
       comma();
-      result += "{\"surface\":" +
-                std::to_string(wl_resource_get_id(surface->surface));
+      result += "{\"surface\":" + std::to_string(surface->surface.id);
       if (const auto address = address_for(*surface)) {
         result += ",\"address\":\"";
         result += *address;
@@ -479,6 +570,10 @@ private:
                 escape_json(surface->endpoint->service) + "\"";
       result += ",\"path\":\"" +
                 escape_json(surface->endpoint->menu_path) + "\"";
+      if (!surface->endpoint->app_menu_path.empty()) {
+        result += ",\"app_menu_path\":\"" +
+                  escape_json(surface->endpoint->app_menu_path) + "\"";
+      }
       result += ",\"application_path\":\"" +
                 escape_json(surface->endpoint->application_path) + "\"";
       result += ",\"window_path\":\"" +
@@ -492,6 +587,15 @@ private:
       result += "\",\"xid\":";
       result += std::to_string(window.xid);
       result += "}";
+    }
+
+    for (const auto &link : parents) {
+      comma();
+      result += "{\"kind\":\"parent\",\"address\":\"";
+      result += escape_json(link.address);
+      result += "\",\"parent\":\"";
+      result += escape_json(link.parent);
+      result += "\"}";
     }
 
     return result + "]\n";

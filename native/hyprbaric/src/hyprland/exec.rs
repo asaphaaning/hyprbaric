@@ -20,7 +20,15 @@ use super::Error;
 /// Asks Hyprland to start a shell command so the process belongs to the compositor.
 #[instrument(err)]
 fn exec(command: &str) -> Result<(), Error> {
-    Dispatch::call(DispatchType::Exec(command)).map_err(Error::Dispatch)
+    match Dispatch::call(DispatchType::Exec(command)) {
+        Ok(()) => Ok(()),
+        Err(error) if super::requires_lua_dispatch(&error) => {
+            let lua_dispatch = super::lua_exec_dispatch(command);
+            tracing::debug!(%lua_dispatch, "Retrying exec dispatch with Lua syntax");
+            Dispatch::call(DispatchType::Custom(&lua_dispatch, "")).map_err(Error::Dispatch)
+        }
+        Err(error) => Err(Error::Dispatch(error)),
+    }
 }
 
 /// Starts a user-facing program that should outlive Hyprbaric.

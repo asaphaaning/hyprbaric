@@ -113,9 +113,24 @@ radio group. New also registers `<Primary>n` through
 `gtk_application_set_accels_for_action`; that table is not on D-Bus, so New
 shows no shortcut. GTK often calls `set_dbus_properties` before Hyprland has
 created a window for that surface; the snapshot resolves the address live, and
-`present` fills it in if the first lookup missed. Headerbar-first GTK
+`present` fills it in if the first lookup missed. The companion holds a weak
+handle to Hyprland's surface object rather than a raw `wl_resource*`, so a
+client that destroys the surface while leaving the AppMenu object alive cannot
+crash the compositor. The last resolved window address is kept until then. Headerbar-first GTK
 applications that do not set a menubar correctly yield no global-menu
 sections; that is a property of the application export, not a plugin failure.
+
+GTK3 can also call `gtk_application_set_app_menu` next to the menubar. The
+companion then emits both `path` (the menubar) and `app_menu_path`. Hyprbaric
+prepends that application menu as one heading. Prove it with:
+
+```sh
+GDK_BACKEND=wayland hyprland-appmenu/build/hyprbaric-gtk3-dual-menu-probe &
+hyprctl hyprbaric-appmenu -j
+```
+
+The GTK row should name both `/menus/menubar` and `/menus/appmenu`. Focus the
+probe and the bar shows the window title, then File and Edit.
 
 Traditional `GtkMenuBar` applications (GIMP and similar) never call
 `gtk_shell1`. On Wayland they need the GTK AppMenu module
