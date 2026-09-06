@@ -54,3 +54,6 @@ app.*.map.json
 
 # Local git worktrees
 /.worktrees/
+
+# Companion plugin build tree
+/hyprland-appmenu/build/

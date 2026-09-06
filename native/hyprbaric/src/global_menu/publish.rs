@@ -110,6 +110,10 @@ impl From<&SectionId> for GlobalMenuSectionId {
                 group: *group,
                 menu: *menu,
             },
+            SectionId::GtkAppMenu { group, menu } => Self::GtkAppMenu {
+                group: *group,
+                menu: *menu,
+            },
         }
     }
 }

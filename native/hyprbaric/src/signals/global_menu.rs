@@ -7,8 +7,19 @@ use serde::{Deserialize, Serialize};
 /// bar never has to know which one a window speaks.
 #[derive(Serialize, Deserialize, SignalPiece, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum GlobalMenuSectionId {
-    DbusMenu { id: i32 },
-    Gtk { group: u32, menu: u32 },
+    DbusMenu {
+        id: i32,
+    },
+    /// A GTK menubar menu, addressed by the group and menu it lives in.
+    Gtk {
+        group: u32,
+        menu: u32,
+    },
+    /// A GTK application menu, on a different object path than the menubar.
+    GtkAppMenu {
+        group: u32,
+        menu: u32,
+    },
 }
 
 /// Addresses a row that can be activated.

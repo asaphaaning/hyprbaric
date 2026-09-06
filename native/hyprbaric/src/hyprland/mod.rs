@@ -233,6 +233,14 @@ fn lua_output_focus_dispatch(output: &OutputName) -> String {
     format!("hl.dsp.focus({{ monitor = \"{output}\" }})")
 }
 
+/// Formats an `exec` command for Hyprland's Lua-config IPC mode.
+///
+/// Legacy `exec gtk-launch firefox.desktop` is parsed as
+/// `hl.dispatch(exec gtk-launch firefox.desktop)` and dies at `gtk`.
+fn lua_exec_dispatch(command: &str) -> String {
+    format!("hl.dsp.exec_cmd(\"{}\")", lua_string(command))
+}
+
 /// Escapes a string embedded in a double-quoted Lua literal.
 fn lua_string(value: &str) -> String {
     value
@@ -323,8 +331,8 @@ pub enum Error {
 #[cfg(test)]
 mod tests {
     use super::{
-        lua_output_focus_dispatch, lua_workspace_dispatch, read_hostname_from_paths,
-        requires_lua_dispatch,
+        lua_exec_dispatch, lua_output_focus_dispatch, lua_workspace_dispatch,
+        read_hostname_from_paths, requires_lua_dispatch,
     };
     use crate::hyprland::OutputName;
     use hyprland::{dispatch::WorkspaceIdentifierWithSpecial, error::HyprError};
@@ -391,6 +399,22 @@ mod tests {
         assert_eq!(
             lua_output_focus_dispatch(&output),
             "hl.dsp.focus({ monitor = \"DP-\\\\\\\"2\" })"
+        );
+    }
+
+    #[test]
+    fn formats_exec_for_lua_dispatch() {
+        assert_eq!(
+            lua_exec_dispatch("gtk-launch firefox.desktop"),
+            "hl.dsp.exec_cmd(\"gtk-launch firefox.desktop\")"
+        );
+    }
+
+    #[test]
+    fn escapes_exec_commands_for_lua_dispatch() {
+        assert_eq!(
+            lua_exec_dispatch(r#"gtk-launch "Firefox Web Browser.desktop""#),
+            r#"hl.dsp.exec_cmd("gtk-launch \"Firefox Web Browser.desktop\"")"#
         );
     }
 

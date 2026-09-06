@@ -31,9 +31,10 @@ use tracing::instrument;
 use zbus::Connection;
 
 use super::{
-    DBUSMENU_RELAYOUT, Endpoint, EndpointKind, Error, Item, Menu, SectionId, dbusmenu,
-    dbusmenu_items, dbusmenu_live_items, dbusmenu_tree, focused, gtk_actions, gtk_describe,
-    gtk_groups_of, gtk_items, gtk_menus, gtk_tree, publish,
+    DBUSMENU_RELAYOUT, Endpoint, Error, Item, Menu, SectionId, dbusmenu, dbusmenu_items,
+    dbusmenu_live_items, dbusmenu_tree, entitle_anonymous_list, focused, focused_list_title,
+    gtk_actions, gtk_describe, gtk_items, gtk_layout, gtk_menus, gtk_menus_at, gtk_tree,
+    prepend_gtk_app_menu, publish,
 };
 
 const DEBOUNCE: std::time::Duration = std::time::Duration::from_millis(80);
@@ -44,7 +45,6 @@ const HEADINGS_DEPTH: i32 = 1;
 /// Identity of the exporter this snapshot belongs to.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Exporter {
-    kind: EndpointKind,
     service: String,
     path: String,
 }
@@ -52,9 +52,8 @@ struct Exporter {
 impl Exporter {
     fn of(endpoint: &Endpoint) -> Self {
         Self {
-            kind: endpoint.kind.clone(),
-            service: endpoint.service.clone(),
-            path: endpoint.path.clone(),
+            service: endpoint.service().to_owned(),
+            path: endpoint.path().to_owned(),
         }
     }
 }
@@ -464,7 +463,7 @@ pub(super) async fn items(id: &SectionId) -> Result<Vec<Item>, Error> {
             remember(&exporter, id.clone(), items.clone());
             Ok(items)
         }
-        SectionId::Gtk { group, menu } => {
+        SectionId::Gtk { .. } | SectionId::GtkAppMenu { .. } => {
             if let Some(items) = held().section_for(&exporter, id) {
                 return Ok(items);
             }
@@ -473,7 +472,7 @@ pub(super) async fn items(id: &SectionId) -> Result<Vec<Item>, Error> {
                 return Ok(items);
             }
 
-            let items = gtk_items(&connection, &endpoint, *group, *menu).await?;
+            let items = gtk_items(&connection, &endpoint, id).await?;
             remember(&exporter, id.clone(), items.clone());
             Ok(items)
         }
@@ -560,10 +559,10 @@ async fn take(
 }
 
 async fn capture_now(connection: &Connection, endpoint: &Endpoint) -> Result<Snapshot, Error> {
-    match endpoint.kind {
-        EndpointKind::DbusMenu => capture_dbusmenu(connection, endpoint).await,
-        EndpointKind::Gtk => capture_gtk(connection, endpoint).await,
-        EndpointKind::X11 => Err(Error::NoMenuForFocusedWindow),
+    match endpoint {
+        Endpoint::DbusMenu { .. } => capture_dbusmenu(connection, endpoint).await,
+        Endpoint::Gtk { .. } => capture_gtk(connection, endpoint).await,
+        Endpoint::X11 { .. } | Endpoint::Parent { .. } => Err(Error::NoMenuForFocusedWindow),
     }
 }
 
@@ -573,7 +572,8 @@ async fn capture_dbusmenu(connection: &Connection, endpoint: &Endpoint) -> Resul
         .get_layout(0, HEADINGS_DEPTH, &[])
         .await
         .map_err(Error::Layout)?;
-    let (headings, sections) = dbusmenu_tree(&layout.root)?;
+    let (mut headings, sections) = dbusmenu_tree(&layout.root)?;
+    entitle_anonymous_list(&mut headings, focused_list_title().await);
     Ok(Snapshot {
         headings,
         sections,
@@ -583,24 +583,37 @@ async fn capture_dbusmenu(connection: &Connection, endpoint: &Endpoint) -> Resul
 
 async fn capture_gtk(connection: &Connection, endpoint: &Endpoint) -> Result<Snapshot, Error> {
     let proxy = gtk_menus(connection, endpoint).await?;
-    let groups = proxy.start(&[0]).await.map_err(Error::GtkLayout)?;
-    let extra = gtk_groups_of(&groups)
-        .into_iter()
-        .filter(|group| *group != 0)
-        .collect::<Vec<_>>();
-    let groups = if extra.is_empty() {
-        groups
-    } else {
-        let mut all = groups;
-        all.extend(proxy.start(&extra).await.map_err(Error::GtkLayout)?);
-        all
-    };
-    let ids = gtk_groups_of(&groups);
-    if let Err(error) = proxy.end(&ids).await {
-        tracing::debug!(%error, "GTK menu declined to end the subscription");
-    }
+    let groups = gtk_layout(&proxy).await?;
     let actions = gtk_describe(connection, endpoint).await;
-    let (headings, sections) = gtk_tree(&groups, &actions)?;
+    let (mut headings, mut sections) = gtk_tree(&groups, &actions)?;
+
+    if let Some(path) = endpoint.app_menu_path() {
+        match gtk_menus_at(connection, endpoint.service(), path).await {
+            Ok(app_proxy) => match gtk_layout(&app_proxy).await {
+                Ok(app_groups) => {
+                    let title = focused_list_title().await;
+                    (headings, sections) =
+                        prepend_gtk_app_menu(headings, sections, &app_groups, &actions, title)?;
+                }
+                Err(error) => {
+                    tracing::debug!(%error, "GTK application menu layout was not readable");
+                }
+            },
+            Err(error) => {
+                tracing::debug!(%error, "GTK application menu was not reachable");
+            }
+        }
+    }
+
+    entitle_anonymous_list(&mut headings, focused_list_title().await);
+    tracing::debug!(
+        labels = ?headings
+            .sections
+            .iter()
+            .map(|section| section.label.as_str())
+            .collect::<Vec<_>>(),
+        "GTK headings"
+    );
     Ok(Snapshot {
         headings,
         sections,
@@ -712,10 +725,12 @@ async fn watch(epoch: u64, connection: Connection, endpoint: Endpoint) -> Result
         return Ok(());
     }
 
-    match endpoint.kind {
-        EndpointKind::DbusMenu => watch_dbusmenu(epoch, &mut current, &connection, &endpoint).await,
-        EndpointKind::Gtk => watch_gtk(epoch, &mut current, &connection, &endpoint).await,
-        EndpointKind::X11 => Ok(()),
+    match endpoint {
+        Endpoint::DbusMenu { .. } => {
+            watch_dbusmenu(epoch, &mut current, &connection, &endpoint).await
+        }
+        Endpoint::Gtk { .. } => watch_gtk(epoch, &mut current, &connection, &endpoint).await,
+        Endpoint::X11 { .. } | Endpoint::Parent { .. } => Ok(()),
     }
 }
 
@@ -763,11 +778,21 @@ async fn watch_gtk(
 ) -> Result<(), Error> {
     let menus = gtk_menus(connection, endpoint).await?;
     let mut changed = menus.receive_changed().await.ok();
-    let app = match endpoint.application_path.as_deref() {
+    let app_menus = match endpoint.app_menu_path() {
+        Some(path) => gtk_menus_at(connection, endpoint.service(), path)
+            .await
+            .ok(),
+        None => None,
+    };
+    let mut app_menus_changed = match &app_menus {
+        Some(proxy) => proxy.receive_changed().await.ok(),
+        None => None,
+    };
+    let app = match endpoint.application_path() {
         Some(path) => gtk_actions(connection, endpoint, path).await.ok(),
         None => None,
     };
-    let win = match endpoint.window_path.as_deref() {
+    let win = match endpoint.window_path() {
         Some(path) => gtk_actions(connection, endpoint, path).await.ok(),
         None => None,
     };
@@ -794,14 +819,21 @@ async fn watch_gtk(
                     continue;
                 }
             }
+            _ = recv(&mut app_menus_changed) => {
+                if echo == GtkEcho::Ignore {
+                    echo = GtkEcho::Listen;
+                    continue;
+                }
+            }
             _ = recv(&mut app_changed) => {}
             _ = recv(&mut win_changed) => {}
         }
 
-        if !settle3(
+        if !settle4(
             current,
             epoch,
             &mut changed,
+            &mut app_menus_changed,
             &mut app_changed,
             &mut win_changed,
         )
@@ -833,7 +865,7 @@ async fn replace(epoch: u64, connection: &Connection, endpoint: &Endpoint) -> Re
 /// panel; View → Toolbars is still up, and its checkmarks live on the rows.
 #[instrument(name = "hyprbaric::global_menu::live::refresh_opened", skip_all, err)]
 async fn refresh_opened(connection: &Connection, endpoint: &Endpoint) -> Result<(), Error> {
-    if endpoint.kind != EndpointKind::DbusMenu {
+    if !matches!(endpoint, Endpoint::DbusMenu { .. }) {
         return Ok(());
     }
 
@@ -856,6 +888,37 @@ async fn refresh_opened(connection: &Connection, endpoint: &Endpoint) -> Result<
         publish::section_items(&menu.section, &items);
     }
     Ok(())
+}
+
+async fn settle4<
+    A: StreamExt + Unpin,
+    B: StreamExt + Unpin,
+    C: StreamExt + Unpin,
+    D: StreamExt + Unpin,
+>(
+    current: &mut watch::Receiver<u64>,
+    epoch: u64,
+    first: &mut Option<A>,
+    second: &mut Option<B>,
+    third: &mut Option<C>,
+    fourth: &mut Option<D>,
+) -> bool {
+    let wait = tokio::time::sleep(DEBOUNCE);
+    tokio::pin!(wait);
+    loop {
+        tokio::select! {
+            _ = current.changed() => {
+                if *current.borrow() != epoch {
+                    return false;
+                }
+            }
+            _ = recv(first) => {}
+            _ = recv(second) => {}
+            _ = recv(third) => {}
+            _ = recv(fourth) => {}
+            _ = &mut wait => return true,
+        }
+    }
 }
 
 async fn settle3<A: StreamExt + Unpin, B: StreamExt + Unpin, C: StreamExt + Unpin>(
@@ -903,12 +966,11 @@ async fn recv<S: StreamExt + Unpin>(stream: &mut Option<S>) {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{EndpointKind, Item, ItemId, ItemKind, Menu, Section, SectionId};
+    use super::super::{Item, ItemId, ItemKind, Menu, Section, SectionId};
     use super::{Exporter, Held, Opened, Snapshot, closing};
 
     fn exporter() -> Exporter {
         Exporter {
-            kind: EndpointKind::DbusMenu,
             service: ":1.40".to_owned(),
             path: "/MenuBar".to_owned(),
         }

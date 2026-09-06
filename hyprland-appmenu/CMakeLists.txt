@@ -88,4 +88,10 @@ if(HYPRBARIC_APPMENU_BUILD_PROBES)
         tests/gtk_menu.c
     )
     target_link_libraries(hyprbaric-gtk-menu-probe PRIVATE PkgConfig::GTK4)
+
+    pkg_check_modules(GTK3 REQUIRED IMPORTED_TARGET gtk+-3.0)
+    add_executable(hyprbaric-gtk3-dual-menu-probe
+        tests/gtk3_dual_menu.c
+    )
+    target_link_libraries(hyprbaric-gtk3-dual-menu-probe PRIVATE PkgConfig::GTK3)
 endif()

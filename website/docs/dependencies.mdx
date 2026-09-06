@@ -58,7 +58,7 @@ A capability reports **Ready** when every probe passes, **Missing** when an opti
 
 **XDG user directories** only affects *where* captures are written. Without `xdg-user-dir`, captures fall back to `~/Pictures/Screenshots` and `~/Videos/Recordings`.
 
-**Global menu** is not a probed capability. The companion plugin ships with hyprbaric. Firefox prefs, and the Hyprland `GTK_MODULES` / `UBUNTU_MENUPROXY` pair, are loaded by other applications, not by the bar, so they cannot be detected here. [User-driven session changes](./global-menu#user-driven-session-changes) lists those steps.
+**Global menu** is not a probed capability. The companion plugin ships with hyprbaric. Firefox prefs, the Hyprland `GTK_MODULES` / `UBUNTU_MENUPROXY` pair, and a Java JAyatana agent are loaded by other applications, not by the bar, so they cannot be detected here. hyprbaric does not ship JAyatana. [User-driven session changes](./global-menu#user-driven-session-changes) lists the session steps; [Java / JAyatana](./global-menu#java--jayatana) is per JVM.
 
 ## Packaging policy
 

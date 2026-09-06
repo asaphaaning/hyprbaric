@@ -113,6 +113,10 @@ fn section_id(id: &GlobalMenuSectionId) -> global_menu::SectionId {
             group: *group,
             menu: *menu,
         },
+        GlobalMenuSectionId::GtkAppMenu { group, menu } => global_menu::SectionId::GtkAppMenu {
+            group: *group,
+            menu: *menu,
+        },
     }
 }
 

@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
 title: Global menu
-description: How hyprbaric reads application menus, the two session settings the setup guide will not write, and the extra steps Firefox and traditional GTK apps need.
+description: How hyprbaric reads application menus, the two session settings the setup guide will not write, and the extra steps Firefox, Java, and traditional GTK apps need.
 kicker: Configure hyprbaric
 ---
 
@@ -37,7 +37,7 @@ hyprbaric does not write your compositor config. The setup guide only flips the 
 | Click-to-focus (`follow_mouse = 0`) | [The menu vanished on the way to the bar](./troubleshooting#the-global-menu-vanishes-on-the-way-to-the-bar). Hover-focus steals the window as the pointer crosses tiles and floating palettes. |
 | `appmenu-gtk-module` in the session | GIMP and other classic `GtkMenuBar` apps keep their in-window bar, and hyprbaric shows the title. Nothing was published for the companion to capture. |
 
-Firefox prefs stay in the browser; they are listed under [Firefox](#firefox).
+Firefox prefs stay in the browser; they are listed under [Firefox](#firefox). Java needs a per-JVM agent, listed under [Java / JAyatana](#java--jayatana). JetBrains IDEs on current Wayland builds do not export a menu; that is under [JetBrains](#jetbrains).
 
 ### Click to focus
 
@@ -119,7 +119,7 @@ The stock X11-only module is **not** enough for a Wayland-native GTK window: it 
 Three pieces have to agree, in this order:
 
 1. **The application exports a menu** on the session bus, either as `com.canonical.dbusmenu` or as GTK's `org.gtk.Menus`. Whether it does that, and which protocol it uses, is a property of the toolkit and of settings inside the app. hyprbaric cannot invent a menu that was never published.
-2. **The compositor companion** (`hyprbaric-appmenu`) associates that export with a Hyprland window. Wayland-native Qt, Firefox, and GtkApplication menubars call into `org_kde_kwin_appmenu` or `gtk_shell1`, which stock Hyprland does not implement; the companion does. GTK and Qt often publish the D-Bus endpoint before Hyprland has a `CWindow` for that surface, so the companion does not freeze the window address at that first request: it resolves the surface again when you query `hyprctl hyprbaric-appmenu`, and GTK also retries on `present`. If a row still has no `address`, hyprbaric will use it anyway when it is the only exported menu belonging to the focused process. Traditional GTK menus injected by `appmenu-gtk-module` on X11 never make that Wayland call. They register with `com.canonical.AppMenu.Registrar` using an X11 window id, and hyprbaric joins that table to the focused window by X11 id, then by process id.
+2. **The compositor companion** (`hyprbaric-appmenu`) associates that export with a Hyprland window. Wayland-native Qt, Firefox, and GtkApplication menubars call into `org_kde_kwin_appmenu` or `gtk_shell1`, which stock Hyprland does not implement; the companion does. GTK and Qt often publish the D-Bus endpoint before Hyprland has a `CWindow` for that surface, so the companion does not freeze the window address at that first request: it resolves the surface again when you query `hyprctl hyprbaric-appmenu`, and GTK also retries on `present`. If a row still has no `address`, hyprbaric will use it anyway when it is the only exported menu belonging to the focused process. Traditional GTK menus injected by `appmenu-gtk-module` on X11 never make that Wayland call. They register with `com.canonical.AppMenu.Registrar` using an X11 window id, and hyprbaric joins that table to the focused window by X11 id, then by process id. A Save / Open / Preferences dialog that takes focus is walked to its mapped parent (`kind: parent` in that JSON); File / Edit stay on the bar when the document window still owns the menu.
 3. **The bar reads the focused window's endpoint** over D-Bus, lazily. Headings appear with the window; rows load when you open a heading. Qt fills those rows in response to `AboutToShow`. Firefox also needs the D-BusMenu `opened` event, and it then rebuilds its menu tree under new identifiers. The bar keeps the heading labels from the last read and opens the live node by that path, so a second click still reaches File after the first click caused a rebuild. Dismissing a heading or flyout sends the matching `closed` event so Firefox and Qt drop that popup state. Toggling a checkmark or radio leaves the menu open; while it is up, D-BusMenu layout and property updates re-read that menu so the marks redraw in place.
 
 A successful Wayland capture looks like this, with the focused window's Hyprland address in `address`:
@@ -139,7 +139,7 @@ hyprctl -j hyprbaric-appmenu
 ]
 ```
 
-`kind` is `gtk` for GtkApplication menubars and `dbusmenu` for Qt, Firefox, and GTK menus that went through AppMenu. XWayland windows also appear as `kind: x11` records so the registrar can be matched when the application never spoke the Wayland protocol.
+`kind` is `gtk` for GtkApplication menubars and `dbusmenu` for Qt, Firefox, and GTK menus that went through AppMenu. XWayland windows also appear as `kind: x11` records so the registrar can be matched when the application never spoke the Wayland protocol. Dialogs appear as `kind: parent` pointing at the document window.
 
 ## What works without extra setup
 
@@ -148,11 +148,13 @@ Restart the application after enabling the module. That is the whole user step f
 | Kind | Examples | Protocol |
 | --- | --- | --- |
 | Qt and KDE | Kate, KWrite, Dolphin, Qt Creator | `org_kde_kwin_appmenu` + DBusMenu |
-| GTK `GtkApplication` menubars | Applications that call `gtk_application_set_menubar()` | `gtk_shell1` + `org.gtk.Menus` |
+| GTK `GtkApplication` menubars | GIMP 3, LibreOffice with `SAL_USE_VCLPLUGIN=gtk3`, and other apps that call `gtk_application_set_menubar()` | `gtk_shell1` + `org.gtk.Menus` |
 
 Qt asks whether `com.canonical.AppMenu.Registrar` is owned on the session bus, on Wayland as well as on X11. That is why hyprbaric owns the name even though Wayland clients publish their endpoint through the companion rather than through the registrar.
 
 GtkApplication menus are joined to `org.gtk.Actions` the way GTK's own menu tracker joins them in-process. Disabled actions are disabled, boolean state is a checkmark, a `target` that matches state is the selected radio, and Activate sends that target so parameterized rows do something. Keyboard shortcuts appear when the menu item carries the `accel` attribute (`<Primary>q` becomes `Ctrl+Q`). Shortcuts registered only with `gtk_application_set_accels_for_action` are not on the bus, so they do not appear.
+
+GTK3 can publish both an application menu (`gtk_application_set_app_menu`) and a menubar. Those are two `org.gtk.Menus` objects. When the companion sees both, the bar prepends the application menu as one heading named from the window, then File / Edit / … GTK4 removed `set_app_menu`; a menubar-only or app-menu-only export stays a single path, as before. The bar does not invent a stub Application menu when the toolkit exported nothing.
 
 ## Firefox
 
@@ -168,6 +170,34 @@ Firefox does not export a menu until you turn the feature on in the browser. The
 After that, focusing a Firefox window should produce a `kind: dbusmenu` row in `hyprctl -j hyprbaric-appmenu`, and File / Edit / View should appear on the bar. Opening a heading asks Firefox to fill that menu; Firefox then issues new native identifiers for the whole tree. The bar keeps opening by heading label, not by the id from the first read, so File still works after History has been opened. A third pref, `widget.gtk.native-context-menus`, is unrelated: it changes in-page context menus, not the application menu bar.
 
 These prefs are Mozilla's experimental GTK global-menu path. Some Firefox versions have been laggy with them enabled; if the browser stutters after the restart, turn both prefs back to `false` and restart again. The bar will show the window title instead, which is the same fallback used for any app that exports no menu.
+
+## Java / JAyatana
+
+A Swing `JMenuBar` does not speak `org_kde_kwin_appmenu` or `gtk_shell1`. JAyatana is an X11-only agent that reads that bar, publishes `com.canonical.dbusmenu` at `/com/canonical/menu/<xid>`, and registers the X11 window id with `com.canonical.AppMenu.Registrar`. hyprbaric already consumes that table as `kind: x11`. The jars are not part of hyprbaric; install them yourself and inject the agent into the JVM that draws the menu.
+
+1. Install JAyatana. On Arch that is the AUR package `vala-panel-appmenu-jayatana-git`. Upstream is the `subprojects/jayatana` tree of [vala-panel-appmenu](https://gitlab.com/vala-panel-project/vala-panel-appmenu). Distro installs put the agent at `/usr/share/java/jayatanaag.jar`.
+2. Force that JVM onto X11. JAyatana looks up an X window id through JAWT; a native Wayland toolkit has none. For a JetBrains Runtime used as a plain JVM (not the IDE), that is `-Dawt.toolkit.name=XToolkit`. `hyprctl activewindow -j` should then report `"xwayland": true`.
+3. Inject the agent into **that** JVM, then restart the application:
+
+```bash title="terminal"
+JAYATANA_FORCE=1 java \
+  -Dawt.toolkit.name=XToolkit \
+  --enable-native-access=ALL-UNNAMED \
+  -javaagent:/usr/share/java/jayatanaag.jar \
+  -jar your-app.jar
+```
+
+`JAYATANA_FORCE=1` is what makes the agent run outside Ubuntu's old Unity session checks. `--enable-native-access=ALL-UNNAMED` is required on recent JBRs; older OpenJDKs ignore it. Do not put the agent in `_JAVA_OPTIONS` or `JAVA_TOOL_OPTIONS` for the whole session: a missing jar then breaks every `java` on the machine, including the one that builds the agent.
+
+After a successful registration, `busctl --user call com.canonical.AppMenu.Registrar /com/canonical/AppMenu/Registrar com.canonical.AppMenu.Registrar GetMenus` grows a `(xid, destination, /com/canonical/menu/…)` row, `hyprctl -j hyprbaric-appmenu` shows a matching `kind: x11` record for that xid, and File / Edit appear on the bar once that window is focused. Opening a heading still goes through D-BusMenu `AboutToShow`, the same as Qt.
+
+## JetBrains
+
+JetBrains IDEs from 2026.1 default to native Wayland (`-Dawt.toolkit.name=auto` becomes `WLToolkit` when a Wayland display is available). That window has no X11 id, so JAyatana cannot register it, and the IDE does not call `org_kde_kwin_appmenu` either. Focusing IntelliJ or RustRover then leaves the bar on the window title. That is expected, and you do not need JAyatana installed to confirm it: `hyprctl activewindow -j` reports `"xwayland": false`, `GetMenus` does not grow a row, and `hyprctl -j hyprbaric-appmenu` has no `dbusmenu` / `gtk` record for that address.
+
+Forcing X11 without JAyatana does not recover File / Edit. `-Dawt.toolkit.name=XToolkit` makes the welcome window XWayland, so the companion lists `kind: x11` the way it does for every XWayland client, but the registrar still has no matching xid. The old `linux.native.menu` / `libdbm64.so` Unity exporter is not in the 2026.1 install; `idea.log` never mentions it. `linux.native.menu=true` in `idea.properties` is a no-op on that build.
+
+JAyatana is a Swing exporter for apps that still draw a `JMenuBar`. Current JetBrains chrome is not that path. Do not add the agent to `idea64.vmoptions` expecting the 2026.1 menu bar to move onto hyprbaric.
 
 ## Electron and Chromium
 
@@ -198,7 +228,9 @@ Do not treat this as a missing hyprbaric protocol. When Electron binds `org_kde_
 
 ## Traditional GTK menus
 
-GIMP, many GTK 3 applications, and other programs that pack a classic `GtkMenuBar` into the window do **not** speak `gtk_shell1`. GTK only publishes `org.gtk.Menus` for `GMenuModel` menubars set on a `GtkApplication`. A `GtkMenuBar` stays in the window unless a GTK module hijacks it and exports it.
+GIMP 3 and LibreOffice (gtk3 VCL) are `GtkApplication`s: they publish `org.gtk.Menus` through `gtk_shell1`, and File / Edit should appear once the companion has a `kind: gtk` row for that window. LibreOffice on Wayland often defaults to a VCL that does not; start Writer as `SAL_USE_VCLPLUGIN=gtk3 soffice --writer` and restart it after the companion is loaded.
+
+Older programs that pack a classic `GtkMenuBar` into the window do **not** speak `gtk_shell1` on their own. GTK only publishes `org.gtk.Menus` for `GMenuModel` menubars. A `GtkMenuBar` stays in the window unless a GTK module hijacks it and exports it.
 
 That injection is a compositor environment change, not a hyprbaric TOML key. Package, `GTK_MODULES`, and `UBUNTU_MENUPROXY` are under [GTK AppMenu module](#gtk-appmenu-module). After those are in the session, restart the GTK application.
 
@@ -232,9 +264,13 @@ hyprctl activewindow -j
 | Observation | Meaning |
 | --- | --- |
 | Headings change as the pointer travels to the bar | Hover-focus stole the window. This is [click-to-focus](#click-to-focus), not a missing export. |
-| GIMP (or another classic `GtkMenuBar` app) still shows its title | `appmenu-gtk-module` is not in that process. See [GTK AppMenu module](#gtk-appmenu-module), then restart the application. |
+| GIMP 2 or another classic `GtkMenuBar` app still shows its title | `appmenu-gtk-module` is not in that process. See [GTK AppMenu module](#gtk-appmenu-module), then restart the application. |
+| GIMP 3 or LibreOffice Writer still shows its title | The companion has no `kind: gtk` row for that window. Restart the app after the plugin is loaded. Writer also needs `SAL_USE_VCLPLUGIN=gtk3` on Wayland. |
+| A Swing app still shows its title | JAyatana is not in that JVM, or the JVM is native Wayland. See [Java / JAyatana](#java--jayatana). |
+| A Save / Open / Preferences dialog shows its title | The dialog took focus and its parent did not export a menu, or Hyprland has no mapped parent for it. |
 | `hyprctl hyprbaric-appmenu` is `unknown request` | The companion plugin is not loaded. See [how the companion is obtained](./configuration-reference#how-the-companion-is-obtained). |
-| The JSON is `[]`, or has no row for this window | The application is not exporting a menu. Check toolkit, Firefox prefs, `GTK_MODULES`, and that the app was started after those were set. |
+| The JSON is `[]`, or has no row for this window | The application is not exporting a menu. Check toolkit, Firefox prefs, `GTK_MODULES`, a Java agent, and that the app was started after those were set. |
+| A JetBrains IDE shows its title | Native Wayland, or X11 without a registrar match. See [JetBrains](#jetbrains). A `kind: x11` row alone is the XWayland window, not a menu. |
 | A `dbusmenu` or `gtk` row exists, but has no `address` | The application published before Hyprland named the window. The bar still binds when the companion can resolve the surface, or when that row is the only menu from the focused process. Two address-less windows from the same process cannot be told apart. |
 | A `dbusmenu` or `gtk` row exists with an `address` that is not the focused window | The export belongs to another window of that application. Restart the application so it publishes against the live companion, then focus the window that owns the menubar. |
 | `busctl` says the registrar name has no owner | hyprbaric is not running with the module enabled, or another step failed before the registrar started. Qt will draw its own menu bar. |
@@ -253,8 +289,9 @@ Every path above is decided when the process starts:
 - Qt checks for the registrar name at startup.
 - Firefox reads `about:config` at startup.
 - GTK modules are loaded from `GTK_MODULES` at startup.
+- JAyatana is a `-javaagent` on the JVM that starts the window.
 
-Enabling the bar module, flipping a Firefox pref, or adding `env = GTK_MODULES,…` does nothing to a process that is already open. Restart that application.
+Enabling the bar module, flipping a Firefox pref, adding `env = GTK_MODULES,…`, or injecting a Java agent does nothing to a process that is already open. Restart that application.
 
 ## Related configuration
 

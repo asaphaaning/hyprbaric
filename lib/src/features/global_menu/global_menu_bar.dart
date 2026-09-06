@@ -15,7 +15,6 @@ import 'global_menu_section.dart';
 /// Geometry of the menu bar itself, from the v6 reference.
 abstract final class _Bar {
   static const double titleHeight = 22;
-  static const double titleRadius = 5;
   static const double titlePadding = 10;
   static const double titleGap = 2;
   static const double rowPadding = 2;
