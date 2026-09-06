@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1254 1254" role="img" aria-labelledby="title desc">
+  <title id="title">hyprbaric orb logo</title>
+  <desc id="desc">A glossy deep-blue orb set into a luminous blue shell.</desc>
+  <defs>
+    <clipPath id="squircle"><rect width="1254" height="1254" rx="230"/></clipPath>
+    <linearGradient id="bg" x1="70" y1="1100" x2="1170" y2="40" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#090d2d"/><stop offset=".56" stop-color="#10276d"/><stop offset="1" stop-color="#1243ad"/>
+    </linearGradient>
+    <linearGradient id="shell" x1="420" y1="260" x2="870" y2="970" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f0f6ff"/><stop offset=".27" stop-color="#c4dcff"/><stop offset=".57" stop-color="#8ab3fa"/><stop offset=".83" stop-color="#4777ed"/><stop offset="1" stop-color="#143bc2"/>
+    </linearGradient>
+    <radialGradient id="shellGlow" cx="0" cy="0" r="1" gradientTransform="translate(385 420) rotate(26) scale(550 435)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff" stop-opacity=".84"/><stop offset=".72" stop-color="#dceaff" stop-opacity=".14"/><stop offset="1" stop-color="#dceaff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glass" cx="0" cy="0" r="1" gradientTransform="translate(300 430) rotate(38) scale(525 580)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1a8cff"/><stop offset=".33" stop-color="#1057df"/><stop offset=".73" stop-color="#062b91"/><stop offset="1" stop-color="#031743"/>
+    </radialGradient>
+    <linearGradient id="rim" x1="230" y1="350" x2="720" y2="890" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5687ff"/><stop offset=".5" stop-color="#c9e4ff"/><stop offset="1" stop-color="#5f8df4"/>
+    </linearGradient>
+    <linearGradient id="reflection" x1="270" y1="410" x2="410" y2="530" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f3ffff"/><stop offset=".38" stop-color="#b7e1ff"/><stop offset="1" stop-color="#399bff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="slot" x1="835" y1="436" x2="891" y2="475" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3e6de8"/><stop offset=".55" stop-color="#78a4ff"/><stop offset="1" stop-color="#b6d2ff"/>
+    </linearGradient>
+    <filter id="blur"><feGaussianBlur stdDeviation="13"/></filter>
+  </defs>
+  <g clip-path="url(#squircle)">
+    <rect width="1254" height="1254" fill="url(#bg)"/>
+    <ellipse cx="660" cy="956" rx="520" ry="66" fill="#020725" opacity=".72" filter="url(#blur)"/>
+    <ellipse cx="680" cy="930" rx="650" ry="110" fill="#255be4" opacity=".28" filter="url(#blur)"/>
+
+    <path d="M115 644C111 490 202 373 335 300C427 249 526 235 623 247C758 260 907 312 1000 386C1092 459 1142 550 1146 637C1152 729 1113 816 1042 873C976 927 880 944 776 959C659 976 500 975 390 957C288 940 213 900 168 829C132 773 115 707 115 644Z" fill="url(#shell)" stroke="#e9f7ff" stroke-width="2"/>
+    <path d="M115 644C111 490 202 373 335 300C427 249 526 235 623 247C758 260 907 312 1000 386C1092 459 1142 550 1146 637C1152 729 1113 816 1042 873C976 927 880 944 776 959C659 976 500 975 390 957C288 940 213 900 168 829C132 773 115 707 115 644Z" fill="url(#shellGlow)"/>
+
+    <path d="M147 628C149 458 278 326 460 322C582 317 670 353 722 434C764 501 779 563 777 625C775 727 745 805 686 849C630 891 552 899 471 897C362 895 276 875 221 824C173 778 146 711 147 628Z" fill="url(#rim)"/>
+    <path d="M166 628C168 469 287 347 459 344C575 340 653 369 704 444C745 506 752 569 751 621C751 721 722 797 664 838C611 875 542 881 469 879C366 878 284 860 234 811C189 768 165 703 166 628Z" fill="#041c79" stroke="#d8efff" stroke-width="4"/>
+
+    <path d="M183 626C185 481 293 363 458 359C565 355 644 382 691 448C730 505 739 564 738 620C738 716 710 790 652 829C603 862 538 867 468 866C371 866 292 850 247 802C203 756 182 697 183 626Z" fill="url(#glass)" stroke="#1888ff" stroke-width="5"/>
+    <path d="M567 382C450 389 361 486 346 605C334 706 363 802 425 863C492 883 605 870 667 825C729 780 757 685 744 579C736 486 667 372 567 382Z" fill="#061d6c" opacity=".52"/>
+    <path d="M681 443C603 505 579 581 585 678C588 744 609 795 634 826C712 791 746 715 739 612C740 545 719 480 681 443Z" fill="#00134c" opacity=".55"/>
+    <path d="M213 745C229 685 337 654 451 668C567 675 674 707 731 699L714 797L617 870L328 883C253 845 208 797 213 745Z" fill="#02104f" opacity=".36"/>
+    <path d="M254 520C240 507 257 476 284 450C318 417 366 387 397 387C425 384 427 400 407 427C383 461 329 506 290 520C273 526 261 526 254 520Z" fill="url(#reflection)" stroke="#d4efff" stroke-opacity=".55"/>
+    <path d="M835 435L881 444C892 446 899 453 901 461C904 469 899 474 889 473L846 466C835 464 826 458 823 449C820 440 825 434 835 435Z" fill="url(#slot)" stroke="#d7ecff" stroke-opacity=".85" stroke-width="1.4"/>
+  </g>
+</svg>
