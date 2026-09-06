@@ -106,12 +106,16 @@ hyprctl hyprbaric-appmenu -j
 
 Its endpoint has `"kind": "gtk"` and a `path` beneath
 `/org/hyprbaric/GtkMenuProbe/menus/menubar`. Focus the probe and Hyprbaric
-renders its File, Edit, and View sections. GTK often calls
-`set_dbus_properties` before Hyprland has created a window for that surface;
-the snapshot resolves the address live, and `present` fills it in if the first
-lookup missed. Headerbar-first GTK applications that do not set a menubar
-correctly yield no global-menu sections; that is a property of the application
-export, not a plugin failure.
+renders its File, Edit, and View sections. File has New, Quit (`Ctrl+Q` from
+the `accel` attribute), and a parameterized `notes.txt` row. Edit has a
+disabled Undo. View has a checked Fullscreen toggle and a Left/Center/Right
+radio group. New also registers `<Primary>n` through
+`gtk_application_set_accels_for_action`; that table is not on D-Bus, so New
+shows no shortcut. GTK often calls `set_dbus_properties` before Hyprland has
+created a window for that surface; the snapshot resolves the address live, and
+`present` fills it in if the first lookup missed. Headerbar-first GTK
+applications that do not set a menubar correctly yield no global-menu
+sections; that is a property of the application export, not a plugin failure.
 
 Traditional `GtkMenuBar` applications (GIMP and similar) never call
 `gtk_shell1`. On Wayland they need the GTK AppMenu module
@@ -119,9 +123,6 @@ Traditional `GtkMenuBar` applications (GIMP and similar) never call
 export a menu the companion can capture. On XWayland they register with
 `com.canonical.AppMenu.Registrar`; Hyprbaric matches that table to the focused
 window by X11 id. See `website/docs/global-menu.mdx` for the user-facing setup.
-
-This proof reads the direct menu level; nested submenu navigation and item
-activation remain follow-up work.
 
 Unload the proof after testing:
 

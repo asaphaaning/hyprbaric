@@ -296,6 +296,81 @@ void main() {
     expect(dispatcher.intents.single.debugLabel, 'global_menu_activate');
   });
 
+  testWidgets('toggling a checkmark leaves the menu open', (
+    WidgetTester tester,
+  ) async {
+    final _RecordingDispatcher dispatcher = _RecordingDispatcher();
+    bool closed = false;
+
+    await tester.pumpWidget(
+      _surface(
+        overrides: [
+          rustCommandDispatcherProvider.overrideWith((ref) => dispatcher),
+          _section(_file, <GlobalMenuItem>[
+            _item(
+              label: 'Bookmarks Toolbar',
+              activation: const GlobalMenuItemIdDbusMenu(id: 12),
+              kind: const GlobalMenuItemKindCheckmark(checked: false),
+            ),
+          ]),
+        ],
+        child: GlobalMenuSectionPanel(
+          section: _file,
+          onActivated: () => closed = true,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text('Bookmarks Toolbar'));
+    await tester.pump();
+
+    expect(closed, isFalse);
+    expect(dispatcher.intents.single.debugLabel, 'global_menu_activate');
+  });
+
+  testWidgets('a checkmark redraws when the application updates it', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      _surface(
+        overrides: [
+          globalMenuSectionProvider(_file).overrideWith((ref) async* {
+            yield GlobalMenuSectionStatus(
+              section: _file,
+              items: <GlobalMenuItem>[
+                _item(
+                  label: 'Bookmarks Toolbar',
+                  activation: const GlobalMenuItemIdDbusMenu(id: 12),
+                  kind: const GlobalMenuItemKindCheckmark(checked: false),
+                ),
+              ],
+              message: null,
+            );
+            await Future<void>.delayed(const Duration(milliseconds: 1));
+            yield GlobalMenuSectionStatus(
+              section: _file,
+              items: <GlobalMenuItem>[
+                _item(
+                  label: 'Bookmarks Toolbar',
+                  activation: const GlobalMenuItemIdDbusMenu(id: 12),
+                  kind: const GlobalMenuItemKindCheckmark(checked: true),
+                ),
+              ],
+              message: null,
+            );
+          }),
+        ],
+        child: GlobalMenuSectionPanel(section: _file, onActivated: () {}),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('Bookmarks Toolbar'), findsOneWidget);
+    expect(find.text('✓'), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 1));
+    expect(find.text('✓'), findsOneWidget);
+  });
+
   testWidgets('a disabled row neither activates nor closes the menu', (
     WidgetTester tester,
   ) async {
@@ -365,6 +440,172 @@ void main() {
     expect(
       dispatcher.intents.map((intent) => intent.debugLabel),
       contains('global_menu_open_section'),
+    );
+  });
+
+  testWidgets('closing a heading tells the application the menu is gone', (
+    WidgetTester tester,
+  ) async {
+    _answerRegionChannel();
+    final _RecordingDispatcher dispatcher = _RecordingDispatcher();
+
+    await tester.pumpWidget(
+      _surface(
+        overrides: [
+          rustCommandDispatcherProvider.overrideWith((ref) => dispatcher),
+          globalMenuStatusProvider.overrideWith(
+            (ref) => Stream<GlobalMenuStatus>.value(_twoHeadings),
+          ),
+          _section(_file, <GlobalMenuItem>[
+            _item(
+              label: 'New File',
+              activation: const GlobalMenuItemIdDbusMenu(id: 7),
+            ),
+          ]),
+        ],
+        child: const SizedBox(width: 600, child: GlobalMenuBar()),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text('File'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('File'));
+    await tester.pumpAndSettle();
+
+    expect(
+      dispatcher.intents.map((intent) => intent.debugLabel),
+      containsAllInOrder(<String>[
+        'global_menu_open_section',
+        'global_menu_dismiss',
+      ]),
+    );
+  });
+
+  testWidgets('activating a row clicks then closes the heading', (
+    WidgetTester tester,
+  ) async {
+    _answerRegionChannel();
+    final _RecordingDispatcher dispatcher = _RecordingDispatcher();
+
+    await tester.pumpWidget(
+      _surface(
+        overrides: [
+          rustCommandDispatcherProvider.overrideWith((ref) => dispatcher),
+          globalMenuStatusProvider.overrideWith(
+            (ref) => Stream<GlobalMenuStatus>.value(_twoHeadings),
+          ),
+          _section(_file, <GlobalMenuItem>[
+            _item(
+              label: 'New File',
+              activation: const GlobalMenuItemIdDbusMenu(id: 7),
+            ),
+          ]),
+        ],
+        child: const SizedBox(width: 600, child: GlobalMenuBar()),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text('File'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('New File'));
+    await tester.pumpAndSettle();
+
+    expect(
+      dispatcher.intents.map((intent) => intent.debugLabel),
+      containsAllInOrder(<String>[
+        'global_menu_open_section',
+        'global_menu_activate',
+        'global_menu_dismiss',
+      ]),
+    );
+  });
+
+  testWidgets('toggling a checkmark does not dismiss the heading', (
+    WidgetTester tester,
+  ) async {
+    _answerRegionChannel();
+    final _RecordingDispatcher dispatcher = _RecordingDispatcher();
+
+    await tester.pumpWidget(
+      _surface(
+        overrides: [
+          rustCommandDispatcherProvider.overrideWith((ref) => dispatcher),
+          globalMenuStatusProvider.overrideWith(
+            (ref) => Stream<GlobalMenuStatus>.value(_twoHeadings),
+          ),
+          _section(_file, <GlobalMenuItem>[
+            _item(
+              label: 'Bookmarks Toolbar',
+              activation: const GlobalMenuItemIdDbusMenu(id: 12),
+              kind: const GlobalMenuItemKindCheckmark(checked: false),
+            ),
+          ]),
+        ],
+        child: const SizedBox(width: 600, child: GlobalMenuBar()),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text('File'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Bookmarks Toolbar'));
+    await tester.pumpAndSettle();
+
+    expect(
+      dispatcher.intents.map((intent) => intent.debugLabel),
+      containsAllInOrder(<String>[
+        'global_menu_open_section',
+        'global_menu_activate',
+      ]),
+    );
+    expect(
+      dispatcher.intents.map((intent) => intent.debugLabel),
+      isNot(contains('global_menu_dismiss')),
+    );
+  });
+
+  testWidgets('leaving a submenu tells the application that flyout closed', (
+    WidgetTester tester,
+  ) async {
+    final _RecordingDispatcher dispatcher = _RecordingDispatcher();
+
+    await tester.pumpWidget(
+      _surface(
+        overrides: [
+          rustCommandDispatcherProvider.overrideWith((ref) => dispatcher),
+          _section(_file, <GlobalMenuItem>[
+            _item(label: 'Open Recent', submenu: _recent),
+          ]),
+          _section(_recent, <GlobalMenuItem>[
+            _item(
+              label: 'bar.tsx',
+              activation: const GlobalMenuItemIdDbusMenu(id: 21),
+            ),
+          ]),
+        ],
+        child: GlobalMenuSectionPanel(section: _file, onActivated: () {}),
+      ),
+    );
+    await tester.pump();
+
+    final TestGesture pointer = await tester.createGesture(
+      kind: PointerDeviceKind.mouse,
+    );
+    await pointer.addPointer(location: Offset.zero);
+    addTearDown(pointer.removePointer);
+    await pointer.moveTo(tester.getCenter(find.text('Open Recent')));
+    await tester.pumpAndSettle();
+    expect(find.text('bar.tsx'), findsOneWidget);
+
+    await pointer.moveTo(const Offset(0, 600));
+    await tester.pump(const Duration(milliseconds: 260));
+    await tester.pump();
+
+    expect(
+      dispatcher.intents.map((intent) => intent.debugLabel),
+      containsAllInOrder(<String>[
+        'global_menu_open_section',
+        'global_menu_dismiss',
+      ]),
     );
   });
 

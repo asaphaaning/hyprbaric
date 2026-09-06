@@ -32,7 +32,8 @@ use zbus::Connection;
 
 use super::{
     DBUSMENU_RELAYOUT, Endpoint, EndpointKind, Error, Item, Menu, SectionId, dbusmenu,
-    dbusmenu_items, dbusmenu_tree, focused, gtk_groups_of, gtk_items, gtk_menus, gtk_tree, publish,
+    dbusmenu_items, dbusmenu_live_items, dbusmenu_tree, focused, gtk_actions, gtk_describe,
+    gtk_groups_of, gtk_items, gtk_menus, gtk_tree, publish,
 };
 
 const DEBOUNCE: std::time::Duration = std::time::Duration::from_millis(80);
@@ -261,6 +262,13 @@ impl Held {
         }
     }
 
+    fn path_of(&self, id: &SectionId) -> Vec<String> {
+        match self {
+            Self::Occupied { snapshot, .. } => snapshot.path_hint(id),
+            Self::Vacant => Vec::new(),
+        }
+    }
+
     fn item_path(&self, id: i32) -> Vec<String> {
         match self {
             Self::Occupied { snapshot, .. } => snapshot.item_path(id),
@@ -273,15 +281,99 @@ impl Held {
     }
 }
 
+/// A D-BusMenu the bar announced as open, so dismiss can send `closed`
+/// to the same exporter even after focus has moved on.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct Opened {
+    pub endpoint: Endpoint,
+    pub id: i32,
+    pub path: Vec<String>,
+    /// The address Dart is watching. Firefox may have issued a new `id`.
+    pub section: SectionId,
+}
+
+impl Opened {
+    fn belongs(&self, id: i32, path: &[String]) -> bool {
+        self.id == id || (!path.is_empty() && self.path.starts_with(path))
+    }
+}
+
+/// Which announced menus close with this heading, nested flyouts first.
+fn closing(opened: Vec<Opened>, id: i32, path: &[String]) -> (Vec<Opened>, Vec<Opened>) {
+    let mut close = Vec::new();
+    let mut keep = Vec::new();
+    for menu in opened {
+        if menu.belongs(id, path) {
+            close.push(menu);
+        } else {
+            keep.push(menu);
+        }
+    }
+    close.sort_by(|left, right| right.path.len().cmp(&left.path.len()));
+    (close, keep)
+}
+
+pub(super) fn remember_opened(endpoint: Endpoint, id: i32, path: Vec<String>, section: SectionId) {
+    let mut opened = opened();
+    opened.retain(|menu| menu.id != id && menu.path != path);
+    opened.push(Opened {
+        endpoint,
+        id,
+        path,
+        section,
+    });
+}
+
+pub(super) fn take_opened(id: i32, path: &[String]) -> Vec<Opened> {
+    let mut opened = opened();
+    let current = std::mem::take(&mut *opened);
+    let (close, keep) = closing(current, id, path);
+    *opened = keep;
+    close
+}
+
+pub(super) fn drain_opened() -> Vec<Opened> {
+    std::mem::take(&mut *opened())
+}
+
+fn announced() -> Vec<Opened> {
+    opened().clone()
+}
+
 /// Label path of a D-BusMenu row the bar already served.
 pub(super) fn item_path(id: i32) -> Vec<String> {
     held().item_path(id)
+}
+
+/// Path used to close a heading or flyout, including after Firefox rebuilds ids.
+///
+/// Dart still holds the identifier from the last read. The live node may now
+/// have a different id, so `closed` follows the heading labels: the snapshot's
+/// hint, then the last served row path, then whatever we announced as open.
+pub(super) fn dismiss_path(id: i32) -> Vec<String> {
+    {
+        let held = held();
+        let hinted = held.path_of(&SectionId::DbusMenu { id });
+        if !hinted.is_empty() {
+            return hinted;
+        }
+        let served = held.item_path(id);
+        if !served.is_empty() {
+            return served;
+        }
+    }
+    opened()
+        .iter()
+        .find(|menu| menu.id == id)
+        .map(|menu| menu.path.clone())
+        .unwrap_or_default()
 }
 
 struct Store {
     generation: watch::Sender<u64>,
     populated: Notify,
     held: Mutex<Held>,
+    opened: Mutex<Vec<Opened>>,
 }
 
 fn store() -> &'static Store {
@@ -292,12 +384,20 @@ fn store() -> &'static Store {
             generation,
             populated: Notify::new(),
             held: Mutex::new(Held::Vacant),
+            opened: Mutex::new(Vec::new()),
         }
     })
 }
 
 fn held() -> MutexGuard<'static, Held> {
     store().held.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+fn opened() -> MutexGuard<'static, Vec<Opened>> {
+    store()
+        .opened
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
 }
 
 fn generation() -> u64 {
@@ -311,7 +411,7 @@ fn bump() -> u64 {
         .wrapping_add(1)
 }
 
-#[instrument(name = "hyprbaric::global_menu::live::headings", err)]
+#[instrument(name = "hyprbaric::global_menu::live::headings")]
 pub(super) async fn headings() -> Result<Menu, Error> {
     let (connection, endpoint) = match focused().await {
         Ok(focused) => focused,
@@ -340,7 +440,7 @@ pub(super) async fn headings() -> Result<Menu, Error> {
     take(connection, endpoint, exporter).await
 }
 
-#[instrument(name = "hyprbaric::global_menu::live::items", err)]
+#[instrument(name = "hyprbaric::global_menu::live::items")]
 pub(super) async fn items(id: &SectionId) -> Result<Vec<Item>, Error> {
     let (connection, endpoint) = focused().await?;
     let exporter = Exporter::of(&endpoint);
@@ -413,13 +513,23 @@ async fn take(
     endpoint: Endpoint,
     exporter: Exporter,
 ) -> Result<Menu, Error> {
-    let epoch = bump();
-    {
+    let leftover = {
         let mut held = held();
+        let leftover = if held.holds(&exporter) {
+            Vec::new()
+        } else {
+            drain_opened()
+        };
         if !held.holds(&exporter) {
             *held = Held::occupy(exporter.clone(), Snapshot::default());
         }
+        leftover
+    };
+    if !leftover.is_empty() {
+        super::close_opened(leftover).await;
     }
+
+    let epoch = bump();
 
     let snapshot = match capture_now(&connection, &endpoint).await {
         Ok(snapshot) => snapshot,
@@ -442,6 +552,9 @@ async fn take(
     };
 
     install(epoch, exporter.clone(), snapshot);
+    if let Err(error) = refresh_opened(&connection, &endpoint).await {
+        tracing::debug!(%error, "Could not refresh an open menu after recapture");
+    }
     watch_from(epoch, connection, endpoint);
     Ok(held().headings_for(&exporter).unwrap_or_default())
 }
@@ -486,7 +599,8 @@ async fn capture_gtk(connection: &Connection, endpoint: &Endpoint) -> Result<Sna
     if let Err(error) = proxy.end(&ids).await {
         tracing::debug!(%error, "GTK menu declined to end the subscription");
     }
-    let (headings, sections) = gtk_tree(&groups)?;
+    let actions = gtk_describe(connection, endpoint).await;
+    let (headings, sections) = gtk_tree(&groups, &actions)?;
     Ok(Snapshot {
         headings,
         sections,
@@ -522,6 +636,13 @@ fn install(epoch: u64, exporter: Exporter, incoming: Snapshot) {
 fn clear() {
     bump();
     *held() = Held::Vacant;
+    let leftover = drain_opened();
+    if leftover.is_empty() {
+        return;
+    }
+    tokio::spawn(async move {
+        super::close_opened(leftover).await;
+    });
 }
 
 async fn wait_until_populated(exporter: &Exporter) {
@@ -642,7 +763,22 @@ async fn watch_gtk(
 ) -> Result<(), Error> {
     let menus = gtk_menus(connection, endpoint).await?;
     let mut changed = menus.receive_changed().await.ok();
-    let mut none = Option::<futures_util::stream::Empty<()>>::None;
+    let app = match endpoint.application_path.as_deref() {
+        Some(path) => gtk_actions(connection, endpoint, path).await.ok(),
+        None => None,
+    };
+    let win = match endpoint.window_path.as_deref() {
+        Some(path) => gtk_actions(connection, endpoint, path).await.ok(),
+        None => None,
+    };
+    let mut app_changed = match &app {
+        Some(proxy) => proxy.receive_changed().await.ok(),
+        None => None,
+    };
+    let mut win_changed = match &win {
+        Some(proxy) => proxy.receive_changed().await.ok(),
+        None => None,
+    };
     let mut echo = GtkEcho::Listen;
 
     loop {
@@ -652,18 +788,25 @@ async fn watch_gtk(
                     return Ok(());
                 }
             }
-            _ = recv(&mut changed) => {}
-        }
-
-        match echo {
-            GtkEcho::Ignore => {
-                echo = GtkEcho::Listen;
-                continue;
+            _ = recv(&mut changed) => {
+                if echo == GtkEcho::Ignore {
+                    echo = GtkEcho::Listen;
+                    continue;
+                }
             }
-            GtkEcho::Listen => {}
+            _ = recv(&mut app_changed) => {}
+            _ = recv(&mut win_changed) => {}
         }
 
-        if !settle(current, epoch, &mut changed, &mut none).await {
+        if !settle3(
+            current,
+            epoch,
+            &mut changed,
+            &mut app_changed,
+            &mut win_changed,
+        )
+        .await
+        {
             return Ok(());
         }
 
@@ -678,14 +821,49 @@ async fn replace(epoch: u64, connection: &Connection, endpoint: &Endpoint) -> Re
         return Ok(());
     }
     install(epoch, Exporter::of(endpoint), snapshot);
+    if let Err(error) = refresh_opened(connection, endpoint).await {
+        tracing::debug!(%error, "Could not refresh an open menu after a layout update");
+    }
     Ok(())
 }
 
-async fn settle<A: StreamExt + Unpin, B: StreamExt + Unpin>(
+/// Re-reads every D-BusMenu the bar is currently showing.
+///
+/// Watch recaptures headings only. That is enough after Zoom In closes the
+/// panel; View → Toolbars is still up, and its checkmarks live on the rows.
+#[instrument(name = "hyprbaric::global_menu::live::refresh_opened", skip_all, err)]
+async fn refresh_opened(connection: &Connection, endpoint: &Endpoint) -> Result<(), Error> {
+    if endpoint.kind != EndpointKind::DbusMenu {
+        return Ok(());
+    }
+
+    let exporter = Exporter::of(endpoint);
+    for menu in announced() {
+        if Exporter::of(&menu.endpoint) != exporter {
+            continue;
+        }
+        let items = match dbusmenu_live_items(connection, endpoint, menu.id, &menu.path).await {
+            Ok(items) => items,
+            Err(error) => {
+                tracing::debug!(%error, "Could not re-read an open menu");
+                continue;
+            }
+        };
+        if items.is_empty() {
+            continue;
+        }
+        remember(&exporter, menu.section.clone(), items.clone());
+        publish::section_items(&menu.section, &items);
+    }
+    Ok(())
+}
+
+async fn settle3<A: StreamExt + Unpin, B: StreamExt + Unpin, C: StreamExt + Unpin>(
     current: &mut watch::Receiver<u64>,
     epoch: u64,
     first: &mut Option<A>,
     second: &mut Option<B>,
+    third: &mut Option<C>,
 ) -> bool {
     let wait = tokio::time::sleep(DEBOUNCE);
     tokio::pin!(wait);
@@ -698,9 +876,20 @@ async fn settle<A: StreamExt + Unpin, B: StreamExt + Unpin>(
             }
             _ = recv(first) => {}
             _ = recv(second) => {}
+            _ = recv(third) => {}
             _ = &mut wait => return true,
         }
     }
+}
+
+async fn settle<A: StreamExt + Unpin, B: StreamExt + Unpin>(
+    current: &mut watch::Receiver<u64>,
+    epoch: u64,
+    first: &mut Option<A>,
+    second: &mut Option<B>,
+) -> bool {
+    let mut none = Option::<futures_util::stream::Empty<()>>::None;
+    settle3(current, epoch, first, second, &mut none).await
 }
 
 async fn recv<S: StreamExt + Unpin>(stream: &mut Option<S>) {
@@ -715,7 +904,7 @@ async fn recv<S: StreamExt + Unpin>(stream: &mut Option<S>) {
 #[cfg(test)]
 mod tests {
     use super::super::{EndpointKind, Item, ItemId, ItemKind, Menu, Section, SectionId};
-    use super::{Exporter, Held, Snapshot};
+    use super::{Exporter, Held, Opened, Snapshot, closing};
 
     fn exporter() -> Exporter {
         Exporter {
@@ -857,6 +1046,29 @@ mod tests {
         assert_eq!(merged.item_path(6), ["File", "Actual Size"]);
     }
 
+    fn toolbar(checked: bool) -> Item {
+        Item {
+            label: "Bookmarks Toolbar".to_owned(),
+            enabled: true,
+            kind: ItemKind::Checkmark { checked },
+            shortcut: None,
+            activation: Some(ItemId::DbusMenu { id: 12 }),
+            submenu: None,
+        }
+    }
+
+    #[test]
+    fn remembering_a_section_again_replaces_its_marks() {
+        let mut snapshot = snapshot();
+        snapshot.remember(file(), vec![toolbar(false)]);
+        snapshot.remember(file(), vec![toolbar(true)]);
+
+        assert_eq!(
+            snapshot.section(&file()).expect("rows")[0].kind,
+            ItemKind::Checkmark { checked: true }
+        );
+    }
+
     #[test]
     fn empty_headings_are_not_served_as_a_hit() {
         let held = Held::occupy(exporter(), Snapshot::default());
@@ -867,5 +1079,74 @@ mod tests {
     #[test]
     fn a_headings_read_does_not_walk_into_the_rows() {
         assert_eq!(super::HEADINGS_DEPTH, 1);
+    }
+
+    fn opened_menu(id: i32, path: &[&str]) -> Opened {
+        Opened {
+            endpoint: serde_json::from_str(
+                r#"{"kind":"dbusmenu","service":":1.40","path":"/MenuBar"}"#,
+            )
+            .expect("endpoint"),
+            id,
+            path: path.iter().map(|label| (*label).to_owned()).collect(),
+            section: SectionId::DbusMenu { id },
+        }
+    }
+
+    #[test]
+    fn dismissing_a_heading_closes_its_flyouts_first() {
+        let file = opened_menu(1, &["File"]);
+        let recent = opened_menu(20, &["File", "Recent"]);
+        let edit = opened_menu(2, &["Edit"]);
+        let (close, keep) = closing(
+            vec![file.clone(), recent.clone(), edit.clone()],
+            1,
+            &["File".to_owned()],
+        );
+
+        assert_eq!(close, vec![recent, file]);
+        assert_eq!(keep, vec![edit]);
+    }
+
+    #[test]
+    fn dismissing_a_flyout_leaves_the_heading_open() {
+        let file = opened_menu(1, &["File"]);
+        let recent = opened_menu(20, &["File", "Recent"]);
+        let (close, keep) = closing(
+            vec![file.clone(), recent.clone()],
+            20,
+            &["File".to_owned(), "Recent".to_owned()],
+        );
+
+        assert_eq!(close, vec![recent]);
+        assert_eq!(keep, vec![file]);
+    }
+
+    #[test]
+    fn a_rebuilt_heading_id_still_closes_by_its_label_path() {
+        let file = opened_menu(1, &["File"]);
+        let (close, keep) = closing(vec![file.clone()], 50, &["File".to_owned()]);
+
+        assert_eq!(close, vec![file]);
+        assert!(keep.is_empty());
+    }
+
+    #[test]
+    fn a_rebuilt_heading_still_closes_nested_flyouts_by_path() {
+        let file = opened_menu(50, &["File"]);
+        let recent = opened_menu(80, &["File", "Recent"]);
+        let (close, keep) = closing(vec![file.clone(), recent.clone()], 1, &["File".to_owned()]);
+
+        assert_eq!(close, vec![recent, file]);
+        assert!(keep.is_empty());
+    }
+
+    #[test]
+    fn an_unknown_id_with_no_path_closes_nothing() {
+        let file = opened_menu(1, &["File"]);
+        let (close, keep) = closing(vec![file.clone()], 99, &[]);
+
+        assert!(close.is_empty());
+        assert_eq!(keep, vec![file]);
     }
 }

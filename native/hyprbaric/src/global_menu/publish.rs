@@ -118,8 +118,9 @@ impl From<&ItemId> for GlobalMenuItemId {
     fn from(id: &ItemId) -> Self {
         match id {
             ItemId::DbusMenu { id } => Self::DbusMenu { id: *id },
-            ItemId::Gtk { action } => Self::Gtk {
+            ItemId::Gtk { action, target } => Self::Gtk {
                 action: action.clone(),
+                target: target.clone(),
             },
         }
     }
