@@ -28,6 +28,8 @@ The bar slice adds the workspace indicator strip across its roman, numeric,
 read-only, special-workspace, and unfocused-output states, its button, nav
 button, and placeholder atoms, and the left and center clusters driven by
 overridden compositor signals.
+The global menu slice presents the focused application's headings on the bar
+and an open View menu with group captions, checkmarks, radios, and a flyout.
 The setup slice presents the first-run guide card at every step, plus its stage
 preview and control column in isolation.
 Every widget the catalog exports now has a story: the OSD header, readout,

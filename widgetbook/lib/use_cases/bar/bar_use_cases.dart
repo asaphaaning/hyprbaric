@@ -5,6 +5,7 @@ import 'package:hyprbaric/widget_catalog.dart';
 import 'package:widgetbook_annotation/widgetbook_annotation.dart';
 
 import '../../audio/audio_fixtures.dart';
+import '../global_menu/global_menu_fixtures.dart';
 import '../notifications/notification_fixtures.dart';
 import '../power/power_fixtures.dart';
 import '../settings/settings_fixtures.dart';
@@ -58,6 +59,7 @@ class _BarStory extends StatelessWidget {
         _stream(nightLightStatusProvider, SettingsFixtures.nightLightOn),
         _stream(appStatusProvider, SettingsFixtures.app),
         _stream(trayStatusProvider, TrayFixtures.populated),
+        ...GlobalMenuFixtures.providers(),
         _stream(caffeineStatusProvider, BarFixtures.caffeine),
         _stream(recordingStatusProvider, BarFixtures.recording),
         _stream(setupStatusProvider, BarFixtures.setup),
