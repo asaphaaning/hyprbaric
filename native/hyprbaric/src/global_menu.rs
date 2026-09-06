@@ -16,12 +16,16 @@
 //! is enough; two address-less menus from the same process are not guessed.
 //!
 //! Headings are a cheap layout of the menubar. GTK rows can be served from
-//! that snapshot: action names are stable. D-BusMenu rows are announced to
-//! the application on every open (`AboutToShow` / `opened`). Firefox rebuilds
-//! native identifiers and enabled flags after a click, so a cached View menu
-//! still holds the ids from before Zoom In; Actual Size then talks to a node
-//! that is no longer in the tree.
+//! that snapshot: action names are stable. Availability, check/radio marks,
+//! and Activate parameters come from `org.gtk.Actions` on the application
+//! and window paths, which is the same join GTK's menu tracker performs.
+//! D-BusMenu rows are announced to the application on every open
+//! (`AboutToShow` / `opened`). Firefox rebuilds native identifiers and
+//! enabled flags after a click, so a cached View menu still holds the ids
+//! from before Zoom In; Actual Size then talks to a node that is no longer
+//! in the tree.
 
+mod gtk;
 mod live;
 mod plugin;
 pub(crate) mod publish;
@@ -121,19 +125,36 @@ pub enum ItemId {
     /// A D-BusMenu row, addressed by item identifier.
     DbusMenu { id: i32 },
     /// A GTK action, named with its `app.` or `win.` scope.
-    Gtk { action: String },
+    Gtk {
+        action: String,
+        /// D-Bus-marshalled GVariant for `Activate`, when the item names a target.
+        target: Option<Vec<u8>>,
+    },
 }
 
 /// Reads the headings the focused application currently exports.
-#[instrument(name = "hyprbaric::global_menu::read", err)]
+#[instrument(name = "hyprbaric::global_menu::read")]
 pub async fn read() -> Result<Menu, Error> {
     live::headings().await
 }
 
 /// Reads the rows beneath one heading of the focused application.
-#[instrument(name = "hyprbaric::global_menu::section", err)]
+#[instrument(name = "hyprbaric::global_menu::section")]
 pub async fn section(id: &SectionId) -> Result<Vec<Item>, Error> {
     live::items(id).await
+}
+
+/// Tells the application a heading or submenu is no longer shown.
+///
+/// D-BusMenu `opened` / `AboutToShow` pair with `closed`. Firefox and Qt
+/// keep popup state across that pair; skipping `closed` leaves the last
+/// heading thinking it is still open. GTK has no equivalent.
+#[instrument(name = "hyprbaric::global_menu::dismiss", err)]
+pub async fn dismiss(id: &SectionId) -> Result<(), Error> {
+    match id {
+        SectionId::Gtk { .. } => Ok(()),
+        SectionId::DbusMenu { id } => dbusmenu_closed(*id).await,
+    }
 }
 
 /// Activates one row of the focused application's menu.
@@ -143,7 +164,9 @@ pub async fn activate(id: &ItemId) -> Result<(), Error> {
 
     match id {
         ItemId::DbusMenu { id } => dbusmenu_activate(&connection, &endpoint, *id).await,
-        ItemId::Gtk { action } => gtk_activate(&connection, &endpoint, action).await,
+        ItemId::Gtk { action, target } => {
+            gtk_activate(&connection, &endpoint, action, target.as_deref()).await
+        }
     }?;
 
     live::refresh();
@@ -222,12 +245,15 @@ async fn dbusmenu_items(
         );
     }
 
-    if let Err(error) = proxy
-        .event(dest, "opened", &Value::I32(0), timestamp())
-        .await
-    {
+    if let Err(error) = dbusmenu_event(&proxy, dest, DbusMenuEvent::Opened).await {
         tracing::debug!(%error, id = dest, "Menu declined the opened event");
     }
+    live::remember_opened(
+        endpoint.clone(),
+        dest,
+        path.clone(),
+        SectionId::DbusMenu { id },
+    );
     if let Err(error) = proxy.about_to_show(dest).await {
         tracing::debug!(
             %error,
@@ -286,15 +312,13 @@ async fn dbusmenu_activate(
     }
 
     if find_by_id(&layout.root, dest)?.is_some() {
-        return proxy
-            .event(dest, "clicked", &Value::I32(0), timestamp())
+        return dbusmenu_event(&proxy, dest, DbusMenuEvent::Clicked)
             .await
             .map_err(Error::Activate);
     }
 
     let Some((label, parent_path)) = path.split_last() else {
-        return proxy
-            .event(dest, "clicked", &Value::I32(0), timestamp())
+        return dbusmenu_event(&proxy, dest, DbusMenuEvent::Clicked)
             .await
             .map_err(Error::Activate);
     };
@@ -303,10 +327,100 @@ async fn dbusmenu_activate(
     let items = dbusmenu_items(connection, endpoint, parent, parent_path).await?;
     let dest = activation_id(&items, label).unwrap_or(dest);
 
-    proxy
-        .event(dest, "clicked", &Value::I32(0), timestamp())
+    dbusmenu_event(&proxy, dest, DbusMenuEvent::Clicked)
         .await
         .map_err(Error::Activate)
+}
+
+/// D-BusMenu `Event` names. `opened` and `closed` are only valid on items
+/// that contain a submenu, which is every heading and flyout we announce.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum DbusMenuEvent {
+    Opened,
+    Closed,
+    Clicked,
+}
+
+impl DbusMenuEvent {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Opened => "opened",
+            Self::Closed => "closed",
+            Self::Clicked => "clicked",
+        }
+    }
+}
+
+async fn dbusmenu_event(
+    proxy: &DBusMenuProxy<'_>,
+    id: i32,
+    event: DbusMenuEvent,
+) -> Result<(), zbus::Error> {
+    proxy
+        .event(id, event.as_str(), &Value::I32(0), timestamp())
+        .await
+}
+
+/// Sends `closed` to every D-BusMenu we announced as open under this heading.
+///
+/// Nested flyouts are closed first, then the heading. Firefox rebuilds native
+/// identifiers after `AboutToShow`, so the live node is resolved by the label
+/// path recorded when it opened, not by the id Dart still holds.
+async fn dbusmenu_closed(id: i32) -> Result<(), Error> {
+    let path = live::dismiss_path(id);
+    let opened = live::take_opened(id, &path);
+    if opened.is_empty() {
+        return dbusmenu_closed_at(id, &path).await;
+    }
+
+    for menu in opened {
+        if let Err(error) = dbusmenu_closed_announced(menu).await {
+            tracing::debug!(%error, "Menu declined the closed event");
+        }
+    }
+
+    Ok(())
+}
+
+async fn dbusmenu_closed_announced(opened: live::Opened) -> Result<(), Error> {
+    let connection = zbus::Connection::session().await.map_err(Error::Connect)?;
+    let proxy = dbusmenu(&connection, &opened.endpoint).await?;
+    let layout = proxy
+        .get_layout(0, DBUSMENU_DEPTH, &[])
+        .await
+        .map_err(Error::Layout)?;
+    let dest = destination(&layout.root, opened.id, &opened.path)?;
+    dbusmenu_event(&proxy, dest, DbusMenuEvent::Closed)
+        .await
+        .map_err(Error::Activate)
+}
+
+async fn dbusmenu_closed_at(id: i32, path: &[String]) -> Result<(), Error> {
+    let (connection, endpoint) = focused().await?;
+    if endpoint.kind != EndpointKind::DbusMenu {
+        return Ok(());
+    }
+
+    let proxy = dbusmenu(&connection, &endpoint).await?;
+    let layout = proxy
+        .get_layout(0, DBUSMENU_DEPTH, &[])
+        .await
+        .map_err(Error::Layout)?;
+    let dest = destination(&layout.root, id, path)?;
+    if let Err(error) = dbusmenu_event(&proxy, dest, DbusMenuEvent::Closed).await {
+        tracing::debug!(%error, id = dest, "Menu declined the closed event");
+    }
+    Ok(())
+}
+
+/// Closes every D-BusMenu still announced against an exporter that went away.
+#[instrument(name = "hyprbaric::global_menu::close_opened", skip_all)]
+async fn close_opened(opened: Vec<live::Opened>) {
+    for menu in opened {
+        if let Err(error) = dbusmenu_closed_announced(menu).await {
+            tracing::debug!(%error, "Could not close a menu after its window left");
+        }
+    }
 }
 
 fn activation_id(items: &[Item], label: &str) -> Option<i32> {
@@ -338,6 +452,21 @@ async fn dbusmenu_section(
     items_from(&section)
 }
 
+/// Rows of an already-open D-BusMenu, without announcing `opened` again.
+///
+/// A layout or property update while the panel is up (View → Toolbars) has
+/// to be read from the live tree. `AboutToShow` would rebuild Firefox under
+/// new identifiers in the middle of an open menu.
+async fn dbusmenu_live_items(
+    connection: &zbus::Connection,
+    endpoint: &Endpoint,
+    id: i32,
+    path: &[String],
+) -> Result<Vec<Item>, Error> {
+    let proxy = dbusmenu(connection, endpoint).await?;
+    dbusmenu_section(&proxy, id, path).await
+}
+
 async fn gtk_items(
     connection: &zbus::Connection,
     endpoint: &Endpoint,
@@ -346,7 +475,8 @@ async fn gtk_items(
 ) -> Result<Vec<Item>, Error> {
     let proxy = gtk_menus(connection, endpoint).await?;
     let groups = proxy.start(&[group]).await.map_err(Error::GtkLayout)?;
-    let items = gtk_menu_items(&groups, GtkLink { group, menu }, 0)?;
+    let actions = gtk_describe(connection, endpoint).await;
+    let items = gtk_menu_items(&groups, GtkLink { group, menu }, 0, &actions)?;
 
     proxy.end(&[group]).await.map_err(Error::GtkLayout)?;
 
@@ -360,7 +490,12 @@ async fn gtk_items(
 /// to the menu that links it, so they are read in place: a named section
 /// becomes a caption, and an unnamed one that follows another becomes the
 /// divider the menu was drawn with.
-fn gtk_menu_items(groups: &[GtkGroup], link: GtkLink, depth: u8) -> Result<Vec<Item>, Error> {
+fn gtk_menu_items(
+    groups: &[GtkGroup],
+    link: GtkLink,
+    depth: u8,
+    actions: &gtk::Actions,
+) -> Result<Vec<Item>, Error> {
     // Sections nest, and a malformed menu could link itself. The protocol has
     // no notion of depth, so the reader supplies the bound.
     const MAX_DEPTH: u8 = 8;
@@ -368,7 +503,7 @@ fn gtk_menu_items(groups: &[GtkGroup], link: GtkLink, depth: u8) -> Result<Vec<I
     let mut items = Vec::new();
     for entry in &gtk_group(groups, link)?.items {
         let Some(section) = gtk_link(entry, ":section") else {
-            items.push(gtk_item(entry));
+            items.push(gtk::item(entry, actions));
             continue;
         };
 
@@ -396,7 +531,7 @@ fn gtk_menu_items(groups: &[GtkGroup], link: GtkLink, depth: u8) -> Result<Vec<I
             None => {}
         }
 
-        items.extend(gtk_menu_items(groups, section, depth + 1)?);
+        items.extend(gtk_menu_items(groups, section, depth + 1, actions)?);
     }
 
     Ok(without_empty_dividers(items))
@@ -419,11 +554,14 @@ async fn gtk_menus<'a>(
 /// Activates a GTK action on whichever object group owns its scope.
 ///
 /// GTK splits its actions between the application and the window, and the
-/// prefix on the action name says which one to ask.
+/// prefix on the action name says which one to ask. The menu item's `target`
+/// is the Activate parameter; without it the array is empty, which is how
+/// GLib's action exporter treats a parameterless activation.
 async fn gtk_activate(
     connection: &zbus::Connection,
     endpoint: &Endpoint,
     action: &str,
+    target: Option<&[u8]>,
 ) -> Result<(), Error> {
     let (scope, name) = action
         .split_once('.')
@@ -439,22 +577,115 @@ async fn gtk_activate(
         action: action.to_owned(),
     })?;
 
-    let proxy = GtkActionsProxy::builder(connection)
+    let proxy = gtk_actions(connection, endpoint, path).await?;
+    let decoded = match target {
+        Some(bytes) => Some(gtk::decode_target(bytes).ok_or(Error::InvalidGtkTarget)?),
+        None => None,
+    };
+
+    match decoded.as_deref() {
+        Some(value) => proxy
+            .activate(name, std::slice::from_ref(value), HashMap::new())
+            .await
+            .map_err(Error::Activate),
+        None => proxy
+            .activate(name, &[], HashMap::new())
+            .await
+            .map_err(Error::Activate),
+    }
+}
+
+#[instrument(name = "hyprbaric::global_menu::gtk_describe", skip_all)]
+async fn gtk_describe(connection: &zbus::Connection, endpoint: &Endpoint) -> gtk::Actions {
+    let mut actions = gtk::Actions::default();
+    gtk_describe_at(
+        &mut actions,
+        connection,
+        endpoint,
+        endpoint.application_path.as_deref(),
+        "app",
+    )
+    .await;
+    gtk_describe_at(
+        &mut actions,
+        connection,
+        endpoint,
+        endpoint.window_path.as_deref(),
+        "win",
+    )
+    .await;
+    gtk_describe_at(
+        &mut actions,
+        connection,
+        endpoint,
+        Some(endpoint.path.as_str()),
+        "",
+    )
+    .await;
+    actions
+}
+
+async fn gtk_describe_at(
+    actions: &mut gtk::Actions,
+    connection: &zbus::Connection,
+    endpoint: &Endpoint,
+    path: Option<&str>,
+    scope: &str,
+) {
+    let Some(path) = path.filter(|path| !path.is_empty()) else {
+        return;
+    };
+
+    let proxy = match gtk_actions(connection, endpoint, path).await {
+        Ok(proxy) => proxy,
+        Err(error) => {
+            tracing::debug!(%error, path, scope, "Could not open the GTK action group");
+            return;
+        }
+    };
+
+    let descriptions = match proxy.describe_all().await {
+        Ok(descriptions) => descriptions,
+        Err(error) => {
+            tracing::debug!(%error, path, scope, "Could not describe GTK actions");
+            return;
+        }
+    };
+
+    actions.mark_described(scope);
+    for (name, description) in descriptions {
+        let scoped = if scope.is_empty() {
+            name
+        } else {
+            format!("{scope}.{name}")
+        };
+        actions.insert(
+            scoped,
+            gtk::Action::from_description(
+                description.enabled,
+                description.parameter_type,
+                description.state,
+            ),
+        );
+    }
+}
+
+async fn gtk_actions<'a>(
+    connection: &zbus::Connection,
+    endpoint: &Endpoint,
+    path: &str,
+) -> Result<gtk::GtkActionsProxy<'a>, Error> {
+    gtk::GtkActionsProxy::builder(connection)
         .destination(endpoint.service.clone())
         .map_err(Error::CreateGtkProxy)?
         .path(path.to_owned())
         .map_err(Error::CreateGtkProxy)?
         .build()
         .await
-        .map_err(Error::CreateGtkProxy)?;
-
-    proxy
-        .activate(name, &[], HashMap::new())
-        .await
-        .map_err(Error::Activate)
+        .map_err(Error::CreateGtkProxy)
 }
 
-#[instrument(name = "hyprbaric::global_menu::focused_endpoint", err)]
+#[instrument(name = "hyprbaric::global_menu::focused_endpoint")]
 async fn focused_endpoint() -> Result<Endpoint, Error> {
     let client = Client::get_active_async()
         .await
@@ -829,7 +1060,10 @@ fn dbusmenu_submenus(
     Ok(())
 }
 
-fn gtk_tree(groups: &[GtkGroup]) -> Result<(Menu, HashMap<SectionId, Vec<Item>>), Error> {
+fn gtk_tree(
+    groups: &[GtkGroup],
+    actions: &gtk::Actions,
+) -> Result<(Menu, HashMap<SectionId, Vec<Item>>), Error> {
     let mut sections = HashMap::new();
     let root = gtk_group(groups, GtkLink::ROOT)?;
     let mut headings = Vec::new();
@@ -847,7 +1081,7 @@ fn gtk_tree(groups: &[GtkGroup]) -> Result<(Menu, HashMap<SectionId, Vec<Item>>)
             label: gtk_label(item),
             enabled: true,
         });
-        gtk_cache(groups, link, &mut sections)?;
+        gtk_cache(groups, link, actions, &mut sections)?;
     }
 
     Ok((Menu { sections: headings }, sections))
@@ -856,6 +1090,7 @@ fn gtk_tree(groups: &[GtkGroup]) -> Result<(Menu, HashMap<SectionId, Vec<Item>>)
 fn gtk_cache(
     groups: &[GtkGroup],
     link: GtkLink,
+    actions: &gtk::Actions,
     sections: &mut HashMap<SectionId, Vec<Item>>,
 ) -> Result<(), Error> {
     let id = SectionId::Gtk {
@@ -866,10 +1101,10 @@ fn gtk_cache(
         return Ok(());
     }
 
-    let items = gtk_menu_items(groups, link, 0)?;
+    let items = gtk_menu_items(groups, link, 0, actions)?;
     for item in &items {
         if let Some(SectionId::Gtk { group, menu }) = item.submenu {
-            gtk_cache(groups, GtkLink { group, menu }, sections)?;
+            gtk_cache(groups, GtkLink { group, menu }, actions, sections)?;
         }
     }
     sections.insert(id, items);
@@ -982,30 +1217,6 @@ fn gtk_group(groups: &[GtkGroup], link: GtkLink) -> Result<&GtkGroup, Error> {
         })
 }
 
-fn gtk_item(item: &HashMap<String, OwnedValue>) -> Item {
-    let submenu = gtk_link(item, ":submenu").map(|link| SectionId::Gtk {
-        group: link.group,
-        menu: link.menu,
-    });
-    let action = item
-        .get("action")
-        .and_then(|value| value.downcast_ref::<&str>().ok())
-        .map(|action| ItemId::Gtk {
-            action: action.to_owned(),
-        });
-
-    Item {
-        label: gtk_label(item),
-        // GTK reports availability through its action group rather than the
-        // menu, which this does not subscribe to; rows read as available.
-        enabled: true,
-        kind: ItemKind::Standard,
-        shortcut: None,
-        activation: action,
-        submenu,
-    }
-}
-
 fn gtk_label(item: &HashMap<String, OwnedValue>) -> String {
     gtk_optional_label(item).unwrap_or_else(|| "Untitled".to_owned())
 }
@@ -1066,16 +1277,6 @@ trait GtkMenus {
     fn changed(&self, group: u32, menus: Vec<GtkGroup>) -> zbus::Result<()>;
 }
 
-#[proxy(interface = "org.gtk.Actions", assume_defaults = true)]
-trait GtkActions {
-    fn activate(
-        &self,
-        action: &str,
-        parameter: &[Value<'_>],
-        platform_data: HashMap<&str, Value<'_>>,
-    ) -> zbus::Result<()>;
-}
-
 #[derive(Deserialize, Type)]
 struct Layout {
     #[allow(dead_code)]
@@ -1107,7 +1308,7 @@ impl GtkLink {
     const ROOT: Self = Self { group: 0, menu: 0 };
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 struct Endpoint {
     #[serde(default)]
     kind: EndpointKind,
@@ -1187,12 +1388,24 @@ pub enum Error {
     MissingGtkGroup { group: u32, menu: u32 },
     #[error("the GTK action `{action}` names no reachable action group")]
     UnscopedGtkAction { action: String },
+    #[error("the GTK action target could not be decoded")]
+    InvalidGtkTarget,
     #[error("the application refused the activation")]
     Activate(#[source] zbus::Error),
     #[error("the D-BusMenu layout used an unsupported value")]
     DecodeLayout(#[source] zbus::zvariant::Error),
     #[error("the D-BusMenu layout contained an invalid item")]
     InvalidNode,
+}
+
+impl Error {
+    /// Empty workspace, or a window that never published a menu.
+    ///
+    /// The bar asks on every focus change and retries while a new window
+    /// catches up. Those answers are the usual ones, not a fault in the bar.
+    pub fn is_absence(&self) -> bool {
+        matches!(self, Self::NoFocusedWindow | Self::NoMenuForFocusedWindow)
+    }
 }
 
 #[cfg(test)]
@@ -1202,9 +1415,10 @@ mod tests {
     use zbus::zvariant::{OwnedValue, Value};
 
     use super::{
-        Endpoint, EndpointKind, GtkGroup, GtkLink, Item, ItemId, ItemKind, Node, SectionId,
-        at_path, dbusmenu_tree, destination, gtk_menu_items, items_from, menu_for_address, path_to,
-        resolve_section, strip_mnemonics, unique_unaddressed, without_empty_dividers,
+        DbusMenuEvent, Endpoint, EndpointKind, Error, GtkGroup, GtkLink, Item, ItemId, ItemKind,
+        Node, SectionId, at_path, dbusmenu_tree, destination, dismiss, gtk, gtk_menu_items,
+        items_from, menu_for_address, path_to, resolve_section, strip_mnemonics,
+        unique_unaddressed, without_empty_dividers,
     };
 
     fn endpoint(json: &str) -> Endpoint {
@@ -1270,6 +1484,28 @@ mod tests {
         assert_eq!(strip_mnemonics("_File"), "File");
         assert_eq!(strip_mnemonics("Sele_ction"), "Selection");
         assert_eq!(strip_mnemonics("Save __All"), "Save _All");
+    }
+
+    #[test]
+    fn dbusmenu_events_use_the_protocol_names() {
+        assert_eq!(DbusMenuEvent::Opened.as_str(), "opened");
+        assert_eq!(DbusMenuEvent::Closed.as_str(), "closed");
+        assert_eq!(DbusMenuEvent::Clicked.as_str(), "clicked");
+    }
+
+    #[test]
+    fn a_window_without_a_menu_is_an_absence_not_a_fault() {
+        assert!(Error::NoFocusedWindow.is_absence());
+        assert!(Error::NoMenuForFocusedWindow.is_absence());
+        assert!(!Error::CompanionUnavailable.is_absence());
+        assert!(!Error::InvalidNode.is_absence());
+    }
+
+    #[tokio::test]
+    async fn a_gtk_heading_has_nothing_to_close() {
+        dismiss(&SectionId::Gtk { group: 0, menu: 1 })
+            .await
+            .expect("GTK dismiss is a no-op");
     }
 
     #[test]
@@ -1359,7 +1595,8 @@ mod tests {
             },
         ];
 
-        let items = gtk_menu_items(&groups, GtkLink::ROOT, 0).expect("menu should read");
+        let items = gtk_menu_items(&groups, GtkLink::ROOT, 0, &gtk::Actions::default())
+            .expect("menu should read");
 
         assert_eq!(items.len(), 2);
         assert_eq!(items[0].kind, ItemKind::Group);
@@ -1385,7 +1622,8 @@ mod tests {
             },
         ];
 
-        let items = gtk_menu_items(&groups, GtkLink::ROOT, 0).expect("menu should read");
+        let items = gtk_menu_items(&groups, GtkLink::ROOT, 0, &gtk::Actions::default())
+            .expect("menu should read");
 
         assert_eq!(items.len(), 3);
         assert_eq!(items[1].kind, ItemKind::Separator);
@@ -1407,7 +1645,8 @@ mod tests {
             },
         ];
 
-        let items = gtk_menu_items(&groups, GtkLink::ROOT, 0).expect("menu should read");
+        let items = gtk_menu_items(&groups, GtkLink::ROOT, 0, &gtk::Actions::default())
+            .expect("menu should read");
 
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].label, "New");
@@ -1431,7 +1670,8 @@ mod tests {
             },
         ];
 
-        let items = gtk_menu_items(&groups, GtkLink::ROOT, 0).expect("menu should read");
+        let items = gtk_menu_items(&groups, GtkLink::ROOT, 0, &gtk::Actions::default())
+            .expect("menu should read");
 
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].label, "New");

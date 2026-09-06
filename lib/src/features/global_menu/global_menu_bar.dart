@@ -351,6 +351,9 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
                           onHoverOpen: _open_,
                           onDismissed: () {
                             ref
+                                .read(rustCommandDispatcherProvider)
+                                .dispatch(GlobalMenuIntent.dismiss(section.id));
+                            ref
                                 .read(globalMenuSectionCacheProvider.notifier)
                                 .forget(section.id);
                             if (_open == section.id) {

@@ -6,21 +6,22 @@ use crate::signals::{
     AudioCommandResult, AudioStatus, BrightnessCommandResult, BrightnessSetLevel, BrightnessStatus,
     CaffeineCommandResult, CaffeineSetEnabled, CaffeineStatus, CapabilityStatus,
     ClockCalendarRequest, ClockStatus, ColorPickRequest, ColorPickerCommandResult, DesktopStatus,
-    FocusedWindowStatus, GlobalMenuActivateRequest, GlobalMenuIntegrationStatus, GlobalMenuItemId,
-    GlobalMenuRequest, GlobalMenuSectionId, GlobalMenuSectionRequest, HotkeyEvent, ModuleCommand,
-    ModuleCommandResult, ModulesStatus, MonitorFocusedWindowStatus, MonitorWorkspaceStatus,
-    NetworkCommandResult, NetworkConnectRequest, NetworkScanRequest, NetworkSetWifiEnabled,
-    NetworkSettingsRequest, NetworkStatus, NightLightCommandResult, NightLightSetEnabled,
-    NightLightSetTemperature, NightLightStatus, NotificationClearRequest,
-    NotificationDismissRequest, NotificationSetDoNotDisturb, NotificationStatus, PortalStatus,
-    PowerCommandResult, PowerSetProfile, PowerStatus, RecordingCommandResult, RecordingRequest,
-    RecordingStatus, ScheduleCommand, ScheduleCommandResult, ScheduleStatus,
-    ScreenshotCaptureRequest, ScreenshotCommandResult, SessionActionAvailability, SessionCommand,
-    SessionCommandResult, SetupCommand, SetupCommandResult, SetupStatus,
-    ShortcutSettingsCommandResult, ShortcutSettingsRequest, ShortcutSettingsSnapshot,
-    TrayActivateRequest, TrayMenuItemActivateRequest, TrayMenuStatus, TrayStatus,
-    WorkspaceSettingsCommand, WorkspaceSettingsCommandResult, WorkspaceSettingsStatus,
-    WorkspaceStatus, WorkspaceSwitch, WorkspaceSwitchKind,
+    FocusedWindowStatus, GlobalMenuActivateRequest, GlobalMenuDismissRequest,
+    GlobalMenuIntegrationStatus, GlobalMenuItemId, GlobalMenuRequest, GlobalMenuSectionId,
+    GlobalMenuSectionRequest, HotkeyEvent, ModuleCommand, ModuleCommandResult, ModulesStatus,
+    MonitorFocusedWindowStatus, MonitorWorkspaceStatus, NetworkCommandResult,
+    NetworkConnectRequest, NetworkScanRequest, NetworkSetWifiEnabled, NetworkSettingsRequest,
+    NetworkStatus, NightLightCommandResult, NightLightSetEnabled, NightLightSetTemperature,
+    NightLightStatus, NotificationClearRequest, NotificationDismissRequest,
+    NotificationSetDoNotDisturb, NotificationStatus, PortalStatus, PowerCommandResult,
+    PowerSetProfile, PowerStatus, RecordingCommandResult, RecordingRequest, RecordingStatus,
+    ScheduleCommand, ScheduleCommandResult, ScheduleStatus, ScreenshotCaptureRequest,
+    ScreenshotCommandResult, SessionActionAvailability, SessionCommand, SessionCommandResult,
+    SetupCommand, SetupCommandResult, SetupStatus, ShortcutSettingsCommandResult,
+    ShortcutSettingsRequest, ShortcutSettingsSnapshot, TrayActivateRequest,
+    TrayMenuItemActivateRequest, TrayMenuStatus, TrayStatus, WorkspaceSettingsCommand,
+    WorkspaceSettingsCommandResult, WorkspaceSettingsStatus, WorkspaceStatus, WorkspaceSwitch,
+    WorkspaceSwitchKind,
 };
 use crate::{
     app::{
@@ -55,7 +56,11 @@ pub(crate) async fn handle_global_menu_request(State(_): State<App>, _: GlobalMe
             global_menu::publish::headings(&menu);
         }
         Err(error) => {
-            tracing::debug!(%error, "Focused window has no readable AppMenu");
+            if error.is_absence() {
+                tracing::debug!(%error, "Focused window has no readable AppMenu");
+            } else {
+                tracing::warn!(%error, "Could not read the focused application's menu");
+            }
             global_menu::publish::no_headings(&error);
         }
     }
@@ -72,7 +77,11 @@ pub(crate) async fn handle_global_menu_section_request(
             global_menu::publish::section_items(&id, &items);
         }
         Err(error) => {
-            tracing::debug!(%error, "Could not read a menu section");
+            if error.is_absence() {
+                tracing::debug!(%error, "Could not read a menu section");
+            } else {
+                tracing::warn!(%error, "Could not read a menu section");
+            }
             global_menu::publish::section_failed(&id, &error);
         }
     }
@@ -84,6 +93,16 @@ pub(crate) async fn handle_global_menu_activate_request(
 ) {
     if let Err(error) = global_menu::activate(&item_id(&request.item)).await {
         tracing::warn!(%error, "Could not activate a menu item");
+    }
+}
+
+pub(crate) async fn handle_global_menu_dismiss_request(
+    State(_): State<App>,
+    request: GlobalMenuDismissRequest,
+) {
+    let id = section_id(&request.section);
+    if let Err(error) = global_menu::dismiss(&id).await {
+        tracing::debug!(%error, "Could not dismiss a menu section");
     }
 }
 
@@ -100,8 +119,9 @@ fn section_id(id: &GlobalMenuSectionId) -> global_menu::SectionId {
 fn item_id(id: &GlobalMenuItemId) -> global_menu::ItemId {
     match id {
         GlobalMenuItemId::DbusMenu { id } => global_menu::ItemId::DbusMenu { id: *id },
-        GlobalMenuItemId::Gtk { action } => global_menu::ItemId::Gtk {
+        GlobalMenuItemId::Gtk { action, target } => global_menu::ItemId::Gtk {
             action: action.clone(),
+            target: target.clone(),
         },
     }
 }

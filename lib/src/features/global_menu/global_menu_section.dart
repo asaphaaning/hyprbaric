@@ -51,7 +51,7 @@ abstract final class GlobalMenuInk {
   /// Menu rows at rest: a step above [HyprColors.textMuted], so labels read
   /// on the frost without jumping to hover-white.
   static Color get label =>
-      Color.lerp(HyprColors.textMuted, HyprColors.text, 0.4)!;
+      Color.lerp(HyprColors.textMuted, HyprColors.text, 0.55)!;
 
   /// Headings at rest. Same grey as the rest of the bar's labels.
   static const Color quiet = HyprColors.textMuted;
@@ -163,6 +163,11 @@ class _GlobalMenuSectionPanelState
       return;
     }
 
+    final GlobalMenuSectionId? previous = _openSubmenu;
+    if (previous != null) {
+      _dismiss(previous);
+    }
+
     ref
         .read(rustCommandDispatcherProvider)
         .dispatch(GlobalMenuIntent.openSection(section));
@@ -176,6 +181,7 @@ class _GlobalMenuSectionPanelState
     _linger?.cancel();
     _linger = Timer(_Menu.submenuLinger, () {
       if (mounted) {
+        _dismiss(_openSubmenu ?? _filledSubmenu);
         setState(() {
           _openSubmenu = null;
           _filledSubmenu = null;
@@ -186,12 +192,23 @@ class _GlobalMenuSectionPanelState
 
   void _closeSubNow() {
     _linger?.cancel();
-    if (_openSubmenu != null || _filledSubmenu != null) {
+    final GlobalMenuSectionId? closing = _openSubmenu ?? _filledSubmenu;
+    if (closing != null) {
+      _dismiss(closing);
       setState(() {
         _openSubmenu = null;
         _filledSubmenu = null;
       });
     }
+  }
+
+  void _dismiss(GlobalMenuSectionId? section) {
+    if (section == null) {
+      return;
+    }
+    ref
+        .read(rustCommandDispatcherProvider)
+        .dispatch(GlobalMenuIntent.dismiss(section));
   }
 
   @override
@@ -516,6 +533,11 @@ class _MenuRowState extends ConsumerState<_MenuRow> {
       widget.item.enabled &&
       (widget.item.activation != null || widget.item.submenu != null);
 
+  bool get _toggle => switch (widget.item.kind) {
+    GlobalMenuItemKindCheckmark() || GlobalMenuItemKindRadio() => true,
+    _ => false,
+  };
+
   void _activate() {
     final GlobalMenuItemId? activation = widget.item.activation;
     if (activation == null) {
@@ -525,7 +547,9 @@ class _MenuRowState extends ConsumerState<_MenuRow> {
     ref
         .read(rustCommandDispatcherProvider)
         .dispatch(GlobalMenuIntent.activate(activation));
-    widget.onActivated();
+    if (!_toggle) {
+      widget.onActivated();
+    }
   }
 
   @override

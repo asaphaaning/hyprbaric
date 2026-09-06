@@ -14,8 +14,13 @@ pub enum GlobalMenuSectionId {
 /// Addresses a row that can be activated.
 #[derive(Serialize, Deserialize, SignalPiece, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum GlobalMenuItemId {
-    DbusMenu { id: i32 },
-    Gtk { action: String },
+    DbusMenu {
+        id: i32,
+    },
+    Gtk {
+        action: String,
+        target: Option<Vec<u8>>,
+    },
 }
 
 /// The shape of one row.
@@ -42,6 +47,12 @@ pub struct GlobalMenuSectionRequest {
 #[derive(Deserialize, DartSignal)]
 pub struct GlobalMenuActivateRequest {
     pub item: GlobalMenuItemId,
+}
+
+/// Tells the focused application a heading or submenu is no longer shown.
+#[derive(Deserialize, DartSignal)]
+pub struct GlobalMenuDismissRequest {
+    pub section: GlobalMenuSectionId,
 }
 
 /// The focused window's headings, or why there are none.
