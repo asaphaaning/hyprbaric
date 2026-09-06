@@ -121,6 +121,7 @@ fn item(item: &global_menu::Item) -> GlobalMenuItem {
         kind: match item.kind {
             global_menu::ItemKind::Standard => GlobalMenuItemKind::Standard,
             global_menu::ItemKind::Separator => GlobalMenuItemKind::Separator,
+            global_menu::ItemKind::Group => GlobalMenuItemKind::Group,
             global_menu::ItemKind::Checkmark { checked } => {
                 GlobalMenuItemKind::Checkmark { checked }
             }

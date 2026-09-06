@@ -13,7 +13,7 @@
 mod plugin;
 mod registrar;
 
-pub use plugin::{Blocker, Configuration, Readiness};
+pub use plugin::{Configuration, Readiness};
 pub use registrar::Registrar;
 
 use std::{
@@ -83,6 +83,8 @@ pub enum ItemKind {
     Standard,
     /// A divider carrying no action.
     Separator,
+    /// A caption naming the rows beneath it, carrying no action of its own.
+    Group,
     /// A checkable row and its current state.
     Checkmark { checked: bool },
     /// One option of a mutually exclusive group.
@@ -254,13 +256,58 @@ async fn gtk_items(
 ) -> Result<Vec<Item>, Error> {
     let proxy = gtk_menus(connection, endpoint).await?;
     let groups = proxy.start(&[group]).await.map_err(Error::GtkLayout)?;
-    let items = gtk_group(&groups, GtkLink { group, menu })?
-        .items
-        .iter()
-        .map(gtk_item)
-        .collect();
+    let items = gtk_menu_items(&groups, GtkLink { group, menu }, 0)?;
 
     proxy.end(&[group]).await.map_err(Error::GtkLayout)?;
+
+    Ok(items)
+}
+
+/// Flattens one GTK menu, inlining the sections it is built from.
+///
+/// GTK expresses a divided menu as links to sections rather than as a list
+/// with separators in it, and names some of them. The rows of a section belong
+/// to the menu that links it, so they are read in place: a named section
+/// becomes a caption, and an unnamed one that follows another becomes the
+/// divider the menu was drawn with.
+fn gtk_menu_items(groups: &[GtkGroup], link: GtkLink, depth: u8) -> Result<Vec<Item>, Error> {
+    // Sections nest, and a malformed menu could link itself. The protocol has
+    // no notion of depth, so the reader supplies the bound.
+    const MAX_DEPTH: u8 = 8;
+
+    let mut items = Vec::new();
+    for entry in &gtk_group(groups, link)?.items {
+        let Some(section) = gtk_link(entry, ":section") else {
+            items.push(gtk_item(entry));
+            continue;
+        };
+
+        if depth >= MAX_DEPTH {
+            continue;
+        }
+
+        match gtk_optional_label(entry) {
+            Some(label) => items.push(Item {
+                label,
+                enabled: false,
+                kind: ItemKind::Group,
+                shortcut: None,
+                activation: None,
+                submenu: None,
+            }),
+            None if !items.is_empty() => items.push(Item {
+                label: String::new(),
+                enabled: false,
+                kind: ItemKind::Separator,
+                shortcut: None,
+                activation: None,
+                submenu: None,
+            }),
+            None => {}
+        }
+
+        items.extend(gtk_menu_items(groups, section, depth + 1)?);
+    }
 
     Ok(items)
 }
@@ -549,11 +596,14 @@ fn gtk_item(item: &HashMap<String, OwnedValue>) -> Item {
 }
 
 fn gtk_label(item: &HashMap<String, OwnedValue>) -> String {
+    gtk_optional_label(item).unwrap_or_else(|| "Untitled".to_owned())
+}
+
+fn gtk_optional_label(item: &HashMap<String, OwnedValue>) -> Option<String> {
     item.get("label")
         .and_then(|value| value.downcast_ref::<&str>().ok())
         .map(strip_mnemonics)
         .filter(|label| !label.is_empty())
-        .unwrap_or_else(|| "Untitled".to_owned())
 }
 
 fn gtk_link(item: &HashMap<String, OwnedValue>, name: &str) -> Option<GtkLink> {
@@ -701,7 +751,10 @@ mod tests {
 
     use zbus::zvariant::{OwnedValue, Value};
 
-    use super::{Item, ItemId, ItemKind, Node, SectionId, strip_mnemonics};
+    use super::{
+        GtkGroup, GtkLink, Item, ItemId, ItemKind, Node, SectionId, gtk_menu_items,
+        strip_mnemonics,
+    };
 
     fn node(id: i32, properties: &[(&str, Value<'static>)]) -> Node {
         Node {
@@ -717,6 +770,35 @@ mod tests {
                 .collect(),
             children: Vec::new(),
         }
+    }
+
+    fn gtk_entry(
+        attributes: &[(&str, Value<'static>)],
+        section: Option<(u32, u32)>,
+    ) -> HashMap<String, OwnedValue> {
+        let mut entry = attributes
+            .iter()
+            .map(|(key, value)| {
+                (
+                    (*key).to_owned(),
+                    OwnedValue::try_from(value.clone()).expect("attribute should convert"),
+                )
+            })
+            .collect::<HashMap<_, _>>();
+
+        if let Some((group, menu)) = section {
+            let link = zbus::zvariant::StructureBuilder::new()
+                .add_field(group)
+                .add_field(menu)
+                .build()
+                .expect("a section link should build");
+            entry.insert(
+                ":section".to_owned(),
+                OwnedValue::try_from(Value::from(link)).expect("link should convert"),
+            );
+        }
+
+        entry
     }
 
     fn shortcut(chord: &[&str]) -> Value<'static> {
@@ -805,6 +887,75 @@ mod tests {
 
         assert_eq!(item.activation, Some(ItemId::DbusMenu { id: 9 }));
         assert_eq!(item.submenu, None);
+    }
+
+    #[test]
+    fn a_named_gtk_section_becomes_a_caption_over_its_rows() {
+        let groups = vec![
+            GtkGroup {
+                group: 0,
+                menu: 0,
+                items: vec![gtk_entry(&[("label", Value::from("Recent"))], Some((0, 1)))],
+            },
+            GtkGroup {
+                group: 0,
+                menu: 1,
+                items: vec![gtk_entry(&[("label", Value::from("bar.tsx"))], None)],
+            },
+        ];
+
+        let items = gtk_menu_items(&groups, GtkLink::ROOT, 0).expect("menu should read");
+
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0].kind, ItemKind::Group);
+        assert_eq!(items[0].label, "Recent");
+        assert_eq!(items[1].label, "bar.tsx");
+    }
+
+    #[test]
+    fn an_unnamed_gtk_section_divides_the_rows_before_it() {
+        let groups = vec![
+            GtkGroup {
+                group: 0,
+                menu: 0,
+                items: vec![
+                    gtk_entry(&[("label", Value::from("New"))], None),
+                    gtk_entry(&[], Some((0, 1))),
+                ],
+            },
+            GtkGroup {
+                group: 0,
+                menu: 1,
+                items: vec![gtk_entry(&[("label", Value::from("Quit"))], None)],
+            },
+        ];
+
+        let items = gtk_menu_items(&groups, GtkLink::ROOT, 0).expect("menu should read");
+
+        assert_eq!(items.len(), 3);
+        assert_eq!(items[1].kind, ItemKind::Separator);
+        assert_eq!(items[2].label, "Quit");
+    }
+
+    #[test]
+    fn a_leading_unnamed_gtk_section_adds_no_divider() {
+        let groups = vec![
+            GtkGroup {
+                group: 0,
+                menu: 0,
+                items: vec![gtk_entry(&[], Some((0, 1)))],
+            },
+            GtkGroup {
+                group: 0,
+                menu: 1,
+                items: vec![gtk_entry(&[("label", Value::from("New"))], None)],
+            },
+        ];
+
+        let items = gtk_menu_items(&groups, GtkLink::ROOT, 0).expect("menu should read");
+
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].label, "New");
     }
 
     #[test]
