@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/screenshots/hyprbaric-orb.svg" width="160" alt="hyprbaric logo">
+  <img src="assets/screenshots/hyprbaric-chamber.svg" width="160" alt="hyprbaric logo">
 </p>
 
 <h1 align="center">hyprbaric</h1>
