@@ -5,7 +5,7 @@
   <summary>Flutter-based status bar tailored for Hyprland on Linux</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>AGPL-3.0-only</project_license>
-  <url type="homepage">https://github.com/asaphaaning/Hyprbaric</url>
+  <url type="homepage">https://github.com/asaphaaning/hyprbaric</url>
   <launchable type="desktop-id">com.hyprbaric.Hyprbaric.desktop</launchable>
   <description>
     <p>Hyprbaric is a Linux-only Flutter status bar for Hyprland with a Rust runtime for compositor, portal, tray, audio, display, notification, and capture integrations.</p>

@@ -37,10 +37,10 @@ case "$*" in
 {
   "assets": [
     {
-      "browser_download_url": "https://github.com/asaphaaning/Hyprbaric/releases/download/v0.1.0/hyprbaric-0.1.0%2B1-linux.deb"
+      "browser_download_url": "https://github.com/asaphaaning/hyprbaric/releases/download/v0.1.0/hyprbaric-0.1.0%2B1-linux.deb"
     },
     {
-      "browser_download_url": "https://github.com/asaphaaning/Hyprbaric/releases/download/v0.1.0/SHA256SUMS"
+      "browser_download_url": "https://github.com/asaphaaning/hyprbaric/releases/download/v0.1.0/SHA256SUMS"
     }
   ]
 }
