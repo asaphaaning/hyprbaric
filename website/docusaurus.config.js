@@ -6,9 +6,9 @@ const config = {
   favicon: 'img/logo.png',
 
   url: 'https://asaphaaning.github.io',
-  baseUrl: '/Hyprbaric/',
+  baseUrl: '/hyprbaric/',
   organizationName: 'asaphaaning',
-  projectName: 'Hyprbaric',
+  projectName: 'hyprbaric',
   trailingSlash: false,
 
   onBrokenLinks: 'throw',
@@ -80,7 +80,7 @@ const config = {
           position: 'right',
         },
         {
-          href: 'https://github.com/asaphaaning/Hyprbaric',
+          href: 'https://github.com/asaphaaning/hyprbaric',
           label: 'GitHub',
           position: 'right',
         },
@@ -116,11 +116,11 @@ const config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/asaphaaning/Hyprbaric',
+              href: 'https://github.com/asaphaaning/hyprbaric',
             },
             {
               label: 'Issues',
-              href: 'https://github.com/asaphaaning/Hyprbaric/issues',
+              href: 'https://github.com/asaphaaning/hyprbaric/issues',
             },
           ],
         },
@@ -129,7 +129,7 @@ const config = {
           items: [
             {
               label: 'Discussions',
-              href: 'https://github.com/asaphaaning/Hyprbaric/discussions',
+              href: 'https://github.com/asaphaaning/hyprbaric/discussions',
             },
           ],
         },
