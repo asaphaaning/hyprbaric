@@ -1,12 +1,17 @@
 #include <hyprland/src/Compositor.hpp>
 #include <hyprland/src/SharedDefs.hpp>
 #include <hyprland/src/desktop/state/ViewState.hpp>
+#include <hyprland/src/desktop/state/WindowState.hpp>
+#include <hyprland/src/desktop/view/Window.hpp>
 #include <hyprland/src/plugins/PluginAPI.hpp>
+#include <hyprland/src/protocols/XDGShell.hpp>
 #include <hyprland/src/protocols/core/Compositor.hpp>
+#include <hyprland/src/xwayland/XSurface.hpp>
 
 #include <wayland-server-core.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -25,6 +30,12 @@ struct Endpoint {
   std::string service;
   std::string path;
   std::optional<std::string> window_address;
+};
+
+/// An XWayland window's X11 identifier, used to join the AppMenu registrar.
+struct X11Window {
+  std::string address;
+  uint32_t xid = 0;
 };
 
 class Registry;
@@ -73,28 +84,34 @@ public:
   std::string snapshot(eHyprCtlOutputFormat format) const {
     const auto menus = endpoints();
     const auto gtk_surfaces = gtk_endpoints();
+    const auto x11 = x11_windows();
 
     if (format == FORMAT_JSON)
-      return snapshot_json(menus, gtk_surfaces);
+      return snapshot_json(menus, gtk_surfaces, x11);
 
-    if (menus.empty() && gtk_surfaces.empty())
+    if (menus.empty() && gtk_surfaces.empty() && x11.empty())
       return "No AppMenu endpoints.\n";
 
     std::string result;
     for (const auto *menu : menus) {
       result += "surface=" + std::to_string(wl_resource_get_id(menu->surface));
-      if (menu->endpoint->window_address)
-        result += " address=" + *menu->endpoint->window_address;
+      if (const auto address = address_for(*menu))
+        result += " address=" + *address;
       result += " service=" + menu->endpoint->service;
       result += " path=" + menu->endpoint->path + "\n";
     }
 
     for (const auto *surface : gtk_surfaces) {
       result += "surface=" + std::to_string(wl_resource_get_id(surface->surface));
-      if (surface->endpoint->window_address)
-        result += " address=" + *surface->endpoint->window_address;
+      if (const auto address = address_for(*surface))
+        result += " address=" + *address;
       result += " kind=gtk service=" + surface->endpoint->service;
       result += " menubar=" + surface->endpoint->menu_path + "\n";
+    }
+
+    for (const auto &window : x11) {
+      result += "kind=x11 address=" + window.address;
+      result += " xid=" + std::to_string(window.xid) + "\n";
     }
 
     return result;
@@ -217,7 +234,15 @@ private:
 
   static void unset_modal(wl_client *, wl_resource *) {}
 
-  static void present(wl_client *, wl_resource *, uint32_t) {}
+  static void present(wl_client *, wl_resource *resource, uint32_t) {
+    auto *surface =
+        static_cast<GtkSurface *>(wl_resource_get_user_data(resource));
+    if (!surface || !surface->endpoint)
+      return;
+
+    if (auto address = surface->owner->window_address(surface->surface))
+      surface->endpoint->window_address = std::move(address);
+  }
 
   static void set_address(wl_client *, wl_resource *resource,
                           const char *service_name, const char *object_path) {
@@ -225,9 +250,14 @@ private:
     if (!menu)
       return;
 
+    if (!service_name || !*service_name || !object_path || !*object_path) {
+      menu->endpoint.reset();
+      return;
+    }
+
     menu->endpoint = Endpoint{
-        .service = service_name ? service_name : "",
-        .path = object_path ? object_path : "",
+        .service = service_name,
+        .path = object_path,
         .window_address = menu->owner->window_address(menu->surface),
     };
   }
@@ -299,18 +329,90 @@ private:
     return result;
   }
 
+  /// Resolves the Hyprland window for a client surface.
+  ///
+  /// GTK often calls `set_dbus_properties` before the compositor has created a
+  /// window for that `wl_surface`, so a lookup at request time can miss. The
+  /// snapshot path asks again, and `present` retries after the window is shown.
   std::optional<std::string> window_address(wl_resource *surface) const {
     const auto surface_resource = CWLSurfaceResource::fromResource(surface);
     if (!surface_resource)
       return std::nullopt;
 
-    const auto window = std::move(Desktop::viewState()->query())
-                            .surface(surface_resource)
-                            .runWindow();
-    if (!window)
-      return std::nullopt;
+    if (const auto window = std::move(Desktop::viewState()->query())
+                                .surface(surface_resource)
+                                .runWindow())
+      return address_of(window);
 
+    for (const auto &window : Desktop::windowState()->windows()) {
+      if (window_owns_surface(window, surface_resource))
+        return address_of(window);
+    }
+
+    return std::nullopt;
+  }
+
+  std::optional<std::string> address_for(const Menu &menu) const {
+    return live_or_cached(menu.surface, menu.endpoint->window_address);
+  }
+
+  std::optional<std::string> address_for(const GtkSurface &surface) const {
+    return live_or_cached(surface.surface, surface.endpoint->window_address);
+  }
+
+  std::optional<std::string>
+  live_or_cached(wl_resource *surface,
+                 const std::optional<std::string> &cached) const {
+    if (auto live = window_address(surface))
+      return live;
+    return cached;
+  }
+
+  static std::string address_of(const PHLWINDOW &window) {
     return "0x" + pointer_hex(window.get());
+  }
+
+  static bool window_owns_surface(const PHLWINDOW &window,
+                                  const SP<CWLSurfaceResource> &surface) {
+    if (!window || !surface)
+      return false;
+
+    if (window->resource() == surface)
+      return true;
+
+    if (const auto xdg = window->m_xdgSurface.lock()) {
+      if (xdg->m_surface.lock() == surface)
+        return true;
+    }
+
+    if (const auto xwayland = window->m_xwaylandSurface.lock()) {
+      if (xwayland->m_surface.lock() == surface)
+        return true;
+    }
+
+    return false;
+  }
+
+  std::vector<X11Window> x11_windows() const {
+    std::vector<X11Window> result;
+    const auto &windows = Desktop::windowState()->windows();
+    result.reserve(windows.size());
+
+    for (const auto &window : windows) {
+      if (!window || !window->m_isX11)
+        continue;
+
+      const auto xwayland = window->m_xwaylandSurface.lock();
+      if (!xwayland || xwayland->m_xID == 0)
+        continue;
+
+      result.push_back(X11Window{
+          .address = "0x" + pointer_hex(window.get()),
+          .xid = xwayland->m_xID,
+      });
+    }
+
+    return result;
   }
 
   void close() {
@@ -337,49 +439,59 @@ private:
     }
   }
 
-  static std::string snapshot_json(
+  std::string snapshot_json(
       const std::vector<const Menu *> &menus,
-      const std::vector<const GtkSurface *> &gtk_surfaces) {
+      const std::vector<const GtkSurface *> &gtk_surfaces,
+      const std::vector<X11Window> &x11) const {
     std::string result = "[";
-
-    for (std::size_t index = 0; index < menus.size(); ++index) {
-      const auto &menu = *menus[index];
-      if (index > 0)
+    bool first = true;
+    const auto comma = [&] {
+      if (!first)
         result += ',';
+      first = false;
+    };
 
+    for (const auto *menu : menus) {
+      comma();
       result +=
-          "{\"surface\":" + std::to_string(wl_resource_get_id(menu.surface));
-      if (menu.endpoint->window_address) {
+          "{\"surface\":" + std::to_string(wl_resource_get_id(menu->surface));
+      if (const auto address = address_for(*menu)) {
         result += ",\"address\":\"";
-        result += *menu.endpoint->window_address;
+        result += *address;
         result += "\"";
       }
       result += ",\"kind\":\"dbusmenu\"";
-      result += ",\"service\":\"" + escape_json(menu.endpoint->service) + "\"";
-      result += ",\"path\":\"" + escape_json(menu.endpoint->path) + "\"}";
+      result += ",\"service\":\"" + escape_json(menu->endpoint->service) + "\"";
+      result += ",\"path\":\"" + escape_json(menu->endpoint->path) + "\"}";
     }
 
-    for (std::size_t index = 0; index < gtk_surfaces.size(); ++index) {
-      const auto &surface = *gtk_surfaces[index];
-      if (!menus.empty() || index > 0)
-        result += ',';
-
+    for (const auto *surface : gtk_surfaces) {
+      comma();
       result += "{\"surface\":" +
-                std::to_string(wl_resource_get_id(surface.surface));
-      if (surface.endpoint->window_address) {
+                std::to_string(wl_resource_get_id(surface->surface));
+      if (const auto address = address_for(*surface)) {
         result += ",\"address\":\"";
-        result += *surface.endpoint->window_address;
+        result += *address;
         result += "\"";
       }
       result += ",\"kind\":\"gtk\"";
       result += ",\"service\":\"" +
-                escape_json(surface.endpoint->service) + "\"";
+                escape_json(surface->endpoint->service) + "\"";
       result += ",\"path\":\"" +
-                escape_json(surface.endpoint->menu_path) + "\"";
+                escape_json(surface->endpoint->menu_path) + "\"";
       result += ",\"application_path\":\"" +
-                escape_json(surface.endpoint->application_path) + "\"";
+                escape_json(surface->endpoint->application_path) + "\"";
       result += ",\"window_path\":\"" +
-                escape_json(surface.endpoint->window_path) + "\"}";
+                escape_json(surface->endpoint->window_path) + "\"}";
+    }
+
+    for (const auto &window : x11) {
+      comma();
+      result += "{\"kind\":\"x11\",\"address\":\"";
+      result += escape_json(window.address);
+      result += "\",\"xid\":";
+      result += std::to_string(window.xid);
+      result += "}";
     }
 
     return result + "]\n";

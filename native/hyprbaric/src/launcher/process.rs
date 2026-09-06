@@ -3,67 +3,100 @@
 use std::{
     env,
     ffi::OsString,
-    path::Path,
-    process::{Command, Stdio},
+    path::{Path, PathBuf},
+    process::Command,
 };
+
+use tracing::instrument;
 
 use super::{Error, domain::Entry};
 
 pub(super) fn start_entry(entry: &Entry) -> Result<(), Error> {
     if command_exists("gtk-launch") {
-        let mut command = Command::new("gtk-launch");
-        command
-            .arg(entry.id.as_str())
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null());
-
-        if command.spawn().is_ok() {
+        let launch = Launch::gtk_launch(entry.id.as_str());
+        if start(&launch, entry).is_ok() {
             return Ok(());
         }
     }
 
-    let argv = expand_exec(entry)?;
-    let (program, arguments) = argv.split_first().ok_or_else(|| Error::InvalidExec {
+    let launch = Launch::from_exec(entry)?;
+    start(&launch, entry)
+}
+
+#[instrument(skip_all, fields(entry_id = %entry.id, command = tracing::field::Empty), err)]
+fn start(launch: &Launch, entry: &Entry) -> Result<(), Error> {
+    let command = launch.shell().map_err(|_| Error::InvalidExec {
         id: entry.id.clone(),
         exec: entry.exec.clone(),
     })?;
-
-    let mut command = if entry.terminal {
-        let terminal = terminal_command()?;
-        let mut command = Command::new(&terminal.program);
-        command.args(&terminal.arguments);
-        command.arg(program);
-        command.args(arguments);
-        command
-    } else {
-        let mut command = Command::new(program);
-        command.args(arguments);
-        command
-    };
-
-    if let Some(directory) = &entry.working_dir {
-        command.current_dir(directory);
-    }
-
-    command
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null());
-    command.spawn().map_err(|source| Error::Spawn {
-        command: launch_command_debug(entry, program, arguments),
-        source,
-    })?;
-    Ok(())
+    tracing::Span::current().record("command", command.as_str());
+    let mut fallback = launch.command();
+    crate::hyprland::start_user(&command, &mut fallback)
+        .map_err(|source| Error::Spawn { command, source })
 }
 
-fn launch_command_debug(entry: &Entry, program: &str, arguments: &[String]) -> String {
-    if entry.terminal {
-        format!("terminal -> {} {}", program, arguments.join(" "))
-    } else if arguments.is_empty() {
-        program.to_string()
-    } else {
-        format!("{program} {}", arguments.join(" "))
+struct Launch {
+    program: String,
+    arguments: Vec<String>,
+    working_dir: Option<PathBuf>,
+}
+
+impl Launch {
+    fn gtk_launch(id: &str) -> Self {
+        Self {
+            program: "gtk-launch".to_string(),
+            arguments: vec![id.to_string()],
+            working_dir: None,
+        }
+    }
+
+    fn from_exec(entry: &Entry) -> Result<Self, Error> {
+        let argv = expand_exec(entry)?;
+        let (program, arguments) = argv.split_first().ok_or_else(|| Error::InvalidExec {
+            id: entry.id.clone(),
+            exec: entry.exec.clone(),
+        })?;
+
+        if entry.terminal {
+            let terminal = terminal_command()?;
+            let mut wrapped = terminal.arguments;
+            wrapped.push(program.clone());
+            wrapped.extend(arguments.iter().cloned());
+            return Ok(Self {
+                program: terminal.program,
+                arguments: wrapped,
+                working_dir: entry.working_dir.clone(),
+            });
+        }
+
+        Ok(Self {
+            program: program.clone(),
+            arguments: arguments.to_vec(),
+            working_dir: entry.working_dir.clone(),
+        })
+    }
+
+    fn shell(&self) -> Result<String, shlex::QuoteError> {
+        let mut words = vec![self.program.as_str()];
+        words.extend(self.arguments.iter().map(String::as_str));
+        let command = shlex::try_join(words)?;
+        match &self.working_dir {
+            Some(directory) => {
+                let directory = directory.to_string_lossy();
+                let directory = shlex::try_quote(&directory)?;
+                Ok(format!("cd {directory} && {command}"))
+            }
+            None => Ok(command),
+        }
+    }
+
+    fn command(&self) -> Command {
+        let mut command = Command::new(&self.program);
+        command.args(&self.arguments);
+        if let Some(directory) = &self.working_dir {
+            command.current_dir(directory);
+        }
+        command
     }
 }
 
@@ -202,7 +235,7 @@ pub(super) fn command_name(command: &str) -> String {
 mod tests {
     use std::path::{Path, PathBuf};
 
-    use super::{command_name, expand_token};
+    use super::{Launch, command_name, expand_token};
     use crate::launcher::domain::{Entry, SearchFields, normalize};
 
     fn entry(id: &str, name: &str, exec: &str) -> Entry {
@@ -245,5 +278,52 @@ mod tests {
     fn command_name_uses_first_exec_token() {
         assert_eq!(command_name("firefox --new-window"), "firefox");
         assert_eq!(command_name("\"code\" --reuse-window"), "code");
+    }
+
+    #[test]
+    fn gtk_launch_shell_quotes_the_desktop_id() {
+        let launch = Launch::gtk_launch("Firefox Web Browser.desktop");
+        assert_eq!(
+            launch.shell().expect("desktop id should quote"),
+            "gtk-launch 'Firefox Web Browser.desktop'"
+        );
+    }
+
+    #[test]
+    fn exec_shell_keeps_simple_argv_unquoted() {
+        let entry = entry("firefox.desktop", "Firefox", "firefox --new-window");
+        let launch = Launch::from_exec(&entry).expect("exec should expand");
+        assert_eq!(
+            launch.shell().expect("shell should join"),
+            "firefox --new-window"
+        );
+    }
+
+    #[test]
+    fn exec_shell_quotes_arguments_and_working_directory() {
+        let mut entry = entry(
+            "code.desktop",
+            "Code",
+            r#"code --reuse-window "My Project""#,
+        );
+        entry.working_dir = Some(PathBuf::from("/tmp/My Docs"));
+        let launch = Launch::from_exec(&entry).expect("exec should expand");
+        assert_eq!(
+            launch.shell().expect("shell should quote"),
+            "cd '/tmp/My Docs' && code --reuse-window 'My Project'"
+        );
+    }
+
+    #[test]
+    fn exec_shell_wraps_terminal_entries() {
+        let launch = Launch {
+            program: "kitty".to_string(),
+            arguments: vec!["-e".to_string(), "htop".to_string()],
+            working_dir: None,
+        };
+        assert_eq!(
+            launch.shell().expect("terminal shell should join"),
+            "kitty -e htop"
+        );
     }
 }

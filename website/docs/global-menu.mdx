@@ -1,0 +1,250 @@
+---
+sidebar_position: 3
+title: Global menu
+description: How hyprbaric reads application menus, what works out of the box, and the extra steps Firefox and traditional GTK apps need.
+kicker: Configure hyprbaric
+---
+
+The global menu moves the focused application's menu bar onto hyprbaric, the way a macOS menu bar does. Windows that export no menu keep showing their title instead. The feature is opt-in because owning the desktop's AppMenu registrar name tells applications to stop drawing their own menu bar: if hyprbaric claimed that name without rendering the menus, those applications would have no menu bar anywhere.
+
+TOML keys and the compositor plugin live in [Configuration reference](./configuration-reference#global-menu). This page is the end-to-end path: how a menu reaches the bar, which toolkits just work, and which ones still need a setting in the application or in your session.
+
+## Turn it on
+
+Both halves share one switch. Enable the module, and hyprbaric loads the companion plugin and owns `com.canonical.AppMenu.Registrar` for as long as the bar runs:
+
+```toml title="config.toml"
+[global_menu]
+enabled = true
+
+[modules.global_menu]
+enabled = true
+```
+
+The **Modules** tab in Settings writes the second table. The setup guide can turn the same switch on during first launch. Restart applications that were already running: they decide whether to export a menu at startup, and they keep whichever menu bar they started with.
+
+<div className="hyprDocNote">
+  <div>Note</div>
+  <p>Turning the feature off and restarting hyprbaric releases the registrar name. Applications started after that draw their own menu bars again. Do not leave the registrar owned by a session that is not rendering menus.</p>
+</div>
+
+## User-driven session changes
+
+hyprbaric does not write your compositor config. Two Hyprland settings belong next to turning the module on: click-to-focus, so the bar still shows the window you meant, and the GTK AppMenu module, so classic `GtkMenuBar` applications export anything at all. Firefox prefs stay in the browser; they are listed under [Firefox](#firefox).
+
+### Click to focus
+
+The bar shows the **focused** application's menu. Hyprland's default is that the window under the cursor becomes focused as soon as the mouse moves onto it. Reaching a top bar then focuses whatever tiled window or floating palette sits between you and the headings, and the menu you were aiming for disappears.
+
+Turn hover-focus off so focus only changes when you click a window or use a keyboard shortcut:
+
+```ini title="hyprland.conf"
+input {
+    follow_mouse = 0
+    float_switch_override_focus = 0
+}
+```
+
+```lua title="hyprland.lua"
+hl.config({
+    input = {
+        follow_mouse = 0,
+        float_switch_override_focus = 0,
+    },
+})
+```
+
+`follow_mouse = 0` stops ordinary hover from stealing keyboard focus. `float_switch_override_focus = 0` is required as well: Hyprland otherwise still refocuses when the cursor crosses between a tiled window and a floating one, which is the usual path up to the bar past a dialog or a tool window.
+
+Apply immediately without a compositor restart:
+
+```bash title="terminal"
+# hyprlang (.conf)
+hyprctl keyword input:follow_mouse 0
+hyprctl keyword input:float_switch_override_focus 0
+
+# Lua
+hyprctl eval 'hl.config({ input = { follow_mouse = 0, float_switch_override_focus = 0 } })'
+```
+
+<div className="hyprDocNote">
+  <div>Recommended</div>
+  <p>Treat this as part of turning the global menu on. Hover-focus and a menu bar that tracks the focused window fight each other; click-to-focus is the model the bar is built for.</p>
+</div>
+
+### GTK AppMenu module
+
+GIMP and other applications that pack a classic `GtkMenuBar` into the window do **not** speak `gtk_shell1` on their own. Install a GTK module that hijacks that bar and exports DBusMenu / gtk-shell properties, then inject it into every GTK process Hyprland starts.
+
+The module name in `GTK_MODULES` is always `appmenu-gtk-module` (GTK loads `libappmenu-gtk-module.so`). That is not the package name.
+
+| Distro | Package | Notes |
+| --- | --- | --- |
+| Arch extra | `appmenu-gtk-module` | Current builds enable Wayland (`run-on-wayland` defaults to true) and talk to `gtk_shell1`. |
+| AUR | `appmenu-gtk-module-wayland` | Alternative that speaks `org_kde_kwin_appmenu` instead. Still set `GTK_MODULES` to `appmenu-gtk-module`. |
+| Debian / Ubuntu | `appmenu-gtk3-module` | XWayland path unless you also have a Wayland port. |
+
+Add both variables to the compositor environment. `UBUNTU_MENUPROXY=1` is what tells the module to actually steal the menubar; without it the module loads and does nothing. If `GTK_MODULES` is already set, append `:appmenu-gtk-module` rather than replacing the existing list.
+
+```ini title="hyprland.conf"
+env = GTK_MODULES,appmenu-gtk-module
+env = UBUNTU_MENUPROXY,1
+```
+
+```lua title="hyprland.lua"
+hl.env("GTK_MODULES", "appmenu-gtk-module")
+hl.env("UBUNTU_MENUPROXY", "1")
+```
+
+Hyprland applies `env` / `hl.env` when the compositor starts, not on `hyprctl reload`. Restart the session, then restart the GTK application. A working Wayland capture is a `dbusmenu` or `gtk` row for that window in `hyprctl -j hyprbaric-appmenu`.
+
+Push the same pair into systemd user activation if you launch GTK apps from `.desktop` files or other user services:
+
+```ini title="hyprland.conf"
+exec-once = systemctl --user set-environment GTK_MODULES=appmenu-gtk-module UBUNTU_MENUPROXY=1
+exec-once = dbus-update-activation-environment --systemd GTK_MODULES UBUNTU_MENUPROXY
+```
+
+The stock X11-only module is **not** enough for a Wayland-native GTK window: it registers with `com.canonical.AppMenu.Registrar` using an X11 window id, and never calls `org_kde_kwin_appmenu`. Arch `appmenu-gtk-module` 25.04 and the AUR Wayland port both know about Wayland. Pick one; do not install both over the same `.so`.
+
+## How a menu reaches the bar
+
+Three pieces have to agree, in this order:
+
+1. **The application exports a menu** on the session bus, either as `com.canonical.dbusmenu` or as GTK's `org.gtk.Menus`. Whether it does that, and which protocol it uses, is a property of the toolkit and of settings inside the app. hyprbaric cannot invent a menu that was never published.
+2. **The compositor companion** (`hyprbaric-appmenu`) associates that export with a Hyprland window. Wayland-native Qt, Firefox, and GtkApplication menubars call into `org_kde_kwin_appmenu` or `gtk_shell1`, which stock Hyprland does not implement; the companion does. GTK and Qt often publish the D-Bus endpoint before Hyprland has a `CWindow` for that surface, so the companion does not freeze the window address at that first request: it resolves the surface again when you query `hyprctl hyprbaric-appmenu`, and GTK also retries on `present`. If a row still has no `address`, hyprbaric will use it anyway when it is the only exported menu belonging to the focused process. Traditional GTK menus injected by `appmenu-gtk-module` on X11 never make that Wayland call. They register with `com.canonical.AppMenu.Registrar` using an X11 window id, and hyprbaric joins that table to the focused window by X11 id, then by process id.
+3. **The bar reads the focused window's endpoint** over D-Bus, lazily. Headings appear with the window; rows load when you open a heading. Qt fills those rows in response to `AboutToShow`. Firefox also needs the D-BusMenu `opened` event, and it then rebuilds its menu tree under new identifiers. The bar keeps the heading labels from the last read and opens the live node by that path, so a second click still reaches File after the first click caused a rebuild.
+
+A successful Wayland capture looks like this, with the focused window's Hyprland address in `address`:
+
+```bash title="terminal"
+hyprctl -j hyprbaric-appmenu
+```
+
+```json
+[
+  {
+    "address": "0x123456789abc",
+    "kind": "dbusmenu",
+    "service": "org.kde.kate-12345",
+    "path": "/MenuBar/1"
+  }
+]
+```
+
+`kind` is `gtk` for GtkApplication menubars and `dbusmenu` for Qt, Firefox, and GTK menus that went through AppMenu. XWayland windows also appear as `kind: x11` records so the registrar can be matched when the application never spoke the Wayland protocol.
+
+## What works without extra setup
+
+Restart the application after enabling the module. That is the whole user step for:
+
+| Kind | Examples | Protocol |
+| --- | --- | --- |
+| Qt and KDE | Kate, KWrite, Dolphin, Qt Creator | `org_kde_kwin_appmenu` + DBusMenu |
+| GTK `GtkApplication` menubars | Applications that call `gtk_application_set_menubar()` | `gtk_shell1` + `org.gtk.Menus` |
+
+Qt asks whether `com.canonical.AppMenu.Registrar` is owned on the session bus, on Wayland as well as on X11. That is why hyprbaric owns the name even though Wayland clients publish their endpoint through the companion rather than through the registrar.
+
+## Firefox
+
+Firefox does not export a menu until you turn the feature on in the browser. The prefs are false by default.
+
+1. Confirm Firefox is Wayland-native, not XWayland. `about:support` should list **Window Protocol** as `wayland`. If it says `x11`, start Firefox without forcing XWayland (`MOZ_ENABLE_WAYLAND=1` is the usual override).
+2. Open `about:config`.
+3. Set both of these to `true`:
+   - `widget.gtk.global-menu.enabled`
+   - `widget.gtk.global-menu.wayland.enabled`
+4. Restart Firefox.
+
+After that, focusing a Firefox window should produce a `kind: dbusmenu` row in `hyprctl -j hyprbaric-appmenu`, and File / Edit / View should appear on the bar. Opening a heading asks Firefox to fill that menu; Firefox then issues new native identifiers for the whole tree. The bar keeps opening by heading label, not by the id from the first read, so File still works after History has been opened. A third pref, `widget.gtk.native-context-menus`, is unrelated: it changes in-page context menus, not the application menu bar.
+
+These prefs are Mozilla's experimental GTK global-menu path. Some Firefox versions have been laggy with them enabled; if the browser stutters after the restart, turn both prefs back to `false` and restart again. The bar will show the window title instead, which is the same fallback used for any app that exports no menu.
+
+## Electron and Chromium
+
+hyprbaric already speaks the two protocols a global menu needs: KDE's `org_kde_kwin_appmenu` on Wayland, and Canonical's AppMenu registrar on X11. Electron does not use either of those on a Wayland session. Its Linux menu export still lives in an X11-only `libdbusmenu` path keyed by an X window id ([electron#34335](https://github.com/electron/electron/issues/34335), still open). Restarting hyprbaric or the Electron app does not change that.
+
+Chromium itself grew Wayland AppMenu support upstream. Chrome or Ungoogled Chromium on a recent enough build *can* show up as a `dbusmenu` row. Electron has not shipped that Chromium work, so VS Code, Discord, Slack, Signal, Obsidian, Spotify, and other Electron shells stay on the title fallback while they run as native Wayland windows.
+
+Two separate ceilings:
+
+| App | Native Wayland | XWayland |
+| --- | --- | --- |
+| Electron with a real `Menu.setApplicationMenu` (VS Code with the native title bar, some IDEs) | No export. Title on the bar is expected. | Registers with the AppMenu registrar. The bar can show File / Edit / … after a restart of that app, the same as X11 GTK. |
+| Electron with in-app chrome only (Discord, Slack, Spotify, most messengers) | Nothing to export. | Still nothing to export. There is no menubar in the process. |
+
+Force an Electron app onto XWayland only if that app actually has a menubar you want on the bar, for example:
+
+```bash title="terminal"
+# one run
+ELECTRON_OZONE_PLATFORM_HINT=x11 code
+
+# or
+code --ozone-platform=x11
+```
+
+`hyprctl activewindow -j` should then report `"xwayland": true`. If File still does not appear, the app is not calling `Menu.setApplicationMenu` (VS Code's custom title bar is the usual reason) and there is nothing hyprbaric can read.
+
+Do not treat this as a missing hyprbaric protocol. When Electron binds `org_kde_kwin_appmenu` the way Firefox and Qt already do, those apps will show up without a bar change.
+
+## Traditional GTK menus
+
+GIMP, many GTK 3 applications, and other programs that pack a classic `GtkMenuBar` into the window do **not** speak `gtk_shell1`. GTK only publishes `org.gtk.Menus` for `GMenuModel` menubars set on a `GtkApplication`. A `GtkMenuBar` stays in the window unless a GTK module hijacks it and exports it.
+
+That injection is a compositor environment change, not a hyprbaric TOML key. Package, `GTK_MODULES`, and `UBUNTU_MENUPROXY` are under [GTK AppMenu module](#gtk-appmenu-module). After those are in the session, restart the GTK application.
+
+### XWayland GTK
+
+Applications running through XWayland can use the same `GTK_MODULES=appmenu-gtk-module` line. That path registers with `com.canonical.AppMenu.Registrar` using an X11 window id. hyprbaric consumes that table: it matches the focused Hyprland window's X11 id when the companion can name one, and the registering process otherwise.
+
+The application must actually be an XWayland client (`xwayland: true` in `hyprctl activewindow -j`); a Wayland-native GTK app will not use the X11 registrar path.
+
+Prefer a Wayland-capable module (Arch extra `appmenu-gtk-module` 25.04+, or the AUR Wayland port) for apps that can run natively. The XWayland registrar path is the fallback for toolkits or versions that never learned AppMenu.
+
+### Headerbars have nothing to export
+
+Nautilus, Evince, most libadwaita applications, and anything that replaced its menubar with a headerbar or an in-window hamburger do not publish a menubar at all. No module can invent one. The bar keeps the window title, and that is expected.
+
+## Verify a window
+
+Focus the application, then:
+
+```bash title="terminal"
+# Companion capture, including XWayland window ids
+hyprctl -j hyprbaric-appmenu
+
+# Registrar name Qt (and the GTK X11 module) look for
+busctl --user status com.canonical.AppMenu.Registrar
+
+# Whether the focused window is Wayland or XWayland
+hyprctl activewindow -j
+```
+
+| Observation | Meaning |
+| --- | --- |
+| `hyprctl hyprbaric-appmenu` is `unknown request` | The companion plugin is not loaded. See the setup guide, or [how the companion is obtained](./configuration-reference#how-the-companion-is-obtained). |
+| The JSON is `[]`, or has no row for this window | The application is not exporting a menu. Check toolkit, Firefox prefs, `GTK_MODULES`, and that the app was started after those were set. |
+| A `dbusmenu` or `gtk` row exists, but has no `address` | The application published before Hyprland named the window. The bar still binds when the companion can resolve the surface, or when that row is the only menu from the focused process. Two address-less windows from the same process cannot be told apart. |
+| A `dbusmenu` or `gtk` row exists with an `address` that is not the focused window | The export belongs to another window of that application. Restart the application so it publishes against the live companion, then focus the window that owns the menubar. |
+| `busctl` says the registrar name has no owner | hyprbaric is not running with the module enabled, or another step failed before the registrar started. Qt will draw its own menu bar. |
+| `busctl` shows an owner that is not hyprbaric | Another desktop already claimed the registrar. Qt still exports, but X11 GTK registrations go to that owner and hyprbaric cannot read them. |
+
+Logs for the Rust half:
+
+```bash title="terminal"
+RUST_LOG=hyprbaric::global_menu=debug,info hyprbaric
+```
+
+## Applications already running
+
+Every path above is decided when the process starts:
+
+- Qt checks for the registrar name at startup.
+- Firefox reads `about:config` at startup.
+- GTK modules are loaded from `GTK_MODULES` at startup.
+
+Enabling the bar module, flipping a Firefox pref, or adding `env = GTK_MODULES,…` does nothing to a process that is already open. Restart that application.
+
+## Related configuration
+
+The `[global_menu]` table only chooses where the companion plugin comes from. Showing the menu on the bar is `[modules.global_menu]`. Both are documented with their defaults in the [configuration reference](./configuration-reference#global-menu).

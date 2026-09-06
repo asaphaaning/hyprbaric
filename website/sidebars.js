@@ -13,6 +13,7 @@ const sidebars = {
       items: [
         'configuration',
         'configuration-reference',
+        'global-menu',
         'settings-window',
         'shortcuts',
       ],

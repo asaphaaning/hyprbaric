@@ -55,6 +55,8 @@ stop_hour = 7
 
 Dropping every line but `[workspaces] visible_range = "large"` would still leave that table's `indicator_style = "roman"` and `clickable = true` in place.
 
+The `[modules.global_menu]` switch is off by default. Turning it on also claims the AppMenu registrar name, which is why Qt applications then export their menus; [Global menu](./global-menu) covers the Firefox prefs and GTK module some applications still need after that.
+
 Twelve tables make up the entire TOML surface. [Configuration surfaces](./configuration-reference#configuration-surfaces) lists them against what each one controls and which settings tab manages it, and the rest of that page covers every key, value, and default.
 
 ## What is configured outside TOML

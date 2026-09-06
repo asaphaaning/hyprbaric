@@ -337,7 +337,7 @@ String _subtitle(SetupStep step) => switch (step) {
     'One hue drives glows, active states, meters, and highlights across the whole bar.',
   SetupStep.layout => 'Dock the bar, then choose how workspaces are labelled.',
   SetupStep.globalMenu =>
-    'Move application menus out of their windows and onto the bar, the way macOS does. Qt and KDE applications support this well; GTK ones vary, and windows without a menu keep showing their title instead.',
+    'Move application menus out of their windows and onto the bar, the way macOS does. Qt and KDE applications work after a restart. Firefox and traditional GTK menus need a short extra setup, and windows without a menu keep showing their title instead.',
 };
 
 class _FeatureList extends StatelessWidget {

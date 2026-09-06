@@ -42,6 +42,7 @@ export 'src/bindings/bindings.dart'
         GlobalMenuItemIdDbusMenu,
         GlobalMenuItemKind,
         GlobalMenuItemKindCheckmark,
+        GlobalMenuItemKindGroup,
         GlobalMenuItemKindRadio,
         GlobalMenuItemKindSeparator,
         GlobalMenuItemKindStandard,
