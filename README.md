@@ -18,7 +18,7 @@
 Install the latest verified release—no Flutter or Rust toolchain required:
 
 ```sh
-curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/Hyprbaric/master/install.sh | sh
+curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/asaphaaning/hyprbaric/master/install.sh | sh
 ```
 
 The installer detects your distribution and uses the matching GitHub release artifact:
@@ -28,13 +28,13 @@ The installer detects your distribution and uses the matching GitHub release art
 - Fedora, RHEL, and openSUSE receive the RPM package.
 - Other Linux distributions receive the AppImage.
 
-Every download is checked against the release checksum before installation. You can also [download the latest AppImage or native package](https://github.com/asaphaaning/Hyprbaric/releases/latest) yourself, or see the [installation guide](https://asaphaaning.github.io/Hyprbaric/docs/installation) for pinned releases and source builds.
+Every download is checked against the release checksum before installation. You can also [download the latest AppImage or native package](https://github.com/asaphaaning/hyprbaric/releases/latest) yourself, or see the [installation guide](https://asaphaaning.github.io/hyprbaric/docs/installation) for pinned releases and source builds.
 
 Start the bar with `hyprbaric`, then add `exec-once = hyprbaric` to `hyprland.conf` when you are ready to launch it with Hyprland.
 
 ## Documentation
 
-Explore the [hyprbaric documentation site](https://asaphaaning.github.io/Hyprbaric/) for configuration, shortcuts, and a closer look at the bar in action.
+Explore the [hyprbaric documentation site](https://asaphaaning.github.io/hyprbaric/) for configuration, shortcuts, and a closer look at the bar in action.
 
 ## Scope and requirements
 
