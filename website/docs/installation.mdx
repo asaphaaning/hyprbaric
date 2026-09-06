@@ -34,7 +34,7 @@ The installer fetches the latest verified GitHub release and selects the native 
 
 <InstallTabs />
 
-Prefer to handle the package yourself? [Open the latest release](https://github.com/asaphaaning/Hyprbaric/releases/latest) to download its AppImage, DEB, RPM, or Pacman package and `SHA256SUMS` directly.
+Prefer to handle the package yourself? [Open the latest release](https://github.com/asaphaaning/hyprbaric/releases/latest) to download its AppImage, DEB, RPM, or Pacman package and `SHA256SUMS` directly.
 
 <div className="hyprDocNote">
   <div>Note</div>
@@ -46,8 +46,8 @@ Prefer to handle the package yourself? [Open the latest release](https://github.
 Use the source checkout when you want to develop hyprbaric or run the current `master` branch:
 
 ```sh title="terminal"
-git clone https://github.com/asaphaaning/Hyprbaric.git
-cd Hyprbaric
+git clone https://github.com/asaphaaning/hyprbaric.git
+cd hyprbaric
 flutter pub get
 flutter run -d linux
 ```
@@ -74,7 +74,7 @@ The verifier checks the exact versioned AppImage, DEB, RPM, and Pacman outputs, 
 The installer accepts `--version vX.Y.Z` when you want a specific release. Download it first if you would like to inspect the exact script before executing it:
 
 ```sh title="terminal"
-curl --proto '=https' --tlsv1.2 -fLO https://raw.githubusercontent.com/asaphaaning/Hyprbaric/master/install.sh
+curl --proto '=https' --tlsv1.2 -fLO https://raw.githubusercontent.com/asaphaaning/hyprbaric/master/install.sh
 less install.sh
 sh install.sh --version vX.Y.Z
 ```
