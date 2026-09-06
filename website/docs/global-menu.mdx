@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
 title: Global menu
-description: How hyprbaric reads application menus, what works out of the box, and the extra steps Firefox and traditional GTK apps need.
+description: How hyprbaric reads application menus, the two session settings the setup guide will not write, and the extra steps Firefox and traditional GTK apps need.
 kicker: Configure hyprbaric
 ---
 
@@ -21,7 +21,7 @@ enabled = true
 enabled = true
 ```
 
-The **Modules** tab in Settings writes the second table. The setup guide can turn the same switch on during first launch. Restart applications that were already running: they decide whether to export a menu at startup, and they keep whichever menu bar they started with.
+The **Modules** tab in Settings writes the second table. The setup guide can turn the same switch on during first launch. It does not write Hyprland config: click-to-focus and the GTK AppMenu module stay in `hyprland.conf`, on purpose. Restart applications that were already running: they decide whether to export a menu at startup, and they keep whichever menu bar they started with.
 
 <div className="hyprDocNote">
   <div>Note</div>
@@ -30,7 +30,14 @@ The **Modules** tab in Settings writes the second table. The setup guide can tur
 
 ## User-driven session changes
 
-hyprbaric does not write your compositor config. Two Hyprland settings belong next to turning the module on: click-to-focus, so the bar still shows the window you meant, and the GTK AppMenu module, so classic `GtkMenuBar` applications export anything at all. Firefox prefs stay in the browser; they are listed under [Firefox](#firefox).
+hyprbaric does not write your compositor config. The setup guide only flips the module switch; it will not set these. Skip them and the feature feels broken even when the bar is doing its job:
+
+| If you skip | What you see |
+| --- | --- |
+| Click-to-focus (`follow_mouse = 0`) | [The menu vanished on the way to the bar](./troubleshooting#the-global-menu-vanishes-on-the-way-to-the-bar). Hover-focus steals the window as the pointer crosses tiles and floating palettes. |
+| `appmenu-gtk-module` in the session | GIMP and other classic `GtkMenuBar` apps keep their in-window bar, and hyprbaric shows the title. Nothing was published for the companion to capture. |
+
+Firefox prefs stay in the browser; they are listed under [Firefox](#firefox).
 
 ### Click to focus
 
@@ -74,7 +81,7 @@ hyprctl eval 'hl.config({ input = { follow_mouse = 0, float_switch_override_focu
 
 ### GTK AppMenu module
 
-GIMP and other applications that pack a classic `GtkMenuBar` into the window do **not** speak `gtk_shell1` on their own. Install a GTK module that hijacks that bar and exports DBusMenu / gtk-shell properties, then inject it into every GTK process Hyprland starts.
+GIMP is the usual report. It packs a classic `GtkMenuBar` into the window and does **not** speak `gtk_shell1` on its own. Until `appmenu-gtk-module` is in that process, the bar can only show GIMP's title. Install a GTK module that hijacks the menubar and exports DBusMenu / gtk-shell properties, then inject it into every GTK process Hyprland starts.
 
 The module name in `GTK_MODULES` is always `appmenu-gtk-module` (GTK loads `libappmenu-gtk-module.so`). That is not the package name.
 
@@ -113,7 +120,7 @@ Three pieces have to agree, in this order:
 
 1. **The application exports a menu** on the session bus, either as `com.canonical.dbusmenu` or as GTK's `org.gtk.Menus`. Whether it does that, and which protocol it uses, is a property of the toolkit and of settings inside the app. hyprbaric cannot invent a menu that was never published.
 2. **The compositor companion** (`hyprbaric-appmenu`) associates that export with a Hyprland window. Wayland-native Qt, Firefox, and GtkApplication menubars call into `org_kde_kwin_appmenu` or `gtk_shell1`, which stock Hyprland does not implement; the companion does. GTK and Qt often publish the D-Bus endpoint before Hyprland has a `CWindow` for that surface, so the companion does not freeze the window address at that first request: it resolves the surface again when you query `hyprctl hyprbaric-appmenu`, and GTK also retries on `present`. If a row still has no `address`, hyprbaric will use it anyway when it is the only exported menu belonging to the focused process. Traditional GTK menus injected by `appmenu-gtk-module` on X11 never make that Wayland call. They register with `com.canonical.AppMenu.Registrar` using an X11 window id, and hyprbaric joins that table to the focused window by X11 id, then by process id.
-3. **The bar reads the focused window's endpoint** over D-Bus, lazily. Headings appear with the window; rows load when you open a heading. Qt fills those rows in response to `AboutToShow`. Firefox also needs the D-BusMenu `opened` event, and it then rebuilds its menu tree under new identifiers. The bar keeps the heading labels from the last read and opens the live node by that path, so a second click still reaches File after the first click caused a rebuild.
+3. **The bar reads the focused window's endpoint** over D-Bus, lazily. Headings appear with the window; rows load when you open a heading. Qt fills those rows in response to `AboutToShow`. Firefox also needs the D-BusMenu `opened` event, and it then rebuilds its menu tree under new identifiers. The bar keeps the heading labels from the last read and opens the live node by that path, so a second click still reaches File after the first click caused a rebuild. Dismissing a heading or flyout sends the matching `closed` event so Firefox and Qt drop that popup state. Toggling a checkmark or radio leaves the menu open; while it is up, D-BusMenu layout and property updates re-read that menu so the marks redraw in place.
 
 A successful Wayland capture looks like this, with the focused window's Hyprland address in `address`:
 
@@ -144,6 +151,8 @@ Restart the application after enabling the module. That is the whole user step f
 | GTK `GtkApplication` menubars | Applications that call `gtk_application_set_menubar()` | `gtk_shell1` + `org.gtk.Menus` |
 
 Qt asks whether `com.canonical.AppMenu.Registrar` is owned on the session bus, on Wayland as well as on X11. That is why hyprbaric owns the name even though Wayland clients publish their endpoint through the companion rather than through the registrar.
+
+GtkApplication menus are joined to `org.gtk.Actions` the way GTK's own menu tracker joins them in-process. Disabled actions are disabled, boolean state is a checkmark, a `target` that matches state is the selected radio, and Activate sends that target so parameterized rows do something. Keyboard shortcuts appear when the menu item carries the `accel` attribute (`<Primary>q` becomes `Ctrl+Q`). Shortcuts registered only with `gtk_application_set_accels_for_action` are not on the bus, so they do not appear.
 
 ## Firefox
 
@@ -222,7 +231,9 @@ hyprctl activewindow -j
 
 | Observation | Meaning |
 | --- | --- |
-| `hyprctl hyprbaric-appmenu` is `unknown request` | The companion plugin is not loaded. See the setup guide, or [how the companion is obtained](./configuration-reference#how-the-companion-is-obtained). |
+| Headings change as the pointer travels to the bar | Hover-focus stole the window. This is [click-to-focus](#click-to-focus), not a missing export. |
+| GIMP (or another classic `GtkMenuBar` app) still shows its title | `appmenu-gtk-module` is not in that process. See [GTK AppMenu module](#gtk-appmenu-module), then restart the application. |
+| `hyprctl hyprbaric-appmenu` is `unknown request` | The companion plugin is not loaded. See [how the companion is obtained](./configuration-reference#how-the-companion-is-obtained). |
 | The JSON is `[]`, or has no row for this window | The application is not exporting a menu. Check toolkit, Firefox prefs, `GTK_MODULES`, and that the app was started after those were set. |
 | A `dbusmenu` or `gtk` row exists, but has no `address` | The application published before Hyprland named the window. The bar still binds when the companion can resolve the surface, or when that row is the only menu from the focused process. Two address-less windows from the same process cannot be told apart. |
 | A `dbusmenu` or `gtk` row exists with an `address` that is not the focused window | The export belongs to another window of that application. Restart the application so it publishes against the live companion, then focus the window that owns the menubar. |
