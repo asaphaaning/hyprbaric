@@ -12,13 +12,16 @@ import '../rust_commands.dart';
 /// Geometry of an open menu, from the v6 reference.
 abstract final class _Menu {
   static const double panelMinWidth = 214;
-  static const double panelPadding = 5;
+  static const double panelPadding = 6;
   static const double panelRadius = 11;
-  static const double rowHeight = 25;
+  static const double rowHeight = 28;
   static const double rowRadius = 6;
-  static const double rowGap = 1;
-  static const double markWidth = 13;
-  static const double columnGap = 8;
+  static const double rowGap = 2;
+  static const double markWidth = 14;
+  static const double columnGap = 10;
+
+  /// Space between a label and its accelerator, from the mock's grid gutter.
+  static const double keyGap = 24;
 
   /// A submenu overhangs its parent row by the panel's own padding, so the
   /// first child sits level with the row that opened it.
@@ -27,32 +30,34 @@ abstract final class _Menu {
   static const double submenuMinWidth = 168;
   static const Duration submenuFade = Duration(milliseconds: 120);
 
+  /// A little more of the layer-shell blur than the shared popover floor.
+  /// Scales both the dark fill and the top-to-bottom wash; 1.0 is the tray.
+  static const double glass = 0.84;
+
   /// Grace period before a submenu closes, so the pointer can cross the gap
   /// between the row and the panel it opened without losing it.
   static const Duration submenuLinger = Duration(milliseconds: 260);
 }
 
-/// The reference's four foreground steps, mapped onto Hyprbaric's palette.
+/// Foreground steps shared with the bar and the other popovers.
 ///
-/// Shared with the bar so a heading and the rows it opens are tinted from one
-/// set of weights rather than two that drift apart.
-///
-/// The design names four weights where the bar's palette carries three, so the
-/// dimmest two are derived rather than invented: a menu's accelerators and
-/// carets sit a step below its labels, and a row the application has disabled
-/// sits below everything.
+/// A heading and the rows it opens have to sit on the same greys as the app
+/// title and a tray menu. A private oklch ladder next to those looks like a
+/// different product, and on a translucent panel the dimmer steps fall away.
 abstract final class GlobalMenuInk {
-  /// Labels the pointer is on, and open headings.
+  /// Labels the pointer is on, and hovered headings.
   static const Color bright = HyprColors.text;
 
-  /// Menu rows at rest.
-  static const Color label = HyprColors.textMuted;
+  /// Menu rows at rest: a step above [HyprColors.textMuted], so labels read
+  /// on the frost without jumping to hover-white.
+  static Color get label =>
+      Color.lerp(HyprColors.textMuted, HyprColors.text, 0.4)!;
 
-  /// Headings at rest, and accelerators the pointer is on.
-  static const Color quiet = HyprColors.textFaint;
+  /// Headings at rest. Same grey as the rest of the bar's labels.
+  static const Color quiet = HyprColors.textMuted;
 
   /// Accelerators, carets, and group captions at rest.
-  static Color get faint => HyprColors.textFaint.withValues(alpha: 0.62);
+  static const Color faint = HyprColors.textFaint;
 
   /// Rows the application will not let you use.
   static Color get disabled => HyprColors.textFaint.withValues(alpha: 0.42);
@@ -60,6 +65,63 @@ abstract final class GlobalMenuInk {
   /// The tint an open heading takes: near-white, barely coloured.
   static Color get openHeading =>
       Color.lerp(HyprColors.text, HyprColors.accent, 0.14)!;
+
+  /// Checkmarks, in the same accent the rest of the bar uses for state.
+  static const Color mark = HyprColors.accent;
+
+  /// The wash under a hovered or open row.
+  static const Color rowHover = HyprColors.hover;
+}
+
+/// Formats a D-BusMenu chord the way the v6 mock prints one.
+///
+/// Rust stores `Ctrl+Shift+N`. The mock prints `Ctrl ⇧ N`: space-separated,
+/// with a glyph for every modifier that has one. Super becomes Mod, which is
+/// how the rest of the mock talks about Hyprland's logo key.
+String formatGlobalMenuAccelerator(String chord) {
+  if (!chord.contains('+')) {
+    return _acceleratorToken(chord);
+  }
+
+  late final String modifiers;
+  late final String key;
+  if (chord.endsWith('++') && chord.length > 2) {
+    modifiers = chord.substring(0, chord.length - 2);
+    key = '+';
+  } else {
+    final int last = chord.lastIndexOf('+');
+    modifiers = chord.substring(0, last);
+    key = chord.substring(last + 1);
+  }
+
+  return <String>[
+    ...modifiers
+        .split('+')
+        .where((String part) => part.isNotEmpty)
+        .map(_acceleratorToken),
+    _acceleratorToken(key),
+  ].join(' ');
+}
+
+String _acceleratorToken(String token) {
+  if (token.isEmpty) {
+    return '+';
+  }
+
+  return switch (token) {
+    'Shift' => '⇧',
+    'Alt' => '⌥',
+    'Super' || 'Meta' => 'Mod',
+    'Control' => 'Ctrl',
+    'Up' || 'ArrowUp' => '↑',
+    'Down' || 'ArrowDown' => '↓',
+    'Left' || 'ArrowLeft' => '←',
+    'Right' || 'ArrowRight' => '→',
+    'Tab' => '⇥',
+    'Return' || 'Enter' || 'ISO_Enter' => '⏎',
+    'space' || 'Space' => 'Space',
+    _ => token,
+  };
 }
 
 /// One open heading: its rows, and any submenu flying out beside them.
@@ -85,6 +147,7 @@ class GlobalMenuSectionPanel extends ConsumerStatefulWidget {
 class _GlobalMenuSectionPanelState
     extends ConsumerState<GlobalMenuSectionPanel> {
   GlobalMenuSectionId? _openSubmenu;
+  GlobalMenuSectionId? _filledSubmenu;
   double _submenuOffset = 0;
   Timer? _linger;
 
@@ -113,21 +176,37 @@ class _GlobalMenuSectionPanelState
     _linger?.cancel();
     _linger = Timer(_Menu.submenuLinger, () {
       if (mounted) {
-        setState(() => _openSubmenu = null);
+        setState(() {
+          _openSubmenu = null;
+          _filledSubmenu = null;
+        });
       }
     });
   }
 
   void _closeSubNow() {
     _linger?.cancel();
-    if (_openSubmenu != null) {
-      setState(() => _openSubmenu = null);
+    if (_openSubmenu != null || _filledSubmenu != null) {
+      setState(() {
+        _openSubmenu = null;
+        _filledSubmenu = null;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final GlobalMenuSectionId? submenu = _openSubmenu;
+    final GlobalMenuSectionId? pending = _openSubmenu;
+    GlobalMenuSectionId? flyout = pending == null ? null : _filledSubmenu;
+    if (pending != null) {
+      final GlobalMenuSectionStatus? status = ref
+          .watch(globalMenuSectionProvider(pending))
+          .value;
+      if (status != null && status.items.isNotEmpty) {
+        flyout = pending;
+        _filledSubmenu = pending;
+      }
+    }
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -139,14 +218,14 @@ class _GlobalMenuSectionPanelState
             minWidth: _Menu.panelMinWidth,
             child: _MenuRows(
               section: widget.section,
-              openSubmenu: submenu,
+              openSubmenu: pending,
               onActivated: widget.onActivated,
               onSubmenuHovered: _openSub,
               onLeafHovered: _closeSubNow,
             ),
           ),
         ),
-        if (submenu != null) ...<Widget>[
+        if (flyout != null) ...<Widget>[
           const SizedBox(width: _Menu.submenuGap),
           Padding(
             padding: EdgeInsets.only(top: _submenuOffset),
@@ -154,7 +233,6 @@ class _GlobalMenuSectionPanelState
               onEnter: (_) => _linger?.cancel(),
               onExit: (_) => _closeSubAfterLinger(),
               child: TweenAnimationBuilder<double>(
-                key: ValueKey<GlobalMenuSectionId>(submenu),
                 tween: Tween<double>(begin: 0, end: 1),
                 duration: _Menu.submenuFade,
                 curve: Curves.easeOut,
@@ -170,7 +248,7 @@ class _GlobalMenuSectionPanelState
                 child: _MenuPanel(
                   minWidth: _Menu.submenuMinWidth,
                   child: _MenuRows(
-                    section: submenu,
+                    section: flyout,
                     openSubmenu: null,
                     onActivated: widget.onActivated,
                     // One level of flyout is as far as the bar goes; deeper
@@ -196,14 +274,20 @@ class _MenuPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Same chassis as the tray, audio, and network popovers, with a slightly
+    // thinner dark floor so the frost behind the menu can still read.
+    final Color floor = context.hyprPalette.surfaceStrong;
     return HyprPopoverPanel(
       borderRadius: BorderRadius.circular(_Menu.panelRadius),
-      // The reference sets a floor and no ceiling: a menu is as wide as its
-      // longest row. The ceiling here only stops a pathological label from
-      // taking the screen, and rows ellipsize rather than wrap if one does.
-      constraints: BoxConstraints(minWidth: minWidth, maxWidth: 420),
+      color: floor.withValues(alpha: floor.a * _Menu.glass),
+      overlayOpacity: _Menu.glass,
+      // The mock's menu is a grid: a 214px floor, labels in the middle
+      // column, accelerators on the right. The ceiling is the original 360px
+      // so a heading and its flyout still sit on a typical panel together;
+      // rows ellipsize rather than wrap once they hit it.
+      constraints: BoxConstraints(minWidth: minWidth, maxWidth: 360),
       padding: const EdgeInsets.all(_Menu.panelPadding),
-      child: child,
+      child: SizedBox(width: double.infinity, child: child),
     );
   }
 }
@@ -235,10 +319,12 @@ class _MenuRows extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final GlobalMenuSectionStatus? status = ref
-        .watch(globalMenuSectionProvider(section))
-        .asData
-        ?.value;
+    final AsyncValue<GlobalMenuSectionStatus> asyncStatus = ref.watch(
+      globalMenuSectionProvider(section),
+    );
+    // Keep the last rows while a sibling flyout reloads the stream. Showing
+    // the one-line loading notice instead is what made the open menu jump.
+    final GlobalMenuSectionStatus? status = asyncStatus.value;
 
     if (status == null) {
       return const _MenuNotice(label: 'Loading…');
@@ -247,41 +333,64 @@ class _MenuRows extends ConsumerWidget {
       return const _MenuNotice(label: 'No entries');
     }
 
+    final List<GlobalMenuItem> items = _withoutEmptyDividers(status.items);
+    if (items.isEmpty) {
+      return const _MenuNotice(label: 'No entries');
+    }
+
     // Rows are stacked at a known height, so a submenu's vertical offset is
     // arithmetic rather than a measurement taken after layout.
     double offset = _Menu.panelPadding;
     final List<Widget> rows = <Widget>[];
-    for (final GlobalMenuItem item in status.items) {
+    for (final GlobalMenuItem item in items) {
       final double top = offset;
       offset += _extentOf(item.kind) + _Menu.rowGap;
 
-      rows.add(
-        switch (item.kind) {
-          GlobalMenuItemKindSeparator() => const _MenuSeparator(),
-          GlobalMenuItemKindGroup() => _MenuGroup(label: item.label),
-          _ => _MenuRow(
-            item: item,
-            open: openSubmenu != null && item.submenu == openSubmenu,
-            onActivated: onActivated,
-            onHovered: () {
-              final GlobalMenuSectionId? submenu = item.submenu;
-              if (submenu == null || onSubmenuHovered == null) {
-                onLeafHovered();
-                return;
-              }
-              onSubmenuHovered!(submenu, top - _Menu.submenuOverhang);
-            },
-          ),
-        },
-      );
+      rows.add(switch (item.kind) {
+        GlobalMenuItemKindSeparator() => const _MenuSeparator(),
+        GlobalMenuItemKindGroup() => _MenuGroup(label: item.label),
+        _ => _MenuRow(
+          item: item,
+          open: openSubmenu != null && item.submenu == openSubmenu,
+          onActivated: onActivated,
+          onHovered: () {
+            final GlobalMenuSectionId? submenu = item.submenu;
+            if (submenu == null || onSubmenuHovered == null) {
+              onLeafHovered();
+              return;
+            }
+            onSubmenuHovered!(submenu, top - _Menu.submenuOverhang);
+          },
+        ),
+      });
     }
 
+    // Rows stretch to the panel so accelerators sit on one right-hand column,
+    // the way the mock's grid does. Long labels ellipsize once the panel is
+    // as wide as it is allowed to be.
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: _Menu.rowGap,
       children: rows,
     );
   }
+}
+
+/// Drops separators that do not sit between two real rows.
+List<GlobalMenuItem> _withoutEmptyDividers(List<GlobalMenuItem> items) {
+  final List<GlobalMenuItem> rows = <GlobalMenuItem>[];
+  for (final GlobalMenuItem item in items) {
+    if (item.kind is GlobalMenuItemKindSeparator &&
+        (rows.isEmpty || rows.last.kind is GlobalMenuItemKindSeparator)) {
+      continue;
+    }
+    rows.add(item);
+  }
+  while (rows.isNotEmpty && rows.last.kind is GlobalMenuItemKindSeparator) {
+    rows.removeLast();
+  }
+  return rows;
 }
 
 class _MenuNotice extends StatelessWidget {
@@ -300,8 +409,9 @@ class _MenuNotice extends StatelessWidget {
           child: Text(
             label,
             style: HyprTypography.globalMenuItem.copyWith(
-              color: HyprColors.textFaint,
+              color: GlobalMenuInk.faint,
             ),
+            textHeightBehavior: HyprTypography.uiLeading,
           ),
         ),
       ),
@@ -311,31 +421,33 @@ class _MenuNotice extends StatelessWidget {
 
 /// A divider between groups of rows.
 ///
-/// Two lines, not one: a dark rule with a barely-lit line under it, which is
-/// what makes the panel read as a cut surface rather than a drawn border.
+/// A cut in the panel, not a drawn rule: a dark recess with a barely-lit
+/// hairline under it, inset from the corners so it does not run into the
+/// radius. A full-width bright stroke is what made these look like a
+/// different product from the rest of the bar.
 class _MenuSeparator extends StatelessWidget {
   const _MenuSeparator();
 
-  static const double extent = 9;
+  static const Key paintKey = Key('global-menu-separator');
+  static const double extent = 10;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
-      child: SizedBox(
-        height: 1,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: const Color(0x8C000000),
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: Colors.white.withValues(alpha: 0.05),
-                offset: const Offset(0, 1),
-              ),
-            ],
+    return const Padding(
+      key: paintKey,
+      padding: EdgeInsets.symmetric(vertical: 4, horizontal: _Menu.columnGap),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          ColoredBox(
+            color: Color(0x66000000),
+            child: SizedBox(height: 1, width: double.infinity),
           ),
-          child: const SizedBox(width: double.infinity),
-        ),
+          ColoredBox(
+            color: HyprColors.popupStroke,
+            child: SizedBox(height: 1, width: double.infinity),
+          ),
+        ],
       ),
     );
   }
@@ -347,7 +459,8 @@ class _MenuGroup extends StatelessWidget {
 
   final String label;
 
-  static const double extent = 21;
+  /// Padding to the bottom of a caption, matching the mock's group row.
+  static const double extent = 24;
 
   @override
   Widget build(BuildContext context) {
@@ -359,12 +472,15 @@ class _MenuGroup extends StatelessWidget {
           padding: const EdgeInsets.only(
             left: _Menu.columnGap,
             right: _Menu.columnGap,
-            bottom: 2,
+            bottom: 4,
           ),
           child: Text(
             label.toUpperCase(),
             maxLines: 1,
-            style: HyprTypography.globalMenuGroup.copyWith(color: GlobalMenuInk.faint),
+            textHeightBehavior: HyprTypography.uiLeading,
+            style: HyprTypography.globalMenuGroup.copyWith(
+              color: GlobalMenuInk.faint,
+            ),
           ),
         ),
       ),
@@ -420,10 +536,14 @@ class _MenuRowState extends ConsumerState<_MenuRow> {
         : lit
         ? GlobalMenuInk.bright
         : GlobalMenuInk.label;
-    final Color metaColor = !_actionable
+    // Keys step up to heading-grey on hover. Chevrons step up to the row
+    // label, which is what makes an open submenu read as held.
+    final Color trailingColor = !_actionable
         ? GlobalMenuInk.disabled
         : lit
-        ? GlobalMenuInk.quiet
+        ? (widget.item.submenu != null
+              ? GlobalMenuInk.label
+              : GlobalMenuInk.quiet)
         : GlobalMenuInk.faint;
 
     return MouseRegion(
@@ -442,7 +562,7 @@ class _MenuRowState extends ConsumerState<_MenuRow> {
           height: _Menu.rowHeight,
           padding: const EdgeInsets.symmetric(horizontal: _Menu.columnGap),
           decoration: BoxDecoration(
-            color: lit ? HyprColors.hover : Colors.transparent,
+            color: lit ? GlobalMenuInk.rowHover : Colors.transparent,
             borderRadius: BorderRadius.circular(_Menu.rowRadius),
           ),
           child: Row(
@@ -457,13 +577,14 @@ class _MenuRowState extends ConsumerState<_MenuRow> {
                   widget.item.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  textHeightBehavior: HyprTypography.uiLeading,
                   style: HyprTypography.globalMenuItem.copyWith(
                     color: labelColor,
                   ),
                 ),
               ),
-              const SizedBox(width: _Menu.columnGap),
-              _MenuRowTrailing(item: widget.item, color: metaColor),
+              const SizedBox(width: _Menu.keyGap),
+              _MenuRowTrailing(item: widget.item, color: trailingColor),
             ],
           ),
         ),
@@ -472,7 +593,7 @@ class _MenuRowState extends ConsumerState<_MenuRow> {
   }
 }
 
-/// The checkmark or radio dot, drawn in the accent so state reads at a glance.
+/// The checkmark, drawn in the accent so state reads at a glance.
 class _MenuMark extends StatelessWidget {
   const _MenuMark({required this.kind});
 
@@ -480,23 +601,25 @@ class _MenuMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String? glyph = switch (kind) {
-      GlobalMenuItemKindCheckmark(:final bool checked) => checked ? '✓' : null,
-      GlobalMenuItemKindRadio(:final bool selected) => selected ? '•' : null,
-      _ => null,
+    // The mock draws every selected state as a checkmark, including the
+    // mutually exclusive theme rows that are radios underneath.
+    final bool marked = switch (kind) {
+      GlobalMenuItemKindCheckmark(:final bool checked) => checked,
+      GlobalMenuItemKindRadio(:final bool selected) => selected,
+      _ => false,
     };
 
-    if (glyph == null) {
+    if (!marked) {
       return const SizedBox.shrink();
     }
 
     return Text(
-      glyph,
+      '✓',
       textAlign: TextAlign.center,
+      textHeightBehavior: HyprTypography.uiLeading,
       style: HyprTypography.globalMenuItem.copyWith(
         fontSize: 11,
-        height: 1,
-        color: HyprColors.accent,
+        color: GlobalMenuInk.mark,
       ),
     );
   }
@@ -513,9 +636,9 @@ class _MenuRowTrailing extends StatelessWidget {
     if (item.submenu != null) {
       return Text(
         '›',
+        textHeightBehavior: HyprTypography.uiLeading,
         style: HyprTypography.globalMenuItem.copyWith(
           fontSize: 12,
-          height: 1,
           color: color,
         ),
       );
@@ -527,7 +650,8 @@ class _MenuRowTrailing extends StatelessWidget {
     }
 
     return Text(
-      shortcut,
+      formatGlobalMenuAccelerator(shortcut),
+      textHeightBehavior: HyprTypography.uiLeading,
       style: HyprTypography.globalMenuKey.copyWith(color: color),
     );
   }

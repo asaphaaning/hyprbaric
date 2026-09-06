@@ -20,6 +20,7 @@ class HyprPopoverSurface extends StatelessWidget {
     this.blur = 16,
     this.shadow = false,
     this.inset = true,
+    this.overlayOpacity = 1,
   });
 
   final Widget child;
@@ -30,6 +31,7 @@ class HyprPopoverSurface extends StatelessWidget {
   final double blur;
   final bool shadow;
   final bool inset;
+  final double overlayOpacity;
 
   @override
   Widget build(BuildContext context) {
@@ -43,11 +45,18 @@ class HyprPopoverSurface extends StatelessWidget {
       inset: inset,
       frame: HyprSurfaceFrame.popover,
       child: DecoratedBox(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: <Color>[HyprColors.popoverTop, HyprColors.popoverBottom],
+            colors: <Color>[
+              HyprColors.popoverTop.withValues(
+                alpha: HyprColors.popoverTop.a * overlayOpacity,
+              ),
+              HyprColors.popoverBottom.withValues(
+                alpha: HyprColors.popoverBottom.a * overlayOpacity,
+              ),
+            ],
           ),
         ),
         child: child,

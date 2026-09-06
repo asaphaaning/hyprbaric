@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,12 +14,12 @@ import 'global_menu_section.dart';
 
 /// Geometry of the menu bar itself, from the v6 reference.
 abstract final class _Bar {
-  static const double titleHeight = 20;
+  static const double titleHeight = 22;
   static const double titleRadius = 5;
-  static const double titlePadding = 8;
-  static const double titleGap = 1;
+  static const double titlePadding = 10;
+  static const double titleGap = 2;
   static const double rowPadding = 2;
-  static const double dropGap = 6;
+  static const double dropGap = 8;
   static const Duration tint = Duration(milliseconds: 110);
 }
 
@@ -49,6 +51,15 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
   GlobalMenuSectionId? _open;
   String? _focusedApp;
   bool _awaitingFirstMenu = true;
+  Timer? _retry;
+  int _retryIndex = 0;
+
+  /// Backoff while the companion is still joining the focused window.
+  ///
+  /// Opening an application publishes its menu after the focus signal. A
+  /// single read then is often empty. Keep asking for a few seconds rather
+  /// than treating that empty as the window having no menu.
+  static const List<int> _retryDelaysMs = <int>[80, 160, 320, 640, 1280, 2500];
 
   @override
   void initState() {
@@ -73,14 +84,16 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
   /// on each of those would put a subprocess and a D-Bus round trip behind
   /// every keystroke, and would replace the headings mid-interaction.
   void _focusChanged(FocusedWindowStatus status) {
-    if (status.appName == _focusedApp && !_awaitingFirstMenu) {
+    if (status.appName == _focusedApp) {
       return;
     }
 
     _focusedApp = status.appName;
     _awaitingFirstMenu = true;
+    _retryIndex = 0;
     _close();
     _requestMenu();
+    _scheduleRetry();
   }
 
   void _requestMenu() {
@@ -89,11 +102,37 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
         .dispatch(const GlobalMenuIntent.refresh());
   }
 
+  void _scheduleRetry() {
+    _retry?.cancel();
+    if (!_awaitingFirstMenu) {
+      return;
+    }
+    if (_retryIndex >= _retryDelaysMs.length) {
+      _awaitingFirstMenu = false;
+      return;
+    }
+
+    _retry = Timer(Duration(milliseconds: _retryDelaysMs[_retryIndex]), () {
+      if (!mounted || !_awaitingFirstMenu) {
+        return;
+      }
+      _retryIndex++;
+      _requestMenu();
+      _scheduleRetry();
+    });
+  }
+
+  void _menuArrived() {
+    _retry?.cancel();
+    _retry = null;
+    _awaitingFirstMenu = false;
+  }
+
   /// Opens one heading, closing whichever other heading was open.
   ///
-  /// Rows are asked for on every open rather than cached: an application
-  /// decides what a menu contains at the moment it is shown, so a remembered
-  /// answer would go stale as soon as its state changed.
+  /// The request always goes out. GTK rows may already be snapshotted; a
+  /// D-BusMenu heading is announced on every open because Firefox rebuilds
+  /// native identifiers after the previous click.
   void _open_(GlobalMenuSectionId section) {
     for (final MapEntry<GlobalMenuSectionId, LayerShellDropdownController> entry
         in _sectionControllers.entries) {
@@ -183,7 +222,35 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
   /// of the bar. A controller holds nothing but a link to its dropdown, which
   /// detaches itself when the dropdown leaves the tree, so forgetting it here
   /// is the whole of the cleanup.
+  ///
+  /// Firefox also rebuilds native identifiers after a menu is announced. The
+  /// heading is still File; only its id changed. Keep the open dropdown and
+  /// its controller attached to the new id so the panel does not vanish.
   void _retainSections(List<GlobalMenuSection> sections) {
+    final GlobalMenuSectionId? open = _open;
+    if (open != null) {
+      String? label;
+      for (final GlobalMenuSection section in _sections) {
+        if (section.id == open) {
+          label = section.label;
+          break;
+        }
+      }
+      if (label != null) {
+        for (final GlobalMenuSection section in sections) {
+          if (section.label == label && section.id != open) {
+            final LayerShellDropdownController? controller = _sectionControllers
+                .remove(open);
+            if (controller != null) {
+              _sectionControllers[section.id] = controller;
+            }
+            _open = section.id;
+            break;
+          }
+        }
+      }
+    }
+
     _sections = sections;
     final Set<GlobalMenuSectionId> live = sections
         .map((section) => section.id)
@@ -197,22 +264,24 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
   /// The headings to show for the application that is focused now.
   ///
   /// A read can fail for reasons that have nothing to do with the window,
-  /// such as the menu being asked for while focus is in flight. Answering an
-  /// empty read by clearing the bar makes the centre flick between the menu
-  /// and the window title, so an empty answer only takes effect once, when the
-  /// focused application changes.
+  /// such as the menu being asked for while the companion is still joining
+  /// it. Answering that empty read by giving up makes the bar stay blank
+  /// until the next focus change. Keep showing nothing while we retry, and
+  /// only treat a later empty as "this window has no menu" after retries
+  /// settle. An empty read after headings have already arrived must not
+  /// clear them: that is what made the centre flick between the menu and
+  /// the window title.
   List<GlobalMenuSection> _headings(GlobalMenuStatus? status) {
     if (status == null) {
       return _sections;
     }
 
     if (status.sections.isNotEmpty) {
-      _awaitingFirstMenu = false;
+      _menuArrived();
       return status.sections;
     }
 
     if (_awaitingFirstMenu) {
-      _awaitingFirstMenu = false;
       return const <GlobalMenuSection>[];
     }
 
@@ -221,6 +290,7 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
 
   @override
   void dispose() {
+    _retry?.cancel();
     _focusedWindowSubscription.close();
     _focusNode.dispose();
     _sectionControllers.clear();
@@ -229,6 +299,10 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<Map<GlobalMenuSectionId, GlobalMenuSectionStatus>>(
+      globalMenuSectionCacheProvider,
+      (_, _) {},
+    );
     final GlobalMenuStatus? status = ref
         .watch(globalMenuStatusProvider)
         .asData
@@ -276,6 +350,9 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
                           onToggle: _toggle,
                           onHoverOpen: _open_,
                           onDismissed: () {
+                            ref
+                                .read(globalMenuSectionCacheProvider.notifier)
+                                .forget(section.id);
                             if (_open == section.id) {
                               setState(() => _open = null);
                             }
@@ -376,7 +453,11 @@ class _GlobalMenuTitleState extends State<_GlobalMenuTitle> {
                           style: HyprTypography.globalMenuTitle.copyWith(
                             color: color,
                           ),
-                          child: Text(widget.section.label, maxLines: 1),
+                          child: Text(
+                            widget.section.label,
+                            maxLines: 1,
+                            textHeightBehavior: HyprTypography.uiLeading,
+                          ),
                         ),
                       ),
                     ),

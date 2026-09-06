@@ -123,22 +123,43 @@ abstract final class HyprTypography {
     letterSpacing: 0,
   );
 
-  /// A heading on the global menu bar.
-  static TextStyle get globalMenuTitle => TextStyle(
-    fontFamily: uiFamily,
-    color: HyprColors.textMuted,
-    fontSize: size(11.5),
-    fontWeight: FontWeight.w600,
-    letterSpacing: 0.06,
+  /// Inter's UI optical size and ligatures, the way the HTML mock sets them.
+  ///
+  /// Flutter's default variable-font `opsz` at 12.5px is the compact text
+  /// axis. The mock uses Inter's UI face (`opsz` 14) with ligatures on, and
+  /// puts extra leading *around* the glyphs rather than scaling them.
+  static const List<FontFeature> uiLigatures = <FontFeature>[
+    FontFeature.enable('liga'),
+    FontFeature.enable('calt'),
+  ];
+
+  static const List<FontVariation> uiOptical = <FontVariation>[
+    FontVariation('opsz', 14),
+  ];
+
+  /// Extra line-height is padding, not a vertically scaled glyph.
+  static const TextHeightBehavior uiLeading = TextHeightBehavior(
+    applyHeightToFirstAscent: false,
+    applyHeightToLastDescent: false,
+    leadingDistribution: TextLeadingDistribution.even,
   );
 
-  /// A row inside an open menu.
-  static TextStyle get globalMenuItem => TextStyle(
-    fontFamily: uiFamily,
-    color: HyprColors.textMuted,
-    fontSize: size(12),
-    fontWeight: FontWeight.w500,
-    letterSpacing: 0,
+  /// A heading on the global menu bar. Same face as the focused app's name,
+  /// opened to the mock's UI optical size and line-height.
+  static TextStyle get globalMenuTitle => barStrong.copyWith(
+    height: 1.3,
+    leadingDistribution: TextLeadingDistribution.even,
+    fontFeatures: uiLigatures,
+    fontVariations: uiOptical,
+  );
+
+  /// A row inside an open menu. Same face and weight as a tray or popover row,
+  /// with the mock's leading so labels are not clipped top and bottom.
+  static TextStyle get globalMenuItem => popRow.copyWith(
+    height: 1.3,
+    leadingDistribution: TextLeadingDistribution.even,
+    fontFeatures: uiLigatures,
+    fontVariations: uiOptical,
   );
 
   /// A caption naming a run of menu rows.
@@ -148,6 +169,8 @@ abstract final class HyprTypography {
     color: HyprColors.textFaint,
     fontSize: size(8.5),
     fontWeight: FontWeight.w700,
+    height: 1.3,
+    leadingDistribution: TextLeadingDistribution.even,
     letterSpacing: 1.7,
   );
 
@@ -157,7 +180,9 @@ abstract final class HyprTypography {
     fontFamilyFallback: <String>['monospace'],
     color: HyprColors.textFaint,
     fontSize: size(10.5),
-    fontWeight: FontWeight.w500,
+    fontWeight: FontWeight.w400,
+    height: 1.3,
+    leadingDistribution: TextLeadingDistribution.even,
     letterSpacing: 0.42,
   );
 

@@ -30,6 +30,8 @@ class Hyprbaric extends ConsumerWidget {
     final ThemeData baseTheme = ThemeData(useMaterial3: true);
     final ThemeData transparentTheme = baseTheme.copyWith(
       scaffoldBackgroundColor: Colors.transparent,
+      canvasColor: Colors.transparent,
+      dialogBackgroundColor: Colors.transparent,
       textTheme: HyprTypography.textTheme(baseTheme.textTheme),
       primaryTextTheme: HyprTypography.textTheme(baseTheme.primaryTextTheme),
       extensions: <ThemeExtension<dynamic>>[palette],
