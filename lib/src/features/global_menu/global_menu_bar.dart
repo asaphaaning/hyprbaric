@@ -48,7 +48,8 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
   );
   List<GlobalMenuSection> _sections = const <GlobalMenuSection>[];
   GlobalMenuSectionId? _open;
-  String? _focusedApp;
+  String? _focusedWindow;
+  GlobalMenuSession? _session;
   bool _awaitingFirstMenu = true;
   Timer? _retry;
   int _retryIndex = 0;
@@ -76,21 +77,25 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
         );
   }
 
-  /// Re-reads the menu when the focused application changes.
+  /// Re-reads the menu when the focused window changes.
   ///
   /// The focused-window signal also carries the title, which changes as often
   /// as a document is edited or a tab is switched. Re-reading the whole menu
   /// on each of those would put a subprocess and a D-Bus round trip behind
   /// every keystroke, and would replace the headings mid-interaction.
   void _focusChanged(FocusedWindowStatus status) {
-    if (status.appName == _focusedApp) {
+    if (status.address == _focusedWindow) {
       return;
     }
 
-    _focusedApp = status.appName;
+    _focusedWindow = status.address;
     _awaitingFirstMenu = true;
     _retryIndex = 0;
     _close();
+    setState(() {
+      _session = null;
+      _sections = const [];
+    });
     _requestMenu();
     _scheduleRetry();
   }
@@ -98,7 +103,7 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
   void _requestMenu() {
     ref
         .read(rustCommandDispatcherProvider)
-        .dispatch(const GlobalMenuIntent.refresh());
+        .dispatch(GlobalMenuIntent.refresh(window: _focusedWindow));
   }
 
   void _scheduleRetry() {
@@ -133,6 +138,8 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
   /// D-BusMenu heading is announced on every open because Firefox rebuilds
   /// native identifiers after the previous click.
   void _open_(GlobalMenuSectionId section) {
+    final session = _session;
+    if (session == null) return;
     for (final MapEntry<GlobalMenuSectionId, LayerShellDropdownController> entry
         in _sectionControllers.entries) {
       if (entry.key != section) {
@@ -142,7 +149,11 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
 
     ref
         .read(rustCommandDispatcherProvider)
-        .dispatch(GlobalMenuIntent.openSection(section));
+        .dispatch(
+          GlobalMenuIntent.openSection(
+            GlobalMenuAddress(session: session, section: section),
+          ),
+        );
     _controllerFor(section).open();
     setState(() => _open = section);
     _focusNode.requestFocus();
@@ -271,13 +282,24 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
   /// clear them: that is what made the centre flick between the menu and
   /// the window title.
   List<GlobalMenuSection> _headings(GlobalMenuStatus? status) {
+    if (status != null && status.window != _focusedWindow) {
+      return _sections;
+    }
     if (status == null) {
       return _sections;
     }
 
     if (status.sections.isNotEmpty) {
+      _session = status.session;
       _menuArrived();
       return status.sections;
+    }
+
+    if (status.session == _session &&
+        _sections.any(
+          (section) => section.id is! GlobalMenuSectionIdDbusMenu,
+        )) {
+      return const <GlobalMenuSection>[];
     }
 
     if (_awaitingFirstMenu) {
@@ -298,10 +320,26 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<Map<GlobalMenuSectionId, GlobalMenuSectionStatus>>(
+    ref.listen<Map<GlobalMenuAddress, GlobalMenuSectionStatus>>(
       globalMenuSectionCacheProvider,
       (_, _) {},
     );
+    ref.listen(globalMenuIntegrationProvider, (previous, next) {
+      if (next.value is GlobalMenuIntegrationStatusReady &&
+          previous?.value is! GlobalMenuIntegrationStatusReady) {
+        _awaitingFirstMenu = true;
+        _retryIndex = 0;
+        _requestMenu();
+        _scheduleRetry();
+      }
+    });
+    ref.listen(globalMenuStatusProvider, (previous, next) {
+      if (_session != null &&
+          next.value?.session != _session &&
+          next.value?.window == _focusedWindow) {
+        _close();
+      }
+    });
     final GlobalMenuStatus? status = ref
         .watch(globalMenuStatusProvider)
         .asData
@@ -309,7 +347,8 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
     final List<GlobalMenuSection> sections = _headings(status);
     _retainSections(sections);
 
-    if (sections.isEmpty) {
+    final session = _session;
+    if (sections.isEmpty || session == null) {
       return const SizedBox.shrink();
     }
 
@@ -344,6 +383,7 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
                         ),
                         child: _GlobalMenuTitle(
                           section: section,
+                          session: session,
                           controller: _controllerFor(section.id),
                           anyOpen: _open != null,
                           onToggle: _toggle,
@@ -351,10 +391,22 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
                           onDismissed: () {
                             ref
                                 .read(rustCommandDispatcherProvider)
-                                .dispatch(GlobalMenuIntent.dismiss(section.id));
+                                .dispatch(
+                                  GlobalMenuIntent.dismiss(
+                                    GlobalMenuAddress(
+                                      session: session,
+                                      section: section.id,
+                                    ),
+                                  ),
+                                );
                             ref
                                 .read(globalMenuSectionCacheProvider.notifier)
-                                .forget(section.id);
+                                .forget(
+                                  GlobalMenuAddress(
+                                    session: session,
+                                    section: section.id,
+                                  ),
+                                );
                             if (_open == section.id) {
                               setState(() => _open = null);
                             }
@@ -376,6 +428,7 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
 class _GlobalMenuTitle extends StatefulWidget {
   const _GlobalMenuTitle({
     required this.section,
+    required this.session,
     required this.controller,
     required this.anyOpen,
     required this.onToggle,
@@ -384,6 +437,7 @@ class _GlobalMenuTitle extends StatefulWidget {
   });
 
   final GlobalMenuSection section;
+  final GlobalMenuSession session;
   final LayerShellDropdownController controller;
   final bool anyOpen;
   final ValueChanged<GlobalMenuSectionId> onToggle;
@@ -472,6 +526,7 @@ class _GlobalMenuTitleState extends State<_GlobalMenuTitle> {
           (BuildContext context, LayerShellDropdownController controller) {
             return GlobalMenuSectionPanel(
               section: widget.section.id,
+              session: widget.session,
               onActivated: controller.close,
             );
           },

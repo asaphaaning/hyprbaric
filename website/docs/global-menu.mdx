@@ -11,7 +11,7 @@ TOML keys and the compositor plugin live in [Configuration reference](./configur
 
 ## Turn it on
 
-Both halves share one switch. Enable the module, and hyprbaric loads the companion plugin and owns `com.canonical.AppMenu.Registrar` for as long as the bar runs:
+Both halves share one switch. Enable the module, and hyprbaric loads the companion plugin before claiming `com.canonical.AppMenu.Registrar`. If installation or compatibility checks fail, it leaves the registrar unowned so applications can retain their own menu bars. The plugin checks its build hash against the running compositor before accessing compositor state:
 
 ```toml title="config.toml"
 [global_menu]

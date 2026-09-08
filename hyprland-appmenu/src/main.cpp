@@ -15,6 +15,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -700,6 +701,9 @@ HANDLE handle = nullptr;
 APICALL EXPORT std::string PLUGIN_API_VERSION() { return HYPRLAND_API_VERSION; }
 
 APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE plugin_handle) {
+  if (std::string(__hyprland_api_get_hash()) != __hyprland_api_get_client_hash())
+    throw std::runtime_error("Hyprbaric AppMenu: compositor/header ABI mismatch");
+
   handle = plugin_handle;
   registry = std::make_unique<Registry>(g_pCompositor->m_wlDisplay);
 

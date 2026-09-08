@@ -107,6 +107,15 @@ install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
 install(TARGETS hyprbaric-appmenu LIBRARY DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
   COMPONENT Runtime)
 
+# Snapshot the companion source so a later compositor-library bump can rebuild
+# the plugin from this bundle without hyprpm's privileged store.
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../hyprland-appmenu/"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/hyprland-appmenu"
+  COMPONENT Runtime
+  PATTERN "build" EXCLUDE
+  PATTERN "CMakeFiles" EXCLUDE
+  PATTERN ".git" EXCLUDE)
+
 install(FILES "${FLUTTER_ICU_DATA_FILE}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   COMPONENT Runtime)
 

@@ -40,6 +40,9 @@ mod live;
 mod plugin;
 pub(crate) mod publish;
 mod registrar;
+mod session;
+use crate::hyprland::WindowId;
+pub use session::Session;
 
 pub use plugin::{Configuration, Readiness};
 pub use registrar::Registrar;
@@ -63,8 +66,8 @@ use zbus::{
 
 /// Installs the compositor companion, rebuilding it if the bundle no longer fits.
 ///
-/// This can take minutes when hyprpm has to compile, so callers run it away
-/// from startup and report its outcome when it settles.
+/// This can take minutes when cmake or hyprpm has to compile, so callers run
+/// it away from startup and report its outcome when it settles.
 #[instrument(name = "hyprbaric::global_menu::install", skip_all, err)]
 pub async fn install_companion(configuration: &Configuration) -> Result<Readiness, plugin::Error> {
     plugin::install(configuration).await
@@ -164,53 +167,81 @@ pub enum ItemId {
     },
 }
 
-/// Reads the headings the focused application currently exports.
-#[instrument(name = "hyprbaric::global_menu::read")]
-pub async fn read() -> Result<Menu, Error> {
-    live::headings().await
+/// Reads headings for an explicit focus observation. Commands are serialized
+/// by the single global-menu RINF route, including popup open and dismissal.
+#[instrument(name = "hyprbaric::global_menu::read", err)]
+pub async fn read(window: Option<&str>) -> Result<(Session, Menu), Error> {
+    let result = read_focused(window).await;
+    if matches!(
+        result,
+        Err(Error::NoFocusedWindow | Error::NoMenuForFocusedWindow)
+    ) {
+        session::clear().await;
+    }
+    result
 }
 
-/// Reads the rows beneath one heading of the focused application.
-#[instrument(name = "hyprbaric::global_menu::section")]
-pub async fn section(id: &SectionId) -> Result<Vec<Item>, Error> {
-    live::items(id).await
+async fn read_focused(window: Option<&str>) -> Result<(Session, Menu), Error> {
+    let window = window
+        .and_then(|window| WindowId::new(window.to_owned()))
+        .ok_or(Error::NoFocusedWindow)?;
+    check_focus(&window).await?;
+    let endpoint = focused_endpoint().await?;
+    check_focus(&window).await?;
+    let (session, changed) = session::bind(window, endpoint.clone());
+    if changed {
+        live::clear().await;
+    }
+    let connection = zbus::Connection::session().await.map_err(Error::Connect)?;
+    let menu = live::headings(connection, endpoint).await?;
+    Ok((session, menu))
 }
 
-/// Tells the application a heading or submenu is no longer shown.
-///
-/// D-BusMenu `opened` / `AboutToShow` pair with `closed`. Firefox and Qt
-/// keep popup state across that pair; skipping `closed` leaves the last
-/// heading thinking it is still open. GTK has no equivalent.
+/// Reads rows only from the exporter that supplied the session.
+#[instrument(name = "hyprbaric::global_menu::section", err)]
+pub async fn section(session: &Session, id: &SectionId) -> Result<Vec<Item>, Error> {
+    let endpoint = session::resolve(session)?;
+    check_focus(&session.window).await?;
+    let connection = zbus::Connection::session().await.map_err(Error::Connect)?;
+    live::items(connection, endpoint, id).await
+}
+
+/// Closes an announced popup in its owning session, even after focus changes.
 #[instrument(name = "hyprbaric::global_menu::dismiss", err)]
-pub async fn dismiss(id: &SectionId) -> Result<(), Error> {
+pub async fn dismiss(session: &Session, id: &SectionId) -> Result<(), Error> {
+    session::resolve(session)?;
     match id {
         SectionId::Gtk { .. } | SectionId::GtkAppMenu { .. } => Ok(()),
         SectionId::DbusMenu { id } => dbusmenu_closed(*id).await,
     }
 }
 
-/// Activates one row of the focused application's menu.
+/// Activates a row in its originating session, never in a newly focused app.
 #[instrument(name = "hyprbaric::global_menu::activate", err)]
-pub async fn activate(id: &ItemId) -> Result<(), Error> {
-    let (connection, endpoint) = focused().await?;
-
+pub async fn activate(session: &Session, id: &ItemId) -> Result<(), Error> {
+    let endpoint = session::resolve(session)?;
+    check_focus(&session.window).await?;
+    let connection = zbus::Connection::session().await.map_err(Error::Connect)?;
     match id {
         ItemId::DbusMenu { id } => dbusmenu_activate(&connection, &endpoint, *id).await,
         ItemId::Gtk { action, target } => {
             gtk_activate(&connection, &endpoint, action, target.as_deref()).await
         }
     }?;
-
-    live::refresh();
+    // Keep recapture in the command sequence so it cannot overtake a new focus.
+    live::refresh_now(connection, endpoint).await?;
     Ok(())
 }
 
-/// Resolves the focused window's endpoint and a bus to reach it on.
-async fn focused() -> Result<(zbus::Connection, Endpoint), Error> {
-    let endpoint = focused_endpoint().await?;
-    let connection = zbus::Connection::session().await.map_err(Error::Connect)?;
-
-    Ok((connection, endpoint))
+async fn check_focus(window: &WindowId) -> Result<(), Error> {
+    let active = Client::get_active_async()
+        .await
+        .map_err(Error::FocusedWindow)?;
+    if active.is_some_and(|client| client.address.to_string() == window.as_str()) {
+        Ok(())
+    } else {
+        Err(Error::StaleSession)
+    }
 }
 
 async fn dbusmenu<'a>(
@@ -402,7 +433,7 @@ async fn dbusmenu_closed(id: i32) -> Result<(), Error> {
     let path = live::dismiss_path(id);
     let opened = live::take_opened(id, &path);
     if opened.is_empty() {
-        return dbusmenu_closed_at(id, &path).await;
+        return Ok(());
     }
 
     for menu in opened {
@@ -425,24 +456,6 @@ async fn dbusmenu_closed_announced(opened: live::Opened) -> Result<(), Error> {
     dbusmenu_event(&proxy, dest, DbusMenuEvent::Closed)
         .await
         .map_err(Error::Event)
-}
-
-async fn dbusmenu_closed_at(id: i32, path: &[String]) -> Result<(), Error> {
-    let (connection, endpoint) = focused().await?;
-    if !matches!(endpoint, Endpoint::DbusMenu { .. }) {
-        return Ok(());
-    }
-
-    let proxy = dbusmenu(&connection, &endpoint).await?;
-    let layout = proxy
-        .get_layout(0, DBUSMENU_DEPTH, &[])
-        .await
-        .map_err(Error::Layout)?;
-    let dest = destination(&layout.root, id, path)?;
-    if let Err(error) = dbusmenu_event(&proxy, dest, DbusMenuEvent::Closed).await {
-        tracing::debug!(%error, id = dest, "Menu declined the closed event");
-    }
-    Ok(())
 }
 
 /// Closes every D-BusMenu still announced against an exporter that went away.
@@ -1634,7 +1647,7 @@ trait GtkMenus {
     fn end(&self, groups: &[u32]) -> zbus::Result<()>;
 
     #[zbus(signal)]
-    fn changed(&self, group: u32, menus: Vec<GtkGroup>) -> zbus::Result<()>;
+    fn changed(&self, changes: Vec<GtkChange>) -> zbus::Result<()>;
 }
 
 #[derive(Deserialize, Type)]
@@ -1649,6 +1662,16 @@ struct Node {
     id: i32,
     properties: HashMap<String, OwnedValue>,
     children: Vec<OwnedValue>,
+}
+
+/// One splice in a subscribed GTK menu: group, menu, position, removed, added.
+#[derive(Clone, Debug, Deserialize, Type)]
+struct GtkChange {
+    group: u32,
+    menu: u32,
+    position: u32,
+    removed: u32,
+    items: Vec<HashMap<String, OwnedValue>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Type)]
@@ -1854,6 +1877,12 @@ enum EndpointKind {
 /// Focused AppMenu read failures.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// The request belongs to a focus observation or exporter that has expired.
+    #[error("the menu session is no longer current")]
+    StaleSession,
+    /// An exporter sent a splice outside the subscribed menu.
+    #[error("the GTK menu update is outside its current rows")]
+    InvalidGtkChange,
     #[error("failed to read the focused Hyprland window")]
     FocusedWindow(#[source] hyprland::error::HyprError),
     #[error("there is no focused Hyprland window")]
@@ -1900,7 +1929,10 @@ impl Error {
     /// The bar asks on every focus change and retries while a new window
     /// catches up. Those answers are the usual ones, not a fault in the bar.
     pub fn is_absence(&self) -> bool {
-        matches!(self, Self::NoFocusedWindow | Self::NoMenuForFocusedWindow)
+        matches!(
+            self,
+            Self::StaleSession | Self::NoFocusedWindow | Self::NoMenuForFocusedWindow
+        )
     }
 }
 
@@ -1912,7 +1944,7 @@ mod tests {
 
     use super::{
         DbusMenuEvent, Endpoint, Error, GtkGroup, GtkLink, Item, ItemId, ItemKind, Menu, Node,
-        SectionId, at_path, dbusmenu_tree, destination, dismiss, entitle_anonymous_list, gtk,
+        SectionId, at_path, dbusmenu_tree, destination, entitle_anonymous_list, gtk,
         gtk_menu_items, gtk_tree, gtk_unfetched_groups, items_from, lineage, menu_for_address,
         path_to, prepend_gtk_app_menu, resolve_section, strip_mnemonics, unique_unaddressed,
         without_empty_dividers,
@@ -2014,16 +2046,6 @@ mod tests {
         assert!(Error::NoMenuForFocusedWindow.is_absence());
         assert!(!Error::CompanionUnavailable.is_absence());
         assert!(!Error::InvalidNode.is_absence());
-    }
-
-    #[tokio::test]
-    async fn a_gtk_heading_has_nothing_to_close() {
-        dismiss(&SectionId::Gtk { group: 0, menu: 1 })
-            .await
-            .expect("GTK dismiss is a no-op");
-        dismiss(&SectionId::GtkAppMenu { group: 0, menu: 0 })
-            .await
-            .expect("GTK application-menu dismiss is a no-op");
     }
 
     #[test]

@@ -132,11 +132,13 @@ String _acceleratorToken(String token) {
 class GlobalMenuSectionPanel extends ConsumerStatefulWidget {
   const GlobalMenuSectionPanel({
     required this.section,
+    required this.session,
     required this.onActivated,
     super.key,
   });
 
   final GlobalMenuSectionId section;
+  final GlobalMenuSession session;
   final VoidCallback onActivated;
 
   @override
@@ -170,7 +172,11 @@ class _GlobalMenuSectionPanelState
 
     ref
         .read(rustCommandDispatcherProvider)
-        .dispatch(GlobalMenuIntent.openSection(section));
+        .dispatch(
+          GlobalMenuIntent.openSection(
+            GlobalMenuAddress(session: widget.session, section: section),
+          ),
+        );
     setState(() {
       _openSubmenu = section;
       _submenuOffset = offset;
@@ -208,7 +214,11 @@ class _GlobalMenuSectionPanelState
     }
     ref
         .read(rustCommandDispatcherProvider)
-        .dispatch(GlobalMenuIntent.dismiss(section));
+        .dispatch(
+          GlobalMenuIntent.dismiss(
+            GlobalMenuAddress(session: widget.session, section: section),
+          ),
+        );
   }
 
   @override
@@ -217,68 +227,83 @@ class _GlobalMenuSectionPanelState
     GlobalMenuSectionId? flyout = pending == null ? null : _filledSubmenu;
     if (pending != null) {
       final GlobalMenuSectionStatus? status = ref
-          .watch(globalMenuSectionProvider(pending))
-          .value;
+          .watch(
+            globalMenuSectionProvider(
+              GlobalMenuAddress(session: widget.session, section: pending),
+            ),
+          )
+          .asData
+          ?.value;
       if (status != null && status.items.isNotEmpty) {
         flyout = pending;
         _filledSubmenu = pending;
       }
     }
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        MouseRegion(
-          onExit: (_) => _closeSubAfterLinger(),
-          child: _MenuPanel(
-            minWidth: _Menu.panelMinWidth,
-            child: _MenuRows(
-              section: widget.section,
-              openSubmenu: pending,
-              onActivated: widget.onActivated,
-              onSubmenuHovered: _openSub,
-              onLeafHovered: _closeSubNow,
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: (MediaQuery.sizeOf(context).height - 64).clamp(
+          0,
+          double.infinity,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          MouseRegion(
+            onExit: (_) => _closeSubAfterLinger(),
+            child: _MenuPanel(
+              minWidth: _Menu.panelMinWidth,
+              child: _MenuRows(
+                section: widget.section,
+                session: widget.session,
+                openSubmenu: pending,
+                onActivated: widget.onActivated,
+                onSubmenuHovered: _openSub,
+                onLeafHovered: _closeSubNow,
+              ),
             ),
           ),
-        ),
-        if (flyout != null) ...<Widget>[
-          const SizedBox(width: _Menu.submenuGap),
-          Padding(
-            padding: EdgeInsets.only(top: _submenuOffset),
-            child: MouseRegion(
-              onEnter: (_) => _linger?.cancel(),
-              onExit: (_) => _closeSubAfterLinger(),
-              child: TweenAnimationBuilder<double>(
-                tween: Tween<double>(begin: 0, end: 1),
-                duration: _Menu.submenuFade,
-                curve: Curves.easeOut,
-                builder: (BuildContext context, double t, Widget? child) {
-                  return Opacity(
-                    opacity: t,
-                    child: Transform.translate(
-                      offset: Offset(-3 * (1 - t), 0),
-                      child: child,
+          if (flyout != null) ...<Widget>[
+            const SizedBox(width: _Menu.submenuGap),
+            Padding(
+              padding: EdgeInsets.only(top: _submenuOffset),
+              child: MouseRegion(
+                onEnter: (_) => _linger?.cancel(),
+                onExit: (_) => _closeSubAfterLinger(),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0, end: 1),
+                  duration: _Menu.submenuFade,
+                  curve: Curves.easeOut,
+                  builder: (BuildContext context, double t, Widget? child) {
+                    return Opacity(
+                      opacity: t,
+                      child: Transform.translate(
+                        offset: Offset(-3 * (1 - t), 0),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: _MenuPanel(
+                    minWidth: _Menu.submenuMinWidth,
+                    child: _MenuRows(
+                      section: flyout,
+                      session: widget.session,
+                      openSubmenu: null,
+                      onActivated: widget.onActivated,
+                      // One level of flyout is as far as the bar goes; deeper
+                      // rows still activate, they just do not fan out further.
+                      onSubmenuHovered: null,
+                      onLeafHovered: () {},
                     ),
-                  );
-                },
-                child: _MenuPanel(
-                  minWidth: _Menu.submenuMinWidth,
-                  child: _MenuRows(
-                    section: flyout,
-                    openSubmenu: null,
-                    onActivated: widget.onActivated,
-                    // One level of flyout is as far as the bar goes; deeper
-                    // rows still activate, they just do not fan out further.
-                    onSubmenuHovered: null,
-                    onLeafHovered: () {},
                   ),
                 ),
               ),
             ),
-          ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
@@ -304,7 +329,10 @@ class _MenuPanel extends StatelessWidget {
       // rows ellipsize rather than wrap once they hit it.
       constraints: BoxConstraints(minWidth: minWidth, maxWidth: 360),
       padding: const EdgeInsets.all(_Menu.panelPadding),
-      child: SizedBox(width: double.infinity, child: child),
+      child: SizedBox(
+        width: double.infinity,
+        child: SingleChildScrollView(child: child),
+      ),
     );
   }
 }
@@ -313,6 +341,7 @@ class _MenuPanel extends StatelessWidget {
 class _MenuRows extends ConsumerWidget {
   const _MenuRows({
     required this.section,
+    required this.session,
     required this.openSubmenu,
     required this.onActivated,
     required this.onSubmenuHovered,
@@ -320,6 +349,7 @@ class _MenuRows extends ConsumerWidget {
   });
 
   final GlobalMenuSectionId section;
+  final GlobalMenuSession session;
   final GlobalMenuSectionId? openSubmenu;
   final VoidCallback onActivated;
   final void Function(GlobalMenuSectionId section, double offset)?
@@ -337,11 +367,13 @@ class _MenuRows extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<GlobalMenuSectionStatus> asyncStatus = ref.watch(
-      globalMenuSectionProvider(section),
+      globalMenuSectionProvider(
+        GlobalMenuAddress(session: session, section: section),
+      ),
     );
-    // Keep the last rows while a sibling flyout reloads the stream. Showing
-    // the one-line loading notice instead is what made the open menu jump.
-    final GlobalMenuSectionStatus? status = asyncStatus.value;
+    // An invalidated popup must wait for fresh rows, not AsyncLoading's
+    // retained value from its previous opening.
+    final GlobalMenuSectionStatus? status = asyncStatus.asData?.value;
 
     if (status == null) {
       return const _MenuNotice(label: 'Loading…');
@@ -355,8 +387,8 @@ class _MenuRows extends ConsumerWidget {
       return const _MenuNotice(label: 'No entries');
     }
 
-    // Rows are stacked at a known height, so a submenu's vertical offset is
-    // arithmetic rather than a measurement taken after layout.
+    // Keep a fallback offset; pointer events use the rendered position so
+    // scrolling the parent also moves the submenu anchor.
     double offset = _Menu.panelPadding;
     final List<Widget> rows = <Widget>[];
     for (final GlobalMenuItem item in items) {
@@ -368,15 +400,29 @@ class _MenuRows extends ConsumerWidget {
         GlobalMenuItemKindGroup() => _MenuGroup(label: item.label),
         _ => _MenuRow(
           item: item,
+          session: session,
           open: openSubmenu != null && item.submenu == openSubmenu,
           onActivated: onActivated,
-          onHovered: () {
+          onHovered: (BuildContext rowContext) {
             final GlobalMenuSectionId? submenu = item.submenu;
             if (submenu == null || onSubmenuHovered == null) {
               onLeafHovered();
               return;
             }
-            onSubmenuHovered!(submenu, top - _Menu.submenuOverhang);
+            final RenderBox? row = rowContext.findRenderObject() as RenderBox?;
+            final RenderBox? panel =
+                rowContext
+                        .findAncestorStateOfType<_GlobalMenuSectionPanelState>()
+                        ?.context
+                        .findRenderObject()
+                    as RenderBox?;
+            final double visibleTop = row != null && panel != null
+                ? row.localToGlobal(Offset.zero, ancestor: panel).dy
+                : top;
+            onSubmenuHovered!(
+              submenu,
+              (visibleTop - _Menu.submenuOverhang).clamp(0, double.infinity),
+            );
           },
         ),
       });
@@ -512,15 +558,17 @@ class _MenuGroup extends StatelessWidget {
 class _MenuRow extends ConsumerStatefulWidget {
   const _MenuRow({
     required this.item,
+    required this.session,
     required this.open,
     required this.onActivated,
     required this.onHovered,
   });
 
   final GlobalMenuItem item;
+  final GlobalMenuSession session;
   final bool open;
   final VoidCallback onActivated;
-  final VoidCallback onHovered;
+  final ValueChanged<BuildContext> onHovered;
 
   @override
   ConsumerState<_MenuRow> createState() => _MenuRowState();
@@ -546,7 +594,7 @@ class _MenuRowState extends ConsumerState<_MenuRow> {
 
     ref
         .read(rustCommandDispatcherProvider)
-        .dispatch(GlobalMenuIntent.activate(activation));
+        .dispatch(GlobalMenuIntent.activate(widget.session, activation));
     if (!_toggle) {
       widget.onActivated();
     }
@@ -574,7 +622,7 @@ class _MenuRowState extends ConsumerState<_MenuRow> {
       cursor: SystemMouseCursors.basic,
       onEnter: (_) {
         setState(() => _hovered = true);
-        widget.onHovered();
+        widget.onHovered(context);
       },
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(

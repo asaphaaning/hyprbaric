@@ -40,6 +40,7 @@ Widget buildGlobalMenuPanel(BuildContext context) {
     overrides: GlobalMenuFixtures.providers(),
     child: CatalogCanvas(
       child: GlobalMenuSectionPanel(
+        session: GlobalMenuFixtures.session,
         section: GlobalMenuFixtures.view,
         onActivated: () {},
       ),

@@ -44,31 +44,47 @@ pub enum GlobalMenuItemKind {
     Radio { selected: bool },
 }
 
-/// Asks for the focused window's headings.
-#[derive(Deserialize, DartSignal)]
-pub struct GlobalMenuRequest;
+/// One native menu session, bound to a focused compositor window.
+#[derive(Serialize, Deserialize, SignalPiece, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct GlobalMenuSession {
+    /// Opaque native generation, never reused during this process.
+    pub generation: u64,
+    /// Compositor window this menu was captured for.
+    pub window: String,
+}
 
-/// Asks for the rows beneath one heading.
-#[derive(Deserialize, DartSignal)]
-pub struct GlobalMenuSectionRequest {
+/// A section address is meaningful only inside its owning session.
+#[derive(Serialize, Deserialize, SignalPiece, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct GlobalMenuAddress {
+    /// Session that exported the section.
+    pub session: GlobalMenuSession,
+    /// Exporter-local menu identifier.
     pub section: GlobalMenuSectionId,
 }
 
-/// Asks the focused application to run one row.
+/// Ordered menu operations. One RINF route preserves open/activate/close order.
 #[derive(Deserialize, DartSignal)]
-pub struct GlobalMenuActivateRequest {
-    pub item: GlobalMenuItemId,
-}
-
-/// Tells the focused application a heading or submenu is no longer shown.
-#[derive(Deserialize, DartSignal)]
-pub struct GlobalMenuDismissRequest {
-    pub section: GlobalMenuSectionId,
+pub enum GlobalMenuCommand {
+    /// Read headings for the requested focus observation.
+    Read { window: Option<String> },
+    /// Announce and read a popup in its originating session.
+    Open { address: GlobalMenuAddress },
+    /// Close an announced popup, even if focus has subsequently changed.
+    Dismiss { address: GlobalMenuAddress },
+    /// Activate a row only in the session that supplied it.
+    Activate {
+        session: GlobalMenuSession,
+        item: GlobalMenuItemId,
+    },
 }
 
 /// The focused window's headings, or why there are none.
 #[derive(Serialize, RustSignal)]
 pub struct GlobalMenuStatus {
+    /// Requested focus observation, also present for an absent menu.
+    pub window: Option<String>,
+    /// Present only when an exporter was captured.
+    pub session: Option<GlobalMenuSession>,
     pub sections: Vec<GlobalMenuSection>,
     pub message: Option<String>,
 }
@@ -76,6 +92,8 @@ pub struct GlobalMenuStatus {
 /// The rows of one heading, reported against the heading that asked.
 #[derive(Serialize, RustSignal)]
 pub struct GlobalMenuSectionStatus {
+    /// Session that owns these rows.
+    pub session: GlobalMenuSession,
     pub section: GlobalMenuSectionId,
     pub items: Vec<GlobalMenuItem>,
     pub message: Option<String>,

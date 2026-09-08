@@ -16,7 +16,14 @@ abstract final class GlobalMenuFixtures {
     id: 21,
   );
 
-  static const GlobalMenuStatus headings = GlobalMenuStatus(
+  static final session = GlobalMenuSession(
+    generation: Uint64(BigInt.one),
+    window: 'catalog',
+  );
+  static GlobalMenuAddress address(GlobalMenuSectionId id) =>
+      GlobalMenuAddress(session: session, section: id);
+  static final GlobalMenuStatus headings = GlobalMenuStatus(
+    session: session,
     sections: <GlobalMenuSection>[
       GlobalMenuSection(id: file, label: 'File', enabled: true),
       GlobalMenuSection(id: edit, label: 'Edit', enabled: true),
@@ -137,28 +144,33 @@ abstract final class GlobalMenuFixtures {
     GlobalMenuSectionId id,
     List<GlobalMenuItem> items,
   ) {
-    return GlobalMenuSectionStatus(section: id, items: items, message: null);
+    return GlobalMenuSectionStatus(
+      session: session,
+      section: id,
+      items: items,
+      message: null,
+    );
   }
 
   /// Pins headings and the open panels the catalog can actually hang.
-  static List<Override> providers({GlobalMenuStatus status = headings}) {
+  static List<Override> providers({GlobalMenuStatus? status}) {
     return <Override>[
       globalMenuStatusProvider.overrideWith(
-        (Ref ref) => Stream<GlobalMenuStatus>.value(status),
+        (Ref ref) => Stream<GlobalMenuStatus>.value(status ?? headings),
       ),
-      globalMenuSectionProvider(file).overrideWith(
+      globalMenuSectionProvider(address(file)).overrideWith(
         (Ref ref) =>
             Stream<GlobalMenuSectionStatus>.value(section(file, fileItems)),
       ),
-      globalMenuSectionProvider(view).overrideWith(
+      globalMenuSectionProvider(address(view)).overrideWith(
         (Ref ref) =>
             Stream<GlobalMenuSectionStatus>.value(section(view, viewItems)),
       ),
-      globalMenuSectionProvider(recent).overrideWith(
+      globalMenuSectionProvider(address(recent)).overrideWith(
         (Ref ref) =>
             Stream<GlobalMenuSectionStatus>.value(section(recent, recentItems)),
       ),
-      globalMenuSectionProvider(appearance).overrideWith(
+      globalMenuSectionProvider(address(appearance)).overrideWith(
         (Ref ref) => Stream<GlobalMenuSectionStatus>.value(
           section(appearance, appearanceItems),
         ),

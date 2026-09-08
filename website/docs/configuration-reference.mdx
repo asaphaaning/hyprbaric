@@ -99,8 +99,9 @@ enabled = true
 ```
 
 It is the one module that is off by default. Failure to obtain the companion is
-reported in the setup guide but does not stop the bar, and applications that
-export no menu still render the ordinary focused window title.
+reported on the Modules settings row and in the setup guide, but it does not
+stop the bar. Applications that export no menu still render the ordinary focused
+window title.
 
 Which applications export a menu, and which ones still need Firefox prefs, a
 GTK module, or a Java agent, is covered in [Global menu](./global-menu). The rest of this
@@ -109,23 +110,27 @@ section is the configuration surface and what owning the registrar name does.
 ### How the companion is obtained
 
 The companion is a compositor plugin, compiled against Hyprland's internals, so
-it only loads into the version it was built for. Hyprbaric tries two sources in
+it only loads into the version it was built for. Hyprbaric tries three sources in
 the order that costs least:
 
 1. **The bundled plugin**, carried in the release at `lib/hyprbaric-appmenu.so`.
    Loading it needs no privileges, no toolchain and no network, and this is what
    almost every launch uses.
-2. **hyprpm**, Hyprland's own plugin manager, which rebuilds the companion from
+2. **A local cmake rebuild**, from `data/hyprland-appmenu` in the bundle or from
+   the `hyprland-appmenu` tree a Flutter checkout already has. Output goes to
+   the user cache. This is the answer to a compositor-library SONAME bump that
+   leaves the bundled `.so` behind: relink against the installed `hyprland.pc`
+   without hyprpm's privileged store.
+3. **hyprpm**, Hyprland's own plugin manager, which rebuilds the companion from
    this repository's `hyprpm.toml` against the headers of the installed
-   compositor. This is the answer to a Hyprland upgrade leaving the bundled
-   plugin behind, and Hyprbaric falls back to it automatically, in the
-   background, when Hyprland refuses the bundled one.
+   compositor. Hyprbaric falls back to it automatically, in the background, when
+   the bundled plugin and the local rebuild both fail.
 
 hyprpm keeps its store in `/var/cache/hyprpm`, which it creates with a
 privileged command on first use. A desktop session has no terminal to answer
-that prompt on, so Hyprbaric does not raise it behind your back. If the fallback
-is ever needed before hyprpm has run at all, the setup guide asks you to run
-this once:
+that prompt on, so Hyprbaric does not raise it behind your back. If every
+automatic path is exhausted before hyprpm has run at all, Modules settings
+asks you to run this once:
 
 ```sh
 hyprpm add https://github.com/asaphaaning/hyprbaric

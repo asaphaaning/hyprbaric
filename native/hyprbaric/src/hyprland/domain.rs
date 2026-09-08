@@ -2,6 +2,22 @@
 
 use std::collections::BTreeSet;
 
+/// Identity of one compositor window; titles and app names are not identities.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct WindowId(String);
+
+impl WindowId {
+    /// Parses a nonempty compositor address at the IPC boundary.
+    pub fn new(address: String) -> Option<Self> {
+        (!address.is_empty()).then_some(Self(address))
+    }
+
+    /// Returns the address understood by Hyprland.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 /// A Hyprland workspace identity.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct WorkspaceId(i32);
@@ -271,6 +287,8 @@ impl WorkspaceOccupancy {
 /// The active client identity consumed by the center bar cluster.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FocusedWindowSnapshot {
+    /// Stable identity of the active client, including same-app window changes.
+    pub address: Option<WindowId>,
     /// Normalized application class, when Hyprland reports one.
     pub app_name: Option<String>,
     /// Normalized window title, when Hyprland reports one.
@@ -283,12 +301,14 @@ pub struct FocusedWindowSnapshot {
 
 impl FocusedWindowSnapshot {
     pub(super) fn new(
+        address: Option<WindowId>,
         app_name: Option<&str>,
         title: Option<&str>,
         hostname: &str,
         monitors: Vec<MonitorFocusedWindow>,
     ) -> Self {
         Self {
+            address,
             app_name: app_name.and_then(normalize_app_name),
             title: title.and_then(normalize_title),
             hostname: hostname.to_owned(),
@@ -387,6 +407,7 @@ mod tests {
     #[test]
     fn focused_window_snapshot_preserves_hostname_without_title() {
         let snapshot = FocusedWindowSnapshot {
+            address: None,
             app_name: None,
             title: None,
             hostname: "workstation".to_owned(),

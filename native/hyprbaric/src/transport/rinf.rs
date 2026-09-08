@@ -6,10 +6,9 @@ use crate::signals::{
     AudioCommandResult, AudioStatus, BrightnessCommandResult, BrightnessSetLevel, BrightnessStatus,
     CaffeineCommandResult, CaffeineSetEnabled, CaffeineStatus, CapabilityStatus,
     ClockCalendarRequest, ClockStatus, ColorPickRequest, ColorPickerCommandResult, DesktopStatus,
-    FocusedWindowStatus, GlobalMenuActivateRequest, GlobalMenuDismissRequest,
-    GlobalMenuIntegrationStatus, GlobalMenuItemId, GlobalMenuRequest, GlobalMenuSectionId,
-    GlobalMenuSectionRequest, HotkeyEvent, ModuleCommand, ModuleCommandResult, ModulesStatus,
-    MonitorFocusedWindowStatus, MonitorWorkspaceStatus, NetworkCommandResult,
+    FocusedWindowStatus, GlobalMenuCommand, GlobalMenuIntegrationStatus, GlobalMenuItemId,
+    GlobalMenuSectionId, GlobalMenuSession, HotkeyEvent, ModuleCommand, ModuleCommandResult,
+    ModulesStatus, MonitorFocusedWindowStatus, MonitorWorkspaceStatus, NetworkCommandResult,
     NetworkConnectRequest, NetworkScanRequest, NetworkSetWifiEnabled, NetworkSettingsRequest,
     NetworkStatus, NightLightCommandResult, NightLightSetEnabled, NightLightSetTemperature,
     NightLightStatus, NotificationClearRequest, NotificationDismissRequest,
@@ -46,64 +45,54 @@ pub(crate) fn send_app_signal() {
     .send_signal_to_dart();
 }
 
-pub(crate) async fn handle_global_menu_request(State(_): State<App>, _: GlobalMenuRequest) {
-    match global_menu::read().await {
-        Ok(menu) => {
-            tracing::debug!(
-                sections = menu.sections.len(),
-                "Read the focused application's menu headings"
-            );
-            global_menu::publish::headings(&menu);
-        }
-        Err(error) => {
-            if error.is_absence() {
-                tracing::debug!(%error, "Focused window has no readable AppMenu");
-            } else {
-                tracing::warn!(%error, "Could not read the focused application's menu");
+/// One route serializes popup events, so a delayed open cannot overtake close.
+pub(crate) async fn handle_global_menu_command(State(_): State<App>, command: GlobalMenuCommand) {
+    match command {
+        GlobalMenuCommand::Read { window } => match global_menu::read(window.as_deref()).await {
+            Ok((session, menu)) => global_menu::publish::headings(&session, &menu),
+            Err(error) => {
+                tracing::debug!(%error, "Focused window has no readable menu");
+                global_menu::publish::no_headings(window, &error);
             }
-            global_menu::publish::no_headings(&error);
-        }
-    }
-}
-
-pub(crate) async fn handle_global_menu_section_request(
-    State(_): State<App>,
-    request: GlobalMenuSectionRequest,
-) {
-    let id = section_id(&request.section);
-    match global_menu::section(&id).await {
-        Ok(items) => {
-            tracing::debug!(items = items.len(), "Read a menu section");
-            global_menu::publish::section_items(&id, &items);
-        }
-        Err(error) => {
-            if error.is_absence() {
-                tracing::debug!(%error, "Could not read a menu section");
-            } else {
-                tracing::warn!(%error, "Could not read a menu section");
+        },
+        GlobalMenuCommand::Open { address } => {
+            let Some(session) = menu_session(address.session) else {
+                return;
+            };
+            let id = section_id(&address.section);
+            match global_menu::section(&session, &id).await {
+                Ok(items) => global_menu::publish::section_items(&session, &id, &items),
+                Err(error) => {
+                    tracing::debug!(%error, "Could not read menu section");
+                    global_menu::publish::section_failed(&session, &id, &error);
+                }
             }
-            global_menu::publish::section_failed(&id, &error);
+        }
+        GlobalMenuCommand::Dismiss { address } => {
+            let Some(session) = menu_session(address.session) else {
+                return;
+            };
+            if let Err(error) = global_menu::dismiss(&session, &section_id(&address.section)).await
+            {
+                tracing::debug!(%error, "Could not dismiss menu section");
+            }
+        }
+        GlobalMenuCommand::Activate { session, item } => {
+            let Some(session) = menu_session(session) else {
+                return;
+            };
+            if let Err(error) = global_menu::activate(&session, &item_id(&item)).await {
+                tracing::debug!(%error, "Could not activate menu item");
+            }
         }
     }
 }
 
-pub(crate) async fn handle_global_menu_activate_request(
-    State(_): State<App>,
-    request: GlobalMenuActivateRequest,
-) {
-    if let Err(error) = global_menu::activate(&item_id(&request.item)).await {
-        tracing::warn!(%error, "Could not activate a menu item");
-    }
-}
-
-pub(crate) async fn handle_global_menu_dismiss_request(
-    State(_): State<App>,
-    request: GlobalMenuDismissRequest,
-) {
-    let id = section_id(&request.section);
-    if let Err(error) = global_menu::dismiss(&id).await {
-        tracing::debug!(%error, "Could not dismiss a menu section");
-    }
+fn menu_session(session: GlobalMenuSession) -> Option<global_menu::Session> {
+    Some(global_menu::Session {
+        generation: session.generation,
+        window: hyprland::WindowId::new(session.window)?,
+    })
 }
 
 fn section_id(id: &GlobalMenuSectionId) -> global_menu::SectionId {
@@ -220,6 +209,10 @@ fn workspace_signal(snapshot: &WorkspaceSnapshot) -> WorkspaceStatus {
 
 fn focused_window_signal(snapshot: &FocusedWindowSnapshot) -> FocusedWindowStatus {
     FocusedWindowStatus {
+        address: snapshot
+            .address
+            .as_ref()
+            .map(|address| address.as_str().to_owned()),
         app_name: snapshot.app_name.clone(),
         title: snapshot.title.clone(),
         hostname: snapshot.hostname.clone(),
