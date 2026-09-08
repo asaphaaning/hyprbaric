@@ -257,7 +257,7 @@ fn until_next_hour(now: &Zoned) -> Duration {
 }
 
 fn current_hour() -> Hour {
-    Hour::new(Zoned::now().hour() as u8).expect("local clock hour should be in range")
+    Hour::from_time(Zoned::now().time())
 }
 
 /// Scheduler runtime or persistence error.

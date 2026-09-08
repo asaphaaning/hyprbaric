@@ -64,7 +64,7 @@ async fn remove_from(shortcut: Shortcut, snapshot: &BindSnapshot) -> Result<(), 
 
 /// Installs a bind through Lua first, then falls back for legacy `.conf` users.
 async fn install(bind: &super::Bind) -> Result<(), Error> {
-    let lua = bind.lua_expression();
+    let lua = bind.lua_expression()?;
     if run(["eval", lua.as_str()]).await.is_ok() {
         return Ok(());
     }

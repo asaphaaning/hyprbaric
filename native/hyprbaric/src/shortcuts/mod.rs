@@ -26,6 +26,9 @@ pub use settings::{
 /// An error raised while preparing, installing, or reconciling a [`Shortcut`].
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// An app-owned bind cannot be represented by the supported Lua dispatchers.
+    #[error("unsupported or malformed shortcut bind: {value}")]
+    InvalidBind { value: String },
     /// The process tried to start the registry lifecycle more than once.
     #[error("the shortcut registry is already running")]
     RegistryAlreadyRunning,

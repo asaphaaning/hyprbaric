@@ -37,36 +37,43 @@ mod workspaces;
 async fn run() -> Result<(), Error> {
     let config = config::Configuration::load()?;
 
-    // The global menu has two halves that fail independently. The registrar is
-    // immediate and is what makes applications export their menus at all, so it
-    // is claimed before the bar boots. Obtaining the compositor companion can
-    // mean compiling against Hyprland's headers, so it runs on its own and
-    // reports where it got to. Held for the process lifetime: releasing the
-    // registrar name gives applications their own menu bars back.
     let global_menu = config
         .global_menu
         .enabled(config.modules.enabled(modules::Module::GlobalMenu));
-    let _registrar = match global_menu::Registrar::serve(global_menu).await {
-        Ok(registrar) => registrar,
-        Err(error) => {
-            tracing::warn!(%error, "Could not serve the AppMenu registrar");
-            None
-        }
-    };
-
-    transport::rinf::publish_global_menu_integration(match global_menu {
-        true => global_menu::Progress::Preparing,
-        false => global_menu::Progress::Disabled,
+    transport::rinf::publish_global_menu_integration(if global_menu {
+        global_menu::Progress::Preparing
+    } else {
+        global_menu::Progress::Disabled
     });
-
     if global_menu {
         let configuration = config.global_menu.clone();
         tokio::spawn(async move {
-            let progress = match global_menu::install_companion(&configuration).await {
+            let readiness = global_menu::install_companion(&configuration).await;
+            // Claiming the registrar hides native Qt menus. Only do so once
+            // their replacement is reachable; a failed install owns nothing.
+            let _registrar = if matches!(readiness, Ok(global_menu::Readiness::Ready)) {
+                match global_menu::Registrar::serve(true).await {
+                    Ok(registrar) => registrar,
+                    Err(error) => {
+                        tracing::warn!(%error, "Could not serve the AppMenu registrar");
+                        transport::rinf::publish_global_menu_integration(
+                            global_menu::Progress::Blocked {
+                                message: error.to_string(),
+                                instruction: None,
+                            },
+                        );
+                        return;
+                    }
+                }
+            } else {
+                None
+            };
+            let progress = match readiness {
                 Ok(readiness) => global_menu::Progress::from(readiness),
                 Err(error) => global_menu::Progress::failed(&error),
             };
             transport::rinf::publish_global_menu_integration(progress);
+            std::future::pending::<()>().await;
         });
     }
 

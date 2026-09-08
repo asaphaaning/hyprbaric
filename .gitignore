@@ -44,7 +44,8 @@ app.*.symbols
 app.*.map.json
 
 # Rust related
-/.cargo/
+/.cargo/*
+!/.cargo/config.toml
 /target/
 
 # Generated signals

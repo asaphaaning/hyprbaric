@@ -5,42 +5,57 @@
 
 use crate::signals::{
     GlobalMenuItem, GlobalMenuItemId, GlobalMenuItemKind, GlobalMenuSection, GlobalMenuSectionId,
-    GlobalMenuSectionStatus, GlobalMenuStatus,
+    GlobalMenuSectionStatus, GlobalMenuSession, GlobalMenuStatus,
 };
 use rinf::RustSignal;
 
-use super::{Error, Item, ItemId, ItemKind, Menu, Section, SectionId};
+use super::{Error, Item, ItemId, ItemKind, Menu, Section, SectionId, Session};
 
-pub(crate) fn headings(menu: &Menu) {
-    GlobalMenuStatus::from(menu).send_signal_to_dart();
-}
-
-pub(crate) fn no_headings(error: &Error) {
-    GlobalMenuStatus::from(error).send_signal_to_dart();
-}
-
-pub(crate) fn section_items(id: &SectionId, items: &[Item]) {
-    GlobalMenuSectionStatus::from((id, items)).send_signal_to_dart();
-}
-
-pub(crate) fn section_failed(id: &SectionId, error: &Error) {
-    GlobalMenuSectionStatus::from((id, error)).send_signal_to_dart();
-}
-
-impl From<&Menu> for GlobalMenuStatus {
-    fn from(menu: &Menu) -> Self {
-        Self {
-            sections: menu.sections.iter().map(GlobalMenuSection::from).collect(),
-            message: None,
-        }
+pub(crate) fn headings(session: &Session, menu: &Menu) {
+    GlobalMenuStatus {
+        window: Some(session.window.as_str().to_owned()),
+        session: Some(GlobalMenuSession::from(session)),
+        sections: menu.sections.iter().map(GlobalMenuSection::from).collect(),
+        message: None,
     }
+    .send_signal_to_dart();
 }
 
-impl From<&Error> for GlobalMenuStatus {
-    fn from(error: &Error) -> Self {
+pub(crate) fn no_headings(window: Option<String>, error: &Error) {
+    GlobalMenuStatus {
+        window,
+        session: None,
+        sections: Vec::new(),
+        message: Some(error.to_string()),
+    }
+    .send_signal_to_dart();
+}
+
+pub(crate) fn section_items(session: &Session, id: &SectionId, items: &[Item]) {
+    GlobalMenuSectionStatus {
+        session: GlobalMenuSession::from(session),
+        section: GlobalMenuSectionId::from(id),
+        items: items.iter().map(GlobalMenuItem::from).collect(),
+        message: None,
+    }
+    .send_signal_to_dart();
+}
+
+pub(crate) fn section_failed(session: &Session, id: &SectionId, error: &Error) {
+    GlobalMenuSectionStatus {
+        session: GlobalMenuSession::from(session),
+        section: GlobalMenuSectionId::from(id),
+        items: Vec::new(),
+        message: Some(error.to_string()),
+    }
+    .send_signal_to_dart();
+}
+
+impl From<&Session> for GlobalMenuSession {
+    fn from(session: &Session) -> Self {
         Self {
-            sections: Vec::new(),
-            message: Some(error.to_string()),
+            generation: session.generation,
+            window: session.window.as_str().to_owned(),
         }
     }
 }
@@ -51,26 +66,6 @@ impl From<&Section> for GlobalMenuSection {
             id: GlobalMenuSectionId::from(&section.id),
             label: section.label.clone(),
             enabled: section.enabled,
-        }
-    }
-}
-
-impl From<(&SectionId, &[Item])> for GlobalMenuSectionStatus {
-    fn from((id, items): (&SectionId, &[Item])) -> Self {
-        Self {
-            section: GlobalMenuSectionId::from(id),
-            items: items.iter().map(GlobalMenuItem::from).collect(),
-            message: None,
-        }
-    }
-}
-
-impl From<(&SectionId, &Error)> for GlobalMenuSectionStatus {
-    fn from((id, error): (&SectionId, &Error)) -> Self {
-        Self {
-            section: GlobalMenuSectionId::from(id),
-            items: Vec::new(),
-            message: Some(error.to_string()),
         }
     }
 }

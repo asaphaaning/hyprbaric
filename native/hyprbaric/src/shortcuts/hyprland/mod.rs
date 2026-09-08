@@ -43,12 +43,15 @@ impl Bind {
     /// Hyprbaric only creates `global` and `exec` binds, so keeping this
     /// projection next to the legacy keyword representation makes the runtime
     /// installer compatible with either config provider.
-    pub(super) fn lua_expression(&self) -> String {
+    pub(super) fn lua_expression(&self) -> Result<String, Error> {
         let mut fields = self.value.splitn(4, ", ");
-        let modifiers = fields.next().expect("bind always includes modifiers");
-        let key = fields.next().expect("bind always includes a key");
-        let dispatcher = fields.next().expect("bind always includes a dispatcher");
-        let argument = fields.next().expect("bind always includes an argument");
+        let (Some(modifiers), Some(key), Some(dispatcher), Some(argument)) =
+            (fields.next(), fields.next(), fields.next(), fields.next())
+        else {
+            return Err(Error::InvalidBind {
+                value: self.value.clone(),
+            });
+        };
         let modifiers = modifiers.split_whitespace().collect::<Vec<_>>().join(" + ");
         let chord = if modifiers.is_empty() {
             key.to_string()
@@ -58,7 +61,11 @@ impl Bind {
         let dispatcher = match dispatcher {
             "global" => format!("hl.dsp.global({})", lua_string(argument)),
             "exec" => format!("hl.dsp.exec_cmd({})", lua_string(argument)),
-            _ => unreachable!("Hyprbaric only projects global and exec binds"),
+            _ => {
+                return Err(Error::InvalidBind {
+                    value: self.value.clone(),
+                });
+            }
         };
         let options = if self.keyword == "bindr" {
             ", { release = true }"
@@ -66,7 +73,10 @@ impl Bind {
             ""
         };
 
-        format!("hl.bind({}, {dispatcher}{options})", lua_string(&chord))
+        Ok(format!(
+            "hl.bind({}, {dispatcher}{options})",
+            lua_string(&chord)
+        ))
     }
 
     /// Builds the Lua equivalent of a legacy `keyword unbind` payload.
@@ -597,9 +607,23 @@ mod tests {
         };
 
         assert_eq!(
-            bind.lua_expression(),
+            bind.lua_expression().expect("valid app-owned bind"),
             "hl.bind(\"SUPER + SHIFT + S\", hl.dsp.global(\"com.hyprbaric.Hyprbaric:controls\"))"
         );
+    }
+
+    #[test]
+    fn rejects_incomplete_and_unsupported_lua_binds() {
+        for value in ["SUPER, S", "SUPER, S, movewindow, l"] {
+            let bind = super::Bind {
+                keyword: "bind",
+                value: value.to_owned(),
+            };
+            assert!(matches!(
+                bind.lua_expression(),
+                Err(super::Error::InvalidBind { .. })
+            ));
+        }
     }
 
     #[test]
@@ -610,7 +634,7 @@ mod tests {
         };
 
         assert_eq!(
-            bind.lua_expression(),
+            bind.lua_expression().expect("valid app-owned bind"),
             "hl.bind(\"SUPER + Super_L\", hl.dsp.exec_cmd(\"hyprctl dispatch \\\"hl.dsp.global('launcher')\\\" || hyprctl dispatch global launcher\"), { release = true })"
         );
         assert_eq!(

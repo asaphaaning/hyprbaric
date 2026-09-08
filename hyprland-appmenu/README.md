@@ -25,8 +25,9 @@ cmake --build hyprland-appmenu/build
 ```
 
 When built through `flutter build linux`, the production plugin is installed as
-`lib/hyprbaric-appmenu.so` inside the relocatable Hyprbaric bundle. Enable the
-boot loader with:
+`lib/hyprbaric-appmenu.so` inside the relocatable Hyprbaric bundle, and the
+source for that plugin is copied to `data/hyprland-appmenu`. Enable the boot
+loader with:
 
 ```toml
 [global_menu]

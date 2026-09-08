@@ -25,16 +25,16 @@ use std::{
     sync::{Mutex, MutexGuard, OnceLock, PoisonError},
 };
 
-use futures_util::StreamExt;
+use futures_util::{FutureExt, StreamExt};
 use tokio::sync::{Notify, watch};
 use tracing::instrument;
 use zbus::Connection;
 
 use super::{
     DBUSMENU_RELAYOUT, Endpoint, Error, Item, Menu, SectionId, dbusmenu, dbusmenu_items,
-    dbusmenu_live_items, dbusmenu_tree, entitle_anonymous_list, focused, focused_list_title,
-    gtk_actions, gtk_describe, gtk_items, gtk_layout, gtk_menus, gtk_menus_at, gtk_tree,
-    prepend_gtk_app_menu, publish,
+    dbusmenu_live_items, dbusmenu_tree, entitle_anonymous_list, focused_list_title, gtk_actions,
+    gtk_describe, gtk_items, gtk_layout, gtk_menus, gtk_menus_at, gtk_tree, prepend_gtk_app_menu,
+    publish,
 };
 
 const DEBOUNCE: std::time::Duration = std::time::Duration::from_millis(80);
@@ -45,15 +45,13 @@ const HEADINGS_DEPTH: i32 = 1;
 /// Identity of the exporter this snapshot belongs to.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Exporter {
-    service: String,
-    path: String,
+    endpoint: Endpoint,
 }
 
 impl Exporter {
     fn of(endpoint: &Endpoint) -> Self {
         Self {
-            service: endpoint.service().to_owned(),
-            path: endpoint.path().to_owned(),
+            endpoint: endpoint.clone(),
         }
     }
 }
@@ -411,14 +409,7 @@ fn bump() -> u64 {
 }
 
 #[instrument(name = "hyprbaric::global_menu::live::headings")]
-pub(super) async fn headings() -> Result<Menu, Error> {
-    let (connection, endpoint) = match focused().await {
-        Ok(focused) => focused,
-        Err(error) => {
-            clear();
-            return Err(error);
-        }
-    };
+pub(super) async fn headings(connection: Connection, endpoint: Endpoint) -> Result<Menu, Error> {
     let exporter = Exporter::of(&endpoint);
 
     if let Some(menu) = held().headings_for(&exporter) {
@@ -440,8 +431,11 @@ pub(super) async fn headings() -> Result<Menu, Error> {
 }
 
 #[instrument(name = "hyprbaric::global_menu::live::items")]
-pub(super) async fn items(id: &SectionId) -> Result<Vec<Item>, Error> {
-    let (connection, endpoint) = focused().await?;
+pub(super) async fn items(
+    connection: Connection,
+    endpoint: Endpoint,
+    id: &SectionId,
+) -> Result<Vec<Item>, Error> {
     let exporter = Exporter::of(&endpoint);
 
     if !held().holds(&exporter) {
@@ -490,18 +484,9 @@ fn remember(exporter: &Exporter, id: SectionId, items: Vec<Item>) {
     }
 }
 
-/// Rebuilds the cache after an activation, without blocking the click.
-pub(super) fn refresh() {
-    tokio::spawn(async {
-        if let Err(error) = refresh_now().await {
-            tracing::debug!(%error, "Could not refresh the focused menu after activation");
-        }
-    });
-}
-
-#[instrument(name = "hyprbaric::global_menu::live::refresh", err)]
-async fn refresh_now() -> Result<(), Error> {
-    let (connection, endpoint) = focused().await?;
+/// Recaptures the same exporter in the ordered command sequence.
+#[instrument(name = "hyprbaric::global_menu::live::refresh", skip_all, err)]
+pub(super) async fn refresh_now(connection: Connection, endpoint: Endpoint) -> Result<(), Error> {
     let exporter = Exporter::of(&endpoint);
     take(connection, endpoint, exporter).await?;
     Ok(())
@@ -630,32 +615,35 @@ fn install(epoch: u64, exporter: Exporter, incoming: Snapshot) {
         Held::Occupied {
             exporter: held,
             snapshot,
-        } if held == &exporter => snapshot.clone().merge(incoming),
+        } if held == &exporter && matches!(&exporter.endpoint, Endpoint::DbusMenu { .. }) => {
+            snapshot.clone().merge(incoming)
+        }
         _ => incoming,
     };
 
-    publish::headings(&snapshot.headings);
+    let Some(session) = super::session::current(&exporter.endpoint) else {
+        return;
+    };
+    publish::headings(&session, &snapshot.headings);
     for (id, items) in &snapshot.sections {
-        if items.is_empty() {
+        if items.is_empty() && matches!(id, SectionId::DbusMenu { .. }) {
             continue;
         }
-        publish::section_items(id, items);
+        publish::section_items(&session, id, items);
     }
 
     *held() = Held::occupy(exporter, snapshot);
     store().populated.notify_waiters();
 }
 
-fn clear() {
+pub(super) async fn clear() {
     bump();
     *held() = Held::Vacant;
     let leftover = drain_opened();
     if leftover.is_empty() {
         return;
     }
-    tokio::spawn(async move {
-        super::close_opened(leftover).await;
-    });
+    super::close_opened(leftover).await;
 }
 
 async fn wait_until_populated(exporter: &Exporter) {
@@ -763,37 +751,101 @@ async fn watch_dbusmenu(
     }
 }
 
-/// Whether the next GTK `Changed` is the echo of our own `Start`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum GtkEcho {
-    Listen,
-    Ignore,
+/// A GTK subscription owns its initial rows and applies the protocol's splices.
+/// Start remains active until the watch exits; reads never cancel this lease.
+struct GtkSubscription<'a> {
+    proxy: super::GtkMenusProxy<'a>,
+    groups: Vec<super::GtkGroup>,
+    subscribed: std::collections::HashSet<u32>,
+}
+
+impl<'a> GtkSubscription<'a> {
+    async fn start(proxy: super::GtkMenusProxy<'a>) -> Result<Self, Error> {
+        let (groups, subscribed) = super::gtk_subscribe(&proxy, &[0]).await?;
+        Ok(Self {
+            proxy,
+            groups,
+            subscribed: subscribed.into_iter().collect(),
+        })
+    }
+
+    async fn changed(&mut self, changes: &[super::GtkChange]) -> Result<(), Error> {
+        for change in changes {
+            apply_gtk_change(&mut self.groups, change)?;
+        }
+        loop {
+            let pending = super::gtk_unfetched_groups(&self.groups, &self.subscribed);
+            if pending.is_empty() {
+                return Ok(());
+            }
+            self.groups
+                .extend(self.proxy.start(&pending).await.map_err(Error::GtkLayout)?);
+            self.subscribed.extend(pending);
+        }
+    }
+
+    async fn end(&self) {
+        let subscribed = self.subscribed.iter().copied().collect::<Vec<_>>();
+        if let Err(error) = self.proxy.end(&subscribed).await {
+            tracing::debug!(%error, "Could not end GTK menu watch");
+        }
+    }
+}
+
+fn apply_gtk_change(
+    groups: &mut Vec<super::GtkGroup>,
+    change: &super::GtkChange,
+) -> Result<(), Error> {
+    let index = groups
+        .iter()
+        .position(|group| group.group == change.group && group.menu == change.menu);
+    let group = match index {
+        Some(index) => &mut groups[index],
+        None => {
+            groups.push(super::GtkGroup {
+                group: change.group,
+                menu: change.menu,
+                items: Vec::new(),
+            });
+            groups.last_mut().ok_or(Error::InvalidGtkChange)?
+        }
+    };
+    let start = change.position as usize;
+    let end = start
+        .checked_add(change.removed as usize)
+        .ok_or(Error::InvalidGtkChange)?;
+    if start > group.items.len() || end > group.items.len() {
+        return Err(Error::InvalidGtkChange);
+    }
+    group.items.splice(start..end, change.items.clone());
+    Ok(())
 }
 
 async fn watch_gtk(
     epoch: u64,
     current: &mut watch::Receiver<u64>,
-    connection: &Connection,
+    _connection: &Connection,
     endpoint: &Endpoint,
 ) -> Result<(), Error> {
-    let menus = gtk_menus(connection, endpoint).await?;
-    let mut changed = menus.receive_changed().await.ok();
+    // A dedicated connection also releases subscriptions on cancellation or
+    // partial initialization failure, before an End request could be made.
+    let connection = Connection::session().await.map_err(Error::Connect)?;
+    let menus = gtk_menus(&connection, endpoint).await?;
+    let mut changed = menus.receive_changed().await.map_err(Error::GtkLayout)?;
     let app_menus = match endpoint.app_menu_path() {
-        Some(path) => gtk_menus_at(connection, endpoint.service(), path)
-            .await
-            .ok(),
+        Some(path) => Some(gtk_menus_at(&connection, endpoint.service(), path).await?),
         None => None,
     };
     let mut app_menus_changed = match &app_menus {
-        Some(proxy) => proxy.receive_changed().await.ok(),
+        Some(proxy) => Some(proxy.receive_changed().await.map_err(Error::GtkLayout)?),
         None => None,
     };
     let app = match endpoint.application_path() {
-        Some(path) => gtk_actions(connection, endpoint, path).await.ok(),
+        Some(path) => gtk_actions(&connection, endpoint, path).await.ok(),
         None => None,
     };
     let win = match endpoint.window_path() {
-        Some(path) => gtk_actions(connection, endpoint, path).await.ok(),
+        Some(path) => gtk_actions(&connection, endpoint, path).await.ok(),
         None => None,
     };
     let mut app_changed = match &app {
@@ -804,46 +856,86 @@ async fn watch_gtk(
         Some(proxy) => proxy.receive_changed().await.ok(),
         None => None,
     };
-    let mut echo = GtkEcho::Listen;
+    let mut menus = GtkSubscription::start(menus).await?;
+    let mut app_menus = match app_menus {
+        Some(proxy) => Some(GtkSubscription::start(proxy).await?),
+        None => None,
+    };
+    let result = async {
+        loop {
+            let actions = gtk_describe(&connection, endpoint).await;
+            let (mut headings, mut sections) = gtk_tree(&menus.groups, &actions)?;
+            if let Some(app_menu) = &app_menus {
+                (headings, sections) = prepend_gtk_app_menu(
+                    headings,
+                    sections,
+                    &app_menu.groups,
+                    &actions,
+                    focused_list_title().await,
+                )?;
+            }
+            entitle_anonymous_list(&mut headings, focused_list_title().await);
+            install(
+                epoch,
+                Exporter::of(endpoint),
+                Snapshot {
+                    headings,
+                    sections,
+                    ..Default::default()
+                },
+            );
 
-    loop {
-        tokio::select! {
-            _ = current.changed() => {
-                if *current.borrow() != epoch {
-                    return Ok(());
+            // Consume every splice; discarding events during a debounce loses
+            // the positional baseline required by subsequent GTK changes.
+            tokio::select! {
+                _ = current.changed() => {
+                    if *current.borrow() != epoch { return Ok(()) }
+                }
+                signal = changed.next() => {
+                    let Some(signal) = signal else { return Ok(()) };
+                    menus.changed(signal.args().map_err(Error::GtkLayout)?.changes()).await?;
+                }
+                signal = next_optional(&mut app_menus_changed) => {
+                    let Some(signal) = signal else { return Ok(()) };
+                    if let Some(menu) = &mut app_menus {
+                        menu.changed(signal.args().map_err(Error::GtkLayout)?.changes()).await?;
+                    }
+                }
+                _ = recv(&mut app_changed) => {}
+                _ = recv(&mut win_changed) => {}
+            }
+            // Coalesce bursts without losing the ordered positional splices.
+            tokio::time::sleep(DEBOUNCE).await;
+            while let Some(Some(signal)) = changed.next().now_or_never() {
+                menus
+                    .changed(signal.args().map_err(Error::GtkLayout)?.changes())
+                    .await?;
+            }
+            while let Some(Some(signal)) = next_optional(&mut app_menus_changed).now_or_never() {
+                if let Some(menu) = &mut app_menus {
+                    menu.changed(signal.args().map_err(Error::GtkLayout)?.changes())
+                        .await?;
                 }
             }
-            _ = recv(&mut changed) => {
-                if echo == GtkEcho::Ignore {
-                    echo = GtkEcho::Listen;
-                    continue;
-                }
+            while let Some(Some(_)) = next_optional(&mut app_changed).now_or_never() {}
+            while let Some(Some(_)) = next_optional(&mut win_changed).now_or_never() {}
+            if *current.borrow() != epoch {
+                return Ok(());
             }
-            _ = recv(&mut app_menus_changed) => {
-                if echo == GtkEcho::Ignore {
-                    echo = GtkEcho::Listen;
-                    continue;
-                }
-            }
-            _ = recv(&mut app_changed) => {}
-            _ = recv(&mut win_changed) => {}
         }
+    }
+    .await;
+    menus.end().await;
+    if let Some(menu) = &app_menus {
+        menu.end().await;
+    }
+    result
+}
 
-        if !settle4(
-            current,
-            epoch,
-            &mut changed,
-            &mut app_menus_changed,
-            &mut app_changed,
-            &mut win_changed,
-        )
-        .await
-        {
-            return Ok(());
-        }
-
-        replace(epoch, connection, endpoint).await?;
-        echo = GtkEcho::Ignore;
+async fn next_optional<S: StreamExt + Unpin>(stream: &mut Option<S>) -> Option<S::Item> {
+    match stream {
+        Some(stream) => stream.next().await,
+        None => pending().await,
     }
 }
 
@@ -870,6 +962,10 @@ async fn refresh_opened(connection: &Connection, endpoint: &Endpoint) -> Result<
     }
 
     let exporter = Exporter::of(endpoint);
+    let epoch = generation();
+    let Some(session) = super::session::current(endpoint) else {
+        return Ok(());
+    };
     for menu in announced() {
         if Exporter::of(&menu.endpoint) != exporter {
             continue;
@@ -884,41 +980,16 @@ async fn refresh_opened(connection: &Connection, endpoint: &Endpoint) -> Result<
         if items.is_empty() {
             continue;
         }
+        if generation() != epoch || super::session::resolve(&session).is_err() {
+            return Ok(());
+        }
+        if !announced().contains(&menu) {
+            continue;
+        }
         remember(&exporter, menu.section.clone(), items.clone());
-        publish::section_items(&menu.section, &items);
+        publish::section_items(&session, &menu.section, &items);
     }
     Ok(())
-}
-
-async fn settle4<
-    A: StreamExt + Unpin,
-    B: StreamExt + Unpin,
-    C: StreamExt + Unpin,
-    D: StreamExt + Unpin,
->(
-    current: &mut watch::Receiver<u64>,
-    epoch: u64,
-    first: &mut Option<A>,
-    second: &mut Option<B>,
-    third: &mut Option<C>,
-    fourth: &mut Option<D>,
-) -> bool {
-    let wait = tokio::time::sleep(DEBOUNCE);
-    tokio::pin!(wait);
-    loop {
-        tokio::select! {
-            _ = current.changed() => {
-                if *current.borrow() != epoch {
-                    return false;
-                }
-            }
-            _ = recv(first) => {}
-            _ = recv(second) => {}
-            _ = recv(third) => {}
-            _ = recv(fourth) => {}
-            _ = &mut wait => return true,
-        }
-    }
 }
 
 async fn settle3<A: StreamExt + Unpin, B: StreamExt + Unpin, C: StreamExt + Unpin>(
@@ -957,8 +1028,11 @@ async fn settle<A: StreamExt + Unpin, B: StreamExt + Unpin>(
 
 async fn recv<S: StreamExt + Unpin>(stream: &mut Option<S>) {
     match stream.as_mut() {
-        Some(stream) => {
-            let _ = stream.next().await;
+        Some(source) => {
+            if source.next().await.is_none() {
+                *stream = None;
+                pending::<()>().await;
+            }
         }
         None => pending::<()>().await,
     }
@@ -969,10 +1043,63 @@ mod tests {
     use super::super::{Item, ItemId, ItemKind, Menu, Section, SectionId};
     use super::{Exporter, Held, Opened, Snapshot, closing};
 
+    #[test]
+    fn gtk_splices_preserve_unmodified_rows_and_reject_invalid_ranges() {
+        use super::super::{GtkChange, GtkGroup};
+        use std::collections::HashMap;
+        let row = |label: &'static str| {
+            HashMap::from([(
+                "label".to_owned(),
+                zbus::zvariant::OwnedValue::try_from(zbus::zvariant::Value::from(label))
+                    .expect("label"),
+            )])
+        };
+        let mut groups = vec![GtkGroup {
+            group: 0,
+            menu: 1,
+            items: vec![row("First"), row("Removed"), row("Last")],
+        }];
+        let change = GtkChange {
+            group: 0,
+            menu: 1,
+            position: 1,
+            removed: 1,
+            items: vec![row("New"), row("Also new")],
+        };
+        super::apply_gtk_change(&mut groups, &change).expect("valid splice");
+        assert_eq!(
+            groups[0].items,
+            vec![row("First"), row("New"), row("Also new"), row("Last")]
+        );
+        assert!(
+            super::apply_gtk_change(
+                &mut groups,
+                &GtkChange {
+                    position: 99,
+                    ..change
+                }
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn gtk_changed_uses_the_protocol_splice_signature() {
+        use zbus::zvariant::Type;
+        assert_eq!(
+            <Vec<super::super::GtkChange>>::SIGNATURE.to_string(),
+            "a(uuuuaa{sv})"
+        );
+    }
+
     fn exporter() -> Exporter {
         Exporter {
-            service: ":1.40".to_owned(),
-            path: "/MenuBar".to_owned(),
+            endpoint: super::Endpoint::DbusMenu {
+                service: ":1.40".to_owned(),
+                path: "/MenuBar".to_owned(),
+                address: None,
+                xid: None,
+            },
         }
     }
 
@@ -1010,8 +1137,12 @@ mod tests {
     fn an_occupied_cache_serves_only_the_exporter_it_holds() {
         let held = Held::occupy(exporter(), snapshot());
         let other = Exporter {
-            path: "/Other".to_owned(),
-            ..exporter()
+            endpoint: super::Endpoint::DbusMenu {
+                service: ":1.40".into(),
+                path: "/Other".into(),
+                address: None,
+                xid: None,
+            },
         };
 
         assert_eq!(

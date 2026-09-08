@@ -964,7 +964,15 @@ void main() {
       ),
       false,
     );
-    expect(find.byType(CustomPaint), findsOneWidget);
+    expect(find.byType(CustomPaint), findsAtLeastNWidgets(2));
+    final Finder clipFinder = find.descendant(
+      of: find.byType(HyprSurface),
+      matching: find.byType(ClipRSuperellipse),
+    );
+    expect(
+      tester.getSize(clipFinder),
+      tester.getSize(find.byType(HyprSurface)),
+    );
   });
 
   testWidgets('bar renders workspace indicators as Roman numerals', (
@@ -2138,6 +2146,62 @@ void main() {
     expect(find.text('Global menu'), findsOneWidget);
     expect(find.text('Off'), findsNWidgets(2));
     expect(find.text('On'), findsNWidgets(3));
+  });
+
+  testWidgets('global menu settings names a blocked companion', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          modulesStatusProvider.overrideWith(
+            (ref) => Stream.value(
+              const ModulesStatus(
+                entries: <ModuleEntry>[
+                  ModuleEntry(
+                    module: ModuleId.activeWindowTitle,
+                    enabled: true,
+                  ),
+                  ModuleEntry(module: ModuleId.systemTray, enabled: true),
+                  ModuleEntry(module: ModuleId.notifications, enabled: true),
+                  ModuleEntry(module: ModuleId.audioDisplay, enabled: true),
+                  ModuleEntry(module: ModuleId.globalMenu, enabled: true),
+                ],
+              ),
+            ),
+          ),
+          globalMenuIntegrationProvider.overrideWith(
+            (ref) => Stream<GlobalMenuIntegrationStatus>.value(
+              const GlobalMenuIntegrationStatusBlocked(
+                message:
+                    'The bundled AppMenu companion does not fit this version of Hyprland.',
+                instruction:
+                    'hyprpm add https://github.com/asaphaaning/hyprbaric',
+              ),
+            ),
+          ),
+        ],
+        child: _scopedSurface(
+          child: SettingsOverlayContent(
+            tab: SettingsTab.modules,
+            onTabChanged: (_) {},
+            onClose: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      find.textContaining('does not fit this version of Hyprland'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining(
+        'hyprpm add https://github.com/asaphaaning/hyprbaric',
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('workspaces settings dispatches style range and clickability', (

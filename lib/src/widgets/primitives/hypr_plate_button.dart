@@ -157,7 +157,12 @@ class HyprPlateButton extends StatelessWidget {
                             ),
                             if (shortcut case final String chord) ...<Widget>[
                               const SizedBox(width: 8),
-                              _ShortcutBadge(chord),
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: _ShortcutBadge(chord),
+                                ),
+                              ),
                             ],
                             const SizedBox(width: 8),
                             Text(

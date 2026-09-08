@@ -16,7 +16,7 @@ mod refresh;
 
 pub use domain::{
     Command, DesktopSnapshot, DisplayedWorkspace, FocusedWindowSnapshot, MonitorFocusedWindow,
-    MonitorWorkspace, OutputGeometry, OutputName, OutputTransform, WorkspaceOccupancy,
+    MonitorWorkspace, OutputGeometry, OutputName, OutputTransform, WindowId, WorkspaceOccupancy,
     WorkspaceSnapshot, WorkspaceTarget,
 };
 pub(crate) use exec::start_user;
@@ -262,6 +262,7 @@ fn focused_window_snapshot(
     clients: &[Client],
 ) -> FocusedWindowSnapshot {
     FocusedWindowSnapshot::new(
+        client.and_then(|value| WindowId::new(value.address.to_string())),
         client.map(|value| value.class.as_str()),
         client.map(|value| value.title.as_str()),
         hostname,

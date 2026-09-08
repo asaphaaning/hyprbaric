@@ -31,42 +31,49 @@ sealed class RustIntent {
 sealed class GlobalMenuIntent extends RustIntent {
   const GlobalMenuIntent();
 
-  const factory GlobalMenuIntent.refresh() = _GlobalMenuRefreshIntent;
+  const factory GlobalMenuIntent.refresh({String? window}) =
+      _GlobalMenuRefreshIntent;
 
-  const factory GlobalMenuIntent.openSection(GlobalMenuSectionId section) =
+  const factory GlobalMenuIntent.openSection(GlobalMenuAddress address) =
       _GlobalMenuOpenSectionIntent;
 
-  const factory GlobalMenuIntent.activate(GlobalMenuItemId item) =
-      _GlobalMenuActivateIntent;
+  const factory GlobalMenuIntent.activate(
+    GlobalMenuSession session,
+    GlobalMenuItemId item,
+  ) = _GlobalMenuActivateIntent;
 
-  const factory GlobalMenuIntent.dismiss(GlobalMenuSectionId section) =
+  const factory GlobalMenuIntent.dismiss(GlobalMenuAddress address) =
       _GlobalMenuDismissIntent;
 }
 
 class _GlobalMenuRefreshIntent extends GlobalMenuIntent {
-  const _GlobalMenuRefreshIntent();
+  const _GlobalMenuRefreshIntent({this.window});
+
+  final String? window;
 
   @override
   String get debugLabel => 'global_menu_refresh';
 
   @override
-  void send() => const GlobalMenuRequest().sendSignalToRust();
+  void send() => GlobalMenuCommandRead(window: window).sendSignalToRust();
 }
 
 class _GlobalMenuOpenSectionIntent extends GlobalMenuIntent {
-  const _GlobalMenuOpenSectionIntent(this.section);
+  const _GlobalMenuOpenSectionIntent(this.address);
 
-  final GlobalMenuSectionId section;
+  final GlobalMenuAddress address;
 
   @override
   String get debugLabel => 'global_menu_open_section';
 
   @override
-  void send() => GlobalMenuSectionRequest(section: section).sendSignalToRust();
+  void send() => GlobalMenuCommandOpen(address: address).sendSignalToRust();
 }
 
 class _GlobalMenuActivateIntent extends GlobalMenuIntent {
-  const _GlobalMenuActivateIntent(this.item);
+  const _GlobalMenuActivateIntent(this.session, this.item);
+
+  final GlobalMenuSession session;
 
   final GlobalMenuItemId item;
 
@@ -74,19 +81,22 @@ class _GlobalMenuActivateIntent extends GlobalMenuIntent {
   String get debugLabel => 'global_menu_activate';
 
   @override
-  void send() => GlobalMenuActivateRequest(item: item).sendSignalToRust();
+  void send() => GlobalMenuCommandActivate(
+    session: session,
+    item: item,
+  ).sendSignalToRust();
 }
 
 class _GlobalMenuDismissIntent extends GlobalMenuIntent {
-  const _GlobalMenuDismissIntent(this.section);
+  const _GlobalMenuDismissIntent(this.address);
 
-  final GlobalMenuSectionId section;
+  final GlobalMenuAddress address;
 
   @override
   String get debugLabel => 'global_menu_dismiss';
 
   @override
-  void send() => GlobalMenuDismissRequest(section: section).sendSignalToRust();
+  void send() => GlobalMenuCommandDismiss(address: address).sendSignalToRust();
 }
 
 sealed class SetupIntent extends RustIntent {

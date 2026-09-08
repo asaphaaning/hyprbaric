@@ -1,6 +1,6 @@
 //! Night-light settings persistence.
 
-use toml_edit::{DocumentMut, Item, Table, value};
+use toml_edit::{Table, value};
 use tracing::instrument;
 
 use crate::config;
@@ -13,18 +13,12 @@ const TABLE: &str = "night_light";
 #[instrument(skip(command), err)]
 pub fn save(command: &Command, current: Configuration) -> Result<Configuration, Error> {
     let next = current.apply(command);
-    config::edit(|document| write_night_light(document, next))?;
+    config::edit_table(TABLE, |table| write_night_light(table, next))?;
 
     Ok(next)
 }
 
-fn write_night_light(document: &mut DocumentMut, config: Configuration) {
-    if !document.as_table().contains_key(TABLE) {
-        document[TABLE] = Item::Table(Table::new());
-    }
-    let table = document[TABLE]
-        .as_table_mut()
-        .expect("night_light item should be a table");
+fn write_night_light(table: &mut Table, config: Configuration) {
     table["enabled"] = value(config.enabled());
     table["temperature"] = value(config.temperature().as_u32() as i64);
 }

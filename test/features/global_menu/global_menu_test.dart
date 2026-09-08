@@ -45,8 +45,15 @@ const GlobalMenuSectionId _file = GlobalMenuSectionIdDbusMenu(id: 1);
 const GlobalMenuSectionId _edit = GlobalMenuSectionIdDbusMenu(id: 2);
 const GlobalMenuSectionId _recent = GlobalMenuSectionIdDbusMenu(id: 20);
 
-const GlobalMenuStatus _twoHeadings = GlobalMenuStatus(
-  sections: <GlobalMenuSection>[
+final GlobalMenuSession _session = GlobalMenuSession(
+  generation: Uint64(BigInt.one),
+  window: '0x1',
+);
+GlobalMenuAddress _address(GlobalMenuSectionId id) =>
+    GlobalMenuAddress(session: _session, section: id);
+final GlobalMenuStatus _twoHeadings = GlobalMenuStatus(
+  session: _session,
+  sections: const <GlobalMenuSection>[
     GlobalMenuSection(id: _file, label: 'File', enabled: true),
     GlobalMenuSection(id: _edit, label: 'Edit', enabled: true),
   ],
@@ -72,9 +79,14 @@ GlobalMenuItem _item({
 }
 
 dynamic _section(GlobalMenuSectionId id, List<GlobalMenuItem> items) {
-  return globalMenuSectionProvider(id).overrideWith(
+  return globalMenuSectionProvider(_address(id)).overrideWith(
     (ref) => Stream<GlobalMenuSectionStatus>.value(
-      GlobalMenuSectionStatus(section: id, items: items, message: null),
+      GlobalMenuSectionStatus(
+        session: _session,
+        section: id,
+        items: items,
+        message: null,
+      ),
     ),
   );
 }
@@ -92,6 +104,216 @@ Widget _surface({required Widget child, required List<dynamic> overrides}) {
 }
 
 void main() {
+  test('GTK row removal replaces the open rows and cached snapshot', () async {
+    const section = GlobalMenuSectionIdGtk(group: 0, menu: 1);
+    final container = ProviderContainer(
+      overrides: [
+        globalMenuStatusProvider.overrideWith(
+          (ref) => Stream.value(_twoHeadings),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    final cache = container.listen(globalMenuSectionCacheProvider, (_, _) {});
+    addTearDown(cache.close);
+    await container.read(globalMenuStatusProvider.future);
+    final provider = globalMenuSectionProvider(_address(section));
+    final subscription = container.listen(provider, (_, _) {});
+    addTearDown(subscription.close);
+    await Future<void>.delayed(Duration.zero);
+    void publish(List<GlobalMenuItem> items) =>
+        assignRustSignal['GlobalMenuSectionStatus']!(
+          GlobalMenuSectionStatus(
+            session: _session,
+            section: section,
+            items: items,
+          ).bincodeSerialize(),
+          Uint8List(0),
+        );
+    publish([_item(label: 'Removed row')]);
+    await Future<void>.delayed(Duration.zero);
+    expect(container.read(provider).value?.items, hasLength(1));
+    publish([]);
+    await Future<void>.delayed(Duration.zero);
+    expect(container.read(provider).value?.items, isEmpty);
+    expect(
+      container.read(globalMenuSectionCacheProvider)[_address(section)]?.items,
+      isEmpty,
+    );
+  });
+
+  test(
+    'late D-BusMenu replies cannot refill a dismissed popup cache',
+    () async {
+      final container = ProviderContainer(
+        overrides: [
+          globalMenuStatusProvider.overrideWith(
+            (ref) => Stream.value(_twoHeadings),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      final cache = container.listen(globalMenuSectionCacheProvider, (_, _) {});
+      addTearDown(cache.close);
+      await container.read(globalMenuStatusProvider.future);
+      container
+          .read(globalMenuSectionCacheProvider.notifier)
+          .forget(_address(_file));
+      assignRustSignal['GlobalMenuSectionStatus']!(
+        GlobalMenuSectionStatus(
+          session: _session,
+          section: _file,
+          items: [_item(label: 'Late row')],
+        ).bincodeSerialize(),
+        Uint8List(0),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(globalMenuSectionCacheProvider), isEmpty);
+    },
+  );
+
+  testWidgets(
+    'window identity refreshes same-app menus but title edits do not',
+    (tester) async {
+      final focus = StreamController<FocusedWindowStatus>();
+      final dispatcher = _RecordingDispatcher();
+      addTearDown(focus.close);
+      await tester.pumpWidget(
+        _surface(
+          overrides: [
+            rustCommandDispatcherProvider.overrideWith((ref) => dispatcher),
+            focusedWindowStatusProvider.overrideWith((ref) => focus.stream),
+            globalMenuStatusProvider.overrideWith(
+              (ref) => Stream.value(_twoHeadings.copyWith(window: () => '0x1')),
+            ),
+          ],
+          child: const SizedBox(width: 500, child: GlobalMenuBar()),
+        ),
+      );
+      await tester.pump();
+      void focused(String address, String title) => focus.add(
+        FocusedWindowStatus(
+          address: address,
+          appName: 'editor',
+          title: title,
+          hostname: 'host',
+          monitors: const [],
+        ),
+      );
+      int requests() => dispatcher.intents
+          .where((intent) => intent.debugLabel == 'global_menu_refresh')
+          .length;
+      focused('0x1', 'Document A');
+      await tester.pump();
+      await tester.pump();
+      final before = requests();
+      focused('0x1', 'Document A *');
+      await tester.pump();
+      expect(requests(), before);
+      focused('0x2', 'Document B');
+      await tester.pump();
+      await tester.pump();
+      expect(requests(), before + 1);
+      expect(find.text('File'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets('long menu scrolls to and activates its last command', (
+    tester,
+  ) async {
+    final dispatcher = _RecordingDispatcher();
+    await tester.pumpWidget(
+      _surface(
+        overrides: [
+          rustCommandDispatcherProvider.overrideWith((ref) => dispatcher),
+          _section(
+            _file,
+            List.generate(
+              50,
+              (index) => _item(
+                label: 'Bookmark $index',
+                activation: GlobalMenuItemIdDbusMenu(id: index + 100),
+              ),
+            ),
+          ),
+        ],
+        child: GlobalMenuSectionPanel(
+          session: _session,
+          section: _file,
+          onActivated: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -1800),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Bookmark 49'));
+    expect(dispatcher.intents.last.debugLabel, 'global_menu_activate');
+    expect(tester.takeException(), isNull);
+  });
+
+  test('closing a section evicts its rows and stream state', () async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final provider = globalMenuSectionProvider(_address(_file));
+    final subscription = container.listen(provider, (_, _) {});
+    await Future<void>.delayed(Duration.zero);
+    assignRustSignal['GlobalMenuSectionStatus']!(
+      GlobalMenuSectionStatus(
+        session: _session,
+        section: _file,
+        items: [_item(label: 'Old row')],
+      ).bincodeSerialize(),
+      Uint8List(0),
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(container.read(provider).value?.items.single.label, 'Old row');
+    subscription.close();
+    container
+        .read(globalMenuSectionCacheProvider.notifier)
+        .forget(_address(_file));
+    await Future<void>.delayed(Duration.zero);
+    await container.pump();
+    expect(container.exists(provider), isFalse);
+    expect(container.read(provider).asData?.value, isNull);
+  });
+
+  testWidgets('late rows from another session never replace an open section', (
+    tester,
+  ) async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final provider = globalMenuSectionProvider(_address(_file));
+    final subscription = container.listen(provider, (_, _) {});
+    addTearDown(subscription.close);
+    await tester.pump();
+    final current = GlobalMenuSectionStatus(
+      session: _session,
+      section: _file,
+      items: [_item(label: 'Current row')],
+    );
+    assignRustSignal['GlobalMenuSectionStatus']!(
+      current.bincodeSerialize(),
+      Uint8List(0),
+    );
+    await tester.pump();
+    final foreign = current.copyWith(
+      session: GlobalMenuSession(generation: Uint64(BigInt.two), window: '0x2'),
+      items: [_item(label: 'Foreign row')],
+    );
+    assignRustSignal['GlobalMenuSectionStatus']!(
+      foreign.bincodeSerialize(),
+      Uint8List(0),
+    );
+    await tester.pump();
+    expect(container.read(provider).value?.items.single.label, 'Current row');
+  });
+
   testWidgets('a section shows its rows, accelerators and marks', (
     WidgetTester tester,
   ) async {
@@ -111,7 +333,11 @@ void main() {
             ),
           ]),
         ],
-        child: GlobalMenuSectionPanel(section: _file, onActivated: () {}),
+        child: GlobalMenuSectionPanel(
+          session: _session,
+          section: _file,
+          onActivated: () {},
+        ),
       ),
     );
     await tester.pump();
@@ -144,7 +370,11 @@ void main() {
             _item(kind: const GlobalMenuItemKindSeparator()),
           ]),
         ],
-        child: GlobalMenuSectionPanel(section: _file, onActivated: () {}),
+        child: GlobalMenuSectionPanel(
+          session: _session,
+          section: _file,
+          onActivated: () {},
+        ),
       ),
     );
     await tester.pump();
@@ -163,7 +393,11 @@ void main() {
             _item(kind: const GlobalMenuItemKindSeparator()),
           ]),
         ],
-        child: GlobalMenuSectionPanel(section: _file, onActivated: () {}),
+        child: GlobalMenuSectionPanel(
+          session: _session,
+          section: _file,
+          onActivated: () {},
+        ),
       ),
     );
     await tester.pump();
@@ -188,7 +422,11 @@ void main() {
             ),
           ]),
         ],
-        child: GlobalMenuSectionPanel(section: _file, onActivated: () {}),
+        child: GlobalMenuSectionPanel(
+          session: _session,
+          section: _file,
+          onActivated: () {},
+        ),
       ),
     );
     await tester.pump();
@@ -212,7 +450,11 @@ void main() {
               ),
             ]),
           ],
-          child: GlobalMenuSectionPanel(section: _file, onActivated: () {}),
+          child: GlobalMenuSectionPanel(
+            session: _session,
+            section: _file,
+            onActivated: () {},
+          ),
         ),
       );
       await tester.pump();
@@ -236,7 +478,11 @@ void main() {
             ),
           ]),
         ],
-        child: GlobalMenuSectionPanel(section: _file, onActivated: () {}),
+        child: GlobalMenuSectionPanel(
+          session: _session,
+          section: _file,
+          onActivated: () {},
+        ),
       ),
     );
     await tester.pump();
@@ -282,6 +528,7 @@ void main() {
           ]),
         ],
         child: GlobalMenuSectionPanel(
+          session: _session,
           section: _file,
           onActivated: () => closed = true,
         ),
@@ -315,6 +562,7 @@ void main() {
           ]),
         ],
         child: GlobalMenuSectionPanel(
+          session: _session,
           section: _file,
           onActivated: () => closed = true,
         ),
@@ -334,8 +582,9 @@ void main() {
     await tester.pumpWidget(
       _surface(
         overrides: [
-          globalMenuSectionProvider(_file).overrideWith((ref) async* {
+          globalMenuSectionProvider(_address(_file)).overrideWith((ref) async* {
             yield GlobalMenuSectionStatus(
+              session: _session,
               section: _file,
               items: <GlobalMenuItem>[
                 _item(
@@ -348,6 +597,7 @@ void main() {
             );
             await Future<void>.delayed(const Duration(milliseconds: 1));
             yield GlobalMenuSectionStatus(
+              session: _session,
               section: _file,
               items: <GlobalMenuItem>[
                 _item(
@@ -360,7 +610,11 @@ void main() {
             );
           }),
         ],
-        child: GlobalMenuSectionPanel(section: _file, onActivated: () {}),
+        child: GlobalMenuSectionPanel(
+          session: _session,
+          section: _file,
+          onActivated: () {},
+        ),
       ),
     );
     await tester.pump();
@@ -390,6 +644,7 @@ void main() {
           ]),
         ],
         child: GlobalMenuSectionPanel(
+          session: _session,
           section: _file,
           onActivated: () => closed = true,
         ),
@@ -422,7 +677,11 @@ void main() {
             ),
           ]),
         ],
-        child: GlobalMenuSectionPanel(section: _file, onActivated: () {}),
+        child: GlobalMenuSectionPanel(
+          session: _session,
+          section: _file,
+          onActivated: () {},
+        ),
       ),
     );
     await tester.pump();
@@ -582,7 +841,11 @@ void main() {
             ),
           ]),
         ],
-        child: GlobalMenuSectionPanel(section: _file, onActivated: () {}),
+        child: GlobalMenuSectionPanel(
+          session: _session,
+          section: _file,
+          onActivated: () {},
+        ),
       ),
     );
     await tester.pump();
@@ -671,7 +934,11 @@ void main() {
             ),
           ]),
         ],
-        child: GlobalMenuSectionPanel(section: _file, onActivated: () {}),
+        child: GlobalMenuSectionPanel(
+          session: _session,
+          section: _file,
+          onActivated: () {},
+        ),
       ),
     );
     await tester.pump();
@@ -694,7 +961,11 @@ void main() {
             ),
           ]),
         ],
-        child: GlobalMenuSectionPanel(section: _file, onActivated: () {}),
+        child: GlobalMenuSectionPanel(
+          session: _session,
+          section: _file,
+          onActivated: () {},
+        ),
       ),
     );
     await tester.pump();
@@ -901,6 +1172,7 @@ void main() {
           focusedWindowStatusProvider.overrideWith(
             (ref) => Stream<FocusedWindowStatus>.value(
               const FocusedWindowStatus(
+                address: '0x1',
                 appName: 'firefox',
                 title: 'Mozilla Firefox',
                 hostname: 'workstation',
@@ -911,6 +1183,7 @@ void main() {
           globalMenuStatusProvider.overrideWith(
             (ref) => Stream<GlobalMenuStatus>.value(
               const GlobalMenuStatus(
+                window: '0x1',
                 sections: <GlobalMenuSection>[],
                 message: 'the focused window does not expose an AppMenu',
               ),
@@ -949,6 +1222,7 @@ void main() {
           focusedWindowStatusProvider.overrideWith(
             (ref) => Stream<FocusedWindowStatus>.value(
               const FocusedWindowStatus(
+                address: '0x1',
                 appName: 'firefox',
                 title: 'Mozilla Firefox',
                 hostname: 'workstation',
@@ -957,7 +1231,9 @@ void main() {
             ),
           ),
           globalMenuStatusProvider.overrideWith(
-            (ref) => Stream<GlobalMenuStatus>.value(_twoHeadings),
+            (ref) => Stream<GlobalMenuStatus>.value(
+              _twoHeadings.copyWith(window: () => '0x1'),
+            ),
           ),
         ],
         child: const SizedBox(width: 400, child: GlobalMenuBar()),
