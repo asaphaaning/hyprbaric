@@ -12,6 +12,10 @@ class ModulesSettingsPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ModulesStatus status = ref.watch(currentModulesProvider);
+    final GlobalMenuIntegrationStatus? globalMenuIntegration = ref
+        .watch(globalMenuIntegrationProvider)
+        .asData
+        ?.value;
 
     return ListView.separated(
       padding: EdgeInsets.zero,
@@ -23,6 +27,7 @@ class ModulesSettingsPanel extends ConsumerWidget {
         return _ModuleRow(
           row: row,
           enabled: enabled,
+          subtitle: _subtitle(row, enabled, globalMenuIntegration),
           onChanged: (bool value) {
             ref
                 .read(modulesControllerProvider.notifier)
@@ -67,17 +72,45 @@ const List<_ModuleRowData> _moduleRows = <_ModuleRowData>[
     label: 'Audio & Display',
     subtitle: 'Show mixer and brightness control.',
   ),
+  _ModuleRowData(
+    module: ModuleId.globalMenu,
+    label: 'Global menu',
+    subtitle: "Show the focused app's menu bar.",
+  ),
 ];
+
+String _subtitle(
+  _ModuleRowData row,
+  bool enabled,
+  GlobalMenuIntegrationStatus? integration,
+) {
+  if (row.module != ModuleId.globalMenu || !enabled) {
+    return row.subtitle;
+  }
+
+  return switch (integration) {
+    GlobalMenuIntegrationStatusBlocked(
+      :final String message,
+      :final String? instruction,
+    ) =>
+      instruction == null || instruction.isEmpty
+          ? message
+          : '$message $instruction',
+    _ => row.subtitle,
+  };
+}
 
 class _ModuleRow extends StatelessWidget {
   const _ModuleRow({
     required this.row,
     required this.enabled,
+    required this.subtitle,
     required this.onChanged,
   });
 
   final _ModuleRowData row;
   final bool enabled;
+  final String subtitle;
   final ValueChanged<bool> onChanged;
 
   @override
@@ -118,7 +151,7 @@ class _ModuleRow extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        row.subtitle,
+                        subtitle,
                         style: HyprTypography.popRow.copyWith(
                           color: HyprColors.textFaint,
                           fontSize: HyprTypography.size(11),

@@ -87,12 +87,22 @@ class DropdownTransition extends AnimatedWidget {
     required this.transition,
     required this.transitionAlignment,
     required this.child,
+    this.revealAlignment = Alignment.topCenter,
   }) : super(listenable: animation);
 
   final Animation<double> animation;
   final Curve animationCurve;
   final LayerShellDropdownTransition transition;
   final Alignment transitionAlignment;
+
+  /// Which edge the revealed menu sits against inside its box.
+  ///
+  /// A menu that declares no width is given the whole overlay to sit in, so
+  /// this decides where in that space it lands. Centring a menu whose anchor
+  /// is an edge puts it somewhere its owner then has to correct it away from,
+  /// and makes it slide whenever its width changes.
+  final Alignment revealAlignment;
+
   final Widget child;
 
   @override
@@ -111,7 +121,7 @@ class DropdownTransition extends AnimatedWidget {
       opacity: progress.clamp(0.0, 1.0),
       child: ClipRect(
         child: Align(
-          alignment: Alignment.topCenter,
+          alignment: revealAlignment,
           heightFactor: heightFactor,
           child: child,
         ),

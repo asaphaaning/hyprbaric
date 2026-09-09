@@ -45,7 +45,8 @@ class HyprInsetBorderPainter extends CustomPainter {
     }
 
     if (frame == HyprSurfaceFrame.popover) {
-      _drawPopoverStroke(canvas, size);
+      // The inner hairline is painted with the popover chrome so it shares the
+      // fill's superellipse. This line is only the top sheen, held off the arcs.
       _drawCornerSafeInsetLine(canvas, size, top: 2);
       return;
     }
@@ -86,24 +87,6 @@ class HyprInsetBorderPainter extends CustomPainter {
         Color(0x12FFFFFF),
         Color(0x00D8F4FF),
       ],
-    );
-  }
-
-  /// Only the inner ring is painted here. The outer ring rides on the
-  /// surface's unclipped decoration instead: a stroke sitting on the clip
-  /// boundary is half cut away, and the clip and stroke approximate the
-  /// superellipse differently, so the arc breaks up in the corners.
-  void _drawPopoverStroke(Canvas canvas, Size size) {
-    final BorderRadius resolved = borderRadius.resolve(TextDirection.ltr);
-    final Rect outerRect = Offset.zero & size;
-    final Paint innerPaint = Paint()
-      ..color = borderColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-
-    canvas.drawRSuperellipse(
-      resolved.toRSuperellipse(outerRect.deflate(1.5)),
-      innerPaint,
     );
   }
 

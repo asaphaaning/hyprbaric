@@ -30,6 +30,9 @@ const ModulesStatus defaultModulesStatus = ModulesStatus(
     ModuleEntry(module: ModuleId.systemTray, enabled: true),
     ModuleEntry(module: ModuleId.notifications, enabled: true),
     ModuleEntry(module: ModuleId.audioDisplay, enabled: true),
+    // Off until asked for: it takes over application menu bars and needs a
+    // compositor plugin, so it is not something to arrive by default.
+    ModuleEntry(module: ModuleId.globalMenu, enabled: false),
   ],
 );
 

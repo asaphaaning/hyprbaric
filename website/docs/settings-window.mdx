@@ -23,6 +23,8 @@ The monitor selector can keep the bar on the primary display, place one bar on e
 
 Hiding a module removes it from the bar and nothing else. The backing service keeps running, so its global shortcuts continue to work and notifications are still recorded while the indicator is hidden.
 
+**Global menu** is the exception in spirit: enabling it also owns the AppMenu registrar name, so applications export their menus instead of drawing them. Qt works after a restart; Firefox, traditional GTK menus, and Swing need extra setup documented in [Global menu](./global-menu).
+
 ## Display
 
 Night light needs `hyprsunset` and `hyprctl` on `PATH`. Without them the tab reports the capability as unavailable, and the state you set is still persisted for the next launch.

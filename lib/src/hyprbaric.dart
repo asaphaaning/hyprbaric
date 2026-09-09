@@ -30,6 +30,8 @@ class Hyprbaric extends ConsumerWidget {
     final ThemeData baseTheme = ThemeData(useMaterial3: true);
     final ThemeData transparentTheme = baseTheme.copyWith(
       scaffoldBackgroundColor: Colors.transparent,
+      canvasColor: Colors.transparent,
+      dialogTheme: const DialogThemeData(backgroundColor: Colors.transparent),
       textTheme: HyprTypography.textTheme(baseTheme.textTheme),
       primaryTextTheme: HyprTypography.textTheme(baseTheme.primaryTextTheme),
       extensions: <ThemeExtension<dynamic>>[palette],
@@ -688,6 +690,9 @@ class _BarViewState extends ConsumerState<_BarView> {
                             logoKey: _appLauncherAnchorKey,
                             appLauncherOpen: _appLauncherController.isOpen,
                             onToggleAppLauncher: _toggleAppLauncher,
+                            showGlobalMenu: modules.isEnabled(
+                              ModuleId.globalMenu,
+                            ),
                           ),
                         ),
                         Expanded(

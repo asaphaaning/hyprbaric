@@ -24,6 +24,7 @@ abstract final class SettingsFixtures {
       ModuleEntry(module: ModuleId.systemTray, enabled: true),
       ModuleEntry(module: ModuleId.notifications, enabled: true),
       ModuleEntry(module: ModuleId.audioDisplay, enabled: true),
+      ModuleEntry(module: ModuleId.globalMenu, enabled: true),
     ],
   );
 
@@ -33,6 +34,7 @@ abstract final class SettingsFixtures {
       ModuleEntry(module: ModuleId.systemTray, enabled: false),
       ModuleEntry(module: ModuleId.notifications, enabled: true),
       ModuleEntry(module: ModuleId.audioDisplay, enabled: false),
+      ModuleEntry(module: ModuleId.globalMenu, enabled: false),
     ],
   );
 

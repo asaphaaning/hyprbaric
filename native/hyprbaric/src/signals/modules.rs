@@ -7,6 +7,7 @@ pub enum ModuleId {
     SystemTray,
     Notifications,
     AudioDisplay,
+    GlobalMenu,
 }
 
 #[derive(Serialize, Deserialize, DartSignal, SignalPiece, Clone, Debug, PartialEq, Eq, Hash)]

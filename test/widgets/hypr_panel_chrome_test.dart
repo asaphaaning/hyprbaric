@@ -52,6 +52,36 @@ void main() {
   );
 
   testWidgets(
+    'HyprPopoverSurface clips content to the same superellipse as the chrome',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: HyprPopoverSurface(
+              borderRadius: BorderRadius.all(Radius.circular(11)),
+              child: SizedBox(width: 200, height: 120),
+            ),
+          ),
+        ),
+      );
+
+      final Finder clipFinder = find.descendant(
+        of: find.byType(HyprGlassSurface),
+        matching: find.byType(ClipRSuperellipse),
+      );
+      final ClipRSuperellipse clip = tester.widget<ClipRSuperellipse>(
+        clipFinder,
+      );
+      expect(clip.clipBehavior, Clip.hardEdge);
+      expect(
+        tester.getSize(clipFinder),
+        tester.getSize(find.byType(HyprGlassSurface)),
+      );
+      expect(find.byType(HyprInsetBorder), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'HyprSectionLabel uppercases text and can render a trailing line',
     (WidgetTester tester) async {
       await tester.pumpWidget(

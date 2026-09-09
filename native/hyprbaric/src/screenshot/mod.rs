@@ -60,9 +60,18 @@ impl Screenshots {
         let report =
             match time::timeout(Duration::from_secs(30), self.backend.capture(command)).await {
                 Ok(Ok(saved)) => Report::saved(command, saved),
-                Ok(Err(Failure::Cancelled)) => Report::cancelled(command),
-                Ok(Err(failure)) => Report::failed(command, failure),
-                Err(_) => Report::failed(command, Failure::Timeout),
+                Ok(Err(Failure::Cancelled)) => {
+                    tracing::debug!("Screenshot selection cancelled");
+                    Report::cancelled(command)
+                }
+                Ok(Err(failure)) => {
+                    tracing::error!(%failure,"Screenshot capture failed");
+                    Report::failed(command, failure)
+                }
+                Err(_) => {
+                    tracing::error!("Screenshot capture timed out");
+                    Report::failed(command, Failure::Timeout)
+                }
             };
 
         drop(self.results.send(report));

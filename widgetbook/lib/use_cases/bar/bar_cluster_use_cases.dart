@@ -4,6 +4,7 @@ import 'package:hyprbaric/widget_catalog.dart';
 import 'package:widgetbook_annotation/widgetbook_annotation.dart';
 
 import '../../catalog/catalog_frame.dart';
+import '../global_menu/global_menu_fixtures.dart';
 import 'bar_use_cases.dart';
 import 'workspace_fixtures.dart';
 
@@ -33,6 +34,14 @@ Widget buildLoadingLeftCluster(BuildContext context) {
   );
 }
 
+@UseCase(name: 'With global menu', type: LeftCluster, path: '[Widgets]/Bar')
+Widget buildGlobalMenuLeftCluster(BuildContext context) {
+  return const _LeftClusterStory(
+    settings: WorkspaceFixtures.roman,
+    showGlobalMenu: true,
+  );
+}
+
 @UseCase(name: 'Focused window', type: CenterCluster, path: '[Widgets]/Bar')
 Widget buildFocusedCenterCluster(BuildContext context) {
   return const _CenterClusterStory(focusedWindow: BarFixtures.focusedWindow);
@@ -59,11 +68,13 @@ class _LeftClusterStory extends StatelessWidget {
     required this.settings,
     this.workspace = WorkspaceFixtures.occupied,
     this.appLauncherOpen = false,
+    this.showGlobalMenu = false,
   });
 
   final WorkspaceSettingsStatus settings;
   final WorkspaceStatus? workspace;
   final bool appLauncherOpen;
+  final bool showGlobalMenu;
 
   @override
   Widget build(BuildContext context) {
@@ -77,12 +88,14 @@ class _LeftClusterStory extends StatelessWidget {
         workspaceSettingsStatusProvider.overrideWith(
           (Ref ref) => Stream<WorkspaceSettingsStatus>.value(settings),
         ),
+        if (showGlobalMenu) ...GlobalMenuFixtures.providers(),
       ],
       child: CatalogCanvas(
         child: _BarChrome(
           child: LeftCluster(
             appLauncherOpen: appLauncherOpen,
             onToggleAppLauncher: () {},
+            showGlobalMenu: showGlobalMenu,
           ),
         ),
       ),

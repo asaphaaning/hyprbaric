@@ -12,6 +12,7 @@ mod capabilities;
 mod clock;
 mod color_picker;
 mod compositor;
+mod global_menu;
 mod launcher;
 mod modules;
 mod network;
@@ -30,7 +31,7 @@ mod workspaces;
 
 pub use self::{
     app::*, appearance::*, audio::*, brightness::*, caffeine::*, capabilities::*, clock::*,
-    color_picker::*, compositor::*, launcher::*, modules::*, network::*, night_light::*,
-    notifications::*, portal::*, power::*, recording::*, schedule::*, screenshot::*, session::*,
-    setup::*, shortcuts::*, tray::*, workspaces::*,
+    color_picker::*, compositor::*, global_menu::*, launcher::*, modules::*, network::*,
+    night_light::*, notifications::*, portal::*, power::*, recording::*, schedule::*,
+    screenshot::*, session::*, setup::*, shortcuts::*, tray::*, workspaces::*,
 };

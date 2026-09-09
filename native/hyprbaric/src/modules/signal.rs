@@ -11,6 +11,7 @@ impl From<Module> for signals::ModuleId {
             Module::SystemTray => Self::SystemTray,
             Module::Notifications => Self::Notifications,
             Module::AudioDisplay => Self::AudioDisplay,
+            Module::GlobalMenu => Self::GlobalMenu,
         }
     }
 }
@@ -22,6 +23,7 @@ impl From<signals::ModuleId> for Module {
             signals::ModuleId::SystemTray => Self::SystemTray,
             signals::ModuleId::Notifications => Self::Notifications,
             signals::ModuleId::AudioDisplay => Self::AudioDisplay,
+            signals::ModuleId::GlobalMenu => Self::GlobalMenu,
         }
     }
 }
@@ -111,7 +113,7 @@ mod tests {
             entries: crate::modules::Configuration::default().snapshot().entries,
         });
 
-        assert_eq!(status.entries.len(), 4);
+        assert_eq!(status.entries.len(), Module::ALL.len());
         assert_eq!(
             status.entries[0].module,
             signals::ModuleId::ActiveWindowTitle

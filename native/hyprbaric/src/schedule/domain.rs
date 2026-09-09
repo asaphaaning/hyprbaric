@@ -72,6 +72,11 @@ pub enum Report {
 }
 
 impl Hour {
+    /// Projects the hour from an already validated civil time.
+    pub fn from_time(time: jiff::civil::Time) -> Self {
+        Self(time.hour() as u8)
+    }
+
     /// Creates a valid 24-hour wall-clock hour.
     pub const fn new(value: u8) -> Result<Self, HourError> {
         if value > 23 {

@@ -34,20 +34,13 @@ class HyprGlassSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final List<BoxShadow>? frameShadows = _frameShadows(shadow);
-    final BorderSide side = frame == HyprSurfaceFrame.popover
-        ? BorderSide.none
-        : BorderSide(color: borderColor);
+    if (frame == HyprSurfaceFrame.popover) {
+      return _buildPopover(frameShadows);
+    }
 
     return DecoratedBox(
-      // The popover's outer ring is painted out here, outside the clip, so it
-      // is not sliced in half along the corner arcs.
       decoration: ShapeDecoration(
-        shape: RoundedSuperellipseBorder(
-          borderRadius: borderRadius,
-          side: frame == HyprSurfaceFrame.popover
-              ? const BorderSide(color: HyprColors.popupOuterRing)
-              : BorderSide.none,
-        ),
+        shape: RoundedSuperellipseBorder(borderRadius: borderRadius),
         shadows: frameShadows,
       ),
       child: ClipRSuperellipse(
@@ -58,7 +51,7 @@ class HyprGlassSurface extends StatelessWidget {
             gradient: gradient,
             shape: RoundedSuperellipseBorder(
               borderRadius: borderRadius,
-              side: side,
+              side: BorderSide(color: borderColor),
             ),
           ),
           child: Material(
@@ -84,6 +77,67 @@ class HyprGlassSurface extends StatelessWidget {
       ),
     );
   }
+
+  /// Popover chrome is painted as one superellipse, then content is clipped to
+  /// the same shape. A [ShapeDecoration] stroke would pad the child by the
+  /// border width and keep the original radii, so the clip and the ring stop
+  /// nesting at the corner apex and leave a pale fringe.
+  Widget _buildPopover(List<BoxShadow>? frameShadows) {
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        shape: RoundedSuperellipseBorder(borderRadius: borderRadius),
+        shadows: frameShadows,
+      ),
+      child: Stack(
+        fit: StackFit.passthrough,
+        children: <Widget>[
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _PopoverFillPainter(
+                color: color,
+                gradient: gradient,
+                borderRadius: borderRadius,
+              ),
+            ),
+          ),
+          ClipRSuperellipse(
+            borderRadius: borderRadius,
+            clipBehavior: Clip.hardEdge,
+            child: Material(
+              color: Colors.transparent,
+              child: Stack(
+                fit: StackFit.passthrough,
+                children: <Widget>[
+                  child,
+                  if (inset)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: HyprInsetBorder(
+                          borderRadius: borderRadius,
+                          borderColor: borderColor,
+                          frame: frame,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(
+                painter: _PopoverRingPainter(
+                  borderRadius: borderRadius,
+                  innerColor: borderColor,
+                  outerColor: HyprColors.popupOuterRing,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 List<BoxShadow>? _frameShadows(bool shadow) {
@@ -99,4 +153,91 @@ List<BoxShadow>? _frameShadows(bool shadow) {
   ];
 
   return shadows.isEmpty ? null : shadows;
+}
+
+class _PopoverFillPainter extends CustomPainter {
+  const _PopoverFillPainter({
+    required this.color,
+    required this.gradient,
+    required this.borderRadius,
+  });
+
+  final Color color;
+  final Gradient? gradient;
+  final BorderRadius borderRadius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) {
+      return;
+    }
+
+    final RSuperellipse shape = borderRadius
+        .resolve(TextDirection.ltr)
+        .toRSuperellipse(Offset.zero & size);
+    final Paint paint = Paint()..color = color;
+    if (gradient != null) {
+      paint.shader = gradient!.createShader(Offset.zero & size);
+    }
+    canvas.drawRSuperellipse(shape, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _PopoverFillPainter oldDelegate) {
+    return oldDelegate.color != color ||
+        oldDelegate.gradient != gradient ||
+        oldDelegate.borderRadius != borderRadius;
+  }
+}
+
+/// Dark outer ring and light inner hairline, both offset from the same
+/// [RSuperellipse] as the fill.
+class _PopoverRingPainter extends CustomPainter {
+  const _PopoverRingPainter({
+    required this.borderRadius,
+    required this.innerColor,
+    required this.outerColor,
+  });
+
+  final BorderRadius borderRadius;
+  final Color innerColor;
+  final Color outerColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) {
+      return;
+    }
+
+    final RSuperellipse shape = borderRadius
+        .resolve(TextDirection.ltr)
+        .toRSuperellipse(Offset.zero & size);
+    _fillRing(canvas, outer: shape, inner: shape.deflate(1), color: outerColor);
+    _fillRing(
+      canvas,
+      outer: shape.deflate(1),
+      inner: shape.deflate(2),
+      color: innerColor,
+    );
+  }
+
+  void _fillRing(
+    Canvas canvas, {
+    required RSuperellipse outer,
+    required RSuperellipse inner,
+    required Color color,
+  }) {
+    final Path path = Path()
+      ..fillType = PathFillType.evenOdd
+      ..addRSuperellipse(outer)
+      ..addRSuperellipse(inner);
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(covariant _PopoverRingPainter oldDelegate) {
+    return oldDelegate.borderRadius != borderRadius ||
+        oldDelegate.innerColor != innerColor ||
+        oldDelegate.outerColor != outerColor;
+  }
 }

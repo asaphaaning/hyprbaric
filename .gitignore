@@ -44,10 +44,17 @@ app.*.symbols
 app.*.map.json
 
 # Rust related
-/.cargo/
+/.cargo/*
+!/.cargo/config.toml
 /target/
 
 # Generated signals
 /lib/src/bincode
 /lib/src/serde
 /lib/src/bindings
+
+# Local git worktrees
+/.worktrees/
+
+# Companion plugin build tree
+/hyprland-appmenu/build/

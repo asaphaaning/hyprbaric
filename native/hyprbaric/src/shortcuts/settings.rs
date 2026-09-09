@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use toml_edit::{Array, DocumentMut, Item, Table, value};
+use toml_edit::{Array, DocumentMut, Table, value};
 use tracing::instrument;
 
 use crate::config;
@@ -158,13 +158,13 @@ pub fn save(command: &Command) -> Result<config::Configuration, Error> {
     match command {
         Command::Load => {}
         Command::SetBinding { shortcut, binding } => {
-            config::edit(|document| set_binding(document, *shortcut, binding))?;
+            config::try_edit(|document| set_binding(document, *shortcut, binding))?;
         }
         Command::Disable { shortcut } => {
-            config::edit(|document| disable(document, *shortcut))?;
+            config::try_edit(|document| disable(document, *shortcut))?;
         }
         Command::Reset { shortcut } => {
-            config::edit(|document| reset(document, *shortcut))?;
+            config::try_edit(|document| reset(document, *shortcut))?;
         }
     }
 
@@ -258,28 +258,23 @@ fn conflicts(config: &super::Configuration) -> Vec<(Shortcut, Shortcut)> {
     conflicts
 }
 
-fn shortcuts_table(document: &mut DocumentMut) -> &mut Table {
-    if !document.as_table().contains_key("shortcuts") {
-        document["shortcuts"] = Item::Table(Table::new());
-    }
-    document["shortcuts"]
-        .as_table_mut()
-        .expect("shortcuts item should be a table")
+fn shortcuts_table(document: &mut DocumentMut) -> Result<&mut Table, config::Error> {
+    config::table(document.as_table_mut(), "shortcuts")
 }
 
-fn shortcut_table(document: &mut DocumentMut, shortcut: Shortcut) -> &mut Table {
-    let shortcuts = shortcuts_table(document);
-    let key = shortcut.config_key();
-    if !shortcuts.contains_key(key) {
-        shortcuts[key] = Item::Table(Table::new());
-    }
-    shortcuts[key]
-        .as_table_mut()
-        .expect("shortcut item should be a table")
+fn shortcut_table(
+    document: &mut DocumentMut,
+    shortcut: Shortcut,
+) -> Result<&mut Table, config::Error> {
+    config::table(shortcuts_table(document)?, shortcut.config_key())
 }
 
-fn set_binding(document: &mut DocumentMut, shortcut: Shortcut, binding: &Binding) {
-    let table = shortcut_table(document, shortcut);
+fn set_binding(
+    document: &mut DocumentMut,
+    shortcut: Shortcut,
+    binding: &Binding,
+) -> Result<(), config::Error> {
+    let table = shortcut_table(document, shortcut)?;
     table.clear();
     table["phase"] = value(match binding.configured_phase() {
         binding::Phase::Press => "press",
@@ -297,17 +292,20 @@ fn set_binding(document: &mut DocumentMut, shortcut: Shortcut, binding: &Binding
     }
     table["modifiers"] = value(modifiers);
     table["key"] = value(binding.key());
+    Ok(())
 }
 
-fn disable(document: &mut DocumentMut, shortcut: Shortcut) {
-    let table = shortcut_table(document, shortcut);
+fn disable(document: &mut DocumentMut, shortcut: Shortcut) -> Result<(), config::Error> {
+    let table = shortcut_table(document, shortcut)?;
     table.clear();
     table["state"] = value("disabled");
+    Ok(())
 }
 
-fn reset(document: &mut DocumentMut, shortcut: Shortcut) {
-    let shortcuts = shortcuts_table(document);
+fn reset(document: &mut DocumentMut, shortcut: Shortcut) -> Result<(), config::Error> {
+    let shortcuts = shortcuts_table(document)?;
     shortcuts.remove(shortcut.config_key());
+    Ok(())
 }
 
 impl From<&Mapping> for ViewMapping {
@@ -424,8 +422,10 @@ mod tests {
             let binding =
                 Binding::from_parts(Phase::Press, [], "F13").expect("test binding should be valid");
 
-            config::edit_path(&path, |document| set_binding(document, *shortcut, &binding))
-                .expect("shortcut config should be written");
+            config::edit_path(&path, |document| {
+                set_binding(document, *shortcut, &binding).expect("valid shortcut fixture")
+            })
+            .expect("shortcut config should be written");
 
             let source = fs::read_to_string(&path).expect("config should be readable");
             assert!(

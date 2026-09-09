@@ -1,6 +1,6 @@
 //! Workspace indicator settings persistence.
 
-use toml_edit::{DocumentMut, Item, Table, value};
+use toml_edit::{Table, value};
 use tracing::instrument;
 
 use crate::config;
@@ -12,19 +12,12 @@ const TABLE: &str = "workspaces";
 #[instrument(skip(command), err)]
 pub fn save(command: &Command, current: Configuration) -> Result<Configuration, Error> {
     let next = current.apply(command);
-    config::edit(|document| write_workspaces(document, next))?;
+    config::edit_table(TABLE, |table| write_workspaces(table, next))?;
 
     Ok(next)
 }
 
-fn write_workspaces(document: &mut DocumentMut, config: Configuration) {
-    if !document.as_table().contains_key(TABLE) {
-        document[TABLE] = Item::Table(Table::new());
-    }
-    let table = document[TABLE]
-        .as_table_mut()
-        .expect("workspaces item should be a table");
-
+fn write_workspaces(table: &mut Table, config: Configuration) {
     table["indicator_style"] = value(config.indicator_style().as_str());
     table["clickable"] = value(config.clickable());
     table["visible_range"] = value(config.visible_range().as_str());

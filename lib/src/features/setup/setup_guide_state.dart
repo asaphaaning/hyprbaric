@@ -7,13 +7,15 @@ enum SetupStep {
   welcome,
   transparency,
   accent,
-  layout;
+  layout,
+  globalMenu;
 
   static const List<SetupStep> sequence = <SetupStep>[
     welcome,
     transparency,
     accent,
     layout,
+    globalMenu,
   ];
 
   String get label => switch (this) {
@@ -21,6 +23,7 @@ enum SetupStep {
     SetupStep.transparency => 'Transparency',
     SetupStep.accent => 'Accent',
     SetupStep.layout => 'Layout',
+    SetupStep.globalMenu => 'Menus',
   };
 }
 

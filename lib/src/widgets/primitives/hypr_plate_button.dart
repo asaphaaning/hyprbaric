@@ -80,9 +80,6 @@ class HyprPlateButton extends StatelessWidget {
                   ),
                 ),
                 child: Stack(
-                  // Non-positioned children default to topStart, which would
-                  // pin the row to the face's top edge.
-                  alignment: Alignment.center,
                   children: <Widget>[
                     if (!state.pressed)
                       const Positioned(
@@ -104,72 +101,80 @@ class HyprPlateButton extends StatelessWidget {
                           child: SizedBox(height: 1),
                         ),
                       ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 13),
-                      child: Row(
-                        children: <Widget>[
-                          DecoratedBox(
-                            decoration: const ShapeDecoration(
-                              // Reads as a recess punched into the face, so it
-                              // must stay darker than the face's darkest band.
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: <Color>[
-                                  HyprPlateFace.recessTop,
-                                  HyprPlateFace.recessBottom,
+                    // Fill the face so the label stays left and the chord
+                    // sits against the same inset as the icon well.
+                    Positioned.fill(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 13),
+                        child: Row(
+                          children: <Widget>[
+                            DecoratedBox(
+                              decoration: const ShapeDecoration(
+                                // Reads as a recess punched into the face, so
+                                // it must stay darker than the face's darkest
+                                // band.
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: <Color>[
+                                    HyprPlateFace.recessTop,
+                                    HyprPlateFace.recessBottom,
+                                  ],
+                                ),
+                                shadows: <BoxShadow>[
+                                  BoxShadow(
+                                    color: Color(0x12FFFFFF),
+                                    offset: Offset(0, 1),
+                                  ),
                                 ],
-                              ),
-                              shadows: <BoxShadow>[
-                                BoxShadow(
-                                  color: Color(0x12FFFFFF),
-                                  offset: Offset(0, 1),
-                                ),
-                              ],
-                              shape: RoundedSuperellipseBorder(
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(8),
+                                shape: RoundedSuperellipseBorder(
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(8),
+                                  ),
                                 ),
                               ),
-                            ),
-                            child: SizedBox.square(
-                              dimension: 27,
-                              child: Icon(icon, size: 14, color: iconColor),
-                            ),
-                          ),
-                          const SizedBox(width: 13),
-                          // Both the label and the chord flex: the chord is
-                          // user configurable, so neither may force the row
-                          // wider than the plate that contains it.
-                          Flexible(
-                            child: Text(
-                              label,
-                              maxLines: 1,
-                              softWrap: false,
-                              overflow: TextOverflow.ellipsis,
-                              style: HyprTypography.compactMonoStrong.copyWith(
-                                color: labelColor,
-                                fontSize: HyprTypography.size(10.5),
-                                fontWeight: FontWeight.w700,
-                                height: 1,
-                                letterSpacing: 1.25,
+                              child: SizedBox.square(
+                                dimension: 27,
+                                child: Icon(icon, size: 14, color: iconColor),
                               ),
                             ),
-                          ),
-                          const Spacer(),
-                          if (shortcut case final String chord) ...<Widget>[
-                            Flexible(child: _ShortcutBadge(chord)),
+                            const SizedBox(width: 13),
+                            Expanded(
+                              child: Text(
+                                label,
+                                maxLines: 1,
+                                softWrap: false,
+                                overflow: TextOverflow.ellipsis,
+                                style: HyprTypography.compactMonoStrong
+                                    .copyWith(
+                                      color: labelColor,
+                                      fontSize: HyprTypography.size(10.5),
+                                      fontWeight: FontWeight.w700,
+                                      height: 1,
+                                      letterSpacing: 1.25,
+                                    ),
+                              ),
+                            ),
+                            if (shortcut case final String chord) ...<Widget>[
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: _ShortcutBadge(chord),
+                                ),
+                              ),
+                            ],
                             const SizedBox(width: 8),
-                          ],
-                          Text(
-                            '›',
-                            style: HyprTypography.compactMono.copyWith(
-                              color: trailingColor,
-                              fontSize: HyprTypography.size(14),
-                              height: 1,
+                            Text(
+                              '›',
+                              style: HyprTypography.compactMono.copyWith(
+                                color: trailingColor,
+                                fontSize: HyprTypography.size(14),
+                                height: 1,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ],

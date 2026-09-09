@@ -13,6 +13,7 @@ This is the complete configuration surface read by hyprbaric. Every table and fi
 | Top-level table | Purpose | Managed in Settings |
 | --- | --- | --- |
 | `[appearance]` | Bar placement and visual treatment. | Appearance |
+| `[global_menu]` | Where the global menu's compositor plugin comes from. | Global menu |
 | `[modules.*]` | Which modules are shown on the bar. | Modules |
 | `[workspaces]` | Workspace indicator presentation and interaction. | Workspaces |
 | `[night_light]` | Desired night light state and temperature. | Display |
@@ -22,8 +23,9 @@ This is the complete configuration surface read by hyprbaric. Every table and fi
 | `[network]` | NetworkManager and traffic refresh cadence. | No |
 | `[brightness]` | Backlight polling and DDC discovery/write policy. | No |
 | `[power]` | Battery and power-profile refresh cadence. | No |
+| `[setup]` | First-run setup-guide persistence and startup policy. | Setup guide |
 
-Nothing outside these ten tables is read from `config.toml`. An unknown table or key is ignored. A known key with an invalid value stops startup and is logged with the offending path.
+Nothing outside these twelve tables is read from `config.toml`. An unknown table or key is ignored. A known key with an invalid value stops startup and is logged with the offending path.
 
 For file locations, precedence, and when changes are applied, see [Configuration](./configuration). For the environment variables, capture destinations, and host capabilities that are configured outside TOML, see [Environment and files](./environment) and [Dependencies and capabilities](./dependencies).
 
@@ -72,6 +74,85 @@ enabled = true
 | `[modules.system_tray]` | `enabled` | `true` | Shows StatusNotifier tray items. |
 | `[modules.notifications]` | `enabled` | `true` | Shows the notification indicator and center entry point. |
 | `[modules.audio_display]` | `enabled` | `true` | Shows the Audio & Display popup anchor. |
+
+## Global menu
+
+Global menus remain opt-in while the companion protocol is maturing. Enable it
+to have Hyprbaric load the plugin carried in its Linux bundle before the bar
+starts reading focused applications:
+
+```toml title="config.toml"
+[global_menu]
+enabled = true
+```
+
+| Key | Values | Default | Effect |
+| --- | --- | --- | --- |
+| `plugin_path` | Absolute or relative shared-library path | Unset | Replaces the plugin bundled at `lib/hyprbaric-appmenu.so`; useful for a locally built companion. |
+| `repository` | Git URL | Hyprbaric's repository | Where hyprpm builds the companion from when the bundled one no longer fits Hyprland. |
+
+Whether the menu appears is a module, not a key here:
+
+```toml
+[modules.global_menu]
+enabled = true
+```
+
+It is the one module that is off by default. Failure to obtain the companion is
+reported on the Modules settings row and in the setup guide, but it does not
+stop the bar. Applications that export no menu still render the ordinary focused
+window title.
+
+Which applications export a menu, and which ones still need Firefox prefs, a
+GTK module, or a Java agent, is covered in [Global menu](./global-menu). The rest of this
+section is the configuration surface and what owning the registrar name does.
+
+### How the companion is obtained
+
+The companion is a compositor plugin, compiled against Hyprland's internals, so
+it only loads into the version it was built for. Hyprbaric tries three sources in
+the order that costs least:
+
+1. **The bundled plugin**, carried in the release at `lib/hyprbaric-appmenu.so`.
+   Loading it needs no privileges, no toolchain and no network, and this is what
+   almost every launch uses.
+2. **A local cmake rebuild**, from `data/hyprland-appmenu` in the bundle or from
+   the `hyprland-appmenu` tree a Flutter checkout already has. Output goes to
+   the user cache. This is the answer to a compositor-library SONAME bump that
+   leaves the bundled `.so` behind: relink against the installed `hyprland.pc`
+   without hyprpm's privileged store.
+3. **hyprpm**, Hyprland's own plugin manager, which rebuilds the companion from
+   this repository's `hyprpm.toml` against the headers of the installed
+   compositor. Hyprbaric falls back to it automatically, in the background, when
+   the bundled plugin and the local rebuild both fail.
+
+hyprpm keeps its store in `/var/cache/hyprpm`, which it creates with a
+privileged command on first use. A desktop session has no terminal to answer
+that prompt on, so Hyprbaric does not raise it behind your back. If every
+automatic path is exhausted before hyprpm has run at all, Modules settings
+asks you to run this once:
+
+```sh
+hyprpm add https://github.com/asaphaaning/hyprbaric
+```
+
+### What enabling this changes in your applications
+
+Enabling global menus moves menu bars out of application windows. Qt asks
+whether `com.canonical.AppMenu.Registrar` is owned on the session bus to decide
+whether the desktop displays its menus for it, so Hyprbaric owns that name while
+the feature is on. Qt applications started afterwards stop drawing their own
+menu bar and export it instead.
+
+That is why the feature is opt-in and why both halves share one switch. Owning
+the name without rendering the menus would leave those applications with no menu
+bar at all. Turning the setting off and restarting Hyprbaric releases the name,
+and applications started after that draw their own menu bars again.
+
+Applications already running when the setting changes keep whichever menu bar
+they started with, so restart them to see the change. Firefox, traditional GTK
+menubars, Swing, JetBrains on native Wayland, and apps without a menubar at all
+need extra steps or will never export; see [Global menu](./global-menu).
 
 ## Workspaces
 
@@ -261,4 +342,7 @@ For completeness, these are deliberately outside the configuration file:
 | Screenshot and recording destinations | XDG user directories. See [Environment and files](./environment#where-captures-are-saved). |
 | Log verbosity and format | `RUST_LOG`, `HYPRBARIC_LOG`, `RUST_LOG_STYLE`. |
 | Terminal used for terminal desktop entries | `$TERMINAL`, with a built-in fallback list. |
+| Click-to-focus for the global menu | Hyprland `follow_mouse` and `float_switch_override_focus`. See [Click to focus](./global-menu#click-to-focus). |
+| Classic GTK menubars on the global menu | Hyprland `GTK_MODULES` and `UBUNTU_MENUPROXY`. See [GTK AppMenu module](./global-menu#gtk-appmenu-module). |
+| Swing menubars on the global menu | Per-JVM JAyatana agent on X11. See [Java / JAyatana](./global-menu#java--jayatana). |
 | Which features are available at all | Installed backends. See [Dependencies and capabilities](./dependencies). |
