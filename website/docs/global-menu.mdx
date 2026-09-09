@@ -9,6 +9,14 @@ The global menu moves the focused application's menu bar onto hyprbaric, the way
 
 TOML keys and the compositor plugin live in [Configuration reference](./configuration-reference#global-menu). This page is the end-to-end path: how a menu reaches the bar, which toolkits just work, and which ones still need a setting in the application or in your session.
 
+## Navigating menus
+
+Submenus can open further submenus without a fixed depth limit. Long panels scroll vertically; cascades wider than the window scroll horizontally and reveal the newly opened panel. Choosing a different ancestor closes its descendants.
+
+Menus belong to the window that exported them. Switching windows replaces the session and closes its popups, including when both windows belong to the same application. A delayed response or click from an old session cannot act on the newly focused window.
+
+A window with no exported menu and requests overtaken by a focus change are normal outcomes, logged at debug level. Actual discovery or protocol failures remain visible in the logs.
+
 ## Turn it on
 
 Both halves share one switch. Enable the module, and hyprbaric loads the companion plugin before claiming `com.canonical.AppMenu.Registrar`. If installation or compatibility checks fail, it leaves the registrar unowned so applications can retain their own menu bars. The plugin checks its build hash against the running compositor before accessing compositor state:

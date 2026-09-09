@@ -133,11 +133,19 @@ pub struct App {
 }
 
 struct Inner {
+    global_menu: tokio::sync::Mutex<crate::global_menu::Runtime>,
     desktop: RwLock<DesktopSnapshot>,
     color_scheme: RwLock<Option<portals::ColorScheme>>,
 }
 
 impl App {
+    /// Borrows the application-owned, ordered menu runtime.
+    pub(crate) async fn global_menu(
+        &self,
+    ) -> tokio::sync::MutexGuard<'_, crate::global_menu::Runtime> {
+        self.inner.global_menu.lock().await
+    }
+
     /// Builds an application from bootstrapped components and initial state.
     pub(crate) fn new(
         components: Components,
@@ -151,6 +159,9 @@ impl App {
             audio_volume_step,
             shortcut_configuration,
             inner: Arc::new(Inner {
+                global_menu: tokio::sync::Mutex::new(crate::global_menu::Runtime::new(
+                    crate::global_menu::publish::update,
+                )),
                 desktop: RwLock::new(initial_desktop),
                 color_scheme: RwLock::new(initial_color_scheme),
             }),

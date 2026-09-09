@@ -1,1345 +1,554 @@
-//! Live snapshot of the focused application's menus.
-//!
-//! ```text
-//! vacant ──capture──► occupied
-//!    ▲                    │
-//!    └── window gone ─────┘
-//!                         │
-//!              D-Bus change ──capture─┘
-//! ```
-//!
-//! Occupied serves headings without another round trip. Headings are a depth-1
-//! layout of the menubar: no `AboutToShow`, no wait for a relayout. D-BusMenu
-//! rows are not served from that snapshot. Firefox rebuilds every native
-//! identifier after `AboutToShow`, so the next click still carries the ids
-//! from the last heading read. Those ids are gone. The snapshot keeps the
-//! heading labels so the open can announce the live node instead.
-//!
-//! A quiet layout that only changed identifiers must not replace the headings
-//! Dart still holds, and an empty section must not be published over rows a
-//! heading already had.
-
-use std::{
-    collections::HashMap,
-    future::pending,
-    sync::{Mutex, MutexGuard, OnceLock, PoisonError},
+//! Owned live state for one menu session. No process-global caches or detached watches.
+mod capture;
+pub(super) mod watch;
+use super::{
+    Error, Item, Menu, SectionId, Session, Update,
+    dbusmenu::{self, DBUSMENU_RELAYOUT, dbusmenu_items, dbusmenu_live_items},
+    endpoint::Endpoint,
+    gtk::client::gtk_items,
+    popup::{Opened, closing},
+    snapshot::{Exporter, Held, Snapshot},
 };
-
-use futures_util::{FutureExt, StreamExt};
-use tokio::sync::{Notify, watch};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use tokio::{
+    sync::{Notify, watch as signal},
+    task::JoinHandle,
+};
 use tracing::instrument;
 use zbus::Connection;
 
-use super::{
-    DBUSMENU_RELAYOUT, Endpoint, Error, Item, Menu, SectionId, dbusmenu, dbusmenu_items,
-    dbusmenu_live_items, dbusmenu_tree, entitle_anonymous_list, focused_list_title, gtk_actions,
-    gtk_describe, gtk_items, gtk_layout, gtk_menus, gtk_menus_at, gtk_tree, prepend_gtk_app_menu,
-    publish,
-};
-
-const DEBOUNCE: std::time::Duration = std::time::Duration::from_millis(80);
-
-/// Menubar and its headings, not the rows beneath them.
-const HEADINGS_DEPTH: i32 = 1;
-
-/// Identity of the exporter this snapshot belongs to.
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct Exporter {
-    endpoint: Endpoint,
+/// A live session owns its watch; dropping it aborts outstanding work.
+pub(super) struct Live {
+    /// State shared only with this session's watch.
+    pub state: Arc<State>,
+    watch: Option<Watch>,
 }
 
-impl Exporter {
-    fn of(endpoint: &Endpoint) -> Self {
+/// Cancellation ownership stays outside the state captured by the task.
+struct Watch {
+    epoch: u64,
+    task: JoinHandle<()>,
+}
+impl Drop for Watch {
+    fn drop(&mut self) {
+        self.task.abort();
+    }
+}
+impl Live {
+    pub fn new(session: Session, publish: fn(Update)) -> Self {
+        let (generation, _) = signal::channel(0);
         Self {
-            endpoint: endpoint.clone(),
+            state: Arc::new(State {
+                session,
+                publish,
+                generation,
+                populated: Notify::new(),
+                held: Mutex::new(Held::Vacant),
+                opened: Mutex::new(Vec::new()),
+            }),
+            watch: None,
         }
     }
-}
-
-/// Headings and every nested section taken in one round trip.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-struct Snapshot {
-    headings: Menu,
-    sections: HashMap<SectionId, Vec<Item>>,
-    /// D-BusMenu ids the bar has served, mapped to the label path that
-    /// survives Firefox rebuilding the native tree.
-    paths: HashMap<i32, Vec<String>>,
-}
-
-impl Snapshot {
-    fn section(&self, id: &SectionId) -> Option<Vec<Item>> {
-        self.sections
-            .get(id)
-            .filter(|items| !items.is_empty())
-            .cloned()
-    }
-
-    fn remember(&mut self, id: SectionId, items: Vec<Item>) {
-        let prefix = self.path_hint(&id);
-        for item in &items {
-            let mut path = prefix.clone();
-            path.push(item.label.clone());
-            if let Some(super::ItemId::DbusMenu { id }) = item.activation {
-                self.paths.insert(id, path.clone());
-            }
-            if let Some(SectionId::DbusMenu { id }) = item.submenu {
-                self.paths.insert(id, path);
-            }
-        }
-        self.sections.insert(id, items);
-    }
-
-    /// Labels from the headings Dart was given, so a later open can find the
-    /// live node after Firefox has issued new identifiers.
-    fn path_hint(&self, id: &SectionId) -> Vec<String> {
-        for heading in &self.headings.sections {
-            if heading.id == *id {
-                return vec![heading.label.clone()];
-            }
-            if let Some(path) = walk_hint(
-                self,
-                self.sections.get(&heading.id),
-                id,
-                vec![heading.label.clone()],
-            ) {
-                return path;
-            }
-        }
-        Vec::new()
-    }
-
-    fn same_labels(left: &Menu, right: &Menu) -> bool {
-        left.sections
-            .iter()
-            .map(|section| (section.label.as_str(), section.enabled))
-            .eq(right
-                .sections
-                .iter()
-                .map(|section| (section.label.as_str(), section.enabled)))
-    }
-
-    /// Quiet layouts keep the headings Dart already has when only identifiers
-    /// changed. Rows do not ride along: Firefox rebuilds native identifiers
-    /// and enabled flags under `AboutToShow`, and a depth-1 read in the middle
-    /// of that rebuild is often blank. Restoring the previous View menu would
-    /// republish dead ids, so Actual Size still talks to Zoom In's old node.
-    fn merge(self, incoming: Self) -> Self {
-        let headings = if incoming.headings.sections.is_empty() {
-            self.headings.clone()
-        } else if Self::same_labels(&self.headings, &incoming.headings) {
-            self.headings.clone()
-        } else {
-            incoming.headings.clone()
-        };
-
-        Self {
-            headings,
-            sections: incoming.sections,
-            paths: {
-                let mut paths = self.paths;
-                paths.extend(incoming.paths);
-                paths
-            },
-        }
-    }
-
-    /// Label path of a D-BusMenu row the bar already served, used when Firefox
-    /// has issued a new identifier for the same item.
-    fn item_path(&self, id: i32) -> Vec<String> {
-        if let Some(path) = self.paths.get(&id) {
-            return path.clone();
-        }
-        for heading in &self.headings.sections {
-            if let Some(path) = walk_item(
-                self,
-                self.sections.get(&heading.id),
-                id,
-                vec![heading.label.clone()],
-            ) {
-                return path;
-            }
-        }
-        Vec::new()
-    }
-}
-
-fn walk_item(
-    snapshot: &Snapshot,
-    items: Option<&Vec<Item>>,
-    id: i32,
-    prefix: Vec<String>,
-) -> Option<Vec<String>> {
-    let items = items?;
-    for item in items {
-        let mut path = prefix.clone();
-        path.push(item.label.clone());
-        match item.activation {
-            Some(super::ItemId::DbusMenu { id: item_id }) if item_id == id => {
-                return Some(path);
-            }
-            _ => {}
-        }
-        if let Some(submenu) = &item.submenu
-            && let Some(found) = walk_item(snapshot, snapshot.sections.get(submenu), id, path)
+    /// Starts exactly one watch for the current snapshot generation.
+    pub async fn watch(&mut self, connection: Connection, endpoint: Endpoint) {
+        let epoch = self.state.generation();
+        if self
+            .watch
+            .as_ref()
+            .is_some_and(|watch| watch.epoch == epoch && !watch.task.is_finished())
         {
-            return Some(found);
+            return;
         }
+        self.stop_watch().await;
+        let state = Arc::clone(&self.state);
+        self.watch = Some(Watch {
+            epoch,
+            task: tokio::spawn(async move {
+                if let Err(error) = watch::run(state, epoch, connection, endpoint).await {
+                    tracing::debug!(%error,"Menu watch ended");
+                }
+            }),
+        });
     }
-    None
-}
-
-fn walk_hint(
-    snapshot: &Snapshot,
-    items: Option<&Vec<Item>>,
-    target: &SectionId,
-    prefix: Vec<String>,
-) -> Option<Vec<String>> {
-    let items = items?;
-    for item in items {
-        let Some(submenu) = &item.submenu else {
-            continue;
-        };
-        let mut path = prefix.clone();
-        path.push(item.label.clone());
-        if submenu == target {
-            return Some(path);
-        }
-        if let Some(found) = walk_hint(snapshot, snapshot.sections.get(submenu), target, path) {
-            return Some(found);
-        }
+    /// Cancels and joins the watch before closing its announced popups.
+    pub async fn close(&mut self) {
+        self.state.bump();
+        self.stop_watch().await;
+        self.state.clear().await;
     }
-    None
-}
-
-/// What the process currently holds for the focused window.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-enum Held {
-    #[default]
-    Vacant,
-    Occupied {
-        exporter: Exporter,
-        snapshot: Snapshot,
-    },
-}
-
-impl Held {
-    fn headings_for(&self, exporter: &Exporter) -> Option<Menu> {
-        match self {
-            Self::Occupied {
-                exporter: held,
-                snapshot,
-            } if held == exporter && !snapshot.headings.sections.is_empty() => {
-                Some(snapshot.headings.clone())
+    async fn stop_watch(&mut self) {
+        if let Some(mut watch) = self.watch.take() {
+            // Cooperative cancellation lets GTK send End. A stuck exporter
+            // cannot keep the replacement session waiting indefinitely.
+            if tokio::time::timeout(std::time::Duration::from_millis(500), &mut watch.task)
+                .await
+                .is_err()
+            {
+                watch.task.abort();
+                let _ = (&mut watch.task).await;
             }
-            _ => None,
         }
     }
-
-    fn section_for(&self, exporter: &Exporter, id: &SectionId) -> Option<Vec<Item>> {
-        match self {
-            Self::Occupied {
-                exporter: held,
-                snapshot,
-            } if held == exporter => snapshot.section(id),
-            _ => None,
-        }
-    }
-
-    fn holds(&self, exporter: &Exporter) -> bool {
-        matches!(self, Self::Occupied { exporter: held, .. } if held == exporter)
-    }
-
-    fn path_hint(&self, exporter: &Exporter, id: &SectionId) -> Vec<String> {
-        match self {
-            Self::Occupied {
-                exporter: held,
-                snapshot,
-            } if held == exporter => snapshot.path_hint(id),
-            _ => Vec::new(),
-        }
-    }
-
-    fn path_of(&self, id: &SectionId) -> Vec<String> {
-        match self {
-            Self::Occupied { snapshot, .. } => snapshot.path_hint(id),
-            Self::Vacant => Vec::new(),
-        }
-    }
-
-    fn item_path(&self, id: i32) -> Vec<String> {
-        match self {
-            Self::Occupied { snapshot, .. } => snapshot.item_path(id),
-            Self::Vacant => Vec::new(),
-        }
-    }
-
-    fn occupy(exporter: Exporter, snapshot: Snapshot) -> Self {
-        Self::Occupied { exporter, snapshot }
-    }
 }
 
-/// A D-BusMenu the bar announced as open, so dismiss can send `closed`
-/// to the same exporter even after focus has moved on.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(super) struct Opened {
-    pub endpoint: Endpoint,
-    pub id: i32,
-    pub path: Vec<String>,
-    /// The address Dart is watching. Firefox may have issued a new `id`.
-    pub section: SectionId,
-}
-
-impl Opened {
-    fn belongs(&self, id: i32, path: &[String]) -> bool {
-        self.id == id || (!path.is_empty() && self.path.starts_with(path))
-    }
-}
-
-/// Which announced menus close with this heading, nested flyouts first.
-fn closing(opened: Vec<Opened>, id: i32, path: &[String]) -> (Vec<Opened>, Vec<Opened>) {
-    let mut close = Vec::new();
-    let mut keep = Vec::new();
-    for menu in opened {
-        if menu.belongs(id, path) {
-            close.push(menu);
-        } else {
-            keep.push(menu);
-        }
-    }
-    close.sort_by(|left, right| right.path.len().cmp(&left.path.len()));
-    (close, keep)
-}
-
-pub(super) fn remember_opened(endpoint: Endpoint, id: i32, path: Vec<String>, section: SectionId) {
-    let mut opened = opened();
-    opened.retain(|menu| menu.id != id && menu.path != path);
-    opened.push(Opened {
-        endpoint,
-        id,
-        path,
-        section,
-    });
-}
-
-pub(super) fn take_opened(id: i32, path: &[String]) -> Vec<Opened> {
-    let mut opened = opened();
-    let current = std::mem::take(&mut *opened);
-    let (close, keep) = closing(current, id, path);
-    *opened = keep;
-    close
-}
-
-pub(super) fn drain_opened() -> Vec<Opened> {
-    std::mem::take(&mut *opened())
-}
-
-fn announced() -> Vec<Opened> {
-    opened().clone()
-}
-
-/// Label path of a D-BusMenu row the bar already served.
-pub(super) fn item_path(id: i32) -> Vec<String> {
-    held().item_path(id)
-}
-
-/// Path used to close a heading or flyout, including after Firefox rebuilds ids.
-///
-/// Dart still holds the identifier from the last read. The live node may now
-/// have a different id, so `closed` follows the heading labels: the snapshot's
-/// hint, then the last served row path, then whatever we announced as open.
-pub(super) fn dismiss_path(id: i32) -> Vec<String> {
-    {
-        let held = held();
-        let hinted = held.path_of(&SectionId::DbusMenu { id });
-        if !hinted.is_empty() {
-            return hinted;
-        }
-        let served = held.item_path(id);
-        if !served.is_empty() {
-            return served;
-        }
-    }
-    opened()
-        .iter()
-        .find(|menu| menu.id == id)
-        .map(|menu| menu.path.clone())
-        .unwrap_or_default()
-}
-
-struct Store {
-    generation: watch::Sender<u64>,
+/// Snapshot and popup state belong to one immutable session identity.
+pub(super) struct State {
+    session: Session,
+    publish: fn(Update),
+    generation: signal::Sender<u64>,
     populated: Notify,
     held: Mutex<Held>,
     opened: Mutex<Vec<Opened>>,
 }
-
-fn store() -> &'static Store {
-    static STORE: OnceLock<Store> = OnceLock::new();
-    STORE.get_or_init(|| {
-        let (generation, _) = watch::channel(0);
-        Store {
-            generation,
-            populated: Notify::new(),
-            held: Mutex::new(Held::Vacant),
-            opened: Mutex::new(Vec::new()),
-        }
-    })
-}
-
-fn held() -> MutexGuard<'static, Held> {
-    store().held.lock().unwrap_or_else(PoisonError::into_inner)
-}
-
-fn opened() -> MutexGuard<'static, Vec<Opened>> {
-    store()
-        .opened
-        .lock()
-        .unwrap_or_else(PoisonError::into_inner)
-}
-
-fn generation() -> u64 {
-    *store().generation.borrow()
-}
-
-fn bump() -> u64 {
-    store()
-        .generation
-        .send_replace(generation().wrapping_add(1))
-        .wrapping_add(1)
-}
-
-#[instrument(name = "hyprbaric::global_menu::live::headings")]
-pub(super) async fn headings(connection: Connection, endpoint: Endpoint) -> Result<Menu, Error> {
-    let exporter = Exporter::of(&endpoint);
-
-    if let Some(menu) = held().headings_for(&exporter) {
-        return Ok(menu);
+impl State {
+    pub(in crate::global_menu) fn remember_opened(
+        &self,
+        endpoint: Endpoint,
+        id: i32,
+        path: Vec<String>,
+        section: SectionId,
+    ) {
+        let mut opened = self.opened();
+        opened.retain(|menu| menu.id != id && menu.path != path);
+        opened.push(Opened {
+            endpoint,
+            id,
+            path,
+            section,
+        });
     }
 
-    if held().holds(&exporter) {
-        wait_until_populated(&exporter).await;
-        return match held().headings_for(&exporter) {
-            Some(menu) => Ok(menu),
-            // Still empty, or this exporter was replaced while we waited.
-            // Recapturing here would bump generation and steal the snapshot
-            // of whatever window is focused now.
-            None => Err(Error::NoMenuForFocusedWindow),
-        };
+    pub(in crate::global_menu) fn take_opened(&self, id: i32, path: &[String]) -> Vec<Opened> {
+        let mut opened = self.opened();
+        let current = std::mem::take(&mut *opened);
+        let (close, keep) = closing(current, id, path);
+        *opened = keep;
+        close
     }
 
-    take(connection, endpoint, exporter).await
-}
-
-#[instrument(name = "hyprbaric::global_menu::live::items")]
-pub(super) async fn items(
-    connection: Connection,
-    endpoint: Endpoint,
-    id: &SectionId,
-) -> Result<Vec<Item>, Error> {
-    let exporter = Exporter::of(&endpoint);
-
-    if !held().holds(&exporter) {
-        take(connection.clone(), endpoint.clone(), exporter.clone()).await?;
-    } else if held().headings_for(&exporter).is_none() {
-        wait_until_populated(&exporter).await;
+    pub(in crate::global_menu) fn drain_opened(&self) -> Vec<Opened> {
+        std::mem::take(&mut *self.opened())
     }
 
-    if !held().holds(&exporter) {
-        return Err(Error::NoMenuForFocusedWindow);
+    pub(in crate::global_menu) fn announced(&self) -> Vec<Opened> {
+        self.opened().clone()
     }
 
-    match id {
-        SectionId::DbusMenu { id: dbus_id } => {
-            // Always announce. Firefox rebuilds native identifiers after a
-            // click, so a cached View menu still holds Zoom In's old ids.
-            let path = held().path_hint(&exporter, id);
-            let items = dbusmenu_items(&connection, &endpoint, *dbus_id, &path).await?;
-            remember(&exporter, id.clone(), items.clone());
-            Ok(items)
-        }
-        SectionId::Gtk { .. } | SectionId::GtkAppMenu { .. } => {
-            if let Some(items) = held().section_for(&exporter, id) {
-                return Ok(items);
+    /// Label path of a D-BusMenu row the bar already served.
+    pub(in crate::global_menu) fn item_path(&self, id: i32) -> Vec<String> {
+        self.held().item_path(id)
+    }
+
+    /// Path used to close a heading or flyout, including after Firefox rebuilds ids.
+    ///
+    /// Dart still holds the identifier from the last read. The live node may now
+    /// have a different id, so `closed` follows the heading labels: the snapshot's
+    /// hint, then the last served row path, then whatever we announced as open.
+    pub(in crate::global_menu) fn dismiss_path(&self, id: i32) -> Vec<String> {
+        {
+            let held = self.held();
+            let hinted = held.path_of(&SectionId::DbusMenu { id });
+            if !hinted.is_empty() {
+                return hinted;
             }
-
-            if let Some(items) = wait_for(id, &exporter).await {
-                return Ok(items);
-            }
-
-            let items = gtk_items(&connection, &endpoint, id).await?;
-            remember(&exporter, id.clone(), items.clone());
-            Ok(items)
-        }
-    }
-}
-
-fn remember(exporter: &Exporter, id: SectionId, items: Vec<Item>) {
-    if let Held::Occupied {
-        exporter: held,
-        snapshot,
-    } = &mut *held()
-        && held == exporter
-    {
-        snapshot.remember(id, items);
-    }
-}
-
-/// Recaptures the same exporter in the ordered command sequence.
-#[instrument(name = "hyprbaric::global_menu::live::refresh", skip_all, err)]
-pub(super) async fn refresh_now(connection: Connection, endpoint: Endpoint) -> Result<(), Error> {
-    let exporter = Exporter::of(&endpoint);
-    take(connection, endpoint, exporter).await?;
-    Ok(())
-}
-
-async fn take(
-    connection: Connection,
-    endpoint: Endpoint,
-    exporter: Exporter,
-) -> Result<Menu, Error> {
-    let leftover = {
-        let mut held = held();
-        let leftover = if held.holds(&exporter) {
-            Vec::new()
-        } else {
-            drain_opened()
-        };
-        if !held.holds(&exporter) {
-            *held = Held::occupy(exporter.clone(), Snapshot::default());
-        }
-        leftover
-    };
-    if !leftover.is_empty() {
-        super::close_opened(leftover).await;
-    }
-
-    let epoch = bump();
-
-    let snapshot = match capture_now(&connection, &endpoint).await {
-        Ok(snapshot) => snapshot,
-        Err(error) => {
-            if generation() == epoch {
-                let mut held = held();
-                if matches!(
-                    &*held,
-                    Held::Occupied {
-                        exporter: held_exporter,
-                        snapshot,
-                    } if held_exporter == &exporter && snapshot.headings.sections.is_empty()
-                ) {
-                    *held = Held::Vacant;
-                }
-                store().populated.notify_waiters();
-            }
-            return Err(error);
-        }
-    };
-
-    install(epoch, exporter.clone(), snapshot);
-    if let Err(error) = refresh_opened(&connection, &endpoint).await {
-        tracing::debug!(%error, "Could not refresh an open menu after recapture");
-    }
-    watch_from(epoch, connection, endpoint);
-    Ok(held().headings_for(&exporter).unwrap_or_default())
-}
-
-async fn capture_now(connection: &Connection, endpoint: &Endpoint) -> Result<Snapshot, Error> {
-    match endpoint {
-        Endpoint::DbusMenu { .. } => capture_dbusmenu(connection, endpoint).await,
-        Endpoint::Gtk { .. } => capture_gtk(connection, endpoint).await,
-        Endpoint::X11 { .. } | Endpoint::Parent { .. } => Err(Error::NoMenuForFocusedWindow),
-    }
-}
-
-async fn capture_dbusmenu(connection: &Connection, endpoint: &Endpoint) -> Result<Snapshot, Error> {
-    let proxy = dbusmenu(connection, endpoint).await?;
-    let layout = proxy
-        .get_layout(0, HEADINGS_DEPTH, &[])
-        .await
-        .map_err(Error::Layout)?;
-    let (mut headings, sections) = dbusmenu_tree(&layout.root)?;
-    entitle_anonymous_list(&mut headings, focused_list_title().await);
-    Ok(Snapshot {
-        headings,
-        sections,
-        ..Default::default()
-    })
-}
-
-async fn capture_gtk(connection: &Connection, endpoint: &Endpoint) -> Result<Snapshot, Error> {
-    let proxy = gtk_menus(connection, endpoint).await?;
-    let groups = gtk_layout(&proxy).await?;
-    let actions = gtk_describe(connection, endpoint).await;
-    let (mut headings, mut sections) = gtk_tree(&groups, &actions)?;
-
-    if let Some(path) = endpoint.app_menu_path() {
-        match gtk_menus_at(connection, endpoint.service(), path).await {
-            Ok(app_proxy) => match gtk_layout(&app_proxy).await {
-                Ok(app_groups) => {
-                    let title = focused_list_title().await;
-                    (headings, sections) =
-                        prepend_gtk_app_menu(headings, sections, &app_groups, &actions, title)?;
-                }
-                Err(error) => {
-                    tracing::debug!(%error, "GTK application menu layout was not readable");
-                }
-            },
-            Err(error) => {
-                tracing::debug!(%error, "GTK application menu was not reachable");
+            let served = held.item_path(id);
+            if !served.is_empty() {
+                return served;
             }
         }
-    }
-
-    entitle_anonymous_list(&mut headings, focused_list_title().await);
-    tracing::debug!(
-        labels = ?headings
-            .sections
+        self.opened()
             .iter()
-            .map(|section| section.label.as_str())
-            .collect::<Vec<_>>(),
-        "GTK headings"
-    );
-    Ok(Snapshot {
-        headings,
-        sections,
-        ..Default::default()
-    })
-}
-
-fn install(epoch: u64, exporter: Exporter, incoming: Snapshot) {
-    if generation() != epoch {
-        return;
+            .find(|menu| menu.id == id)
+            .map(|menu| menu.path.clone())
+            .unwrap_or_default()
     }
 
-    let snapshot = match &*held() {
-        Held::Occupied {
+    pub(in crate::global_menu) fn held(&self) -> MutexGuard<'_, Held> {
+        self.held.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    pub(in crate::global_menu) fn opened(&self) -> MutexGuard<'_, Vec<Opened>> {
+        self.opened.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    pub(in crate::global_menu) fn generation(&self) -> u64 {
+        *self.generation.borrow()
+    }
+
+    pub(in crate::global_menu) fn bump(&self) -> u64 {
+        self.generation
+            .send_replace(self.generation().wrapping_add(1))
+            .wrapping_add(1)
+    }
+
+    #[instrument(name = "hyprbaric::global_menu::live::headings", skip(self))]
+    pub(in crate::global_menu) async fn headings(
+        &self,
+        connection: Connection,
+        endpoint: Endpoint,
+    ) -> Result<Menu, Error> {
+        let exporter = Exporter::of(&endpoint);
+
+        if let Some(menu) = self.held().headings_for(&exporter) {
+            return Ok(menu);
+        }
+
+        if self.held().holds(&exporter) {
+            self.wait_until_populated(&exporter).await;
+            return match self.held().headings_for(&exporter) {
+                Some(menu) => Ok(menu),
+                // Still empty, or this exporter was replaced while we waited.
+                // Recapturing here would bump generation and steal the snapshot
+                // of whatever window is focused now.
+                None => Err(Error::NoMenuForFocusedWindow),
+            };
+        }
+
+        self.take(connection, endpoint, exporter).await
+    }
+
+    #[instrument(name = "hyprbaric::global_menu::live::items", skip(self))]
+    pub(in crate::global_menu) async fn items(
+        &self,
+        connection: Connection,
+        endpoint: Endpoint,
+        id: &SectionId,
+    ) -> Result<Vec<Item>, Error> {
+        let exporter = Exporter::of(&endpoint);
+
+        if !self.held().holds(&exporter) {
+            self.take(connection.clone(), endpoint.clone(), exporter.clone())
+                .await?;
+        } else if self.held().headings_for(&exporter).is_none() {
+            self.wait_until_populated(&exporter).await;
+        }
+
+        if !self.held().holds(&exporter) {
+            return Err(Error::NoMenuForFocusedWindow);
+        }
+
+        match id {
+            SectionId::DbusMenu { id: dbus_id } => {
+                // Always announce. Firefox rebuilds native identifiers after a
+                // click, so a cached View menu still holds Zoom In's old ids.
+                let path = self.held().path_hint(&exporter, id);
+                let items = dbusmenu_items(self, &connection, &endpoint, *dbus_id, &path).await?;
+                self.remember(&exporter, id.clone(), items.clone());
+                Ok(items)
+            }
+            SectionId::Gtk { .. } | SectionId::GtkAppMenu { .. } => {
+                if let Some(items) = self.held().section_for(&exporter, id) {
+                    return Ok(items);
+                }
+
+                if let Some(items) = self.wait_for(id, &exporter).await {
+                    return Ok(items);
+                }
+
+                let items = gtk_items(&connection, &endpoint, id).await?;
+                self.remember(&exporter, id.clone(), items.clone());
+                Ok(items)
+            }
+        }
+    }
+
+    pub(in crate::global_menu) fn remember(
+        &self,
+        exporter: &Exporter,
+        id: SectionId,
+        items: Vec<Item>,
+    ) {
+        if let Held::Occupied {
             exporter: held,
             snapshot,
-        } if held == &exporter && matches!(&exporter.endpoint, Endpoint::DbusMenu { .. }) => {
-            snapshot.clone().merge(incoming)
-        }
-        _ => incoming,
-    };
-
-    let Some(session) = super::session::current(&exporter.endpoint) else {
-        return;
-    };
-    publish::headings(&session, &snapshot.headings);
-    for (id, items) in &snapshot.sections {
-        if items.is_empty() && matches!(id, SectionId::DbusMenu { .. }) {
-            continue;
-        }
-        publish::section_items(&session, id, items);
-    }
-
-    *held() = Held::occupy(exporter, snapshot);
-    store().populated.notify_waiters();
-}
-
-pub(super) async fn clear() {
-    bump();
-    *held() = Held::Vacant;
-    let leftover = drain_opened();
-    if leftover.is_empty() {
-        return;
-    }
-    super::close_opened(leftover).await;
-}
-
-async fn wait_until_populated(exporter: &Exporter) {
-    let mut current = store().generation.subscribe();
-    let start = *current.borrow();
-
-    loop {
-        let notified = store().populated.notified();
+        } = &mut *self.held()
+            && held == exporter
         {
-            let held = held();
-            if !held.holds(exporter) || held.headings_for(exporter).is_some() {
-                return;
+            snapshot.remember(id, items);
+        }
+    }
+
+    /// Recaptures the same exporter in the ordered command sequence.
+    #[instrument(name = "hyprbaric::global_menu::live::refresh", skip_all)]
+    pub(in crate::global_menu) async fn refresh_now(
+        &self,
+        connection: Connection,
+        endpoint: Endpoint,
+    ) -> Result<(), Error> {
+        let exporter = Exporter::of(&endpoint);
+        self.take(connection, endpoint, exporter).await?;
+        Ok(())
+    }
+
+    pub(in crate::global_menu) async fn take(
+        &self,
+        connection: Connection,
+        endpoint: Endpoint,
+        exporter: Exporter,
+    ) -> Result<Menu, Error> {
+        let leftover = {
+            let mut held = self.held();
+            let leftover = if held.holds(&exporter) {
+                Vec::new()
+            } else {
+                self.drain_opened()
+            };
+            if !held.holds(&exporter) {
+                *held = Held::occupy(exporter.clone(), Snapshot::default());
             }
+            leftover
+        };
+        if !leftover.is_empty() {
+            dbusmenu::close_opened(leftover).await;
         }
 
-        tokio::select! {
-            _ = notified => {}
-            _ = current.changed() => {
-                if *current.borrow() != start {
+        let epoch = self.bump();
+
+        let snapshot = match capture::now(&connection, &endpoint).await {
+            Ok(snapshot) => snapshot,
+            Err(error) => {
+                if self.generation() == epoch {
+                    let mut held = self.held();
+                    if matches!(
+                        &*held,
+                        Held::Occupied {
+                            exporter: held_exporter,
+                            snapshot,
+                        } if held_exporter == &exporter && snapshot.headings.sections.is_empty()
+                    ) {
+                        *held = Held::Vacant;
+                    }
+                    self.populated.notify_waiters();
+                }
+                return Err(error);
+            }
+        };
+
+        self.install(epoch, exporter.clone(), snapshot);
+        if let Err(error) = self.refresh_opened(&connection, &endpoint).await {
+            tracing::debug!(%error, "Could not refresh an open menu after recapture");
+        }
+
+        Ok(self.held().headings_for(&exporter).unwrap_or_default())
+    }
+
+    pub(in crate::global_menu) fn install(
+        &self,
+        epoch: u64,
+        exporter: Exporter,
+        incoming: Snapshot,
+    ) {
+        // Keep replacement from advancing the epoch during installation.
+        let generation = self.generation.borrow();
+        if *generation != epoch {
+            return;
+        }
+
+        let mut held = self.held();
+        let snapshot = match &*held {
+            Held::Occupied {
+                exporter: held,
+                snapshot,
+            } if held == &exporter && matches!(&exporter.endpoint, Endpoint::DbusMenu { .. }) => {
+                snapshot.clone().merge(incoming)
+            }
+            _ => incoming,
+        };
+
+        let session = &self.session;
+        (self.publish)(Update::Headings {
+            session: session.clone(),
+            menu: snapshot.headings.clone(),
+        });
+        for (id, items) in &snapshot.sections {
+            if items.is_empty() && matches!(id, SectionId::DbusMenu { .. }) {
+                continue;
+            }
+            (self.publish)(Update::Section {
+                session: session.clone(),
+                section: id.clone(),
+                items: items.clone(),
+            });
+        }
+
+        *held = Held::occupy(exporter, snapshot);
+        self.populated.notify_waiters();
+    }
+
+    pub(in crate::global_menu) async fn clear(&self) {
+        self.bump();
+        *self.held() = Held::Vacant;
+        let leftover = self.drain_opened();
+        if leftover.is_empty() {
+            return;
+        }
+        dbusmenu::close_opened(leftover).await;
+    }
+
+    pub(in crate::global_menu) async fn wait_until_populated(&self, exporter: &Exporter) {
+        let mut current = self.generation.subscribe();
+        let start = *current.borrow();
+
+        loop {
+            let notified = self.populated.notified();
+            {
+                let held = self.held();
+                if !held.holds(exporter) || held.headings_for(exporter).is_some() {
                     return;
                 }
             }
-            _ = tokio::time::sleep(DBUSMENU_RELAYOUT) => return,
-        }
-    }
-}
 
-async fn wait_for(id: &SectionId, exporter: &Exporter) -> Option<Vec<Item>> {
-    let mut current = store().generation.subscribe();
-    let start = *current.borrow();
-
-    loop {
-        {
-            let held = held();
-            if !held.holds(exporter) {
-                return None;
-            }
-            if let Some(items) = held.section_for(exporter, id) {
-                return Some(items);
-            }
-        }
-
-        tokio::select! {
-            _ = store().populated.notified() => {}
-            _ = current.changed() => {
-                if *current.borrow() != start {
-                    return None;
-                }
-            }
-            _ = tokio::time::sleep(DBUSMENU_RELAYOUT) => return None,
-        }
-    }
-}
-
-fn watch_from(epoch: u64, connection: Connection, endpoint: Endpoint) {
-    tokio::spawn(async move {
-        if let Err(error) = watch(epoch, connection, endpoint).await {
-            tracing::debug!(%error, "Focused menu watch ended");
-        }
-    });
-}
-
-#[instrument(name = "hyprbaric::global_menu::live::watch", skip_all, err)]
-async fn watch(epoch: u64, connection: Connection, endpoint: Endpoint) -> Result<(), Error> {
-    let mut current = store().generation.subscribe();
-    if *current.borrow() != epoch {
-        return Ok(());
-    }
-
-    match endpoint {
-        Endpoint::DbusMenu { .. } => {
-            watch_dbusmenu(epoch, &mut current, &connection, &endpoint).await
-        }
-        Endpoint::Gtk { .. } => watch_gtk(epoch, &mut current, &connection, &endpoint).await,
-        Endpoint::X11 { .. } | Endpoint::Parent { .. } => Ok(()),
-    }
-}
-
-async fn watch_dbusmenu(
-    epoch: u64,
-    current: &mut watch::Receiver<u64>,
-    connection: &Connection,
-    endpoint: &Endpoint,
-) -> Result<(), Error> {
-    let proxy = dbusmenu(connection, endpoint).await?;
-    let mut layout = proxy.receive_layout_updated().await.ok();
-    let mut properties = proxy.receive_items_properties_updated().await.ok();
-
-    loop {
-        tokio::select! {
-            _ = current.changed() => {
-                if *current.borrow() != epoch {
-                    return Ok(());
-                }
-            }
-            _ = recv(&mut layout) => {}
-            _ = recv(&mut properties) => {}
-        }
-
-        if !settle(current, epoch, &mut layout, &mut properties).await {
-            return Ok(());
-        }
-
-        replace(epoch, connection, endpoint).await?;
-    }
-}
-
-/// A GTK subscription owns its initial rows and applies the protocol's splices.
-/// Start remains active until the watch exits; reads never cancel this lease.
-struct GtkSubscription<'a> {
-    proxy: super::GtkMenusProxy<'a>,
-    groups: Vec<super::GtkGroup>,
-    subscribed: std::collections::HashSet<u32>,
-}
-
-impl<'a> GtkSubscription<'a> {
-    async fn start(proxy: super::GtkMenusProxy<'a>) -> Result<Self, Error> {
-        let (groups, subscribed) = super::gtk_subscribe(&proxy, &[0]).await?;
-        Ok(Self {
-            proxy,
-            groups,
-            subscribed: subscribed.into_iter().collect(),
-        })
-    }
-
-    async fn changed(&mut self, changes: &[super::GtkChange]) -> Result<(), Error> {
-        for change in changes {
-            apply_gtk_change(&mut self.groups, change)?;
-        }
-        loop {
-            let pending = super::gtk_unfetched_groups(&self.groups, &self.subscribed);
-            if pending.is_empty() {
-                return Ok(());
-            }
-            self.groups
-                .extend(self.proxy.start(&pending).await.map_err(Error::GtkLayout)?);
-            self.subscribed.extend(pending);
-        }
-    }
-
-    async fn end(&self) {
-        let subscribed = self.subscribed.iter().copied().collect::<Vec<_>>();
-        if let Err(error) = self.proxy.end(&subscribed).await {
-            tracing::debug!(%error, "Could not end GTK menu watch");
-        }
-    }
-}
-
-fn apply_gtk_change(
-    groups: &mut Vec<super::GtkGroup>,
-    change: &super::GtkChange,
-) -> Result<(), Error> {
-    let index = groups
-        .iter()
-        .position(|group| group.group == change.group && group.menu == change.menu);
-    let group = match index {
-        Some(index) => &mut groups[index],
-        None => {
-            groups.push(super::GtkGroup {
-                group: change.group,
-                menu: change.menu,
-                items: Vec::new(),
-            });
-            groups.last_mut().ok_or(Error::InvalidGtkChange)?
-        }
-    };
-    let start = change.position as usize;
-    let end = start
-        .checked_add(change.removed as usize)
-        .ok_or(Error::InvalidGtkChange)?;
-    if start > group.items.len() || end > group.items.len() {
-        return Err(Error::InvalidGtkChange);
-    }
-    group.items.splice(start..end, change.items.clone());
-    Ok(())
-}
-
-async fn watch_gtk(
-    epoch: u64,
-    current: &mut watch::Receiver<u64>,
-    _connection: &Connection,
-    endpoint: &Endpoint,
-) -> Result<(), Error> {
-    // A dedicated connection also releases subscriptions on cancellation or
-    // partial initialization failure, before an End request could be made.
-    let connection = Connection::session().await.map_err(Error::Connect)?;
-    let menus = gtk_menus(&connection, endpoint).await?;
-    let mut changed = menus.receive_changed().await.map_err(Error::GtkLayout)?;
-    let app_menus = match endpoint.app_menu_path() {
-        Some(path) => Some(gtk_menus_at(&connection, endpoint.service(), path).await?),
-        None => None,
-    };
-    let mut app_menus_changed = match &app_menus {
-        Some(proxy) => Some(proxy.receive_changed().await.map_err(Error::GtkLayout)?),
-        None => None,
-    };
-    let app = match endpoint.application_path() {
-        Some(path) => gtk_actions(&connection, endpoint, path).await.ok(),
-        None => None,
-    };
-    let win = match endpoint.window_path() {
-        Some(path) => gtk_actions(&connection, endpoint, path).await.ok(),
-        None => None,
-    };
-    let mut app_changed = match &app {
-        Some(proxy) => proxy.receive_changed().await.ok(),
-        None => None,
-    };
-    let mut win_changed = match &win {
-        Some(proxy) => proxy.receive_changed().await.ok(),
-        None => None,
-    };
-    let mut menus = GtkSubscription::start(menus).await?;
-    let mut app_menus = match app_menus {
-        Some(proxy) => Some(GtkSubscription::start(proxy).await?),
-        None => None,
-    };
-    let result = async {
-        loop {
-            let actions = gtk_describe(&connection, endpoint).await;
-            let (mut headings, mut sections) = gtk_tree(&menus.groups, &actions)?;
-            if let Some(app_menu) = &app_menus {
-                (headings, sections) = prepend_gtk_app_menu(
-                    headings,
-                    sections,
-                    &app_menu.groups,
-                    &actions,
-                    focused_list_title().await,
-                )?;
-            }
-            entitle_anonymous_list(&mut headings, focused_list_title().await);
-            install(
-                epoch,
-                Exporter::of(endpoint),
-                Snapshot {
-                    headings,
-                    sections,
-                    ..Default::default()
-                },
-            );
-
-            // Consume every splice; discarding events during a debounce loses
-            // the positional baseline required by subsequent GTK changes.
             tokio::select! {
+                _ = notified => {}
                 _ = current.changed() => {
-                    if *current.borrow() != epoch { return Ok(()) }
-                }
-                signal = changed.next() => {
-                    let Some(signal) = signal else { return Ok(()) };
-                    menus.changed(signal.args().map_err(Error::GtkLayout)?.changes()).await?;
-                }
-                signal = next_optional(&mut app_menus_changed) => {
-                    let Some(signal) = signal else { return Ok(()) };
-                    if let Some(menu) = &mut app_menus {
-                        menu.changed(signal.args().map_err(Error::GtkLayout)?.changes()).await?;
+                    if *current.borrow() != start {
+                        return;
                     }
                 }
-                _ = recv(&mut app_changed) => {}
-                _ = recv(&mut win_changed) => {}
+                _ = tokio::time::sleep(DBUSMENU_RELAYOUT) => return,
             }
-            // Coalesce bursts without losing the ordered positional splices.
-            tokio::time::sleep(DEBOUNCE).await;
-            while let Some(Some(signal)) = changed.next().now_or_never() {
-                menus
-                    .changed(signal.args().map_err(Error::GtkLayout)?.changes())
-                    .await?;
-            }
-            while let Some(Some(signal)) = next_optional(&mut app_menus_changed).now_or_never() {
-                if let Some(menu) = &mut app_menus {
-                    menu.changed(signal.args().map_err(Error::GtkLayout)?.changes())
-                        .await?;
+        }
+    }
+
+    pub(in crate::global_menu) async fn wait_for(
+        &self,
+        id: &SectionId,
+        exporter: &Exporter,
+    ) -> Option<Vec<Item>> {
+        let mut current = self.generation.subscribe();
+        let start = *current.borrow();
+
+        loop {
+            {
+                let held = self.held();
+                if !held.holds(exporter) {
+                    return None;
+                }
+                if let Some(items) = held.section_for(exporter, id) {
+                    return Some(items);
                 }
             }
-            while let Some(Some(_)) = next_optional(&mut app_changed).now_or_never() {}
-            while let Some(Some(_)) = next_optional(&mut win_changed).now_or_never() {}
-            if *current.borrow() != epoch {
-                return Ok(());
+
+            tokio::select! {
+                _ = self.populated.notified() => {}
+                _ = current.changed() => {
+                    if *current.borrow() != start {
+                        return None;
+                    }
+                }
+                _ = tokio::time::sleep(DBUSMENU_RELAYOUT) => return None,
             }
         }
     }
-    .await;
-    menus.end().await;
-    if let Some(menu) = &app_menus {
-        menu.end().await;
-    }
-    result
-}
 
-async fn next_optional<S: StreamExt + Unpin>(stream: &mut Option<S>) -> Option<S::Item> {
-    match stream {
-        Some(stream) => stream.next().await,
-        None => pending().await,
-    }
-}
-
-async fn replace(epoch: u64, connection: &Connection, endpoint: &Endpoint) -> Result<(), Error> {
-    let snapshot = capture_now(connection, endpoint).await?;
-    if snapshot.headings.sections.is_empty() {
-        return Ok(());
-    }
-    install(epoch, Exporter::of(endpoint), snapshot);
-    if let Err(error) = refresh_opened(connection, endpoint).await {
-        tracing::debug!(%error, "Could not refresh an open menu after a layout update");
-    }
-    Ok(())
-}
-
-/// Re-reads every D-BusMenu the bar is currently showing.
-///
-/// Watch recaptures headings only. That is enough after Zoom In closes the
-/// panel; View → Toolbars is still up, and its checkmarks live on the rows.
-#[instrument(name = "hyprbaric::global_menu::live::refresh_opened", skip_all, err)]
-async fn refresh_opened(connection: &Connection, endpoint: &Endpoint) -> Result<(), Error> {
-    if !matches!(endpoint, Endpoint::DbusMenu { .. }) {
-        return Ok(());
-    }
-
-    let exporter = Exporter::of(endpoint);
-    let epoch = generation();
-    let Some(session) = super::session::current(endpoint) else {
-        return Ok(());
-    };
-    for menu in announced() {
-        if Exporter::of(&menu.endpoint) != exporter {
-            continue;
-        }
-        let items = match dbusmenu_live_items(connection, endpoint, menu.id, &menu.path).await {
-            Ok(items) => items,
-            Err(error) => {
-                tracing::debug!(%error, "Could not re-read an open menu");
-                continue;
-            }
-        };
-        if items.is_empty() {
-            continue;
-        }
-        if generation() != epoch || super::session::resolve(&session).is_err() {
+    pub(in crate::global_menu) async fn replace(
+        &self,
+        epoch: u64,
+        connection: &Connection,
+        endpoint: &Endpoint,
+    ) -> Result<(), Error> {
+        let snapshot = capture::now(connection, endpoint).await?;
+        if snapshot.headings.sections.is_empty() {
             return Ok(());
         }
-        if !announced().contains(&menu) {
-            continue;
+        self.install(epoch, Exporter::of(endpoint), snapshot);
+        if let Err(error) = self.refresh_opened(connection, endpoint).await {
+            tracing::debug!(%error, "Could not refresh an open menu after a layout update");
         }
-        remember(&exporter, menu.section.clone(), items.clone());
-        publish::section_items(&session, &menu.section, &items);
+        Ok(())
     }
-    Ok(())
-}
 
-async fn settle3<A: StreamExt + Unpin, B: StreamExt + Unpin, C: StreamExt + Unpin>(
-    current: &mut watch::Receiver<u64>,
-    epoch: u64,
-    first: &mut Option<A>,
-    second: &mut Option<B>,
-    third: &mut Option<C>,
-) -> bool {
-    let wait = tokio::time::sleep(DEBOUNCE);
-    tokio::pin!(wait);
-    loop {
-        tokio::select! {
-            _ = current.changed() => {
-                if *current.borrow() != epoch {
-                    return false;
+    /// Re-reads every D-BusMenu the bar is currently showing.
+    ///
+    /// Watch recaptures headings only. That is enough after Zoom In closes the
+    /// panel; View → Toolbars is still up, and its checkmarks live on the rows.
+    #[instrument(name = "hyprbaric::global_menu::live::refresh_opened", skip_all)]
+    pub(in crate::global_menu) async fn refresh_opened(
+        &self,
+        connection: &Connection,
+        endpoint: &Endpoint,
+    ) -> Result<(), Error> {
+        if !matches!(endpoint, Endpoint::DbusMenu { .. }) {
+            return Ok(());
+        }
+
+        let exporter = Exporter::of(endpoint);
+        let epoch = self.generation();
+        let session = &self.session;
+        for menu in self.announced() {
+            if Exporter::of(&menu.endpoint) != exporter {
+                continue;
+            }
+            let items = match dbusmenu_live_items(connection, endpoint, menu.id, &menu.path).await {
+                Ok(items) => items,
+                Err(error) => {
+                    tracing::debug!(%error, "Could not re-read an open menu");
+                    continue;
                 }
+            };
+            if items.is_empty() {
+                continue;
             }
-            _ = recv(first) => {}
-            _ = recv(second) => {}
-            _ = recv(third) => {}
-            _ = &mut wait => return true,
-        }
-    }
-}
-
-async fn settle<A: StreamExt + Unpin, B: StreamExt + Unpin>(
-    current: &mut watch::Receiver<u64>,
-    epoch: u64,
-    first: &mut Option<A>,
-    second: &mut Option<B>,
-) -> bool {
-    let mut none = Option::<futures_util::stream::Empty<()>>::None;
-    settle3(current, epoch, first, second, &mut none).await
-}
-
-async fn recv<S: StreamExt + Unpin>(stream: &mut Option<S>) {
-    match stream.as_mut() {
-        Some(source) => {
-            if source.next().await.is_none() {
-                *stream = None;
-                pending::<()>().await;
+            if self.generation() != epoch {
+                return Ok(());
             }
+            if !self.announced().contains(&menu) {
+                continue;
+            }
+            self.remember(&exporter, menu.section.clone(), items.clone());
+            (self.publish)(Update::Section {
+                session: session.clone(),
+                section: menu.section.clone(),
+                items,
+            });
         }
-        None => pending::<()>().await,
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::super::{Item, ItemId, ItemKind, Menu, Section, SectionId};
-    use super::{Exporter, Held, Opened, Snapshot, closing};
-
-    #[test]
-    fn gtk_splices_preserve_unmodified_rows_and_reject_invalid_ranges() {
-        use super::super::{GtkChange, GtkGroup};
-        use std::collections::HashMap;
-        let row = |label: &'static str| {
-            HashMap::from([(
-                "label".to_owned(),
-                zbus::zvariant::OwnedValue::try_from(zbus::zvariant::Value::from(label))
-                    .expect("label"),
-            )])
-        };
-        let mut groups = vec![GtkGroup {
-            group: 0,
-            menu: 1,
-            items: vec![row("First"), row("Removed"), row("Last")],
-        }];
-        let change = GtkChange {
-            group: 0,
-            menu: 1,
-            position: 1,
-            removed: 1,
-            items: vec![row("New"), row("Also new")],
-        };
-        super::apply_gtk_change(&mut groups, &change).expect("valid splice");
-        assert_eq!(
-            groups[0].items,
-            vec![row("First"), row("New"), row("Also new"), row("Last")]
-        );
-        assert!(
-            super::apply_gtk_change(
-                &mut groups,
-                &GtkChange {
-                    position: 99,
-                    ..change
-                }
-            )
-            .is_err()
-        );
-    }
-
-    #[test]
-    fn gtk_changed_uses_the_protocol_splice_signature() {
-        use zbus::zvariant::Type;
-        assert_eq!(
-            <Vec<super::super::GtkChange>>::SIGNATURE.to_string(),
-            "a(uuuuaa{sv})"
-        );
-    }
-
-    fn exporter() -> Exporter {
-        Exporter {
-            endpoint: super::Endpoint::DbusMenu {
-                service: ":1.40".to_owned(),
-                path: "/MenuBar".to_owned(),
-                address: None,
-                xid: None,
+    use super::{Live, Session, Watch};
+    use crate::hyprland::WindowId;
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+    fn live() -> Live {
+        Live::new(
+            Session {
+                generation: 1,
+                window: WindowId::new("0x1".into()).expect("window"),
             },
-        }
+            |_| {},
+        )
     }
-
-    fn file() -> SectionId {
-        SectionId::DbusMenu { id: 1 }
+    #[tokio::test]
+    async fn close_waits_for_subscription_cleanup() {
+        let mut live = live();
+        let mut cancelled = live.state.generation.subscribe();
+        let ended = Arc::new(AtomicBool::new(false));
+        let observed = Arc::clone(&ended);
+        live.watch = Some(Watch {
+            epoch: 0,
+            task: tokio::spawn(async move {
+                cancelled.changed().await.expect("cancellation");
+                tokio::task::yield_now().await;
+                observed.store(true, Ordering::SeqCst);
+            }),
+        });
+        live.close().await;
+        assert!(ended.load(Ordering::SeqCst));
+        assert!(live.watch.is_none());
     }
-
-    fn snapshot() -> Snapshot {
-        let id = file();
-        Snapshot {
-            headings: Menu {
-                sections: vec![Section {
-                    id: id.clone(),
-                    label: "File".to_owned(),
-                    enabled: true,
-                }],
-            },
-            sections: [(
-                id,
-                vec![Item {
-                    label: "New".to_owned(),
-                    enabled: true,
-                    kind: ItemKind::Standard,
-                    shortcut: None,
-                    activation: None,
-                    submenu: None,
-                }],
-            )]
-            .into(),
-            ..Default::default()
-        }
-    }
-
-    #[test]
-    fn an_occupied_cache_serves_only_the_exporter_it_holds() {
-        let held = Held::occupy(exporter(), snapshot());
-        let other = Exporter {
-            endpoint: super::Endpoint::DbusMenu {
-                service: ":1.40".into(),
-                path: "/Other".into(),
-                address: None,
-                xid: None,
-            },
-        };
-
-        assert_eq!(
-            held.headings_for(&exporter()).expect("held").sections[0].label,
-            "File"
-        );
-        assert!(held.headings_for(&other).is_none());
-        assert_eq!(
-            held.section_for(&exporter(), &file()).expect("section")[0].label,
-            "New"
-        );
-        assert!(held.section_for(&other, &file()).is_none());
-    }
-
-    #[test]
-    fn a_vacant_cache_serves_nothing() {
-        let held = Held::Vacant;
-        assert!(held.headings_for(&exporter()).is_none());
-        assert!(held.section_for(&exporter(), &file()).is_none());
-        assert!(!held.holds(&exporter()));
-    }
-
-    fn empty_file() -> Snapshot {
-        Snapshot {
-            headings: Menu {
-                sections: vec![Section {
-                    id: file(),
-                    label: "File".to_owned(),
-                    enabled: true,
-                }],
-            },
-            sections: [(file(), Vec::new())].into(),
-            ..Default::default()
-        }
-    }
-
-    fn rebuilt_empty_file() -> Snapshot {
-        let id = SectionId::DbusMenu { id: 99 };
-        Snapshot {
-            headings: Menu {
-                sections: vec![Section {
-                    id: id.clone(),
-                    label: "File".to_owned(),
-                    enabled: true,
-                }],
-            },
-            sections: [(id, Vec::new())].into(),
-            ..Default::default()
-        }
-    }
-
-    #[test]
-    fn an_empty_section_is_not_a_hit() {
-        let held = Held::occupy(exporter(), empty_file());
-        assert!(held.section_for(&exporter(), &file()).is_none());
-        assert_eq!(held.path_hint(&exporter(), &file()), ["File"]);
-    }
-
-    #[test]
-    fn a_quiet_rebuild_keeps_the_heading_ids_dart_already_has() {
-        let merged = snapshot().merge(rebuilt_empty_file());
-        assert_eq!(merged.headings.sections[0].id, file());
-        assert!(merged.section(&file()).is_none());
-        assert_eq!(merged.path_hint(&file()), ["File"]);
-    }
-
-    #[test]
-    fn an_empty_quiet_layout_does_not_clear_headings() {
-        let merged = snapshot().merge(Snapshot::default());
-        assert_eq!(merged.headings.sections[0].label, "File");
-        assert!(merged.section(&file()).is_none());
-    }
-
-    #[test]
-    fn a_served_row_keeps_its_path_after_firefox_rebuilds_the_tree() {
-        let mut snapshot = Snapshot {
-            headings: snapshot().headings,
-            ..Default::default()
-        };
-        snapshot.remember(
-            file(),
-            vec![Item {
-                label: "Actual Size".to_owned(),
-                enabled: false,
-                kind: ItemKind::Standard,
-                shortcut: None,
-                activation: Some(ItemId::DbusMenu { id: 6 }),
-                submenu: None,
-            }],
-        );
-
-        let merged = snapshot.merge(rebuilt_empty_file());
-        assert!(merged.section(&file()).is_none());
-        assert_eq!(merged.item_path(6), ["File", "Actual Size"]);
-    }
-
-    fn toolbar(checked: bool) -> Item {
-        Item {
-            label: "Bookmarks Toolbar".to_owned(),
-            enabled: true,
-            kind: ItemKind::Checkmark { checked },
-            shortcut: None,
-            activation: Some(ItemId::DbusMenu { id: 12 }),
-            submenu: None,
-        }
-    }
-
-    #[test]
-    fn remembering_a_section_again_replaces_its_marks() {
-        let mut snapshot = snapshot();
-        snapshot.remember(file(), vec![toolbar(false)]);
-        snapshot.remember(file(), vec![toolbar(true)]);
-
-        assert_eq!(
-            snapshot.section(&file()).expect("rows")[0].kind,
-            ItemKind::Checkmark { checked: true }
-        );
-    }
-
-    #[test]
-    fn empty_headings_are_not_served_as_a_hit() {
-        let held = Held::occupy(exporter(), Snapshot::default());
-        assert!(held.headings_for(&exporter()).is_none());
-        assert!(held.holds(&exporter()));
-    }
-
-    #[test]
-    fn a_headings_read_does_not_walk_into_the_rows() {
-        assert_eq!(super::HEADINGS_DEPTH, 1);
-    }
-
-    fn opened_menu(id: i32, path: &[&str]) -> Opened {
-        Opened {
-            endpoint: serde_json::from_str(
-                r#"{"kind":"dbusmenu","service":":1.40","path":"/MenuBar"}"#,
-            )
-            .expect("endpoint"),
-            id,
-            path: path.iter().map(|label| (*label).to_owned()).collect(),
-            section: SectionId::DbusMenu { id },
-        }
-    }
-
-    #[test]
-    fn dismissing_a_heading_closes_its_flyouts_first() {
-        let file = opened_menu(1, &["File"]);
-        let recent = opened_menu(20, &["File", "Recent"]);
-        let edit = opened_menu(2, &["Edit"]);
-        let (close, keep) = closing(
-            vec![file.clone(), recent.clone(), edit.clone()],
-            1,
-            &["File".to_owned()],
-        );
-
-        assert_eq!(close, vec![recent, file]);
-        assert_eq!(keep, vec![edit]);
-    }
-
-    #[test]
-    fn dismissing_a_flyout_leaves_the_heading_open() {
-        let file = opened_menu(1, &["File"]);
-        let recent = opened_menu(20, &["File", "Recent"]);
-        let (close, keep) = closing(
-            vec![file.clone(), recent.clone()],
-            20,
-            &["File".to_owned(), "Recent".to_owned()],
-        );
-
-        assert_eq!(close, vec![recent]);
-        assert_eq!(keep, vec![file]);
-    }
-
-    #[test]
-    fn a_rebuilt_heading_id_still_closes_by_its_label_path() {
-        let file = opened_menu(1, &["File"]);
-        let (close, keep) = closing(vec![file.clone()], 50, &["File".to_owned()]);
-
-        assert_eq!(close, vec![file]);
-        assert!(keep.is_empty());
-    }
-
-    #[test]
-    fn a_rebuilt_heading_still_closes_nested_flyouts_by_path() {
-        let file = opened_menu(50, &["File"]);
-        let recent = opened_menu(80, &["File", "Recent"]);
-        let (close, keep) = closing(vec![file.clone(), recent.clone()], 1, &["File".to_owned()]);
-
-        assert_eq!(close, vec![recent, file]);
-        assert!(keep.is_empty());
-    }
-
-    #[test]
-    fn an_unknown_id_with_no_path_closes_nothing() {
-        let file = opened_menu(1, &["File"]);
-        let (close, keep) = closing(vec![file.clone()], 99, &[]);
-
-        assert!(close.is_empty());
-        assert_eq!(keep, vec![file]);
+    #[tokio::test]
+    async fn dropping_live_aborts_the_owned_watch() {
+        let mut live = live();
+        let task = tokio::spawn(std::future::pending());
+        let abort = task.abort_handle();
+        live.watch = Some(Watch { epoch: 0, task });
+        drop(live);
+        tokio::task::yield_now().await;
+        assert!(abort.is_finished());
     }
 }

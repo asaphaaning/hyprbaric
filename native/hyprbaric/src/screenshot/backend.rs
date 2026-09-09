@@ -51,7 +51,7 @@ struct Monitor {
 
 impl Backend {
     /// Runs one screenshot command against system tools.
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self))]
     pub(super) async fn capture(self, command: Command) -> Result<Saved, Failure> {
         let path = capture(command.mode()).await?;
         let clipboard = copy_png(&path).await?;
@@ -60,7 +60,7 @@ impl Backend {
 }
 
 impl Capture {
-    #[instrument(err)]
+    #[instrument]
     async fn new(mode: Mode) -> Result<Self, Failure> {
         let path = screenshots_dir().await?.join(filename());
         let target = match mode {
@@ -71,7 +71,7 @@ impl Capture {
         Ok(Self { target, path })
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self))]
     async fn run(&self) -> Result<PathBuf, Failure> {
         match self.target {
             Target::Area(area) => grim_area(area, &self.path).await?,
@@ -81,7 +81,7 @@ impl Capture {
     }
 }
 
-#[instrument(err)]
+#[instrument]
 async fn capture(mode: Mode) -> Result<PathBuf, Failure> {
     if mode == Mode::Region {
         let path = screenshots_dir().await?.join(filename());
@@ -96,7 +96,7 @@ async fn capture(mode: Mode) -> Result<PathBuf, Failure> {
     capture.run().await
 }
 
-#[instrument(skip(path), err)]
+#[instrument(skip(path))]
 async fn grimblast_region(path: &Path) -> Result<(), Failure> {
     let output = Process::new("grimblast")
         .env(
@@ -114,14 +114,26 @@ async fn grimblast_region(path: &Path) -> Result<(), Failure> {
 
     if output.status.success() {
         Ok(())
-    } else if output.stdout.is_empty() && output.stderr.is_empty() {
+    } else if selection_cancelled(&output) {
         Err(Failure::Cancelled)
     } else {
         Err(process_failure("grimblast", &output))
     }
 }
 
-#[instrument(err)]
+/// Cancellation is an expected picker outcome, even when grimblast explains it.
+fn selection_cancelled(output: &Output) -> bool {
+    if !output.stdout.is_empty() {
+        return false;
+    }
+    let message = String::from_utf8_lossy(&output.stderr);
+    matches!(
+        message.trim(),
+        "" | "selection cancelled" | "Selection cancelled"
+    )
+}
+
+#[instrument]
 async fn select_region() -> Result<Area, Failure> {
     time::sleep(SELECTION_SETTLE).await;
     let rects = selectable_rects().await?;
@@ -144,7 +156,7 @@ async fn select_region() -> Result<Area, Failure> {
 
 const SELECTION_SETTLE: Duration = Duration::from_millis(180);
 
-#[instrument(err)]
+#[instrument]
 async fn selectable_rects() -> Result<String, Failure> {
     let output = output("hyprctl", &["-j", "monitors"]).await?;
     if !output.status.success() {
@@ -219,7 +231,7 @@ async fn slurp(rects: &str) -> Result<Output, Failure> {
         .map_err(|error| process_io_failure("slurp", error))
 }
 
-#[instrument(err)]
+#[instrument]
 async fn active_window() -> Result<Area, Failure> {
     let output = output("hyprctl", &["-j", "activewindow"]).await?;
     if !output.status.success() {
@@ -234,18 +246,18 @@ async fn active_window() -> Result<Area, Failure> {
     Area::from_window_parts(at, size)
 }
 
-#[instrument(skip(path), err)]
+#[instrument(skip(path))]
 async fn grim_area(area: Area, path: &Path) -> Result<(), Failure> {
     let geometry = area.grim_geometry();
     status("grim", &["-g", geometry.as_str()], Some(path)).await
 }
 
-#[instrument(skip(path), err)]
+#[instrument(skip(path))]
 async fn grim_desktop(path: &Path) -> Result<(), Failure> {
     status("grim", &[], Some(path)).await
 }
 
-#[instrument(err)]
+#[instrument]
 async fn screenshots_dir() -> Result<PathBuf, Failure> {
     let pictures = match output("xdg-user-dir", &["PICTURES"]).await {
         Ok(output) if output.status.success() => {
@@ -293,7 +305,7 @@ fn filename() -> String {
     )
 }
 
-#[instrument(skip(path), err)]
+#[instrument(skip(path))]
 async fn copy_png(path: &Path) -> Result<Clipboard, Failure> {
     let bytes = tokio::fs::read(path).await.map_err(|error| Failure::Io {
         message: format!("failed to read screenshot `{}`: {error}", path.display()),
@@ -404,6 +416,27 @@ fn process_failure(tool: &'static str, output: &Output) -> Failure {
 #[cfg(test)]
 mod tests {
     use super::{Monitor, monitor_rects};
+
+    #[test]
+    fn cancellation_diagnostics_do_not_hide_real_tool_errors() {
+        use std::{
+            os::unix::process::ExitStatusExt,
+            process::{ExitStatus, Output},
+        };
+        for (message, cancelled) in [
+            ("", true),
+            ("selection cancelled\n", true),
+            ("Selection cancelled", true),
+            ("failed to connect to Wayland", false),
+        ] {
+            let output = Output {
+                status: ExitStatus::from_raw(256),
+                stdout: Vec::new(),
+                stderr: message.as_bytes().to_vec(),
+            };
+            assert_eq!(super::selection_cancelled(&output), cancelled, "{message}");
+        }
+    }
 
     #[test]
     fn monitor_rects_use_logical_geometry() {

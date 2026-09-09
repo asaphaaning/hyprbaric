@@ -104,6 +104,104 @@ Widget _surface({required Widget child, required List<dynamic> overrides}) {
 }
 
 void main() {
+  testWidgets(
+    'nested flyouts reach deep commands and dismiss all descendants',
+    (tester) async {
+      const third = GlobalMenuSectionIdDbusMenu(id: 30);
+      const fourth = GlobalMenuSectionIdDbusMenu(id: 40);
+      final dispatcher = _RecordingDispatcher();
+      await tester.pumpWidget(
+        _surface(
+          overrides: [
+            rustCommandDispatcherProvider.overrideWith((ref) => dispatcher),
+            _section(_file, [_item(label: 'Recent', submenu: _recent)]),
+            _section(_recent, [_item(label: 'Projects', submenu: third)]),
+            _section(third, [_item(label: 'Archives', submenu: fourth)]),
+            _section(fourth, [
+              _item(
+                label: 'Deep command',
+                activation: const GlobalMenuItemIdDbusMenu(id: 41),
+              ),
+            ]),
+          ],
+          child: GlobalMenuSectionPanel(
+            session: _session,
+            section: _file,
+            onActivated: () {},
+          ),
+        ),
+      );
+      await tester.pump();
+      final pointer = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await pointer.addPointer(location: Offset.zero);
+      addTearDown(pointer.removePointer);
+      for (final label in ['Recent', 'Projects', 'Archives']) {
+        await pointer.moveTo(tester.getCenter(find.text(label)));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      }
+      expect(find.text('Deep command'), findsOneWidget);
+      await tester.tap(find.text('Deep command'));
+      expect(dispatcher.intents.last.debugLabel, 'global_menu_activate');
+      final before = dispatcher.intents.length;
+      await tester.pumpWidget(const SizedBox());
+      final dismissals = dispatcher.intents
+          .skip(before)
+          .where((intent) => intent.debugLabel == 'global_menu_dismiss')
+          .toList();
+      expect(dismissals, hasLength(3));
+    },
+  );
+
+  testWidgets('changing an ancestor submenu removes every deeper panel', (
+    tester,
+  ) async {
+    const third = GlobalMenuSectionIdDbusMenu(id: 30);
+    final dispatcher = _RecordingDispatcher();
+    await tester.pumpWidget(
+      _surface(
+        overrides: [
+          rustCommandDispatcherProvider.overrideWith((ref) => dispatcher),
+          _section(_file, [
+            _item(label: 'Recent', submenu: _recent),
+            _item(label: 'Other', submenu: _edit),
+          ]),
+          _section(_recent, [_item(label: 'Projects', submenu: third)]),
+          _section(third, [_item(label: 'Deep row')]),
+          _section(_edit, [_item(label: 'Other row')]),
+        ],
+        child: GlobalMenuSectionPanel(
+          session: _session,
+          section: _file,
+          onActivated: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+    final pointer = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await pointer.addPointer(location: Offset.zero);
+    addTearDown(pointer.removePointer);
+    for (final label in ['Recent', 'Projects']) {
+      await pointer.moveTo(tester.getCenter(find.text(label)));
+      await tester.pumpAndSettle();
+    }
+    final horizontal = tester.widget<SingleChildScrollView>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is SingleChildScrollView &&
+            widget.scrollDirection == Axis.horizontal,
+      ),
+    );
+    horizontal.controller!.jumpTo(0);
+    await tester.pump();
+    await pointer.moveTo(tester.getCenter(find.text('Other')));
+    await tester.pumpAndSettle();
+    expect(find.text('Other row'), findsOneWidget);
+    expect(find.text('Deep row'), findsNothing);
+    expect(find.text('Projects'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   test('GTK row removal replaces the open rows and cached snapshot', () async {
     const section = GlobalMenuSectionIdGtk(group: 0, menu: 1);
     final container = ProviderContainer(
@@ -248,7 +346,11 @@ void main() {
     await tester.pump();
     expect(tester.takeException(), isNull);
     await tester.drag(
-      find.byType(SingleChildScrollView),
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is SingleChildScrollView &&
+            widget.scrollDirection == Axis.vertical,
+      ),
       const Offset(0, -1800),
     );
     await tester.pumpAndSettle();

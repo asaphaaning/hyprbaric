@@ -46,12 +46,13 @@ pub(crate) fn send_app_signal() {
 }
 
 /// One route serializes popup events, so a delayed open cannot overtake close.
-pub(crate) async fn handle_global_menu_command(State(_): State<App>, command: GlobalMenuCommand) {
+pub(crate) async fn handle_global_menu_command(State(app): State<App>, command: GlobalMenuCommand) {
+    let mut menu_runtime = app.global_menu().await;
     match command {
-        GlobalMenuCommand::Read { window } => match global_menu::read(window.as_deref()).await {
+        GlobalMenuCommand::Read { window } => match menu_runtime.read(window.as_deref()).await {
             Ok((session, menu)) => global_menu::publish::headings(&session, &menu),
             Err(error) => {
-                tracing::debug!(%error, "Focused window has no readable menu");
+                error.report("read");
                 global_menu::publish::no_headings(window, &error);
             }
         },
@@ -60,10 +61,10 @@ pub(crate) async fn handle_global_menu_command(State(_): State<App>, command: Gl
                 return;
             };
             let id = section_id(&address.section);
-            match global_menu::section(&session, &id).await {
+            match menu_runtime.section(&session, &id).await {
                 Ok(items) => global_menu::publish::section_items(&session, &id, &items),
                 Err(error) => {
-                    tracing::debug!(%error, "Could not read menu section");
+                    error.report("section");
                     global_menu::publish::section_failed(&session, &id, &error);
                 }
             }
@@ -72,17 +73,19 @@ pub(crate) async fn handle_global_menu_command(State(_): State<App>, command: Gl
             let Some(session) = menu_session(address.session) else {
                 return;
             };
-            if let Err(error) = global_menu::dismiss(&session, &section_id(&address.section)).await
+            if let Err(error) = menu_runtime
+                .dismiss(&session, &section_id(&address.section))
+                .await
             {
-                tracing::debug!(%error, "Could not dismiss menu section");
+                error.report("dismiss");
             }
         }
         GlobalMenuCommand::Activate { session, item } => {
             let Some(session) = menu_session(session) else {
                 return;
             };
-            if let Err(error) = global_menu::activate(&session, &item_id(&item)).await {
-                tracing::debug!(%error, "Could not activate menu item");
+            if let Err(error) = menu_runtime.activate(&session, &item_id(&item)).await {
+                error.report("activate");
             }
         }
     }

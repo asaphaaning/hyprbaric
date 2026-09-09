@@ -124,3 +124,15 @@ impl From<&ItemId> for GlobalMenuItemId {
         }
     }
 }
+
+/// Delivers a domain update over the RINF boundary.
+pub(crate) fn update(update: super::Update) {
+    match update {
+        super::Update::Headings { session, menu } => headings(&session, &menu),
+        super::Update::Section {
+            session,
+            section,
+            items,
+        } => section_items(&session, &section, &items),
+    }
+}
