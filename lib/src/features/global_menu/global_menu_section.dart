@@ -28,7 +28,6 @@ abstract final class _Menu {
   static const double submenuOverhang = panelPadding;
   static const double submenuGap = 4;
   static const double submenuMinWidth = 168;
-  static const Duration submenuFade = Duration(milliseconds: 120);
 
   /// A little more of the layer-shell blur than the shared popover floor.
   /// Scales both the dark fill and the top-to-bottom wash; 1.0 is the tray.
@@ -146,163 +145,136 @@ class GlobalMenuSectionPanel extends ConsumerStatefulWidget {
       _GlobalMenuSectionPanelState();
 }
 
+/// One edge in the open menu path, anchored in panel-local coordinates.
+class _Branch {
+  const _Branch(this.section, this.offset);
+  final GlobalMenuSectionId section;
+  final double offset;
+}
+
 class _GlobalMenuSectionPanelState
     extends ConsumerState<GlobalMenuSectionPanel> {
-  GlobalMenuSectionId? _openSubmenu;
-  GlobalMenuSectionId? _filledSubmenu;
-  double _submenuOffset = 0;
+  final List<_Branch> _branches = [];
+  final ScrollController _horizontal = ScrollController();
+  late final RustCommandDispatcher _dispatcher;
+  late final GlobalMenuSectionCache _cache;
   Timer? _linger;
+
+  @override
+  void initState() {
+    super.initState();
+    _dispatcher = ref.read(rustCommandDispatcherProvider);
+    _cache = ref.read(globalMenuSectionCacheProvider.notifier);
+  }
+
+  void _discardFrom(int depth) {
+    for (final branch in _branches.skip(depth).toList().reversed) {
+      final address = GlobalMenuAddress(
+        session: widget.session,
+        section: branch.section,
+      );
+      _dispatcher.dispatch(GlobalMenuIntent.dismiss(address));
+      _cache.forget(address);
+    }
+    if (depth < _branches.length) {
+      _branches.removeRange(depth, _branches.length);
+    }
+  }
+
+  void _closeFrom(int depth) {
+    _linger?.cancel();
+    if (depth < _branches.length) setState(() => _discardFrom(depth));
+  }
+
+  void _openSub(int depth, GlobalMenuSectionId section, double offset) {
+    _linger?.cancel();
+    if (depth < _branches.length && _branches[depth].section == section) return;
+    // An exporter cycle is not an infinitely expanding menu path.
+    if (section == widget.section ||
+        _branches.take(depth).any((branch) => branch.section == section)) {
+      return;
+    }
+    setState(() {
+      _discardFrom(depth);
+      _branches.add(_Branch(section, offset));
+    });
+    _dispatcher.dispatch(
+      GlobalMenuIntent.openSection(
+        GlobalMenuAddress(session: widget.session, section: section),
+      ),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _horizontal.hasClients) {
+        _horizontal.jumpTo(_horizontal.position.maxScrollExtent);
+        _linger?.cancel();
+      }
+    });
+  }
+
+  void _leave(int depth) {
+    _linger?.cancel();
+    _linger = Timer(_Menu.submenuLinger, () {
+      if (mounted) _closeFrom(depth);
+    });
+  }
 
   @override
   void dispose() {
     _linger?.cancel();
+    // Closing the root is dispatched by its dropdown owner. Explicitly
+    // release every descendant provider and popup, deepest first.
+    _discardFrom(0);
+    _horizontal.dispose();
     super.dispose();
-  }
-
-  void _openSub(GlobalMenuSectionId section, double offset) {
-    _linger?.cancel();
-    if (_openSubmenu == section) {
-      return;
-    }
-
-    final GlobalMenuSectionId? previous = _openSubmenu;
-    if (previous != null) {
-      _dismiss(previous);
-    }
-
-    ref
-        .read(rustCommandDispatcherProvider)
-        .dispatch(
-          GlobalMenuIntent.openSection(
-            GlobalMenuAddress(session: widget.session, section: section),
-          ),
-        );
-    setState(() {
-      _openSubmenu = section;
-      _submenuOffset = offset;
-    });
-  }
-
-  void _closeSubAfterLinger() {
-    _linger?.cancel();
-    _linger = Timer(_Menu.submenuLinger, () {
-      if (mounted) {
-        _dismiss(_openSubmenu ?? _filledSubmenu);
-        setState(() {
-          _openSubmenu = null;
-          _filledSubmenu = null;
-        });
-      }
-    });
-  }
-
-  void _closeSubNow() {
-    _linger?.cancel();
-    final GlobalMenuSectionId? closing = _openSubmenu ?? _filledSubmenu;
-    if (closing != null) {
-      _dismiss(closing);
-      setState(() {
-        _openSubmenu = null;
-        _filledSubmenu = null;
-      });
-    }
-  }
-
-  void _dismiss(GlobalMenuSectionId? section) {
-    if (section == null) {
-      return;
-    }
-    ref
-        .read(rustCommandDispatcherProvider)
-        .dispatch(
-          GlobalMenuIntent.dismiss(
-            GlobalMenuAddress(session: widget.session, section: section),
-          ),
-        );
   }
 
   @override
   Widget build(BuildContext context) {
-    final GlobalMenuSectionId? pending = _openSubmenu;
-    GlobalMenuSectionId? flyout = pending == null ? null : _filledSubmenu;
-    if (pending != null) {
-      final GlobalMenuSectionStatus? status = ref
-          .watch(
-            globalMenuSectionProvider(
-              GlobalMenuAddress(session: widget.session, section: pending),
-            ),
-          )
-          .asData
-          ?.value;
-      if (status != null && status.items.isNotEmpty) {
-        flyout = pending;
-        _filledSubmenu = pending;
-      }
-    }
-
+    final panels = [_Branch(widget.section, 0), ..._branches];
     return ConstrainedBox(
       constraints: BoxConstraints(
+        maxWidth: MediaQuery.sizeOf(context).width,
         maxHeight: (MediaQuery.sizeOf(context).height - 64).clamp(
           0,
           double.infinity,
         ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          MouseRegion(
-            onExit: (_) => _closeSubAfterLinger(),
-            child: _MenuPanel(
-              minWidth: _Menu.panelMinWidth,
-              child: _MenuRows(
-                section: widget.section,
-                session: widget.session,
-                openSubmenu: pending,
-                onActivated: widget.onActivated,
-                onSubmenuHovered: _openSub,
-                onLeafHovered: _closeSubNow,
-              ),
-            ),
-          ),
-          if (flyout != null) ...<Widget>[
-            const SizedBox(width: _Menu.submenuGap),
-            Padding(
-              padding: EdgeInsets.only(top: _submenuOffset),
-              child: MouseRegion(
-                onEnter: (_) => _linger?.cancel(),
-                onExit: (_) => _closeSubAfterLinger(),
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween<double>(begin: 0, end: 1),
-                  duration: _Menu.submenuFade,
-                  curve: Curves.easeOut,
-                  builder: (BuildContext context, double t, Widget? child) {
-                    return Opacity(
-                      opacity: t,
-                      child: Transform.translate(
-                        offset: Offset(-3 * (1 - t), 0),
-                        child: child,
-                      ),
-                    );
-                  },
+      child: SingleChildScrollView(
+        controller: _horizontal,
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var depth = 0; depth < panels.length; depth++) ...[
+              if (depth > 0) const SizedBox(width: _Menu.submenuGap),
+              Padding(
+                key: ValueKey(panels[depth].section),
+                padding: EdgeInsets.only(top: panels[depth].offset),
+                child: MouseRegion(
+                  onEnter: (_) => _linger?.cancel(),
+                  onExit: (_) => _leave(depth),
                   child: _MenuPanel(
-                    minWidth: _Menu.submenuMinWidth,
+                    minWidth: depth == 0
+                        ? _Menu.panelMinWidth
+                        : _Menu.submenuMinWidth,
                     child: _MenuRows(
-                      section: flyout,
+                      section: panels[depth].section,
                       session: widget.session,
-                      openSubmenu: null,
+                      openSubmenu: depth < _branches.length
+                          ? _branches[depth].section
+                          : null,
                       onActivated: widget.onActivated,
-                      // One level of flyout is as far as the bar goes; deeper
-                      // rows still activate, they just do not fan out further.
-                      onSubmenuHovered: null,
-                      onLeafHovered: () {},
+                      onSubmenuHovered: (section, offset) =>
+                          _openSub(depth, section, offset),
+                      onLeafHovered: () => _closeFrom(depth),
                     ),
                   ),
                 ),
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

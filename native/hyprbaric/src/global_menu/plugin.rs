@@ -480,6 +480,47 @@ struct Plugin {
     name: String,
 }
 
+/// Where the compositor half of the global menu got to.
+///
+/// Installation is slow and can end somewhere only the user can take further,
+/// so the outcome is a reportable state rather than a silent failure.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Progress {
+    /// The module is switched off.
+    Disabled,
+    /// The companion is being installed or rebuilt.
+    Preparing,
+    /// The companion is loaded and menus can be read.
+    Ready,
+    /// Installation stopped on something the bar cannot resolve itself.
+    Blocked {
+        message: String,
+        instruction: Option<String>,
+    },
+}
+
+impl Progress {
+    /// Reports an installation that could not run to a conclusion.
+    pub fn failed(error: &Error) -> Self {
+        Self::Blocked {
+            message: error.to_string(),
+            instruction: None,
+        }
+    }
+}
+
+impl From<Readiness> for Progress {
+    fn from(readiness: Readiness) -> Self {
+        match readiness {
+            Readiness::Ready => Self::Ready,
+            Readiness::Blocked(blocker) => Self::Blocked {
+                message: blocker.message(),
+                instruction: blocker.instruction(),
+            },
+        }
+    }
+}
+
 /// AppMenu companion installation failures.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

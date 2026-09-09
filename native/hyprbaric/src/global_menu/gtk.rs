@@ -17,7 +17,11 @@ use zbus::{
     },
 };
 
-use super::{Item, ItemId, ItemKind, SectionId, gtk_label, gtk_link};
+use super::{Item, ItemId, ItemKind, SectionId};
+use tree::{gtk_label, gtk_link};
+
+pub(super) mod client;
+pub(super) mod tree;
 
 /// Descriptions of the `app.` and `win.` actions a GTK window exported.
 #[derive(Clone, Debug, Default)]
@@ -488,3 +492,5 @@ mod tests {
         assert_eq!(decoded.downcast_ref::<&str>().expect("string"), "notes.txt");
     }
 }
+
+pub(in crate::global_menu) mod watch;
