@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../bindings/bindings.dart';
+import '../features/global_menu/global_menu_bar.dart';
 import '../layer_shell_controller.dart';
 import '../state/monitor_workspace.dart';
 import '../state/providers.dart';
@@ -14,11 +15,13 @@ class LeftCluster extends ConsumerWidget {
     super.key,
     required this.appLauncherOpen,
     required this.onToggleAppLauncher,
+    this.showGlobalMenu = false,
     this.logoKey,
   });
 
   final bool appLauncherOpen;
   final VoidCallback onToggleAppLauncher;
+  final bool showGlobalMenu;
   final GlobalKey? logoKey;
 
   @override
@@ -58,26 +61,54 @@ class LeftCluster extends ConsumerWidget {
       error: (_, _) => const WorkspaceStripPlaceholder(label: '!'),
     );
 
+    // The launcher and workspaces scale down to fit; the menu does not.
+    // Shrinking menu text to buy room would make it the least legible thing on
+    // the bar, so it scrolls within whatever space is left instead.
+    final Widget launcherAndWorkspaces = FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          _HyprbaricLogoButton(
+            key: logoKey,
+            active: appLauncherOpen,
+            onPressed: onToggleAppLauncher,
+          ),
+          const HyprDivider(
+            height: 16,
+            margin: EdgeInsets.symmetric(horizontal: 8),
+          ),
+          workspaceWidget,
+        ],
+      ),
+    );
+
+    if (!showGlobalMenu) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: launcherAndWorkspaces,
+      );
+    }
+
     return Align(
       alignment: Alignment.centerLeft,
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.centerLeft,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            _HyprbaricLogoButton(
-              key: logoKey,
-              active: appLauncherOpen,
-              onPressed: onToggleAppLauncher,
-            ),
-            const HyprDivider(
-              height: 16,
-              margin: EdgeInsets.symmetric(horizontal: 8),
-            ),
-            workspaceWidget,
-          ],
-        ),
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              // A row hands its non-flexible children unbounded width, which
+              // would stop the box above ever scaling down and overflow the
+              // bar instead. The cap is what it would have had on its own.
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+                child: launcherAndWorkspaces,
+              ),
+              const Flexible(child: GlobalMenuBar()),
+            ],
+          );
+        },
       ),
     );
   }

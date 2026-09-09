@@ -1,6 +1,6 @@
 //! Schedule settings persistence.
 
-use toml_edit::{DocumentMut, Item, Table, value};
+use toml_edit::{DocumentMut, Table, value};
 use tracing::instrument;
 
 use crate::config;
@@ -14,40 +14,38 @@ const NIGHT_LIGHT: &str = "night_light";
 #[instrument(skip(command), err)]
 pub fn save(command: &Command, current: Configuration) -> Result<Configuration, Error> {
     let next = current.apply(command);
-    config::edit(|document| write_configuration(document, next))?;
+    config::try_edit(|document| write_configuration(document, next))?;
 
     Ok(next)
 }
 
-fn write_configuration(document: &mut DocumentMut, config: Configuration) {
+fn write_configuration(
+    document: &mut DocumentMut,
+    config: Configuration,
+) -> Result<(), config::Error> {
     match config.night_light() {
         window => write_daily_window(document, Action::NightLight, window),
     }
 }
 
-fn write_daily_window(document: &mut DocumentMut, action: Action, window: DailyWindow) {
-    let table = schedule_table(document, action);
+fn write_daily_window(
+    document: &mut DocumentMut,
+    action: Action,
+    window: DailyWindow,
+) -> Result<(), config::Error> {
+    let table = schedule_table(document, action)?;
     table["enabled"] = value(window.enabled);
     table["start_hour"] = value(i64::from(window.start.as_u8()));
     table["stop_hour"] = value(i64::from(window.stop.as_u8()));
+    Ok(())
 }
 
-fn schedule_table(document: &mut DocumentMut, action: Action) -> &mut Table {
-    if !document.as_table().contains_key(SCHEDULES) {
-        document[SCHEDULES] = Item::Table(Table::new());
-    }
-    let schedules = document[SCHEDULES]
-        .as_table_mut()
-        .expect("schedules item should be a table");
+fn schedule_table(document: &mut DocumentMut, action: Action) -> Result<&mut Table, config::Error> {
+    let schedules = config::table(document.as_table_mut(), SCHEDULES)?;
     let key = match action {
         Action::NightLight => NIGHT_LIGHT,
     };
-    if !schedules.contains_key(key) {
-        schedules[key] = Item::Table(Table::new());
-    }
-    schedules[key]
-        .as_table_mut()
-        .expect("schedule item should be a table")
+    config::table(schedules, key)
 }
 
 #[cfg(test)]

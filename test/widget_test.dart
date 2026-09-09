@@ -964,7 +964,15 @@ void main() {
       ),
       false,
     );
-    expect(find.byType(CustomPaint), findsOneWidget);
+    expect(find.byType(CustomPaint), findsAtLeastNWidgets(2));
+    final Finder clipFinder = find.descendant(
+      of: find.byType(HyprSurface),
+      matching: find.byType(ClipRSuperellipse),
+    );
+    expect(
+      tester.getSize(clipFinder),
+      tester.getSize(find.byType(HyprSurface)),
+    );
   });
 
   testWidgets('bar renders workspace indicators as Roman numerals', (
@@ -2113,6 +2121,7 @@ void main() {
                   ModuleEntry(module: ModuleId.systemTray, enabled: false),
                   ModuleEntry(module: ModuleId.notifications, enabled: true),
                   ModuleEntry(module: ModuleId.audioDisplay, enabled: true),
+                  ModuleEntry(module: ModuleId.globalMenu, enabled: false),
                 ],
               ),
             ),
@@ -2134,8 +2143,65 @@ void main() {
     expect(find.text('System tray'), findsOneWidget);
     expect(find.text('Notifications'), findsOneWidget);
     expect(find.text('Audio & Display'), findsOneWidget);
-    expect(find.text('Off'), findsOneWidget);
+    expect(find.text('Global menu'), findsOneWidget);
+    expect(find.text('Off'), findsNWidgets(2));
     expect(find.text('On'), findsNWidgets(3));
+  });
+
+  testWidgets('global menu settings names a blocked companion', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          modulesStatusProvider.overrideWith(
+            (ref) => Stream.value(
+              const ModulesStatus(
+                entries: <ModuleEntry>[
+                  ModuleEntry(
+                    module: ModuleId.activeWindowTitle,
+                    enabled: true,
+                  ),
+                  ModuleEntry(module: ModuleId.systemTray, enabled: true),
+                  ModuleEntry(module: ModuleId.notifications, enabled: true),
+                  ModuleEntry(module: ModuleId.audioDisplay, enabled: true),
+                  ModuleEntry(module: ModuleId.globalMenu, enabled: true),
+                ],
+              ),
+            ),
+          ),
+          globalMenuIntegrationProvider.overrideWith(
+            (ref) => Stream<GlobalMenuIntegrationStatus>.value(
+              const GlobalMenuIntegrationStatusBlocked(
+                message:
+                    'The bundled AppMenu companion does not fit this version of Hyprland.',
+                instruction:
+                    'hyprpm add https://github.com/asaphaaning/hyprbaric',
+              ),
+            ),
+          ),
+        ],
+        child: _scopedSurface(
+          child: SettingsOverlayContent(
+            tab: SettingsTab.modules,
+            onTabChanged: (_) {},
+            onClose: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      find.textContaining('does not fit this version of Hyprland'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining(
+        'hyprpm add https://github.com/asaphaaning/hyprbaric',
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('workspaces settings dispatches style range and clickability', (
@@ -3806,6 +3872,14 @@ void main() {
       tester.getSize(find.byType(ControlSettingsRow)).height,
       ControlSettingsRow.height,
     );
+    expect(
+      tester
+          .getSize(
+            find.byKey(const ValueKey<String>('control-rocker-switch')).first,
+          )
+          .width,
+      36,
+    );
 
     await tester.tap(find.text('REGION'));
     await tester.pump();
@@ -4182,7 +4256,10 @@ void main() {
 
     expect(find.text('Fiber_5G'), findsOneWidget);
 
-    await tester.tapAt(const Offset(400, 120));
+    // Derived rather than hardcoded: a fixed coordinate only stays outside the
+    // popup for as long as the popup keeps landing in one particular place.
+    final Rect popup = tester.getRect(find.text('Fiber_5G'));
+    await tester.tapAt(Offset(popup.left - 40, popup.bottom + 80));
     await tester.pump();
     await tester.pumpAndSettle();
 
@@ -4224,7 +4301,10 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(TextField, 'Password for Fiber_2.4G'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextField, 'Password for Fiber_2.4G'),
+      findsOneWidget,
+    );
     expect(find.text('JOIN'), findsOneWidget);
     // The row's tap target is the shared interaction primitive now, not a
     // bespoke InkWell with every overlay colour turned off.

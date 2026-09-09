@@ -1,6 +1,6 @@
 //! Module visibility settings persistence.
 
-use toml_edit::{DocumentMut, Item, Table, value};
+use toml_edit::{DocumentMut, value};
 use tracing::instrument;
 
 use crate::config;
@@ -12,33 +12,21 @@ const TABLE: &str = "modules";
 #[instrument(skip(command), err)]
 pub fn save(command: &Command, current: Configuration) -> Result<Configuration, Error> {
     let next = current.apply(command);
-    config::edit(|document| write_modules(document, next))?;
+    config::try_edit(|document| write_modules(document, next))?;
 
     Ok(next)
 }
 
-fn write_modules(document: &mut DocumentMut, config: Configuration) {
-    if !document.as_table().contains_key(TABLE) {
-        document[TABLE] = Item::Table(Table::new());
-    }
-    let table = document[TABLE]
-        .as_table_mut()
-        .expect("modules item should be a table");
-
+fn write_modules(
+    document: &mut DocumentMut,
+    configuration: Configuration,
+) -> Result<(), config::Error> {
+    let table = config::table(document.as_table_mut(), TABLE)?;
     for module in Module::ALL {
-        let module_table = module_table(table, module);
-        module_table["enabled"] = value(config.enabled(module));
+        let module_table = config::table(table, module.config_key())?;
+        module_table["enabled"] = value(configuration.enabled(module));
     }
-}
-
-fn module_table(table: &mut Table, module: Module) -> &mut Table {
-    let key = module.config_key();
-    if !table.get(key).is_some_and(Item::is_table) {
-        table[key] = Item::Table(Table::new());
-    }
-    table[key]
-        .as_table_mut()
-        .expect("module item should be a table")
+    Ok(())
 }
 
 #[cfg(test)]

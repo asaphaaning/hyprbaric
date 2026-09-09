@@ -84,6 +84,15 @@ class SetupGuidePreview extends StatelessWidget {
       const SizedBox(height: 14),
       _AccentModule(hue: appearance.accentHue),
     ],
+    SetupStep.globalMenu => <Widget>[
+      _MiniDesktop(appearance: appearance),
+      const SizedBox(height: 14),
+      _WorkspaceModule(
+        style: workspaces.indicatorStyle,
+        label: 'MENUS',
+        value: 'FILE  EDIT  VIEW',
+      ),
+    ],
     SetupStep.layout => <Widget>[
       _MiniDesktop(appearance: appearance, height: 148),
       const SizedBox(height: 14),

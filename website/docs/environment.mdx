@@ -19,6 +19,13 @@ Not everything hyprbaric respects lives in `config.toml`. This page covers the r
 | `TERMINAL` | App launcher | Command used to run desktop entries marked `Terminal=true`. Parsed shell-style, so arguments are allowed. |
 | `XDG_DATA_HOME`, `XDG_DATA_DIRS` | Launcher, tray, portal identity | Desktop entry and icon theme lookup, and where hyprbaric’s own desktop entry is written. |
 
+hyprbaric does not read the next pair. GTK applications do. Set them in Hyprland so classic menubars can appear on the bar; see [GTK AppMenu module](./global-menu#gtk-appmenu-module).
+
+| Variable | Read by | Effect |
+| --- | --- | --- |
+| `GTK_MODULES` | GTK applications | Must include `appmenu-gtk-module` (the `.so` name, not the AUR package name). |
+| `UBUNTU_MENUPROXY` | `appmenu-gtk-module` | Set to `1` or the module loads and does nothing. |
+
 ### Terminal applications
 
 Desktop entries that request a terminal are launched with `$TERMINAL` when it is set and the program exists. Otherwise hyprbaric tries, in order:
@@ -29,6 +36,12 @@ wezterm start --         gnome-terminal --   konsole -e
 ```
 
 If none is found, launching a terminal application fails with a “missing terminal emulator” report rather than silently doing nothing.
+
+### Launched applications
+
+Apps started from the app launcher (Firefox, file managers, terminals, `pavucontrol` from the audio popup, and so on) are handed to Hyprland with `exec`. They belong to the session, so quitting or restarting hyprbaric does not close them. Network settings opened from the Wi-Fi popup use the same path.
+
+Bar-owned tools are the exception: the color picker, screenshot capture, and screen recorder stay children of hyprbaric and stop with it.
 
 ## Configuration file precedence
 
@@ -66,7 +79,7 @@ These destinations are not configurable in TOML. Point the XDG user directories 
 
 - **Notifications**: hyprbaric normally claims `org.freedesktop.Notifications` and serves desktop notifications itself. If another server already owns the name, hyprbaric leaves it in place and automatically observes its notifications instead. Sandboxed applications additionally need a selected XDG Notification portal backend.
 - **System tray**: StatusNotifier/AppIndicator items are discovered over D-Bus, and no configuration is required.
-- **Network**: status and connection changes go through NetworkManager’s D-Bus API. The popup’s settings action opens the first available system editor: `nm-connection-editor`, then `gnome-control-center wifi`, then `systemsettings kcm_networkmanagement`.
+- **Network**: status and connection changes go through NetworkManager’s D-Bus API. The popup’s settings action opens the first available system editor: `nm-connection-editor`, then `gnome-control-center wifi`, then `systemsettings kcm_networkmanagement`. That editor is session-owned, like launcher apps, so it outlives the bar.
 - **Audio**: volume, mute, and endpoint state come from PipeWire through `wpctl`.
 - **Power and Caffeine**: battery data from UPower, profiles from power-profiles-daemon, and idle/sleep inhibition and session actions from systemd-logind.
 

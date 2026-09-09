@@ -95,8 +95,26 @@ install(CODE "
 set(INSTALL_BUNDLE_DATA_DIR "${CMAKE_INSTALL_PREFIX}/data")
 set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib")
 
+# The global-menu companion is a compositor plugin, not a Flutter plugin. It
+# ships beside the executable so Rust can load it through Hyprland at boot.
+set(HYPRBARIC_APPMENU_BUILD_PROBES OFF CACHE BOOL "" FORCE)
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../hyprland-appmenu"
+  "${CMAKE_BINARY_DIR}/hyprbaric-appmenu")
+
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
+
+install(TARGETS hyprbaric-appmenu LIBRARY DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+  COMPONENT Runtime)
+
+# Snapshot the companion source so a later compositor-library bump can rebuild
+# the plugin from this bundle without hyprpm's privileged store.
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../hyprland-appmenu/"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/hyprland-appmenu"
+  COMPONENT Runtime
+  PATTERN "build" EXCLUDE
+  PATTERN "CMakeFiles" EXCLUDE
+  PATTERN ".git" EXCLUDE)
 
 install(FILES "${FLUTTER_ICU_DATA_FILE}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   COMPONENT Runtime)

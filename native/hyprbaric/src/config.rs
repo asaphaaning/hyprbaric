@@ -9,8 +9,8 @@ use toml_edit::{DocumentMut, Item, Table};
 use tracing::instrument;
 
 use crate::{
-    appearance, audio, brightness, modules, network, night_light, power, schedule, setup,
-    shortcuts, workspaces,
+    appearance, audio, brightness, global_menu, modules, network, night_light, power, schedule,
+    setup, shortcuts, workspaces,
 };
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -19,6 +19,7 @@ pub struct Configuration {
     pub appearance: appearance::Configuration,
     pub audio: audio::Configuration,
     pub brightness: brightness::Configuration,
+    pub global_menu: global_menu::Configuration,
     pub modules: modules::Configuration,
     pub network: network::Configuration,
     pub night_light: night_light::Configuration,
@@ -103,15 +104,20 @@ where
 #[instrument(skip(apply), err)]
 pub(crate) fn edit_table(name: &'static str, apply: impl FnOnce(&mut Table)) -> Result<(), Error> {
     try_edit(|document| {
-        if !document.as_table().contains_key(name) {
-            document[name] = Item::Table(Table::new());
-        }
-        let table = document[name]
-            .as_table_mut()
-            .ok_or(Error::InvalidTable { name })?;
+        let table = table(document.as_table_mut(), name)?;
         apply(table);
         Ok(())
     })
+}
+
+/// Returns a named configuration table, creating it when absent.
+/// Incompatible values are rejected so edits never erase user configuration.
+pub(crate) fn table<'a>(parent: &'a mut Table, name: &'static str) -> Result<&'a mut Table, Error> {
+    parent
+        .entry(name)
+        .or_insert(Item::Table(Table::new()))
+        .as_table_mut()
+        .ok_or(Error::InvalidTable { name })
 }
 
 pub(crate) fn edit_path(path: &Path, apply: impl FnOnce(&mut DocumentMut)) -> Result<(), Error> {
@@ -324,13 +330,38 @@ mod tests {
 
     use serde::Deserialize;
 
-    use crate::setup;
+    use crate::{modules, setup};
 
     use super::{Cadence, Configuration};
 
     #[derive(Debug, Deserialize)]
     struct CadenceFixture {
         cadence: Cadence,
+    }
+
+    #[test]
+    fn table_rejects_scalar_without_erasing_it() {
+        let mut document: toml_edit::DocumentMut = "modules = false\n".parse().expect("valid TOML");
+        let before = document.to_string();
+        assert!(matches!(
+            super::table(document.as_table_mut(), "modules"),
+            Err(super::Error::InvalidTable { name: "modules" })
+        ));
+        assert_eq!(document.to_string(), before);
+    }
+
+    #[test]
+    fn table_preserves_existing_values_and_creates_missing_children() {
+        let mut document: toml_edit::DocumentMut =
+            "[modules]\ncustom = 42\n".parse().expect("valid TOML");
+        let modules = super::table(document.as_table_mut(), "modules").expect("existing table");
+        super::table(modules, "global_menu").expect("new table")["enabled"] =
+            toml_edit::value(true);
+        assert_eq!(document["modules"]["custom"].as_integer(), Some(42));
+        assert_eq!(
+            document["modules"]["global_menu"]["enabled"].as_bool(),
+            Some(true)
+        );
     }
 
     #[test]
@@ -364,6 +395,37 @@ mod tests {
             .expect("scalar setup should degrade instead of failing");
 
         assert_eq!(configuration.setup, setup::Configuration::default());
+    }
+
+    #[test]
+    fn the_global_menu_module_is_off_until_it_is_asked_for() {
+        let configuration =
+            toml::from_str::<Configuration>("").expect("empty configuration should parse");
+
+        assert!(!configuration.modules.enabled(modules::Module::GlobalMenu));
+        assert!(configuration.modules.enabled(modules::Module::SystemTray));
+    }
+
+    #[test]
+    fn the_global_menu_module_can_be_turned_on_like_any_other() {
+        let configuration =
+            toml::from_str::<Configuration>("[modules.global_menu]\nenabled = true\n")
+                .expect("module configuration should parse");
+
+        assert!(configuration.modules.enabled(modules::Module::GlobalMenu));
+    }
+
+    #[test]
+    fn the_global_menu_table_carries_only_how_to_obtain_the_companion() {
+        let configuration = toml::from_str::<Configuration>(
+            "[global_menu]\nplugin_path = \"/opt/hyprbaric/custom.so\"\n",
+        )
+        .expect("global-menu configuration should parse");
+
+        assert_eq!(
+            configuration.global_menu.plugin_path,
+            Some(std::path::PathBuf::from("/opt/hyprbaric/custom.so"))
+        );
     }
 
     #[test]

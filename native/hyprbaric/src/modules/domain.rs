@@ -9,6 +9,7 @@ pub enum Module {
     SystemTray,
     Notifications,
     AudioDisplay,
+    GlobalMenu,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
@@ -42,11 +43,17 @@ pub enum Report {
 
 impl Default for ModuleSettings {
     fn default() -> Self {
-        Self { enabled: true }
+        Self::ENABLED
     }
 }
 
 impl ModuleSettings {
+    /// A module the user has not turned off.
+    pub const ENABLED: Self = Self { enabled: true };
+
+    /// A module the user has not yet asked for.
+    pub const DISABLED: Self = Self { enabled: false };
+
     pub const fn enabled(self) -> bool {
         self.enabled
     }
@@ -57,11 +64,12 @@ impl ModuleSettings {
 }
 
 impl Module {
-    pub const ALL: [Self; 4] = [
+    pub const ALL: [Self; 5] = [
         Self::ActiveWindowTitle,
         Self::SystemTray,
         Self::Notifications,
         Self::AudioDisplay,
+        Self::GlobalMenu,
     ];
 
     pub const fn config_key(self) -> &'static str {
@@ -70,6 +78,16 @@ impl Module {
             Self::SystemTray => "system_tray",
             Self::Notifications => "notifications",
             Self::AudioDisplay => "audio_display",
+            Self::GlobalMenu => "global_menu",
         }
+    }
+
+    /// Whether the module is on for someone who has never configured it.
+    ///
+    /// Modules show by default because showing one costs nothing. The global
+    /// menu is the exception: it takes ownership of the desktop's menu bar and
+    /// needs a compositor plugin, so it waits to be asked for.
+    pub const fn default_enabled(self) -> bool {
+        !matches!(self, Self::GlobalMenu)
     }
 }

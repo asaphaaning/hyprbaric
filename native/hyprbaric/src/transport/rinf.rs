@@ -6,8 +6,9 @@ use crate::signals::{
     AudioCommandResult, AudioStatus, BrightnessCommandResult, BrightnessSetLevel, BrightnessStatus,
     CaffeineCommandResult, CaffeineSetEnabled, CaffeineStatus, CapabilityStatus,
     ClockCalendarRequest, ClockStatus, ColorPickRequest, ColorPickerCommandResult, DesktopStatus,
-    FocusedWindowStatus, HotkeyEvent, ModuleCommand, ModuleCommandResult, ModulesStatus,
-    MonitorFocusedWindowStatus, MonitorWorkspaceStatus, NetworkCommandResult,
+    FocusedWindowStatus, GlobalMenuCommand, GlobalMenuIntegrationStatus, GlobalMenuItemId,
+    GlobalMenuSectionId, GlobalMenuSession, HotkeyEvent, ModuleCommand, ModuleCommandResult,
+    ModulesStatus, MonitorFocusedWindowStatus, MonitorWorkspaceStatus, NetworkCommandResult,
     NetworkConnectRequest, NetworkScanRequest, NetworkSetWifiEnabled, NetworkSettingsRequest,
     NetworkStatus, NightLightCommandResult, NightLightSetEnabled, NightLightSetTemperature,
     NightLightStatus, NotificationClearRequest, NotificationDismissRequest,
@@ -29,9 +30,9 @@ use crate::{
     hyprland::{self, DesktopSnapshot, FocusedWindowSnapshot, WorkspaceSnapshot},
 };
 use crate::{
-    appearance, audio, brightness, caffeine, capabilities, clock, color_picker, launcher, modules,
-    network, night_light, notifications, portals, power, recording, schedule, screenshot, session,
-    setup, shortcuts, tray, workspaces,
+    appearance, audio, brightness, caffeine, capabilities, clock, color_picker, global_menu,
+    launcher, modules, network, night_light, notifications, portals, power, recording, schedule,
+    screenshot, session, setup, shortcuts, tray, workspaces,
 };
 use rinf::RustSignal;
 
@@ -40,6 +41,100 @@ use rinf_router::State;
 pub(crate) fn send_app_signal() {
     AppStatus {
         version: env!("CARGO_PKG_VERSION").to_owned(),
+    }
+    .send_signal_to_dart();
+}
+
+/// One route serializes popup events, so a delayed open cannot overtake close.
+pub(crate) async fn handle_global_menu_command(State(app): State<App>, command: GlobalMenuCommand) {
+    let mut menu_runtime = app.global_menu().await;
+    match command {
+        GlobalMenuCommand::Read { window } => match menu_runtime.read(window.as_deref()).await {
+            Ok((session, menu)) => global_menu::publish::headings(&session, &menu),
+            Err(error) => {
+                error.report("read");
+                global_menu::publish::no_headings(window, &error);
+            }
+        },
+        GlobalMenuCommand::Open { address } => {
+            let Some(session) = menu_session(address.session) else {
+                return;
+            };
+            let id = section_id(&address.section);
+            match menu_runtime.section(&session, &id).await {
+                Ok(items) => global_menu::publish::section_items(&session, &id, &items),
+                Err(error) => {
+                    error.report("section");
+                    global_menu::publish::section_failed(&session, &id, &error);
+                }
+            }
+        }
+        GlobalMenuCommand::Dismiss { address } => {
+            let Some(session) = menu_session(address.session) else {
+                return;
+            };
+            if let Err(error) = menu_runtime
+                .dismiss(&session, &section_id(&address.section))
+                .await
+            {
+                error.report("dismiss");
+            }
+        }
+        GlobalMenuCommand::Activate { session, item } => {
+            let Some(session) = menu_session(session) else {
+                return;
+            };
+            if let Err(error) = menu_runtime.activate(&session, &item_id(&item)).await {
+                error.report("activate");
+            }
+        }
+    }
+}
+
+fn menu_session(session: GlobalMenuSession) -> Option<global_menu::Session> {
+    Some(global_menu::Session {
+        generation: session.generation,
+        window: hyprland::WindowId::new(session.window)?,
+    })
+}
+
+fn section_id(id: &GlobalMenuSectionId) -> global_menu::SectionId {
+    match id {
+        GlobalMenuSectionId::DbusMenu { id } => global_menu::SectionId::DbusMenu { id: *id },
+        GlobalMenuSectionId::Gtk { group, menu } => global_menu::SectionId::Gtk {
+            group: *group,
+            menu: *menu,
+        },
+        GlobalMenuSectionId::GtkAppMenu { group, menu } => global_menu::SectionId::GtkAppMenu {
+            group: *group,
+            menu: *menu,
+        },
+    }
+}
+
+fn item_id(id: &GlobalMenuItemId) -> global_menu::ItemId {
+    match id {
+        GlobalMenuItemId::DbusMenu { id } => global_menu::ItemId::DbusMenu { id: *id },
+        GlobalMenuItemId::Gtk { action, target } => global_menu::ItemId::Gtk {
+            action: action.clone(),
+            target: target.clone(),
+        },
+    }
+}
+
+/// Publishes how far the global menu's compositor half has got.
+pub(crate) fn publish_global_menu_integration(progress: global_menu::Progress) {
+    match progress {
+        global_menu::Progress::Disabled => GlobalMenuIntegrationStatus::Disabled,
+        global_menu::Progress::Preparing => GlobalMenuIntegrationStatus::Preparing,
+        global_menu::Progress::Ready => GlobalMenuIntegrationStatus::Ready,
+        global_menu::Progress::Blocked {
+            message,
+            instruction,
+        } => GlobalMenuIntegrationStatus::Blocked {
+            message,
+            instruction,
+        },
     }
     .send_signal_to_dart();
 }
@@ -117,6 +212,10 @@ fn workspace_signal(snapshot: &WorkspaceSnapshot) -> WorkspaceStatus {
 
 fn focused_window_signal(snapshot: &FocusedWindowSnapshot) -> FocusedWindowStatus {
     FocusedWindowStatus {
+        address: snapshot
+            .address
+            .as_ref()
+            .map(|address| address.as_str().to_owned()),
         app_name: snapshot.app_name.clone(),
         title: snapshot.title.clone(),
         hostname: snapshot.hostname.clone(),

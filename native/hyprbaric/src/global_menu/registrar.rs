@@ -1,0 +1,494 @@
+//! The Canonical AppMenu registrar.
+//!
+//! Qt decides whether an application exports its menu or draws one in its own
+//! window by asking whether `com.canonical.AppMenu.Registrar` is owned on the
+//! session bus, and it asks that question on every desktop including Wayland.
+//! Owning the name is therefore what unlocks the Wayland AppMenu protocol the
+//! compositor companion advertises, even though Wayland clients publish their
+//! endpoint through the compositor rather than through this interface.
+//!
+//! X11 and XWayland clients still register here with an X11 window identifier.
+//! Traditional GTK menus injected by `appmenu-gtk-module` take that path, so
+//! this table is the fallback half of endpoint discovery when the companion
+//! has no Wayland association for the focused window.
+
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex, OnceLock},
+};
+
+use futures_util::StreamExt;
+use tracing::instrument;
+use zbus::zvariant::{ObjectPath, OwnedObjectPath};
+
+const NAME: &str = "com.canonical.AppMenu.Registrar";
+const PATH: &str = "/com/canonical/AppMenu/Registrar";
+
+/// An X11 window identifier, as registered by an X11 or XWayland client.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct WindowId(pub u32);
+
+/// One window's exported D-BusMenu address.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Registration {
+    /// The bus name that exports the menu.
+    pub service: String,
+    /// The `com.canonical.dbusmenu` object it exports.
+    pub path: String,
+    /// The registering process, when the bus driver could name it.
+    pub pid: Option<u32>,
+}
+
+/// The live registrar table, shared with the focused-window reader.
+static DIRECTORY: OnceLock<Windows> = OnceLock::new();
+
+/// The live registrar, owning the bus name for as long as it is held.
+pub struct Registrar {
+    _connection: zbus::Connection,
+}
+
+impl Registrar {
+    /// Claims the registrar name and begins serving the interface.
+    ///
+    /// Serving is opt-in for the same reason loading the companion is. Qt reads
+    /// the mere existence of this name as "the desktop shows my menu bar for
+    /// me", so owning it without rendering those menus would leave every Qt
+    /// application with no menu bar anywhere.
+    ///
+    /// A name owned by another registrar, such as Plasma's, is left alone: Qt
+    /// only needs the name to exist, so yielding to an existing owner still
+    /// leaves applications exporting their menus.
+    #[instrument(name = "hyprbaric::global_menu::registrar::serve", err)]
+    pub async fn serve(enabled: bool) -> Result<Option<Self>, Error> {
+        if !enabled {
+            tracing::debug!("The AppMenu registrar is disabled by configuration");
+            return Ok(None);
+        }
+
+        let windows = Windows::default();
+        let _ = DIRECTORY.set(windows.clone());
+        let connection = zbus::connection::Builder::session()
+            .map_err(Error::Connect)?
+            .serve_at(PATH, Interface::new(windows.clone()))
+            .map_err(Error::Serve)?
+            .build()
+            .await
+            .map_err(Error::Connect)?;
+
+        match connection
+            .request_name_with_flags(NAME, zbus::fdo::RequestNameFlags::DoNotQueue.into())
+            .await
+        {
+            Ok(_) => tracing::info!("Owning {NAME}; Qt applications will export their menus"),
+            Err(zbus::Error::NameTaken) => {
+                tracing::info!("{NAME} already has an owner; leaving it in place")
+            }
+            Err(error) => return Err(Error::RequestName(error)),
+        }
+
+        tokio::spawn(forget_departed_clients(connection.clone(), windows.clone()));
+
+        Ok(Some(Self {
+            _connection: connection,
+        }))
+    }
+}
+
+/// The menu a registrar client published for the focused window, if any.
+///
+/// Window identity is preferred: that is the key GTK's X11 module registers
+/// with. Process identity is the fallback when Hyprland could not name the
+/// X11 window, which is enough for single-window applications and for
+/// multi-window ones whose menus share a path.
+pub fn lookup(window: Option<WindowId>, pid: Option<u32>) -> Option<Registration> {
+    DIRECTORY.get()?.find(window, pid)
+}
+
+/// The registrations, shared between the interface and its readers.
+#[derive(Clone, Default)]
+struct Windows(Arc<Mutex<HashMap<WindowId, Registration>>>);
+
+impl Windows {
+    fn insert(&self, window: WindowId, registration: Registration) {
+        self.lock().insert(window, registration);
+    }
+
+    fn remove(&self, window: WindowId) -> Option<Registration> {
+        self.lock().remove(&window)
+    }
+
+    fn get(&self, window: WindowId) -> Option<Registration> {
+        self.lock().get(&window).cloned()
+    }
+
+    fn all(&self) -> Vec<(WindowId, Registration)> {
+        let mut all = self
+            .lock()
+            .iter()
+            .map(|(window, registration)| (*window, registration.clone()))
+            .collect::<Vec<_>>();
+        all.sort_by_key(|(window, _)| window.0);
+        all
+    }
+
+    /// Resolves a focused window against the registrar table.
+    fn find(&self, window: Option<WindowId>, pid: Option<u32>) -> Option<Registration> {
+        if let Some(window) = window {
+            if let Some(registration) = self.get(window) {
+                return Some(registration);
+            }
+        }
+
+        pid.and_then(|pid| self.by_pid(pid))
+    }
+
+    /// The menu last registered by this process, when several windows share it.
+    fn by_pid(&self, pid: u32) -> Option<Registration> {
+        let mut matches = self
+            .lock()
+            .iter()
+            .filter(|(_, registration)| registration.pid == Some(pid))
+            .map(|(window, registration)| (*window, registration.clone()))
+            .collect::<Vec<_>>();
+
+        if matches.is_empty() {
+            return None;
+        }
+
+        let identical = matches.iter().all(|(_, registration)| {
+            registration.service == matches[0].1.service && registration.path == matches[0].1.path
+        });
+        if identical {
+            return Some(matches.remove(0).1);
+        }
+
+        matches.sort_by_key(|(window, _)| window.0);
+        matches.pop().map(|(_, registration)| registration)
+    }
+
+    /// Drops every window a departed bus name had registered.
+    fn forget(&self, service: &str) -> Vec<WindowId> {
+        let mut windows = self.lock();
+        let departed = windows
+            .iter()
+            .filter(|(_, registration)| registration.service == service)
+            .map(|(window, _)| *window)
+            .collect::<Vec<_>>();
+
+        for window in &departed {
+            windows.remove(window);
+        }
+
+        departed
+    }
+
+    /// A poisoned registry is still readable: no invariant spans the lock.
+    fn lock(&self) -> std::sync::MutexGuard<'_, HashMap<WindowId, Registration>> {
+        self.0.lock().unwrap_or_else(|poison| poison.into_inner())
+    }
+}
+
+/// The served `com.canonical.AppMenu.Registrar` object.
+struct Interface {
+    windows: Windows,
+}
+
+impl Interface {
+    fn new(windows: Windows) -> Self {
+        Self { windows }
+    }
+}
+
+#[zbus::interface(name = "com.canonical.AppMenu.Registrar")]
+impl Interface {
+    /// Records the menu a client exports for one of its X11 windows.
+    #[instrument(
+        name = "hyprbaric::global_menu::registrar::register",
+        skip_all,
+        fields(window)
+    )]
+    async fn register_window(
+        &self,
+        #[zbus(header)] header: zbus::message::Header<'_>,
+        #[zbus(connection)] connection: &zbus::Connection,
+        #[zbus(signal_emitter)] emitter: zbus::object_server::SignalEmitter<'_>,
+        window: u32,
+        menu: OwnedObjectPath,
+    ) {
+        let Some(service) = header.sender().map(ToString::to_string) else {
+            tracing::warn!("Ignoring an AppMenu registration from an unnamed sender");
+            return;
+        };
+
+        let pid = match zbus::fdo::DBusProxy::new(connection).await {
+            Ok(proxy) => match zbus::names::BusName::try_from(service.as_str()) {
+                Ok(name) => proxy.get_connection_unix_process_id(name).await.ok(),
+                Err(_) => None,
+            },
+            Err(_) => None,
+        };
+
+        let registration = Registration {
+            service,
+            path: menu.as_str().to_owned(),
+            pid,
+        };
+        tracing::debug!(
+            window,
+            pid,
+            service = %registration.service,
+            path = %registration.path,
+            "Registered an X11 AppMenu"
+        );
+
+        let announced = registration.clone();
+        self.windows.insert(WindowId(window), registration);
+
+        if let Err(error) =
+            Self::window_registered(&emitter, window, &announced.service, &menu).await
+        {
+            tracing::debug!(%error, "Could not announce an AppMenu registration");
+        }
+    }
+
+    /// Forgets a window, whether or not it was ever registered.
+    #[instrument(
+        name = "hyprbaric::global_menu::registrar::unregister",
+        skip_all,
+        fields(window)
+    )]
+    async fn unregister_window(
+        &self,
+        #[zbus(signal_emitter)] emitter: zbus::object_server::SignalEmitter<'_>,
+        window: u32,
+    ) {
+        if self.windows.remove(WindowId(window)).is_none() {
+            return;
+        }
+
+        tracing::debug!(window, "Unregistered an X11 AppMenu");
+        if let Err(error) = Self::window_unregistered(&emitter, window).await {
+            tracing::debug!(%error, "Could not announce an AppMenu removal");
+        }
+    }
+
+    /// Returns the menu registered for one window.
+    fn get_menu_for_window(&self, window: u32) -> zbus::fdo::Result<(String, OwnedObjectPath)> {
+        let registration = self
+            .windows
+            .get(WindowId(window))
+            .ok_or_else(|| zbus::fdo::Error::Failed(format!("window {window} has no menu")))?;
+        let path = OwnedObjectPath::try_from(registration.path.as_str())
+            .map_err(|error| zbus::fdo::Error::Failed(error.to_string()))?;
+
+        Ok((registration.service, path))
+    }
+
+    /// Returns every registered menu, ordered by window.
+    fn get_menus(&self) -> Vec<(u32, String, OwnedObjectPath)> {
+        self.windows
+            .all()
+            .into_iter()
+            .filter_map(|(window, registration)| {
+                let path = OwnedObjectPath::try_from(registration.path.as_str()).ok()?;
+                Some((window.0, registration.service, path))
+            })
+            .collect()
+    }
+
+    #[zbus(signal)]
+    async fn window_registered(
+        emitter: &zbus::object_server::SignalEmitter<'_>,
+        window: u32,
+        service: &str,
+        menu: &ObjectPath<'_>,
+    ) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    async fn window_unregistered(
+        emitter: &zbus::object_server::SignalEmitter<'_>,
+        window: u32,
+    ) -> zbus::Result<()>;
+}
+
+/// Removes registrations belonging to clients that left the bus.
+///
+/// Without this, a crashed application keeps its window in the table and a
+/// later window reusing that X11 identifier resolves to a dead service.
+#[instrument(name = "hyprbaric::global_menu::registrar::watch", skip_all)]
+async fn forget_departed_clients(connection: zbus::Connection, windows: Windows) {
+    let proxy = match zbus::fdo::DBusProxy::new(&connection).await {
+        Ok(proxy) => proxy,
+        Err(error) => {
+            tracing::warn!(%error, "Cannot watch for departing AppMenu clients");
+            return;
+        }
+    };
+
+    let mut changes = match proxy.receive_name_owner_changed().await {
+        Ok(changes) => changes,
+        Err(error) => {
+            tracing::warn!(%error, "Cannot watch for departing AppMenu clients");
+            return;
+        }
+    };
+
+    while let Some(change) = changes.next().await {
+        let Ok(args) = change.args() else {
+            continue;
+        };
+
+        if args.new_owner().is_some() {
+            continue;
+        }
+
+        for window in windows.forget(args.name()) {
+            tracing::debug!(
+                window = window.0,
+                service = %args.name(),
+                "Forgot an AppMenu whose client left the bus"
+            );
+        }
+    }
+}
+
+/// Registrar failures.
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("failed to connect to the session bus")]
+    Connect(#[source] zbus::Error),
+    #[error("failed to serve the AppMenu registrar interface")]
+    Serve(#[source] zbus::Error),
+    #[error("failed to request the `{NAME}` bus name")]
+    RequestName(#[source] zbus::Error),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Registration, WindowId, Windows};
+
+    fn registration(service: &str) -> Registration {
+        Registration {
+            service: service.to_owned(),
+            path: "/MenuBar/1".to_owned(),
+            pid: None,
+        }
+    }
+
+    fn registration_for(service: &str, pid: u32) -> Registration {
+        Registration {
+            pid: Some(pid),
+            ..registration(service)
+        }
+    }
+
+    /// Proves the name Qt looks for is actually owned once the registrar runs.
+    ///
+    /// Ignored by default because it needs a session bus, which CI has no
+    /// reason to provide. Run it against a live session with
+    /// `cargo test registrar -- --ignored`.
+    #[tokio::test]
+    #[ignore = "requires a session bus"]
+    async fn serving_the_registrar_owns_the_name_qt_looks_for() {
+        let registrar = super::Registrar::serve(true)
+            .await
+            .expect("the registrar should serve")
+            .expect("serving is enabled");
+
+        let connection = zbus::Connection::session()
+            .await
+            .expect("a session bus should be reachable");
+        let proxy = zbus::fdo::DBusProxy::new(&connection)
+            .await
+            .expect("the bus driver should answer");
+        let owned = proxy
+            .name_has_owner(super::NAME.try_into().expect("a valid bus name"))
+            .await
+            .expect("the bus driver should answer");
+
+        assert!(owned, "{} should have an owner", super::NAME);
+        drop(registrar);
+    }
+
+    #[test]
+    fn a_registered_window_resolves_to_its_menu() {
+        let windows = Windows::default();
+        windows.insert(WindowId(7), registration(":1.42"));
+
+        assert_eq!(windows.get(WindowId(7)), Some(registration(":1.42")));
+        assert_eq!(windows.get(WindowId(8)), None);
+    }
+
+    #[test]
+    fn windows_are_listed_in_identifier_order() {
+        let windows = Windows::default();
+        windows.insert(WindowId(9), registration(":1.9"));
+        windows.insert(WindowId(2), registration(":1.2"));
+
+        assert_eq!(
+            windows.all(),
+            vec![
+                (WindowId(2), registration(":1.2")),
+                (WindowId(9), registration(":1.9")),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_departing_client_loses_every_window_it_registered() {
+        let windows = Windows::default();
+        windows.insert(WindowId(1), registration(":1.5"));
+        windows.insert(WindowId(2), registration(":1.5"));
+        windows.insert(WindowId(3), registration(":1.6"));
+
+        let mut departed = windows.forget(":1.5");
+        departed.sort_by_key(|window| window.0);
+
+        assert_eq!(departed, vec![WindowId(1), WindowId(2)]);
+        assert_eq!(windows.get(WindowId(3)), Some(registration(":1.6")));
+    }
+
+    #[test]
+    fn a_window_identifier_wins_over_process_identity() {
+        let windows = Windows::default();
+        windows.insert(WindowId(1), registration_for(":1.1", 10));
+        windows.insert(WindowId(2), registration_for(":1.2", 10));
+
+        assert_eq!(
+            windows.find(Some(WindowId(1)), Some(10)),
+            Some(registration_for(":1.1", 10))
+        );
+    }
+
+    #[test]
+    fn a_process_with_one_menu_path_resolves_without_a_window() {
+        let windows = Windows::default();
+        windows.insert(WindowId(1), registration_for(":1.5", 42));
+        windows.insert(WindowId(2), registration_for(":1.5", 42));
+
+        assert_eq!(
+            windows.find(None, Some(42)),
+            Some(registration_for(":1.5", 42))
+        );
+        assert_eq!(windows.find(None, Some(7)), None);
+    }
+
+    #[test]
+    fn a_process_with_distinct_menus_prefers_the_latest_window() {
+        let windows = Windows::default();
+        let first = Registration {
+            service: ":1.8".to_owned(),
+            path: "/MenuBar/1".to_owned(),
+            pid: Some(9),
+        };
+        let later = Registration {
+            service: ":1.8".to_owned(),
+            path: "/MenuBar/2".to_owned(),
+            pid: Some(9),
+        };
+        windows.insert(WindowId(3), first);
+        windows.insert(WindowId(8), later.clone());
+
+        assert_eq!(windows.find(None, Some(9)), Some(later));
+    }
+}

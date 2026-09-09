@@ -12,6 +12,7 @@ mod capabilities;
 mod clock;
 mod color_picker;
 mod config;
+mod global_menu;
 mod hyprland;
 mod launcher;
 mod modules;
@@ -35,6 +36,47 @@ mod workspaces;
 
 async fn run() -> Result<(), Error> {
     let config = config::Configuration::load()?;
+
+    let global_menu = config
+        .global_menu
+        .enabled(config.modules.enabled(modules::Module::GlobalMenu));
+    transport::rinf::publish_global_menu_integration(if global_menu {
+        global_menu::Progress::Preparing
+    } else {
+        global_menu::Progress::Disabled
+    });
+    if global_menu {
+        let configuration = config.global_menu.clone();
+        tokio::spawn(async move {
+            let readiness = global_menu::install_companion(&configuration).await;
+            // Claiming the registrar hides native Qt menus. Only do so once
+            // their replacement is reachable; a failed install owns nothing.
+            let _registrar = if matches!(readiness, Ok(global_menu::Readiness::Ready)) {
+                match global_menu::Registrar::serve(true).await {
+                    Ok(registrar) => registrar,
+                    Err(error) => {
+                        tracing::warn!(%error, "Could not serve the AppMenu registrar");
+                        transport::rinf::publish_global_menu_integration(
+                            global_menu::Progress::Blocked {
+                                message: error.to_string(),
+                                instruction: None,
+                            },
+                        );
+                        return;
+                    }
+                }
+            } else {
+                None
+            };
+            let progress = match readiness {
+                Ok(readiness) => global_menu::Progress::from(readiness),
+                Err(error) => global_menu::Progress::failed(&error),
+            };
+            transport::rinf::publish_global_menu_integration(progress);
+            std::future::pending::<()>().await;
+        });
+    }
+
     let bootstrap::Started { app, initial } = bootstrap::boot(&config).await?;
 
     for output in initial.into_outputs() {

@@ -16,6 +16,8 @@ import 'package:hyprbaric_widgetbook/use_cases/bar/workspace_strip_use_cases.dar
 import 'package:hyprbaric_widgetbook/use_cases/controls/control_atom_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/controls/controls_fixtures.dart';
 import 'package:hyprbaric_widgetbook/use_cases/controls/controls_panel_use_cases.dart';
+import 'package:hyprbaric_widgetbook/use_cases/global_menu/global_menu_fixtures.dart';
+import 'package:hyprbaric_widgetbook/use_cases/global_menu/global_menu_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/network/network_fixtures.dart';
 import 'package:hyprbaric_widgetbook/use_cases/network/network_panel_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/notifications/notification_atom_use_cases.dart';
@@ -153,6 +155,8 @@ void main() {
 
     expect(find.byType(Hyprbaric), findsOneWidget);
     expect(find.text('II'), findsOneWidget);
+    expect(find.text('File'), findsOneWidget);
+    expect(find.text('View'), findsOneWidget);
     expect(find.text('Zed'), findsOneWidget);
     expect(find.text('widget_catalog.dart — Hyprbaric'), findsOneWidget);
     expect(find.text('72%', findRichText: true), findsOneWidget);
@@ -470,7 +474,7 @@ void main() {
       SettingsFixtures.appearanceCustom.position,
       AppearancePosition.bottom,
     );
-    expect(SettingsFixtures.modulesFocused.entries, hasLength(4));
+    expect(SettingsFixtures.modulesFocused.entries, hasLength(5));
     expect(SettingsFixtures.workspacesNumeric.visibleCount, 9);
     expect(
       SettingsFixtures.nightLightUnavailable,
@@ -647,6 +651,71 @@ void main() {
     expect(find.text('Quit'), findsOneWidget);
   });
 
+  test('global menu fixtures cover headings, checks, radios, and flyouts', () {
+    expect(GlobalMenuFixtures.headings.sections, hasLength(5));
+    expect(GlobalMenuFixtures.empty.sections, isEmpty);
+    expect(
+      GlobalMenuFixtures.viewItems.where(
+        (GlobalMenuItem item) => item.kind is GlobalMenuItemKindCheckmark,
+      ),
+      hasLength(2),
+    );
+    expect(
+      GlobalMenuFixtures.appearanceItems.where(
+        (GlobalMenuItem item) => item.kind is GlobalMenuItemKindRadio,
+      ),
+      hasLength(4),
+    );
+    expect(
+      GlobalMenuFixtures.fileItems.where(
+        (GlobalMenuItem item) => item.submenu == GlobalMenuFixtures.recent,
+      ),
+      hasLength(1),
+    );
+  });
+
+  testWidgets('global menu stories use the production bar and panel', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildGlobalMenuBar),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(GlobalMenuBar), findsOneWidget);
+    expect(find.text('File'), findsOneWidget);
+    expect(find.text('Edit'), findsOneWidget);
+    expect(find.text('View'), findsOneWidget);
+    expect(find.text('Help'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildEmptyGlobalMenuBar),
+      ),
+    );
+    await tester.pump();
+    expect(find.byType(GlobalMenuBar), findsOneWidget);
+    expect(find.text('File'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildGlobalMenuPanel),
+      ),
+    );
+    await tester.pump();
+    expect(find.byType(GlobalMenuSectionPanel), findsOneWidget);
+    expect(find.text('Project Panel'), findsOneWidget);
+    expect(find.text('Appearance'), findsOneWidget);
+    expect(find.text('Zoom In'), findsOneWidget);
+  });
+
   test('live value preserves its bounded commit lifecycle', () {
     final HyprLiveValue value = HyprLiveValue(initialValue: 70);
 
@@ -723,7 +792,6 @@ void main() {
     expect(find.byType(PowerButton), findsNWidgets(2));
     expect(find.bySemanticsLabel('Session actions'), findsNWidgets(2));
   });
-
 
   test('workspace fixtures cover occupancy, special and read-only states', () {
     expect(WorkspaceFixtures.occupied.occupiedWorkspaceIds, contains(5));
@@ -860,6 +928,18 @@ void main() {
     await tester.pump();
     expect(find.byType(CenterCluster), findsOneWidget);
     expect(find.text('widget_catalog.dart — Hyprbaric'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildGlobalMenuLeftCluster),
+      ),
+    );
+    await tester.pump();
+    expect(find.byType(GlobalMenuBar), findsOneWidget);
+    expect(find.text('File'), findsOneWidget);
+    expect(find.text('View'), findsOneWidget);
   });
 
   test('setup fixtures cover the default and a tuned first run', () {
@@ -1144,6 +1224,7 @@ void main() {
         'Audio',
         'Bar',
         'Controls',
+        'Global menu',
         'Network',
         'Notifications',
         'Power',

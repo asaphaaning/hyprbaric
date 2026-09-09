@@ -1,0 +1,2 @@
+[alias]
+ci-clippy = "clippy --workspace --lib --locked"

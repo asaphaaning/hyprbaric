@@ -46,6 +46,8 @@ pub struct WorkspaceStatus {
 
 #[derive(Serialize, SignalPiece, Clone, Debug, PartialEq)]
 pub struct FocusedWindowStatus {
+    /// Compositor identity, independent of application class and title.
+    pub address: Option<String>,
     pub app_name: Option<String>,
     pub title: Option<String>,
     pub hostname: String,

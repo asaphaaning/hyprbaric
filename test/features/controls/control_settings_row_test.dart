@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hyprbaric/src/features/controls/control_settings_row.dart';
+import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 void main() {
   testWidgets('settings gasket stays flat around the dimensional face', (
@@ -43,18 +44,49 @@ void main() {
     );
 
     expect(find.text('BAR SETTINGS'), findsOneWidget);
-    expect(find.text('Super+⇧+C'), findsNothing);
+    expect(find.text('Super+Shift+C'), findsNothing);
 
     await tester.pumpWidget(
       const MaterialApp(
         home: Center(
-          child: ControlSettingsRow(onPressed: _ignore, shortcut: 'Super+⇧+C'),
+          child: ControlSettingsRow(
+            onPressed: _ignore,
+            shortcut: 'Super+Shift+C',
+          ),
         ),
       ),
     );
 
-    expect(find.text('Super+⇧+C'), findsOneWidget);
+    expect(find.text('Super+Shift+C'), findsOneWidget);
   });
+
+  testWidgets(
+    'the chord and chevron sit on the right inset, matching the icon well',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Center(
+            child: SizedBox(
+              width: 408,
+              child: ControlSettingsRow(
+                onPressed: _ignore,
+                shortcut: 'Super+Shift+C',
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final Rect plate = tester.getRect(find.byType(ControlSettingsRow));
+      final Rect icon = tester.getRect(find.byIcon(Iconsax.setting_2_copy));
+      final Rect chevron = tester.getRect(find.text('›'));
+      final Rect chord = tester.getRect(find.text('Super+Shift+C'));
+
+      expect(icon.left - plate.left, closeTo(plate.right - chevron.right, 2));
+      expect(chord.right, lessThan(chevron.left));
+      expect(chevron.left - chord.right, lessThan(16));
+    },
+  );
 
   testWidgets('the settings row announces itself as one button', (
     WidgetTester tester,
@@ -64,7 +96,10 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(
         home: Center(
-          child: ControlSettingsRow(onPressed: _ignore, shortcut: 'Super+⇧+C'),
+          child: ControlSettingsRow(
+            onPressed: _ignore,
+            shortcut: 'Super+Shift+C',
+          ),
         ),
       ),
     );
@@ -73,7 +108,7 @@ void main() {
     // hint and the chevron underneath it must not be read out with it.
     expect(find.bySemanticsLabel('Bar settings'), findsOneWidget);
     expect(find.bySemanticsLabel('BAR SETTINGS'), findsNothing);
-    expect(find.bySemanticsLabel('Super+⇧+C'), findsNothing);
+    expect(find.bySemanticsLabel('Super+Shift+C'), findsNothing);
 
     handle.dispose();
   });

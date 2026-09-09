@@ -34,6 +34,25 @@ export 'src/bindings/bindings.dart'
         CapabilityTier,
         ClockStatus,
         FocusedWindowStatus,
+        GlobalMenuAddress,
+        GlobalMenuIntegrationStatus,
+        GlobalMenuIntegrationStatusBlocked,
+        GlobalMenuIntegrationStatusReady,
+        GlobalMenuItem,
+        GlobalMenuItemId,
+        GlobalMenuItemIdDbusMenu,
+        GlobalMenuItemKind,
+        GlobalMenuItemKindCheckmark,
+        GlobalMenuItemKindGroup,
+        GlobalMenuItemKindRadio,
+        GlobalMenuItemKindSeparator,
+        GlobalMenuItemKindStandard,
+        GlobalMenuSection,
+        GlobalMenuSectionId,
+        GlobalMenuSectionIdDbusMenu,
+        GlobalMenuSectionStatus,
+        GlobalMenuSession,
+        GlobalMenuStatus,
         ModuleEntry,
         ModuleId,
         ModulesStatus,
@@ -134,6 +153,9 @@ export 'src/features/controls/control_settings_row.dart'
     show ControlSettingsRow;
 export 'src/features/controls/controls_chrome.dart' show ControlAvailability;
 export 'src/features/controls/controls_panel.dart' show ControlsPanel;
+export 'src/features/global_menu/global_menu_bar.dart' show GlobalMenuBar;
+export 'src/features/global_menu/global_menu_section.dart'
+    show GlobalMenuSectionPanel;
 export 'src/features/launcher/app_launcher_console.dart'
     show AppLauncherConsole;
 export 'src/features/network/network_panel.dart' show NetworkPanel;
@@ -184,6 +206,8 @@ export 'src/state/rust_signals/compositor.dart'
         focusedWindowStatusProvider,
         portalStatusProvider,
         workspaceStatusProvider;
+export 'src/state/rust_signals/global_menu.dart'
+    show globalMenuSectionProvider, globalMenuStatusProvider;
 export 'src/state/rust_signals/modules.dart' show modulesStatusProvider;
 export 'src/state/rust_signals/network.dart' show networkStatusProvider;
 export 'src/state/rust_signals/night_light.dart' show nightLightStatusProvider;

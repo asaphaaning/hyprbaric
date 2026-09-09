@@ -12,6 +12,7 @@ class HyprPopoverPanel extends StatelessWidget {
     this.color = HyprColors.popoverSurface,
     this.gradient,
     this.borderColor = HyprColors.popupStroke,
+    this.overlayOpacity = 1,
   });
 
   final BorderRadius borderRadius;
@@ -26,6 +27,10 @@ class HyprPopoverPanel extends StatelessWidget {
 
   final Color borderColor;
 
+  /// Multiplier on the dark top-to-bottom wash. `1` is the shared popover
+  /// floor; a little under that lets more of the blur through.
+  final double overlayOpacity;
+
   @override
   Widget build(BuildContext context) {
     return HyprPopoverSurface(
@@ -33,6 +38,7 @@ class HyprPopoverPanel extends StatelessWidget {
       color: color,
       gradient: gradient,
       borderColor: borderColor,
+      overlayOpacity: overlayOpacity,
       child: _chassis(
         ConstrainedBox(
           constraints: constraints,
