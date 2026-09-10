@@ -74,17 +74,6 @@ function WorkspaceSkeleton() {
   );
 }
 
-function BarSkeleton() {
-  return (
-    <div aria-hidden="true" className={`${styles.skeleton} ${styles.barSkeleton}`}>
-      <span className={styles.barBand} />
-      <span className={styles.barMenu} />
-      <span className={styles.barTitle} />
-      <span className={styles.barCluster} />
-    </div>
-  );
-}
-
 const SKELETONS = {
   mixer: MixerSkeleton,
   controls: ControlsSkeleton,
@@ -92,7 +81,6 @@ const SKELETONS = {
   power: PowerSkeleton,
   notifications: NotificationsSkeleton,
   workspaces: WorkspaceSkeleton,
-  bar: BarSkeleton,
 };
 
 /**
@@ -172,7 +160,6 @@ function useNearViewport(ref) {
 
 export default function FlutterDemo({className = '', preview = 'mixer'}) {
   const bootstrapPath = useBaseUrl('flutter/previews/flutter_bootstrap.js');
-  const siteRoot = useBaseUrl('/');
   const {version, missing} = useFlutterPreviewVersion();
   const host = useRef(null);
   const near = useNearViewport(host);
@@ -200,8 +187,6 @@ export default function FlutterDemo({className = '', preview = 'mixer'}) {
           hostElement: element,
           initialData: {
             preview,
-            // The docs bar joins menu targets onto this root.
-            baseUrl: siteRoot,
             onReady: (error) => {
               if (cancelled) return;
               if (error) {
@@ -226,7 +211,7 @@ export default function FlutterDemo({className = '', preview = 'mixer'}) {
       // a rendering surface per navigation on a client-routed site.
       if (engine && attached !== null) engine.removeView(attached);
     };
-  }, [bootstrapPath, siteRoot, version, near, preview]);
+  }, [bootstrapPath, version, near, preview]);
 
   const failed = status === 'error' || missing;
 
