@@ -6,14 +6,27 @@ import '../../widgets/primitives/primitives.dart';
 import 'audio_chrome.dart';
 import 'audio_fader.dart';
 
+/// Identity and visual vocabulary of the two mixer channels.
 enum AudioMixerChannel {
+  /// Playback through the selected output.
   output('OUT', AudioMixerColors.output),
+
+  /// Capture from the selected microphone.
   input('MIC', AudioMixerColors.input);
 
   const AudioMixerChannel(this.label, this.accent);
 
+  /// Short channel heading.
   final String label;
+
+  /// Color shared by the meter, fader, and readout.
   final Color accent;
+
+  /// Filled icon used in the channel heading.
+  IconData get icon => switch (this) {
+    output => Icons.volume_up_rounded,
+    input => Icons.mic_rounded,
+  };
 }
 
 class AudioChannelStrip extends StatefulWidget {
@@ -73,27 +86,37 @@ class AudioChannelStripState extends State<AudioChannelStrip> {
     );
     final bool muted = value?.muted ?? true;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        HyprSpacing.lg,
-        HyprSpacing.xl,
-        HyprSpacing.lg,
-        HyprSpacing.panel - HyprSpacing.md,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Text(
-            widget.channel.label,
-            textAlign: TextAlign.center,
-            style: HyprTypography.mixerLabel.copyWith(
-              color: value == null || muted
-                  ? HyprColors.textFaint
-                  : HyprColors.textMuted,
+          Padding(
+            padding: const EdgeInsets.only(left: 10),
+            child: Row(
+              children: <Widget>[
+                Icon(
+                  widget.channel.icon,
+                  size: 22,
+                  color: AudioMixerColors.text,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  widget.channel.label,
+                  style: AudioMixerText.label.copyWith(
+                    fontSize: 12,
+                    color: value == null
+                        ? AudioMixerColors.secondary
+                        : AudioMixerColors.text,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: HyprSpacing.xl),
-          Center(
+          const SizedBox(height: 12),
+          Align(
+            alignment: widget.channel == AudioMixerChannel.output
+                ? const Alignment(-.4, 0)
+                : const Alignment(.25, 0),
             child: value == null
                 ? AudioDisabledFader(accent: widget.channel.accent)
                 : AudioFader(
@@ -105,14 +128,15 @@ class AudioChannelStripState extends State<AudioChannelStrip> {
                     meterLevel: widget.meterLevel,
                   ),
           ),
-          const SizedBox(height: HyprSpacing.xl),
+          const SizedBox(height: 13),
           AudioDbReadout(
             value: displayedVolume,
             muted: muted,
             accent: widget.channel.accent,
           ),
-          const SizedBox(height: HyprSpacing.lg + HyprSpacing.hairline),
+          const SizedBox(height: 13),
           AudioMuteButton(
+            channel: widget.channel,
             muted: muted,
             label: value == null
                 ? widget.fallbackName
@@ -129,7 +153,7 @@ class AudioChannelStripState extends State<AudioChannelStrip> {
   }
 }
 
-/// Recessed decibel display for an audio endpoint.
+/// Illuminated decibel display for an audio endpoint.
 class AudioDbReadout extends StatelessWidget {
   const AudioDbReadout({
     super.key,
@@ -144,15 +168,11 @@ class AudioDbReadout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HyprWell(
-      padding: const EdgeInsets.symmetric(vertical: HyprSpacing.xs),
-      borderRadius: HyprRadii.cardRadius,
-      child: AudioUnitReadout(
-        text: value == null ? '--' : audioDecibelReadout(value!, muted: muted),
-        unit: 'dB',
-        color: muted ? HyprColors.textFaint : accent,
-        textAlign: TextAlign.center,
-      ),
+    return AudioUnitReadout(
+      text: value == null ? '--' : audioDecibelReadout(value!, muted: muted),
+      unit: 'dB',
+      color: muted ? HyprColors.textFaint : accent,
+      textAlign: TextAlign.center,
     );
   }
 }
@@ -165,12 +185,18 @@ class AudioUnitReadout extends StatelessWidget {
     required this.unit,
     required this.color,
     this.textAlign = TextAlign.left,
+    this.size = 17,
+    this.unitSize,
   });
 
   final String text;
   final String unit;
   final Color color;
   final TextAlign textAlign;
+  final double size;
+
+  /// Explicit unit size for inline readouts such as the master rail.
+  final double? unitSize;
 
   @override
   Widget build(BuildContext context) {
@@ -181,14 +207,16 @@ class AudioUnitReadout extends StatelessWidget {
           TextSpan(
             text: ' $unit',
             style: TextStyle(
-              color: HyprColors.textFaint,
-              fontSize: HyprTypography.size(7),
+              color: Color.lerp(color, AudioMixerColors.secondary, .6),
+              fontSize: unitSize ?? size * .68,
+              fontWeight: FontWeight.w400,
+              letterSpacing: 0,
             ),
           ),
         ],
       ),
       textAlign: textAlign,
-      style: HyprTypography.mixerValue.copyWith(color: color),
+      style: AudioMixerText.value.copyWith(color: color, fontSize: size),
     );
   }
 }
@@ -200,40 +228,60 @@ class AudioMuteButton extends StatelessWidget {
     required this.muted,
     required this.label,
     required this.onPressed,
+    this.channel = AudioMixerChannel.output,
   });
 
   final bool muted;
   final String label;
   final VoidCallback? onPressed;
+  final AudioMixerChannel channel;
 
   @override
   Widget build(BuildContext context) {
     return HyprInteractiveTile(
       onPressed: onPressed,
       semanticLabel: label,
-      selected: muted,
-      height: 21,
-      borderRadius: HyprRadii.badgeRadius,
-      color: HyprColors.well,
-      borderColor: HyprColors.wellBorder,
-      hoverColor: HyprColors.hoverStrong,
-      hoverBorderColor: HyprColors.borderSoft,
-      selectedColor: HyprColors.dangerHoverSoft,
-      selectedBorderColor: HyprColors.danger,
+      selected: muted && onPressed != null,
+      borderRadius: BorderRadius.circular(5),
+      color: Colors.transparent,
+      borderColor: Colors.transparent,
+      hoverColor: const Color(0x224B5081),
+      selectedColor: const Color(0x225F346E),
+      selectedBorderColor: const Color(0x554E375F),
       builder: (BuildContext context, HyprInteractiveTileState state) {
-        // The tile already carries the label; the glyph must not merge into it.
+        final Color color = !state.enabled
+            ? HyprColors.textFaint
+            : muted
+            ? channel.accent
+            : AudioMixerColors.secondary;
         return ExcludeSemantics(
-          child: Center(
-            child: Text(
-              'M',
-              style: HyprTypography.mixerLabel.copyWith(
-                letterSpacing: 0,
-                color: !state.enabled
-                    ? HyprColors.textFaint
-                    : muted
-                    ? HyprColors.danger
-                    : HyprColors.textMuted,
-              ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(
+                  muted
+                      ? (channel == AudioMixerChannel.input
+                            ? Icons.mic_off_outlined
+                            : Icons.volume_off_outlined)
+                      : (channel == AudioMixerChannel.input
+                            ? Icons.mic_none_rounded
+                            : Icons.volume_up_outlined),
+                  size: 21,
+                  color: color,
+                ),
+                const SizedBox(width: 9),
+                Flexible(
+                  child: Text(
+                    muted && state.enabled ? 'Unmute' : 'Mute',
+                    style: AudioMixerText.meta.copyWith(
+                      fontSize: 12,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         );

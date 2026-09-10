@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
+import 'audio_chrome.dart';
 import 'brightness_knob.dart';
 import 'brightness_status_view.dart';
 
@@ -129,28 +130,62 @@ class BrightnessControlState extends State<BrightnessControl> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        HyprWell(
-          padding: const EdgeInsets.symmetric(
-            horizontal: HyprSpacing.xxl,
-            vertical: HyprSpacing.sm,
-          ),
-          borderColor: Colors.transparent,
-          shadowColor: const Color(0x70000000),
-          child: Text.rich(
-            TextSpan(
-              text: 'DISPLAY ',
-              children: <InlineSpan>[
-                TextSpan(
-                  text: available ? '$value%' : '--',
-                  style: const TextStyle(color: HyprColors.textMuted),
-                ),
-              ],
+        Row(
+          children: <Widget>[
+            Icon(
+              Icons.wb_sunny_outlined,
+              size: 23,
+              color: AudioMixerColors.amber,
+              shadows: available
+                  ? const <Shadow>[
+                      Shadow(color: Color(0xBBE79519), blurRadius: 7),
+                    ]
+                  : null,
             ),
-            style: HyprTypography.mixerLegend.copyWith(color: HyprColors.text),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text('DISPLAY', style: AudioMixerText.label, maxLines: 1),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xDD080C17),
+                borderRadius: BorderRadius.circular(7),
+                border: Border.all(color: const Color(0x222F3B66)),
+              ),
+              child: Text(
+                available ? '$value%' : '--',
+                style: AudioMixerText.value.copyWith(
+                  fontSize: 15,
+                  color: AudioMixerColors.amber,
+                  shadows: const <Shadow>[
+                    Shadow(color: Color(0xAAE08B10), blurRadius: 8),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 1),
+        SizedBox(
+          height: 92,
+          child: OverflowBox(
+            alignment: Alignment.topCenter,
+            minHeight: 112,
+            maxHeight: 112,
+            child: knob,
           ),
         ),
-        const SizedBox(height: HyprSpacing.loose + HyprSpacing.sm),
-        knob,
+        SizedBox(
+          width: 116,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[
+              Text('0', style: AudioMixerText.meta.copyWith(fontSize: 9)),
+              Text('100', style: AudioMixerText.meta.copyWith(fontSize: 9)),
+            ],
+          ),
+        ),
       ],
     );
   }

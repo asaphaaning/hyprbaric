@@ -3,44 +3,64 @@ import 'package:hyprbaric/audio_embed.dart';
 
 /// Typed endpoint and display snapshots for mixer previews and stories.
 abstract final class AudioFixtures {
+  static const AudioOutputsAvailable outputs = AudioOutputsAvailable(
+    selected: AudioOutputId(name: 'evo4'),
+    devices: <AudioOutput>[
+      AudioOutput(
+        id: AudioOutputId(name: 'evo4'),
+        name: 'EVO4',
+      ),
+      AudioOutput(
+        id: AudioOutputId(name: 'speakers'),
+        name: 'Built-in Speakers',
+      ),
+      AudioOutput(
+        id: AudioOutputId(name: 'hdmi'),
+        name: 'DisplayPort / HDMI',
+      ),
+    ],
+  );
   static const AudioEndpoint output = AudioEndpoint(
     kind: AudioEndpointKind.output,
     id: 'output-built-in',
-    name: 'Built-in · Analog Stereo',
-    volume: 75,
+    name: 'EVO4',
+    volume: 19,
     muted: false,
   );
 
   static const AudioEndpoint input = AudioEndpoint(
     kind: AudioEndpointKind.input,
     id: 'input-built-in',
-    name: 'Built-in Microphone',
-    volume: 42,
+    name: 'Insta360 Link 2C Mono',
+    volume: 82,
     muted: false,
   );
 
   static const BrightnessStatusAvailable brightness = BrightnessStatusAvailable(
     device: 'eDP-1',
-    value: 75,
+    value: 80,
   );
 
   static const AudioStatusAvailable ready = AudioStatusAvailable(
+    outputs: outputs,
     output: output,
     input: input,
   );
 
   static const AudioStatusAvailable muted = AudioStatusAvailable(
+    outputs: outputs,
     output: AudioEndpoint(
       kind: AudioEndpointKind.output,
       id: 'output-built-in',
-      name: 'Built-in · Analog Stereo',
-      volume: 75,
+      name: 'EVO4',
+      volume: 19,
       muted: true,
     ),
     input: input,
   );
 
   static const AudioStatusAvailable outputOnly = AudioStatusAvailable(
+    outputs: outputs,
     output: output,
   );
 

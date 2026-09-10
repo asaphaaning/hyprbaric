@@ -47,6 +47,7 @@ class RightCluster extends ConsumerWidget {
     required this.onOpenNetworkSettings,
     required this.onSetAudioVolume,
     required this.onSetAudioMuted,
+    required this.onSelectAudioOutput,
     required this.onSetBrightness,
     required this.onOpenAudioMixer,
     required this.onSetPowerProfile,
@@ -94,6 +95,7 @@ class RightCluster extends ConsumerWidget {
   final void Function(AudioEndpointKind kind, int volume) onSetAudioVolume;
   final void Function(AudioEndpointKind kind, {required bool muted})
   onSetAudioMuted;
+  final ValueChanged<AudioOutputId> onSelectAudioOutput;
   final ValueChanged<int> onSetBrightness;
   final VoidCallback onOpenAudioMixer;
   final ValueChanged<PowerProfile> onSetPowerProfile;
@@ -214,7 +216,8 @@ class RightCluster extends ConsumerWidget {
               const SizedBox(width: 4),
               LayerShellDropdown(
                 controller: audioController,
-                menuRadius: audioRadius,
+                menuRadius: AudioPanel.radius,
+                menuWidth: AudioPanel.width,
                 buttonBuilder:
                     (
                       BuildContext context,
@@ -238,19 +241,33 @@ class RightCluster extends ConsumerWidget {
                               WidgetRef ref,
                               Widget? child,
                             ) {
-                              return AudioPanel(
-                                borderRadius: audioRadius,
-                                status: ref.watch(audioStatusProvider),
-                                brightnessStatus: ref.watch(
-                                  brightnessStatusProvider,
+                              final double availableHeight =
+                                  (MediaQuery.sizeOf(context).height -
+                                          ref.watch(barHeightProvider) -
+                                          16)
+                                      .clamp(0.0, double.infinity);
+                              return ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxHeight: availableHeight,
                                 ),
-                                onSetVolume: onSetAudioVolume,
-                                onSetMuted: onSetAudioMuted,
-                                onSetBrightness: onSetBrightness,
-                                onOpenMixer: () {
-                                  onOpenAudioMixer();
-                                  controller.dismiss();
-                                },
+                                child: AudioPanel(
+                                  status: ref.watch(audioStatusProvider),
+                                  brightnessStatus: ref.watch(
+                                    brightnessStatusProvider,
+                                  ),
+                                  onSetVolume: onSetAudioVolume,
+                                  onSetMuted: onSetAudioMuted,
+                                  onSelectOutput: onSelectAudioOutput,
+                                  commandResult: ref
+                                      .watch(audioCommandResultProvider)
+                                      .asData
+                                      ?.value,
+                                  onSetBrightness: onSetBrightness,
+                                  onOpenMixer: () {
+                                    onOpenAudioMixer();
+                                    controller.dismiss();
+                                  },
+                                ),
                               );
                             },
                       );

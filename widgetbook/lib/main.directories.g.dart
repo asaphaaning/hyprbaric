@@ -107,6 +107,17 @@ final directories = <_widgetbook.WidgetbookNode>[
             ],
           ),
           _widgetbook.WidgetbookComponent(
+            name: 'AudioDecibelScale',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Decibels',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
+                        .buildAudioDecibelScale,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
             name: 'AudioDisabledFader',
             useCases: [
               _widgetbook.WidgetbookUseCase(
@@ -151,6 +162,17 @@ final directories = <_widgetbook.WidgetbookNode>[
             ],
           ),
           _widgetbook.WidgetbookComponent(
+            name: 'AudioMeter',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Output level',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
+                        .buildAudioMeter,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
             name: 'AudioMixerFooter',
             useCases: [
               _widgetbook.WidgetbookUseCase(
@@ -173,6 +195,17 @@ final directories = <_widgetbook.WidgetbookNode>[
             ],
           ),
           _widgetbook.WidgetbookComponent(
+            name: 'AudioMixerIcon',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Fine rails',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
+                        .buildAudioMixerIcon,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
             name: 'AudioMixerStage',
             useCases: [
               _widgetbook.WidgetbookUseCase(
@@ -184,6 +217,17 @@ final directories = <_widgetbook.WidgetbookNode>[
             ],
           ),
           _widgetbook.WidgetbookComponent(
+            name: 'AudioMixerSurface',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Indigo glass',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
+                        .buildAudioMixerSurface,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
             name: 'AudioMuteButton',
             useCases: [
               _widgetbook.WidgetbookUseCase(
@@ -191,6 +235,17 @@ final directories = <_widgetbook.WidgetbookNode>[
                 builder:
                     _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
                         .buildAudioMuteButtonStates,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'AudioOutputSelector',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Active device',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_atom_use_cases
+                        .buildAudioOutputSelector,
               ),
             ],
           ),
@@ -1086,6 +1141,12 @@ final directories = <_widgetbook.WidgetbookNode>[
                 builder:
                     _hyprbaric_widgetbook_use_cases_audio_audio_panel_use_cases
                         .buildReadyAudioPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Reference',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_audio_audio_panel_use_cases
+                        .buildReferenceAudioPanel,
               ),
               _widgetbook.WidgetbookUseCase(
                 name: 'Unavailable',

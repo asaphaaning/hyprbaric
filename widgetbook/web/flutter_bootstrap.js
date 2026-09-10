@@ -10,9 +10,9 @@
     entrypointBaseUrl: assetRoot,
   };
 
-  // One engine hosts every preview on the page. Each preview is a view added
-  // through `app.addView`, so this promise is resolved exactly once and the
-  // host waits on it rather than booting an engine of its own.
+  // The standalone catalog owns an implicit view. Embedded previews share
+  // one engine and attach their views explicitly through `app.addView`.
+  // The host waits for this promise instead of starting another engine.
   window.hyprbaricEmbedsReady = new Promise((resolve, reject) => {
     const fail = (error) => reject(
       error instanceof Error ? error : new Error(String(error)),
@@ -25,7 +25,7 @@
           try {
             const runner = await engineInitializer.initializeEngine({
               ...config,
-              multiViewEnabled: true,
+              multiViewEnabled: !document.body.hasAttribute('data-hyprbaric-catalog'),
             });
             const app = await runner.runApp();
             window.hyprbaricEmbedsApp = app;

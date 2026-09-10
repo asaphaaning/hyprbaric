@@ -24,7 +24,7 @@ use self::{
 };
 
 pub use domain::EndpointKind as Kind;
-pub use domain::{Command, Endpoint, Percent, Report, Snapshot, VolumeStep};
+pub use domain::{Command, Endpoint, OutputId, Outputs, Percent, Report, Snapshot, VolumeStep};
 
 /// Shared audio runtime handle.
 pub type Handle = Arc<Control>;
@@ -121,6 +121,14 @@ impl Control {
         self.refresh().await;
     }
 
+    /// Selects a playback device and publishes its confirmed default state.
+    #[instrument(name = "audio::select_output", skip(self))]
+    pub async fn select_output(&self, id: OutputId) {
+        let result = self.devices.select_output(&id).await;
+        self.send_report(PublicCommand::SelectOutput { id }, result);
+        self.refresh().await;
+    }
+
     #[instrument(skip(self))]
     async fn refresh(&self) {
         self.send_snapshot(self.devices.read_snapshot().await);
@@ -213,6 +221,18 @@ fn is_audio_event(line: &str) -> bool {
 /// An audio runtime or boundary error.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// An audio command exceeded its bounded execution time.
+    #[error("`{program}` did not respond within five seconds")]
+    Timeout {
+        /// Program that timed out.
+        program: String,
+    },
+    /// The requested output disappeared before it could be selected.
+    #[error("the selected output device is no longer available")]
+    OutputMissing,
+    /// PipeWire returned malformed device metadata.
+    #[error("could not read output devices: {0}")]
+    ParseDevices(#[from] serde_json::Error),
     /// No default endpoint could be read.
     #[error("audio controls are unavailable")]
     Unavailable,
