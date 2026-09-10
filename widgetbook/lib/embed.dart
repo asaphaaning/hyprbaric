@@ -170,19 +170,17 @@ class _PreviewEmbedState extends State<_PreviewEmbed> {
     // Panels pin their production width and scale into the host. The bar is
     // fluid instead: it lays out at the host's own size the way it fills a
     // monitor, and the host grows to make room for open menus.
+    //
+    // The bar also brings its own MaterialApp, so unlike the panels it must
+    // not be wrapped in another one: dropdown menus attach to the root
+    // overlay, and an outer app would hoist that overlay above the preview's
+    // ProviderScope, red-screening the first menu that opens.
     if (preview.isFluid) {
-      return MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: embedTheme,
-        home: Scaffold(
-          backgroundColor: Colors.transparent,
-          body: SizedBox.expand(
-            child: RepaintBoundary(
-              child: preview.build(
-                baseUrl: widget.configuration.baseUrl,
-                onNavigate: _navigateTo,
-              ),
-            ),
+      return SizedBox.expand(
+        child: RepaintBoundary(
+          child: preview.build(
+            baseUrl: widget.configuration.baseUrl,
+            onNavigate: _navigateTo,
           ),
         ),
       );
