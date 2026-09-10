@@ -1,0 +1,36 @@
+/* Sticky bar shell: a fixed strip in page flow that open menus may overflow.
+   The shell never grows, so expanding never shoves the page down. */
+.shell {
+  height: var(--hypr-bar-height);
+  overflow: visible;
+  position: sticky;
+  top: 0;
+  z-index: 60;
+}
+
+/* Collapsed the stage clips the canvas to the strip; expanded it gives open
+   menus room over the page. The switch is instant: animating the height would
+   churn the Flutter view through every intermediate size. */
+.stage,
+.stageExpanded {
+  overflow: hidden;
+  position: relative;
+}
+
+.stage {
+  height: var(--hypr-bar-height);
+}
+
+.stageExpanded {
+  height: var(--hypr-bar-popup-height);
+  overflow: visible;
+}
+
+/* The embed frame fills the stage; the canvas lays the fluid bar out at the
+   stage size, 1:1, with no letterboxing. */
+.host,
+.hostExpanded {
+  display: block;
+  height: 100%;
+  width: 100%;
+}

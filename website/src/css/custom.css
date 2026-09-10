@@ -786,3 +786,44 @@ html[data-theme] .hyprNavbar .hyprNavbarSearch [class*='dropdownMenu'] {
     display: none;
   }
 }
+
+/* Experiment: the production bar as sticky site chrome.
+ *
+ * FullBar renders above the navbar on desktop and reports its strip height
+ * through --hypr-bar-height. The navbar and the docs gutters dock below the
+ * stacked header; on small screens the bar unmounts, the height collapses to
+ * zero, and every offset below resolves back to its pre-experiment value.
+ * An expanded bar overlays the page (its shell never grows), so no offset
+ * accounts for the popup height. */
+:root {
+  --hypr-bar-height: 48px;
+  --hypr-bar-popup-height: 480px;
+  --ifm-navbar-height: calc(3.875rem + var(--hypr-bar-height));
+}
+
+.hyprNavbar {
+  top: var(--hypr-bar-height);
+}
+
+.hyprDocRoot .theme-doc-sidebar-container {
+  top: calc(72px + var(--hypr-bar-height));
+}
+
+.hyprDocRoot .theme-doc-sidebar-container [class*='sidebarViewport'] {
+  height: calc(100vh - 72px - var(--hypr-bar-height));
+  top: calc(72px + var(--hypr-bar-height));
+}
+
+.hyprDocToc {
+  top: calc(72px + var(--hypr-bar-height));
+}
+
+.hyprDocToc [class*='tableOfContents'] {
+  top: calc(86px + var(--hypr-bar-height));
+}
+
+@media (max-width: 996px) {
+  :root {
+    --hypr-bar-height: 0px;
+  }
+}

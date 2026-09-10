@@ -7,10 +7,18 @@ import '../state/providers.dart';
 import 'hypr_surface.dart';
 import 'primitives/primitives.dart';
 
+/// The focused window's title, centered in the bar.
+///
+/// Embeds may pass [onTap] to make the title actionable (for example, a
+/// documentation site whose bar title returns home). When null the title is
+/// inert text, exactly as on the desktop.
 class CenterCluster extends ConsumerWidget {
-  const CenterCluster({super.key, required this.maxWidth});
+  const CenterCluster({super.key, required this.maxWidth, this.onTap});
 
   final double maxWidth;
+
+  /// Invoked when the title itself is activated, or null for plain text.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -26,7 +34,7 @@ class CenterCluster extends ConsumerWidget {
           alignment: Alignment.center,
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: clusterWidth),
-            child: _WindowTitleChip(display: display),
+            child: _WindowTitleChip(display: display, onTap: onTap),
           ),
         );
       },
@@ -35,14 +43,17 @@ class CenterCluster extends ConsumerWidget {
 }
 
 class _WindowTitleChip extends StatelessWidget {
-  const _WindowTitleChip({required this.display});
+  const _WindowTitleChip({required this.display, this.onTap});
 
   final FocusedWindowDisplay display;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
+    final VoidCallback? onTap = this.onTap;
+    final Widget label = Semantics(
       label: display.tooltip,
+      button: onTap != null,
       child: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
           final double titleMaxWidth = math.max(0, constraints.maxWidth - 28);
@@ -56,6 +67,21 @@ class _WindowTitleChip extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+
+    if (onTap == null) {
+      return label;
+    }
+
+    // A title link behaves like the bar's other quiet affordances: no ink,
+    // just the pointer, so the desktop tree stays byte-identical without it.
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: label,
       ),
     );
   }
