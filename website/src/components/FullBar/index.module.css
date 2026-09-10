@@ -7,14 +7,20 @@
   top: 0;
   z-index: 60;
 }
-
-/* Collapsed the stage clips the canvas to the strip; expanded it gives open
+/* Collapsed the stage clips the frame to the strip; expanded it gives open
    menus room over the page. The switch is instant: animating the height would
-   churn the Flutter view through every intermediate size. */
+   churn the engine view through every intermediate size. */
 .stage,
 .stageExpanded {
   overflow: hidden;
   position: relative;
+  /* The engine paints the bar translucent, the way the compositor sees it;
+     frosted glass has to come from the DOM side, because a canvas cannot
+     sample the page behind it. The filter sits on this plain wrapper rather
+     than the iframe itself, which replaced elements have historically
+     filtered unreliably. */
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
 }
 
 .stage {
@@ -26,11 +32,78 @@
   overflow: visible;
 }
 
-/* The embed frame fills the stage; the canvas lays the fluid bar out at the
-   stage size, 1:1, with no letterboxing. */
-.host,
-.hostExpanded {
+/* Without backdrop-filter the translucent fills would turn the bar into
+   clear glass; fall back to the panels' own dark floor instead. */
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .stage,
+  .stageExpanded {
+    backdrop-filter: none;
+    background: #101216;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+.frame {
+  background: transparent;
+  border: 0;
   display: block;
   height: 100%;
+  inset: 0;
+  opacity: 0;
+  overflow: hidden;
+  position: absolute;
   width: 100%;
+}
+
+.frameReady {
+  opacity: 1;
+  transition: opacity 180ms ease-out;
+}
+
+/* Quiet band with menu, title, and cluster pills behind the frame. */
+.skeleton {
+  background: transparent;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  position: absolute;
+}
+
+.skeleton::after {
+  animation: shimmer 1.55s ease-in-out infinite;
+  background: linear-gradient(105deg, transparent 34%, rgb(255 255 255 / 5%) 48%, transparent 62%);
+  content: '';
+  inset: 0;
+  position: absolute;
+  transform: translateX(-100%);
+}
+
+.skeleton span {
+  background: #090b0e;
+  border: 1px solid rgb(255 255 255 / 4%);
+  border-radius: 999px;
+  position: absolute;
+}
+
+.band {
+  background: #14171b;
+  border: 1px solid #24272d;
+  border-radius: 12px !important;
+  height: 40px;
+  left: 10px;
+  right: 10px;
+  top: 3px;
+}
+
+.menu {height: 13px; left: 96px; top: 17px; width: 128px;}
+.title {height: 13px; left: calc(50% - 58px); top: 17px; width: 116px;}
+.cluster {height: 13px; right: 96px; top: 17px; width: 148px;}
+
+@keyframes shimmer {
+  to {transform: translateX(100%);}
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frameReady {transition: none;}
+  .skeleton::after {animation: none;}
 }
