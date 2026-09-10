@@ -50,14 +50,19 @@ export default function FullBar() {
     };
   }, [desktop, history]);
 
+  // The Flutter canvas only needs popup room while the pointer is over the
+  // bar; collapsed it is a plain strip that never swallows page clicks.
+  // Leave detection sits on the stage (which is tall while expanded) so
+  // reaching into an open menu does not collapse it mid-gesture.
   if (!desktop) return null;
 
   return (
     <div
       className={styles.shell}
-      onMouseEnter={() => setExpanded(true)}
-      onMouseLeave={() => setExpanded(false)}>
-      <div className={expanded ? styles.stageExpanded : styles.stage}>
+      onMouseEnter={() => setExpanded(true)}>
+      <div
+        className={expanded ? styles.stageExpanded : styles.stage}
+        onMouseLeave={() => setExpanded(false)}>
         <FlutterDemo
           className={expanded ? styles.hostExpanded : styles.host}
           preview="bar"
