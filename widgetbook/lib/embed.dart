@@ -1,4 +1,5 @@
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 import 'dart:ui';
 import 'dart:ui_web' as ui_web;
 
@@ -57,19 +58,30 @@ class _EmbedViewsState extends State<_EmbedViews> with WidgetsBindingObserver {
 
 @immutable
 class _Configuration {
-  const _Configuration({required this.preview, required this.onReady});
+  const _Configuration({
+    required this.preview,
+    required this.onReady,
+    this.baseUrl = '/',
+  });
 
   /// Null when the host asked for a preview this build does not carry.
   final LandingPreview? preview;
   final JSFunction? onReady;
 
+  /// The site root the host page serves from, ending with a `/`.
+  ///
+  /// Only the docs bar reads it, to join menu targets onto absolute URLs.
+  final String baseUrl;
+
   factory _Configuration.from(FlutterView view) {
     final _EmbedInitialData? data =
         ui_web.views.getInitialData(view.viewId) as _EmbedInitialData?;
 
+    final String? reported = data?.baseUrl;
     return _Configuration(
       preview: LandingPreview.byName(data?.preview),
       onReady: data?.onReady,
+      baseUrl: reported == null || reported.isEmpty ? '/' : reported,
     );
   }
 
@@ -83,9 +95,7 @@ class _Configuration {
     final LandingPreview? resolved = preview;
     callback.callAsFunction(
       null,
-      resolved == null
-          ? 'Unknown preview requested'.toJS
-          : null,
+      resolved == null ? 'Unknown preview requested'.toJS : null,
     );
   }
 }
@@ -93,7 +103,29 @@ class _Configuration {
 extension type _EmbedInitialData._(JSObject _) implements JSObject {
   external String? get preview;
 
+  external String? get baseUrl;
+
   external JSFunction? get onReady;
+}
+
+/// Prefers the site's client-side router, falling back to a full navigation.
+///
+/// The host page installs `window.hyprbaricNavigate` when it can route
+/// without reloading; every other host (and every test) gets an assign.
+@JS('window')
+external JSObject get _window;
+
+@JS('window.location.assign')
+external JSVoid _locationAssign(JSString url);
+
+void _navigateTo(String url) {
+  try {
+    _window.callMethod('hyprbaricNavigate'.toJS, url.toJS);
+    return;
+  } catch (_) {
+    // No router hook on this host: fall through to a full navigation.
+  }
+  _locationAssign(url.toJS);
 }
 
 class _PreviewEmbed extends StatefulWidget {
@@ -133,6 +165,27 @@ class _PreviewEmbedState extends State<_PreviewEmbed> {
       // The page shows its own error state once `report` hands back a reason,
       // so an unknown name must not quietly render some other panel.
       return const SizedBox.shrink();
+    }
+
+    // Panels pin their production width and scale into the host. The bar is
+    // fluid instead: it lays out at the host's own size the way it fills a
+    // monitor, and the host grows to make room for open menus.
+    if (preview.isFluid) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: embedTheme,
+        home: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SizedBox.expand(
+            child: RepaintBoundary(
+              child: preview.build(
+                baseUrl: widget.configuration.baseUrl,
+                onNavigate: _navigateTo,
+              ),
+            ),
+          ),
+        ),
+      );
     }
 
     return MaterialApp(

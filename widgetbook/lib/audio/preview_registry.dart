@@ -3,6 +3,7 @@ import 'package:hyprbaric/widget_catalog.dart';
 
 import 'audio_mixer_preview.dart';
 import 'controls_panel_preview.dart';
+import 'docs_bar_preview.dart';
 import 'network_panel_preview.dart';
 import 'notification_panel_preview.dart';
 import 'power_panel_preview.dart';
@@ -19,7 +20,8 @@ enum LandingPreview {
   network(name: 'network', width: 340),
   power(name: 'power', width: 320),
   notifications(name: 'notifications', width: 380),
-  workspaces(name: 'workspaces', width: 340);
+  workspaces(name: 'workspaces', width: 340),
+  bar(name: 'bar', width: 1280);
 
   const LandingPreview({required this.name, required this.width});
 
@@ -30,8 +32,13 @@ enum LandingPreview {
   ///
   /// These mirror the `BoxConstraints` each panel pins itself to, so a panel
   /// that changes width needs this updated in step. `preview_registry_test`
-  /// measures the real widgets and fails when they drift apart.
+  /// measures the real widgets and fails when they drift apart. The bar is
+  /// fluid instead: it fills its host the way it fills a monitor, so [width]
+  /// is only its design width and the width test skips it.
   final double width;
+
+  /// Whether this preview fills its host rather than pinning [width].
+  bool get isFluid => this == LandingPreview.bar;
 
   /// The preview for [name], or null when the host asked for something absent.
   static LandingPreview? byName(String? name) {
@@ -43,7 +50,12 @@ enum LandingPreview {
     return null;
   }
 
-  Widget build() {
+  /// Builds the preview.
+  ///
+  /// Only [bar] reads [baseUrl] and [onNavigate]: the docs bar joins menu
+  /// targets onto the site root and reports absolute URLs back through
+  /// [onNavigate]. Every other preview ignores both.
+  Widget build({String baseUrl = '/', ValueChanged<String>? onNavigate}) {
     return switch (this) {
       LandingPreview.mixer => const AudioMixerPreview(),
       LandingPreview.controls => const ControlsPanelPreview.landing(),
@@ -51,6 +63,10 @@ enum LandingPreview {
       LandingPreview.power => const PowerPanelPreview(),
       LandingPreview.notifications => const NotificationPanelPreview(),
       LandingPreview.workspaces => const WorkspaceStripPreview(),
+      LandingPreview.bar => DocsBarPreview(
+        baseUrl: baseUrl,
+        onNavigate: onNavigate,
+      ),
     };
   }
 }

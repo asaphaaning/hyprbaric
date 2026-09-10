@@ -19,8 +19,16 @@ import 'widgets/left_cluster.dart';
 import 'widgets/right_cluster.dart';
 import 'widgets/transient_overlays.dart';
 
+/// The production status bar.
+///
+/// Embeds demonstrating the bar outside a compositor may pass [onTitleTap] to
+/// make the centered window title actionable. The desktop passes nothing and
+/// keeps the title inert.
 class Hyprbaric extends ConsumerWidget {
-  const Hyprbaric({super.key});
+  const Hyprbaric({super.key, this.onTitleTap});
+
+  /// Invoked when the centered title is activated, or null for plain text.
+  final VoidCallback? onTitleTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -40,16 +48,18 @@ class Hyprbaric extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: transparentTheme,
       darkTheme: transparentTheme,
-      home: const Scaffold(
+      home: Scaffold(
         backgroundColor: Colors.transparent,
-        body: _BarView(),
+        body: _BarView(onTitleTap: onTitleTap),
       ),
     );
   }
 }
 
 class _BarView extends ConsumerStatefulWidget {
-  const _BarView();
+  const _BarView({this.onTitleTap});
+
+  final VoidCallback? onTitleTap;
 
   @override
   ConsumerState<_BarView> createState() => _BarViewState();
@@ -701,8 +711,9 @@ class _BarViewState extends ConsumerState<_BarView> {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: modules.isEnabled(ModuleId.activeWindowTitle)
-                                ? const CenterCluster(
+                                ? CenterCluster(
                                     maxWidth: _centerClusterMaxWidth,
+                                    onTap: widget.onTitleTap,
                                   )
                                 : const SizedBox.shrink(),
                           ),

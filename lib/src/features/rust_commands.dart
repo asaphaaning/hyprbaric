@@ -99,6 +99,18 @@ class _GlobalMenuDismissIntent extends GlobalMenuIntent {
   void send() => GlobalMenuCommandDismiss(address: address).sendSignalToRust();
 }
 
+/// Reads the row a [GlobalMenuIntent] activated, if it activated one.
+///
+/// Observers that route menu activations elsewhere (documentation embeds,
+/// tests) match on this rather than re-declaring the intent variants. Reads,
+/// opens, and dismissals report null.
+extension GlobalMenuActivation on GlobalMenuIntent {
+  GlobalMenuItemId? get activatedItem => switch (this) {
+    _GlobalMenuActivateIntent(:final GlobalMenuItemId item) => item,
+    _ => null,
+  };
+}
+
 sealed class SetupIntent extends RustIntent {
   const SetupIntent();
 

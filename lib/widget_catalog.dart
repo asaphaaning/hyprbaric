@@ -175,6 +175,13 @@ export 'src/features/network/network_panel.dart' show NetworkPanel;
 export 'src/features/power/battery_chip.dart' show BatteryChip;
 export 'src/features/power/power_panel.dart' show PowerPanel;
 export 'src/features/power/power_profile_pad.dart' show PowerProfilePad;
+export 'src/features/rust_commands.dart'
+    show
+        GlobalMenuActivation,
+        GlobalMenuIntent,
+        RustCommandDispatcher,
+        RustIntent,
+        rustCommandDispatcherProvider;
 export 'src/features/session/session_controller.dart' show SessionConfirmChoice;
 export 'src/features/session/session_launcher_content.dart'
     show SessionLauncherCard;

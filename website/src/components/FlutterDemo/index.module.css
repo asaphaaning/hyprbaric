@@ -190,3 +190,31 @@
 .workspacePrevious {left: 6%; width: 7%;}
 .workspaceIndicators {left: 17%; right: 17%;}
 .workspaceNext {right: 6%; width: 7%;}
+
+/* The bar skeleton is a quiet band with menu, title, and cluster pills. It
+   fills whatever height the sticky shell gives it; the band pins to the top
+   the way the real bar does. */
+.barSkeleton {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.barSkeleton span {
+  border-radius: 999px;
+}
+
+.barBand {
+  background: #14171b;
+  border: 1px solid #24272d;
+  border-radius: 12px !important;
+  height: 40px;
+  left: 10px;
+  right: 10px;
+  top: 3px;
+}
+
+.barMenu {height: 13px; left: 96px; top: 17px; width: 128px;}
+.barTitle {height: 13px; left: calc(50% - 58px); top: 17px; width: 116px;}
+.barCluster {height: 13px; right: 96px; top: 17px; width: 148px;}

@@ -43,6 +43,7 @@ void main() {
     expect(LandingPreview.byName(null), isNull);
     expect(LandingPreview.byName(''), isNull);
     expect(LandingPreview.byName('mixer'), LandingPreview.mixer);
+    expect(LandingPreview.byName('bar'), LandingPreview.bar);
   });
 
   testWidgets('each preview declares its panel\'s real production width', (
@@ -50,8 +51,12 @@ void main() {
   ) async {
     // The declared widths are copies of each panel's own BoxConstraints. Laying
     // the panel out unconstrained and measuring it is what stops the copy and
-    // the original drifting apart silently.
+    // the original drifting apart silently. The bar is fluid: it fills its
+    // host the way it fills a monitor, so it has no pinned width to measure.
     for (final LandingPreview preview in LandingPreview.values) {
+      if (preview.isFluid) {
+        continue;
+      }
       final GlobalKey key = GlobalKey();
 
       await tester.pumpWidget(
@@ -81,6 +86,9 @@ void main() {
   });
 
   test('previews render at the shipping popover radius', () {
-    expect(HyprRadii.popoverRadius, const BorderRadius.all(Radius.circular(18)));
+    expect(
+      HyprRadii.popoverRadius,
+      const BorderRadius.all(Radius.circular(18)),
+    );
   });
 }
