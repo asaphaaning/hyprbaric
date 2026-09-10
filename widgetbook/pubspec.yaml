@@ -29,6 +29,14 @@ flutter:
   assets:
     - assets/wallpaper-demo.png
   fonts:
+    - family: Roboto Condensed
+      fonts:
+        - asset: assets/fonts/RobotoCondensed-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/RobotoCondensed-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/RobotoCondensed-Bold.ttf
+          weight: 700
     - family: Inter
       fonts:
         # Mirrors the app's declaration exactly. A single untagged entry makes

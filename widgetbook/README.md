@@ -47,3 +47,28 @@ and macOS. On Windows it needs either developer mode or
 `git config --global core.symlinks true` before cloning, otherwise both paths
 arrive as ordinary text files holding the target path and asset resolution
 fails with no useful error.
+
+
+## Mixer reference review
+
+Run a local browser preview with:
+
+```sh
+flutter run -d web-server --web-hostname 127.0.0.1 --web-port 7357 --no-web-resources-cdn
+```
+
+Open **Widgets → Audio → AudioPanel → Reference** for the interactive mixer
+against a repeatable indigo/purple desktop light fixture. **Interactive** shows
+the same controls at their production size. **Building blocks → Audio** contains
+the separate selector, glass surface, LED meter, decibel guide, channel strips,
+faders, mute buttons, and brightness instruments.
+
+The reference starts at 80% brightness, −43.3 dB output, and −5.2 dB microphone.
+Drag either fader or the brightness dial, or toggle mute. Reload the story to
+restore the reference values. Fixed signal levels keep comparisons repeatable;
+the website preview continues to animate its meters. Device selection and the
+Pavucontrol footer delegate to the host in production.
+
+The standalone HTML carries `data-hyprbaric-catalog` so its bootstrap creates an
+implicit Flutter view. The website host has no marker and continues to use the
+shared engine with explicitly attached views.

@@ -4,12 +4,15 @@
 //! publishing typed [`Snapshot`] and [`super::Report`]
 //! values.
 
-use tokio::process::Command as ProcessCommand;
+use std::time::Duration;
+
+use serde::Deserialize;
+use tokio::{process::Command as ProcessCommand, time::timeout};
 use tracing::instrument;
 
 use super::{
     Error,
-    domain::{Endpoint, EndpointKind, Percent, Snapshot},
+    domain::{Endpoint, EndpointKind, Output, OutputId, Outputs, Percent, Snapshot},
 };
 
 /// PipeWire default endpoint reader and writer.
@@ -26,7 +29,36 @@ impl Devices {
             return Err(Error::Unavailable);
         }
 
-        Ok(Snapshot::Available { output, input })
+        let outputs = match self.read_outputs().await {
+            Ok(devices) => output_choices(
+                devices,
+                output.as_ref().and_then(|device| device.id.as_deref()),
+            ),
+            Err(error) => Outputs::Unavailable {
+                message: error.to_string(),
+            },
+        };
+
+        Ok(Snapshot::Available {
+            output,
+            input,
+            outputs,
+        })
+    }
+
+    #[instrument(name = "audio::read_outputs", skip(self), err)]
+    async fn read_outputs(self) -> Result<Vec<LiveOutput>, Error> {
+        parse_outputs(&run("pw-dump", &["--no-colors"]).await?)
+    }
+
+    /// Resolves a stable name afresh so stale numeric ids cannot select another device.
+    #[instrument(name = "audio::devices::select_output", skip(self), err)]
+    pub(super) async fn select_output(self, id: &OutputId) -> Result<(), Error> {
+        let devices = self.read_outputs().await?;
+        let node = resolve_output(&devices, id)?;
+        run("wpctl", &["set-default", &node.to_string()])
+            .await
+            .map(|_| ())
     }
 
     /// Reads one default endpoint.
@@ -66,14 +98,21 @@ impl Devices {
 
 #[instrument(skip(args), err)]
 async fn run(program: &str, args: &[&str]) -> Result<String, Error> {
-    let output = ProcessCommand::new(program)
-        .args(args)
-        .output()
-        .await
-        .map_err(|source| Error::Spawn {
-            program: program.to_string(),
-            source,
-        })?;
+    let output = timeout(
+        Duration::from_secs(5),
+        ProcessCommand::new(program)
+            .args(args)
+            .kill_on_drop(true)
+            .output(),
+    )
+    .await
+    .map_err(|_elapsed| Error::Timeout {
+        program: program.to_owned(),
+    })?
+    .map_err(|source| Error::Spawn {
+        program: program.to_string(),
+        source,
+    })?;
     if !output.status.success() {
         return Err(Error::CommandFailed {
             program: program.to_string(),
@@ -82,6 +121,99 @@ async fn run(program: &str, args: &[&str]) -> Result<String, Error> {
         });
     }
     String::from_utf8(output.stdout).map_err(Error::Utf8)
+}
+
+/// Transient PipeWire address paired with stable output identity.
+struct LiveOutput {
+    node: u32,
+    output: Output,
+}
+
+/// Only PipeWire nodes carry the properties needed for output discovery.
+#[derive(Deserialize)]
+#[serde(tag = "type")]
+enum Object {
+    #[serde(rename = "PipeWire:Interface:Node")]
+    Node { id: u32, info: Option<NodeInfo> },
+    #[serde(other)]
+    Other,
+}
+
+/// PipeWire node metadata at the JSON boundary.
+#[derive(Deserialize)]
+struct NodeInfo {
+    props: Properties,
+}
+
+/// The small subset of node properties used for output discovery.
+#[derive(Deserialize)]
+struct Properties {
+    #[serde(rename = "media.class")]
+    media_class: Option<String>,
+    #[serde(rename = "node.name")]
+    name: Option<String>,
+    #[serde(rename = "node.description")]
+    description: Option<String>,
+    #[serde(rename = "node.nick")]
+    nick: Option<String>,
+}
+
+fn parse_outputs(json: &str) -> Result<Vec<LiveOutput>, Error> {
+    let mut outputs: Vec<_> = serde_json::from_str::<Vec<Object>>(json)?
+        .into_iter()
+        .filter_map(|object| {
+            let Object::Node {
+                id,
+                info: Some(NodeInfo { props }),
+            } = object
+            else {
+                return None;
+            };
+            if props.media_class.as_deref() != Some("Audio/Sink") {
+                return None;
+            }
+
+            let name = props.name.filter(|name| !name.is_empty())?;
+            let label = props
+                .description
+                .filter(|label| !label.is_empty())
+                .or(props.nick.filter(|label| !label.is_empty()))
+                .unwrap_or_else(|| name.clone());
+            Some(LiveOutput {
+                node: id,
+                output: Output {
+                    id: OutputId(name),
+                    name: label,
+                },
+            })
+        })
+        .collect();
+    outputs.sort_by(|left, right| {
+        left.output
+            .name
+            .cmp(&right.output.name)
+            .then_with(|| left.output.id.0.cmp(&right.output.id.0))
+    });
+    Ok(outputs)
+}
+
+fn output_choices(devices: Vec<LiveOutput>, default: Option<&str>) -> Outputs {
+    let default = default.and_then(|id| id.parse::<u32>().ok());
+    Outputs::Available {
+        selected: devices
+            .iter()
+            .find(|device| Some(device.node) == default)
+            .map(|device| device.output.id.clone()),
+        devices: devices.into_iter().map(|device| device.output).collect(),
+    }
+}
+
+fn resolve_output(devices: &[LiveOutput], id: &OutputId) -> Result<u32, Error> {
+    devices
+        .iter()
+        .find(|device| &device.output.id == id)
+        .map(|device| device.node)
+        .ok_or(Error::OutputMissing)
 }
 
 fn parse_id(inspect: &str) -> Option<String> {
@@ -144,7 +276,85 @@ fn parse_volume(output: &str) -> Result<(Percent, bool), Error> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Percent, parse_id, parse_name, parse_volume};
+    use super::{
+        Devices, Error, OutputId, Outputs, Percent, Snapshot, output_choices, parse_id, parse_name,
+        parse_outputs, parse_volume, resolve_output,
+    };
+
+    const DEVICES: &str = r#"[
+        {"id": 1, "type": "PipeWire:Interface:Client"},
+        {"id": 7, "type": "PipeWire:Interface:Node", "info": null},
+        {"id": 8, "type": "PipeWire:Interface:Node", "info": {"props": {"media.class": "Audio/Source", "node.name": "mic"}}},
+        {"id": 9, "type": "PipeWire:Interface:Node", "info": {"props": {"media.class": "Audio/Sink"}}},
+        {"id": 21, "type": "PipeWire:Interface:Node", "info": {"props": {"media.class": "Audio/Sink", "node.name": "usb", "node.description": "Speakers"}}},
+        {"id": 12, "type": "PipeWire:Interface:Node", "info": {"props": {"media.class": "Audio/Sink", "node.name": "analog", "node.nick": "Speakers"}}}
+    ]"#;
+
+    #[test]
+    fn discovers_only_named_sinks_and_preserves_duplicate_labels() {
+        let devices = parse_outputs(DEVICES).expect("valid PipeWire fixture");
+        assert_eq!(devices.len(), 2);
+        assert_eq!(devices[0].output.id, OutputId("analog".into()));
+        assert_eq!(devices[1].output.id, OutputId("usb".into()));
+        let choices = output_choices(devices, Some("21"));
+        assert!(
+            matches!(choices, Outputs::Available { selected: Some(OutputId(name)), .. } if name == "usb")
+        );
+    }
+
+    #[test]
+    fn resolves_names_against_live_ids_and_rejects_missing_outputs() {
+        let devices = parse_outputs(DEVICES).expect("valid PipeWire fixture");
+        assert_eq!(
+            resolve_output(&devices, &OutputId("usb".into())).expect("USB output exists"),
+            21
+        );
+        let changed =
+            parse_outputs(&DEVICES.replace("\"id\": 21", "\"id\": 83")).expect("updated fixture");
+        assert_eq!(
+            resolve_output(&changed, &OutputId("usb".into())).expect("USB output exists"),
+            83
+        );
+        assert!(matches!(
+            resolve_output(&devices, &OutputId("disconnected".into())),
+            Err(Error::OutputMissing)
+        ));
+    }
+
+    #[test]
+    fn empty_and_invalid_discovery_are_distinct() {
+        assert!(parse_outputs("[]").expect("empty list is valid").is_empty());
+        assert!(matches!(
+            parse_outputs("not json"),
+            Err(Error::ParseDevices(_))
+        ));
+    }
+
+    /// Requires the developer's live PipeWire session; keeps its current output.
+    #[tokio::test]
+    #[ignore = "requires a live PipeWire session"]
+    async fn live_default_output_round_trip() -> Result<(), Error> {
+        let devices = Devices;
+        let Snapshot::Available {
+            outputs: Outputs::Available {
+                selected: Some(id), ..
+            },
+            ..
+        } = devices.read_snapshot().await?
+        else {
+            return Err(Error::Unavailable);
+        };
+        devices.select_output(&id).await?;
+        let Snapshot::Available {
+            outputs: Outputs::Available { selected, .. },
+            ..
+        } = devices.read_snapshot().await?
+        else {
+            return Err(Error::Unavailable);
+        };
+        assert_eq!(selected.as_ref(), Some(&id));
+        Ok(())
+    }
 
     #[test]
     fn parses_wpctl_volume() {

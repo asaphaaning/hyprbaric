@@ -39,11 +39,43 @@ pub struct Endpoint {
     pub muted: bool,
 }
 
+/// Stable PipeWire node name, resolved to a live node only when selecting it.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct OutputId(pub(crate) String);
+
+/// A selectable playback device.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Output {
+    /// Stable device identity.
+    pub id: OutputId,
+    /// Human-facing device description.
+    pub name: String,
+}
+
+/// Device discovery can fail independently of volume and mute controls.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Outputs {
+    /// Available playback devices and the current default.
+    Available {
+        /// Devices ordered by display name.
+        devices: Vec<Output>,
+        /// The default output, if it is present in the list.
+        selected: Option<OutputId>,
+    },
+    /// Device discovery failed; existing endpoint controls remain usable.
+    Unavailable {
+        /// User-facing discovery failure.
+        message: String,
+    },
+}
+
 /// UI-facing audio state.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Snapshot {
     /// At least one default endpoint is available.
     Available {
+        /// Selectable output devices.
+        outputs: Outputs,
         /// Default output endpoint, when one could be read.
         output: Option<Endpoint>,
         /// Default input endpoint, when one could be read.
@@ -59,6 +91,11 @@ pub enum Snapshot {
 /// A command that reached the audio runtime boundary.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Command {
+    /// Select the default playback device.
+    SelectOutput {
+        /// Stable identity of the requested output.
+        id: OutputId,
+    },
     /// Set the volume for an endpoint class.
     SetVolume {
         /// Endpoint class to change.

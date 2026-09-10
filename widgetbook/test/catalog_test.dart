@@ -45,7 +45,7 @@ void main() {
     expect(AudioFixtures.ready.output, AudioFixtures.output);
     expect(AudioFixtures.ready.input, AudioFixtures.input);
     expect(AudioFixtures.unavailable, isA<AudioStatusUnavailable>());
-    expect(AudioFixtures.brightness.value, 75);
+    expect(AudioFixtures.brightness.value, 80);
   });
 
   testWidgets('audio atoms use their production components', (
@@ -143,7 +143,7 @@ void main() {
     expect(find.byType(AudioMasterRail), findsOneWidget);
     expect(find.byType(AudioMixerFooter), findsOneWidget);
     expect(find.byType(AudioChannelStrip), findsNWidgets(2));
-    expect(tester.getSize(find.byType(AudioPanel)).width, 336);
+    expect(tester.getSize(find.byType(AudioPanel)).width, 354);
   });
 
   testWidgets('full bar story is the production composition', (
@@ -214,7 +214,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.bySemanticsLabel('Mute Built-in · Analog Stereo'));
+    await tester.tap(find.bySemanticsLabel('Mute EVO4'));
     await tester.pump();
 
     final AudioChannelStrip output = tester.widget<AudioChannelStrip>(

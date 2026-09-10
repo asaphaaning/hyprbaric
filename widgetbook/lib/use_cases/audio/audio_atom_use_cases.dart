@@ -14,7 +14,7 @@ Widget buildAudioChannelStripStates(BuildContext context) {
   return CatalogFrame(
     width: 500,
     child: SizedBox(
-      height: 265,
+      height: 330,
       child: Row(
         children: <Widget>[
           Expanded(
@@ -303,7 +303,7 @@ Widget buildAudioMixerHeaderStates(BuildContext context) {
 Widget buildAudioMixerStage(BuildContext context) {
   return CatalogCanvas(
     child: SizedBox(
-      width: 336,
+      width: 354,
       child: AudioMixerStage(
         output: AudioFixtures.output,
         input: AudioFixtures.input,
@@ -383,3 +383,61 @@ void _ignoreInt(int _) {}
 void _ignoreVolume(AudioEndpointKind _, int _) {}
 
 void _ignoreMuted(AudioEndpointKind _, {required bool muted}) {}
+
+@UseCase(
+  name: 'Active device',
+  type: AudioOutputSelector,
+  path: '[Building blocks]/Audio',
+)
+Widget buildAudioOutputSelector(BuildContext context) => CatalogFrame(
+  width: 230,
+  child: AudioOutputSelector(
+    output: AudioFixtures.output,
+    description: 'Headphone / Line Out',
+    onPressed: _noop,
+  ),
+);
+
+@UseCase(
+  name: 'Output level',
+  type: AudioMeter,
+  path: '[Building blocks]/Audio',
+)
+Widget buildAudioMeter(BuildContext context) => const CatalogFrame(
+  width: 250,
+  child: AudioMeter(level: .23, accent: Color(0xFFC153FA)),
+);
+
+@UseCase(
+  name: 'Decibels',
+  type: AudioDecibelScale,
+  path: '[Building blocks]/Audio',
+)
+Widget buildAudioDecibelScale(BuildContext context) => const CatalogFrame(
+  width: 80,
+  child: SizedBox(height: 172, child: AudioDecibelScale()),
+);
+
+@UseCase(
+  name: 'Indigo glass',
+  type: AudioMixerSurface,
+  path: '[Building blocks]/Audio',
+)
+Widget buildAudioMixerSurface(BuildContext context) => const CatalogCanvas(
+  child: AudioMixerSurface(
+    borderRadius: BorderRadius.all(Radius.circular(17)),
+    child: SizedBox(
+      width: 250,
+      height: 140,
+      child: Center(child: Text('MIXER')),
+    ),
+  ),
+);
+
+@UseCase(
+  name: 'Fine rails',
+  type: AudioMixerIcon,
+  path: '[Building blocks]/Audio',
+)
+Widget buildAudioMixerIcon(BuildContext context) =>
+    const CatalogFrame(width: 100, child: Center(child: AudioMixerIcon()));

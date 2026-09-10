@@ -5,6 +5,7 @@ import 'package:hyprbaric/src/bindings/bindings.dart';
 import 'package:hyprbaric/src/features/audio/audio_panel.dart';
 
 const AudioStatus _status = AudioStatusAvailable(
+  outputs: AudioOutputsAvailable(devices: []),
   output: AudioEndpoint(
     id: 'out',
     name: 'EVO4 Analog Surround 4.0',
