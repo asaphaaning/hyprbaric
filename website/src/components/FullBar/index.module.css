@@ -1,5 +1,7 @@
 /* Sticky bar shell: a fixed strip in page flow that open menus may overflow.
-   The shell never grows, so expanding never shoves the page down. */
+   The shell never grows, so expanding never shoves the page down. It carries
+   no filter itself: backdrop filters must not nest, or the inner one
+   silently stops filtering. */
 .shell {
   height: var(--hypr-bar-height);
   overflow: visible;
@@ -7,6 +9,38 @@
   top: 0;
   z-index: 60;
 }
+
+/* The engine paints the bar translucent, the way the compositor sees it;
+   frosted glass has to come from the DOM side, because a canvas cannot
+   sample the page behind it. The strip frosts exactly the bar band; the
+   island frosts exactly the open menu. Plain siblings, never nested. */
+.strip,
+.frost {
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  pointer-events: none;
+  position: absolute;
+}
+
+.strip {
+  height: var(--hypr-bar-height);
+  left: 0;
+  right: 0;
+  top: 0;
+}
+
+/* Without backdrop-filter the translucent fills would turn the bar into
+   clear glass; fall back to solid dark instead, both under the strip and
+   behind open menus. */
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .strip,
+  .frost {
+    backdrop-filter: none;
+    background: #101216;
+    -webkit-backdrop-filter: none;
+  }
+}
+
 /* Collapsed the stage clips the frame to the strip; expanded it gives open
    menus room over the page. The switch is instant: animating the height would
    churn the engine view through every intermediate size. */
@@ -14,13 +48,6 @@
 .stageExpanded {
   overflow: hidden;
   position: relative;
-  /* The engine paints the bar translucent, the way the compositor sees it;
-     frosted glass has to come from the DOM side, because a canvas cannot
-     sample the page behind it. The filter sits on this plain wrapper rather
-     than the iframe itself, which replaced elements have historically
-     filtered unreliably. */
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
 }
 
 .stage {
@@ -30,17 +57,6 @@
 .stageExpanded {
   height: var(--hypr-bar-popup-height);
   overflow: visible;
-}
-
-/* Without backdrop-filter the translucent fills would turn the bar into
-   clear glass; fall back to the panels' own dark floor instead. */
-@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .stage,
-  .stageExpanded {
-    backdrop-filter: none;
-    background: #101216;
-    -webkit-backdrop-filter: none;
-  }
 }
 
 .frame {

@@ -115,6 +115,14 @@ class LayerShellRegionManager {
   LayerShellMenuRegion? _menu;
   Object? _menuOwner;
   bool _captureAllClicks = false;
+
+  /// The menu region currently reported by open dropdowns, if any.
+  ///
+  /// Tracked on every platform while delivery itself stays Linux-only, so
+  /// tests and embeds can observe overlay geometry without a compositor
+  /// behind them. Notifies only when the region actually changes.
+  final ValueNotifier<LayerShellMenuRegion?> menuRegion =
+      ValueNotifier<LayerShellMenuRegion?>(null);
   final Map<String, List<LayerShellMenuRegion>> _ownedRegions =
       <String, List<LayerShellMenuRegion>>{};
   bool _flushInProgress = false;
@@ -137,6 +145,7 @@ class LayerShellRegionManager {
     _menu = null;
     _menuOwner = null;
     _captureAllClicks = false;
+    menuRegion.value = null;
   }
 
   Future<void> updateRegion({
@@ -146,12 +155,12 @@ class LayerShellRegionManager {
     Object? owner,
     String debugLabel = 'layer-shell',
   }) async {
-    if (!_isLinux()) {
-      return;
-    }
-
     if (menuRect == null && _menuOwner != null && _menuOwner != owner) {
-      await _sendMergedRegion(debugLabel);
+      // Another dropdown owns the menu; a close from anyone else leaves that
+      // region alone and only refreshes delivery, which stays Linux-only.
+      if (_isLinux()) {
+        await _sendMergedRegion(debugLabel);
+      }
       return;
     }
 
@@ -163,6 +172,11 @@ class LayerShellRegionManager {
           );
     _menuOwner = menuRect == null ? null : owner;
     _captureAllClicks = captureAllClicks;
+    menuRegion.value = _menu;
+
+    if (!_isLinux()) {
+      return;
+    }
     await _sendMergedRegion(debugLabel);
   }
 

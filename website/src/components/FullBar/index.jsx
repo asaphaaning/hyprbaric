@@ -38,6 +38,7 @@ export default function FullBar() {
   );
   const [version, setVersion] = useState(null);
   const [ready, setReady] = useState(false);
+  const [frost, setFrost] = useState(null);
 
   useEffect(() => {
     const query = window.matchMedia('(min-width: 997px)');
@@ -79,7 +80,14 @@ export default function FullBar() {
     const onMessage = (event) => {
       if (event.origin !== window.location.origin) return;
       const data = event.data;
-      if (!data || data.source !== 'hyprbaric-bar' || typeof data.url !== 'string') return;
+      if (!data || typeof data !== 'object') return;
+
+      if (data.source === 'hyprbaric-bar-frost') {
+        setFrost(validFrost(data.rect) ? data.rect : null);
+        return;
+      }
+
+      if (data.source !== 'hyprbaric-bar' || typeof data.url !== 'string') return;
 
       try {
         const parsed = new URL(data.url, window.location.origin);
@@ -107,11 +115,26 @@ export default function FullBar() {
   // bar; collapsed the shell is a plain strip that never swallows page
   // clicks. Leave detection sits on the stage (which is tall while
   // expanded) so reaching into an open menu does not collapse it
-  // mid-gesture.
+  // mid-gesture. Frost lives on plain siblings under the canvas: backdrop
+  // filters must not nest, or the inner one silently stops filtering.
   return (
     <div
       className={styles.shell}
       onMouseEnter={() => setExpanded(true)}>
+      <div aria-hidden="true" className={styles.strip} />
+      {frost && expanded && (
+        <div
+          aria-hidden="true"
+          className={styles.frost}
+          style={{
+            left: frost.x,
+            top: frost.y,
+            width: frost.w,
+            height: frost.h,
+            borderRadius: frost.r.map((corner) => `${corner}px`).join(' '),
+          }}
+        />
+      )}
       <div
         className={expanded ? styles.stageExpanded : styles.stage}
         onMouseLeave={() => setExpanded(false)}>
@@ -128,4 +151,17 @@ export default function FullBar() {
       </div>
     </div>
   );
+}
+
+function validFrost(rect) {
+  return !!rect
+    && Number.isFinite(rect.x)
+    && Number.isFinite(rect.y)
+    && Number.isFinite(rect.w)
+    && Number.isFinite(rect.h)
+    && rect.w > 0
+    && rect.h > 0
+    && Array.isArray(rect.r)
+    && rect.r.length === 4
+    && rect.r.every(Number.isFinite);
 }
