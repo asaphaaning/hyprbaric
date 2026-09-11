@@ -69,24 +69,24 @@ class NetworkPasswordPrompt extends StatelessWidget {
             ),
           ],
         ),
-          child: Padding(
+        child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
           child: AnimatedSize(
-          duration: HyprMotion.popup,
-          curve: HyprMotion.popupCurve,
-          alignment: Alignment.topCenter,
-          child: connecting
-              ? _NetworkConnectingStatus(ssid: ssid)
-              : _NetworkPasswordForm(
-                  ssid: ssid,
-                  controller: controller,
-                  focusNode: focusNode,
-                  showPassword: showPassword,
-                  errorMessage: errorMessage,
-                  onToggleVisibility: onToggleVisibility,
-                  onCancel: onCancel,
-                  onSubmit: onSubmit,
-                ),
+            duration: HyprMotion.popup,
+            curve: HyprMotion.popupCurve,
+            alignment: Alignment.topCenter,
+            child: connecting
+                ? _NetworkConnectingStatus(ssid: ssid)
+                : _NetworkPasswordForm(
+                    ssid: ssid,
+                    controller: controller,
+                    focusNode: focusNode,
+                    showPassword: showPassword,
+                    errorMessage: errorMessage,
+                    onToggleVisibility: onToggleVisibility,
+                    onCancel: onCancel,
+                    onSubmit: onSubmit,
+                  ),
           ),
         ),
       ),
