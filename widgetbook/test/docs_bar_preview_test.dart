@@ -1,5 +1,5 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hyprbaric/src/native/layer_shell_api.g.dart';
 import 'package:hyprbaric/widget_catalog.dart';
@@ -127,8 +127,7 @@ void main() {
 
     expect(navigated, <String>['/hyprbaric/docs/intro']);
   });
-
-  testWidgets('the search entry routes to the search page', (
+  testWidgets('the search entry opens popular destinations', (
     WidgetTester tester,
   ) async {
     final List<String> navigated = <String>[];
@@ -139,9 +138,59 @@ void main() {
     );
 
     await tester.tap(find.text('Search the docs'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('POPULAR'), findsOneWidget);
+    await tester.tap(find.text('Get started'));
+    await tester.pump();
+
+    expect(navigated, <String>['/hyprbaric/docs/intro']);
+  });
+
+  testWidgets('a fruitless query offers the full search page', (
+    WidgetTester tester,
+  ) async {
+    final List<String> navigated = <String>[];
+
+    await _pumpBar(
+      tester,
+      DocsBarPreview(baseUrl: '/hyprbaric/', onNavigate: navigated.add),
+    );
+
+    // The index fetch needs a browser, so under test every query misses.
+    await tester.tap(find.text('Search the docs'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'hyprsunset');
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('No results for "hyprsunset"'), findsOneWidget);
+    await tester.tap(find.text('Open full search'));
     await tester.pump();
 
     expect(navigated, <String>['/hyprbaric/search']);
+  });
+
+  testWidgets('the clock opens a calendar that walks months', (
+    WidgetTester tester,
+  ) async {
+    await _pumpBar(tester, const DocsBarPreview());
+
+    await tester.tap(find.byType(ClockButton));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ClockPanel), findsOneWidget);
+    final String before = tester
+        .widget<ClockPanel>(find.byType(ClockPanel))
+        .status
+        .monthLabel;
+
+    await tester.tap(find.bySemanticsLabel('Next month'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<ClockPanel>(find.byType(ClockPanel)).status.monthLabel,
+      isNot(before),
+    );
   });
 
   testWidgets('the open menu region is reported for page frost', (
@@ -187,3 +236,4 @@ Future<void> _pumpBar(WidgetTester tester, Widget widget) async {
   await tester.pumpWidget(widget);
   await tester.pumpAndSettle();
 }
+

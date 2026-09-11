@@ -216,8 +216,8 @@ export 'src/hyprbaric.dart' show Hyprbaric;
 export 'src/layer_shell_hit_region.dart'
     show LayerShellMenuRegion, LayerShellRegionManager;
 export 'src/state/layer_shell.dart' show layerShellRegionManagerProvider;
-export 'src/state/monitor_workspace.dart' show MonitorWorkspaceResolution;
 export 'src/state/bar_config.dart' show BarConfig, barConfigProvider;
+export 'src/state/monitor_workspace.dart' show MonitorWorkspaceResolution;
 export 'src/state/rust_signals/app.dart' show appStatusProvider;
 export 'src/state/rust_signals/appearance.dart' show appearanceStatusProvider;
 export 'src/state/rust_signals/audio.dart'
@@ -253,6 +253,11 @@ export 'src/state/transient_overlays.dart' show OsdEvent, OsdKind, ToastEntry;
 export 'src/theme/hypr_palette.dart' show HyprPalette;
 export 'src/widgets/center_cluster.dart' show CenterCluster;
 export 'src/widgets/hypr_surface.dart';
+export 'src/widgets/layer_shell_dropdown.dart'
+    show
+        LayerShellDropdown,
+        LayerShellDropdownAnchor,
+        LayerShellDropdownController;
 export 'src/widgets/left_cluster.dart' show LeftCluster;
 export 'src/widgets/notification_panel.dart' show NotificationPanel;
 export 'src/widgets/notification_panel_parts.dart'

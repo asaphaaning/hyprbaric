@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hyprbaric/widget_catalog.dart';
@@ -5,6 +7,8 @@ import 'package:riverpod/misc.dart' show Override;
 
 import '../embed/embed_theme.dart';
 import '../use_cases/settings/settings_fixtures.dart';
+import 'docs_search.dart';
+import 'docs_search_fetcher.dart';
 
 /// Where one docs-bar navigation leads: a menu row, the title, or search.
 ///
@@ -311,7 +315,6 @@ class DocsBarPreview extends StatelessWidget {
     final ValueChanged<String>? onNavigate = this.onNavigate;
     final ValueChanged<LayerShellMenuRegion?>? onMenuRect = this.onMenuRect;
     final String home = DocsDestination.home.resolve(baseUrl);
-    final String search = DocsDestination.search.resolve(baseUrl);
 
     return ProviderScope(
       overrides: docsBarOverrides(
@@ -326,12 +329,11 @@ class DocsBarPreview extends StatelessWidget {
           body: Stack(
             children: <Widget>[
               _DocsSiteBar(
+                baseUrl: baseUrl,
                 onTitleTap: onNavigate == null
                     ? null
                     : () => onNavigate(home),
-                onSearch: onNavigate == null
-                    ? null
-                    : () => onNavigate(search),
+                onNavigate: onNavigate,
               ),
               if (onMenuRect != null)
                 _MenuFrostReporter(onMenuRect: onMenuRect),
@@ -379,10 +381,15 @@ Override _stream<T>(StreamProvider<T> provider, T value) {
 /// launcher and every control widget. The strip owns its workspace state
 /// locally so clicks stay live without a compositor behind them.
 class _DocsSiteBar extends ConsumerStatefulWidget {
-  const _DocsSiteBar({this.onTitleTap, this.onSearch});
+  const _DocsSiteBar({
+    required this.baseUrl,
+    this.onTitleTap,
+    this.onNavigate,
+  });
 
+  final String baseUrl;
   final VoidCallback? onTitleTap;
-  final VoidCallback? onSearch;
+  final ValueChanged<String>? onNavigate;
 
   @override
   ConsumerState<_DocsSiteBar> createState() => _DocsSiteBarState();
@@ -392,7 +399,34 @@ class _DocsSiteBarState extends ConsumerState<_DocsSiteBar> {
   static const double _centerClusterMaxWidth = 680;
   static const List<int> _occupiedWorkspaces = <int>[1, 4];
 
+  final LayerShellDropdownController _searchController =
+      LayerShellDropdownController();
+  final LayerShellDropdownController _clockController =
+      LayerShellDropdownController();
+
   int _activeWorkspace = 2;
+  DateTime _now = DateTime.now();
+  late final ValueNotifier<DateTime> _month;
+  Timer? _minuteTicker;
+
+  @override
+  void initState() {
+    super.initState();
+    final DateTime now = _now;
+    _month = ValueNotifier<DateTime>(DateTime(now.year, now.month));
+    _minuteTicker = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) {
+        setState(() => _now = DateTime.now());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _minuteTicker?.cancel();
+    _month.dispose();
+    super.dispose();
+  }
 
   List<int> get _occupiedWorkspaceIds =>
       <int>{..._occupiedWorkspaces, _activeWorkspace}.toList(growable: false)
@@ -400,6 +434,51 @@ class _DocsSiteBarState extends ConsumerState<_DocsSiteBar> {
 
   void _setActiveWorkspace(int workspace) {
     setState(() => _activeWorkspace = workspace < 1 ? 1 : workspace);
+  }
+
+  void _toggleSearch() {
+    if (_searchController.isOpen) {
+      _searchController.close();
+      return;
+    }
+    _clockController.close();
+    _searchController.open();
+  }
+
+  void _toggleClock() {
+    if (_clockController.isOpen) {
+      _clockController.close();
+      return;
+    }
+    _searchController.close();
+    _clockController.open();
+  }
+
+  void _onClockCommand(CalendarCommand command) {
+    final DateTime now = DateTime.now();
+    final DateTime month = _month.value;
+    setState(() => _now = now);
+    _month.value = switch (command) {
+      CalendarCommand.previousMonth =>
+        DateTime(month.year, month.month - 1),
+      CalendarCommand.nextMonth => DateTime(month.year, month.month + 1),
+      CalendarCommand.today => DateTime(now.year, now.month),
+    };
+  }
+
+  ClockViewState _clockViewFor(DateTime month) =>
+      ClockViewState.fromStatus(_buildClockStatus(month));
+
+  ClockStatus _buildClockStatus(DateTime month) {
+    final DateTime now = _now;
+    return ClockStatus(
+      timeLabel: '${_two(now.hour)}:${_two(now.minute)}',
+      dateLabel: '${_weekday3(now.weekday)}, ${_month3(now.month)} ${now.day}',
+      monthLabel: '${_monthName(month.month)} ${month.year}',
+      weekNumber: _isoWeekNumber(now),
+      utcOffset: _formatOffset(now.timeZoneOffset),
+      days: _monthGrid(month, now),
+    );
   }
 
   @override
@@ -494,7 +573,90 @@ class _DocsSiteBarState extends ConsumerState<_DocsSiteBar> {
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerRight,
-                      child: _SiteSearchButton(onPressed: widget.onSearch),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          LayerShellDropdown(
+                            controller: _searchController,
+                            menuRadius: HyprRadii.popoverRadius,
+                            menuWidth: 380,
+                            horizontalAnchor:
+                                LayerShellDropdownAnchor.right,
+                            buttonBuilder:
+                                (
+                                  BuildContext context,
+                                  LayerShellDropdownController controller, {
+                                  required bool isOpen,
+                                }) {
+                                  return _SiteSearchButton(
+                                    isOpen: isOpen,
+                                    onPressed: _toggleSearch,
+                                  );
+                                },
+                            menuBuilder:
+                                (
+                                  BuildContext context,
+                                  LayerShellDropdownController controller,
+                                ) {
+                                  return _SiteSearchPanel(
+                                    baseUrl: widget.baseUrl,
+                                    onNavigate: (String url) {
+                                      controller.close();
+                                      widget.onNavigate?.call(url);
+                                    },
+                                    onClose: controller.close,
+                                  );
+                                },
+                          ),
+                          const SizedBox(width: 4),
+                          LayerShellDropdown(
+                            controller: _clockController,
+                            menuRadius: BorderRadius.zero,
+                            buttonBuilder:
+                                (
+                                  BuildContext context,
+                                  LayerShellDropdownController controller, {
+                                  required bool isOpen,
+                                }) {
+                                  return ClockButton(
+                                    status: _clockViewFor(
+                                      _month.value,
+                                    ),
+                                    isOpen: isOpen,
+                                    onPressed: _toggleClock,
+                                  );
+                                },
+                            menuBuilder:
+                                (
+                                  BuildContext context,
+                                  LayerShellDropdownController controller,
+                                ) {
+                                  // The overlay entry builds
+                                  // once, so the panel follows the
+                                  // month through a listenable the way
+                                  // production panels follow providers.
+                                  return ValueListenableBuilder<DateTime>(
+                                    valueListenable: _month,
+                                    builder:
+                                        (
+                                          BuildContext context,
+                                          DateTime month,
+                                          Widget? child,
+                                        ) {
+                                          return ClockPanel(
+                                            status: _clockViewFor(
+                                              month,
+                                            ),
+                                            onCommand: _onClockCommand,
+                                            borderRadius:
+                                                HyprRadii.clockCardRadius,
+                                          );
+                                        },
+                                  );
+                                },
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -513,19 +675,18 @@ class _DocsSiteBarState extends ConsumerState<_DocsSiteBar> {
 /// where the plugin's real input lives. Kept quiet like the bar's other
 /// affordances, with a shortcut pill mirroring the navbar's hint.
 class _SiteSearchButton extends StatelessWidget {
-  const _SiteSearchButton({this.onPressed});
+  const _SiteSearchButton({required this.isOpen, required this.onPressed});
 
-  final VoidCallback? onPressed;
+  final bool isOpen;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    final bool enabled = onPressed != null;
-
     return HyprInteractionRegion(
       semanticLabel: 'Search the docs',
       onPressed: onPressed,
       builder: (BuildContext context, HyprInteractionState state) {
-        final bool lit = enabled && state.active;
+        final bool lit = isOpen || state.active;
 
         return AnimatedContainer(
           duration: const Duration(milliseconds: 140),
@@ -626,4 +787,453 @@ class _MenuFrostReporterState extends ConsumerState<_MenuFrostReporter> {
 
   @override
   Widget build(BuildContext context) => const SizedBox.shrink();
+}
+
+/// Documentation search: a field over locally ranked results.
+///
+/// The index is built from the docs at site build time and fetched next to
+/// the embed, so queries never leave the bar and need no page-JS bridge.
+/// An empty query shows curated entry points; Enter opens the first hit, or
+/// the full search page when there is none.
+class _SiteSearchPanel extends StatefulWidget {
+  const _SiteSearchPanel({
+    required this.baseUrl,
+    required this.onNavigate,
+    required this.onClose,
+  });
+
+  final String baseUrl;
+  final ValueChanged<String> onNavigate;
+  final VoidCallback onClose;
+
+  @override
+  State<_SiteSearchPanel> createState() => _SiteSearchPanelState();
+}
+
+class _SiteSearchPanelState extends State<_SiteSearchPanel> {
+  static const List<DocsDestination> _popular = <DocsDestination>[
+    DocsDestination.getStarted,
+    DocsDestination.installation,
+    DocsDestination.configuration,
+    DocsDestination.shortcuts,
+  ];
+
+  final TextEditingController _controller = TextEditingController();
+  final FocusNode _focus = FocusNode();
+  Timer? _debounce;
+  List<DocsSearchEntry>? _index;
+  List<DocsSearchEntry> _results = const <DocsSearchEntry>[];
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    // The follower renders its first frame offstage while unlinked, which
+    // swallows autofocus; requesting focus after layout lands it reliably.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _focus.requestFocus();
+      }
+    });
+    fetchDocsSearchIndex().then((List<DocsSearchEntry>? index) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _index = index ?? const <DocsSearchEntry>[];
+        _runQuery();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  void _onQueryChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 150), () {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _query = value.trim();
+        _runQuery();
+      });
+    });
+  }
+
+  void _runQuery() {
+    final List<DocsSearchEntry>? index = _index;
+    _results = _query.isEmpty || index == null
+        ? const <DocsSearchEntry>[]
+        : rankDocsResults(_query, index);
+  }
+
+  String _siteUrl(String target) {
+    final String baseUrl = widget.baseUrl;
+    final String root = baseUrl.endsWith('/')
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
+    return '$root$target';
+  }
+
+  void _open(String target) {
+    widget.onClose();
+    widget.onNavigate(_siteUrl(target));
+  }
+
+  void _openFirstOrSearch() {
+    final List<DocsSearchEntry> results = _results;
+    _open(results.isEmpty ? '/search' : results.first.url);
+  }
+
+  void _clear() {
+    _debounce?.cancel();
+    _controller.clear();
+    setState(() {
+      _query = '';
+      _results = const <DocsSearchEntry>[];
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String query = _query;
+    final bool searching = query.isNotEmpty;
+
+    return HyprPopoverPanel(
+      borderRadius: HyprRadii.popoverRadius,
+      constraints: const BoxConstraints(minWidth: 320, maxWidth: 380),
+      padding: const EdgeInsets.all(6),
+      child: SizedBox(
+        width: double.infinity,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            HyprTextFieldChrome(
+              focusNode: _focus,
+              child: Row(
+                children: <Widget>[
+                  Icon(
+                    Icons.search_rounded,
+                    size: 15,
+                    color: HyprColors.textFaint,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      focusNode: _focus,
+                      autofocus: true,
+                      onChanged: _onQueryChanged,
+                      onSubmitted: (_) => _openFirstOrSearch(),
+                      style: HyprTypography.barMono.copyWith(
+                        color: HyprColors.text,
+                      ),
+                      cursorColor: HyprColors.accent,
+                      decoration: InputDecoration.collapsed(
+                        hintText: 'Search the docs…',
+                        hintStyle: HyprTypography.barMono.copyWith(
+                          color: HyprColors.textFaint,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (searching)
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: _clear,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Text(
+                          'Esc',
+                          style: HyprTypography.globalMenuKey.copyWith(
+                            color: HyprColors.textFaint,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
+            if (!searching) ...<Widget>[
+              const _SearchCaption(label: 'Popular'),
+              for (final DocsDestination destination in _popular)
+                _SearchResultRow(
+                  title: destination.label,
+                  crumb: destination.target,
+                  onTap: () => _open(destination.target),
+                ),
+            ] else if (_index == null) ...<Widget>[
+              const _SearchNotice(label: 'Loading the index…'),
+            ] else if (_results.isEmpty) ...<Widget>[
+              _SearchNotice(label: 'No results for "$query"'),
+            ] else ...<Widget>[
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 320),
+                child: ListView(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.zero,
+                  children: <Widget>[
+                    for (final DocsSearchEntry hit in _results)
+                      _SearchResultRow(
+                        title: hit.title,
+                        crumb: hit.section,
+                        onTap: () => _open(hit.url),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+            _SearchFooter(onOpenSearch: () => _open('/search')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One search row: title over a muted crumb, lit on hover like menu rows.
+class _SearchResultRow extends StatelessWidget {
+  const _SearchResultRow({
+    required this.title,
+    required this.crumb,
+    required this.onTap,
+  });
+
+  final String title;
+  final String crumb;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return HyprInteractionRegion(
+      semanticLabel: title,
+      onPressed: onTap,
+      builder: (BuildContext context, HyprInteractionState state) {
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 90),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: state.active ? HyprColors.hover : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: HyprTypography.barStrong.copyWith(
+                  color: HyprColors.text,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                crumb,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: HyprTypography.compactMono.copyWith(
+                  color: HyprColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// A caption naming the rows beneath it, mirroring the menu groups.
+class _SearchCaption extends StatelessWidget {
+  const _SearchCaption({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+      child: Text(
+        label.toUpperCase(),
+        maxLines: 1,
+        style: HyprTypography.globalMenuGroup.copyWith(
+          color: HyprColors.textFaint,
+        ),
+      ),
+    );
+  }
+}
+
+/// A quiet line where rows would be: loading and empty states.
+class _SearchNotice extends StatelessWidget {
+  const _SearchNotice({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      child: Text(
+        label,
+        style: HyprTypography.globalMenuItem.copyWith(
+          color: HyprColors.textFaint,
+        ),
+      ),
+    );
+  }
+}
+
+/// The footer row leading to the full search page.
+class _SearchFooter extends StatelessWidget {
+  const _SearchFooter({required this.onOpenSearch});
+
+  final VoidCallback onOpenSearch;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+          child: ColoredBox(
+            color: HyprColors.popupStroke,
+            child: SizedBox(height: 1, width: double.infinity),
+          ),
+        ),
+        _SearchResultRow(
+          title: 'Open full search',
+          crumb: 'Every page, one list',
+          onTap: onOpenSearch,
+        ),
+      ],
+    );
+  }
+}
+
+const List<String> _weekdays3 = <String>[
+  'Mon',
+  'Tue',
+  'Wed',
+  'Thu',
+  'Fri',
+  'Sat',
+  'Sun',
+];
+
+const List<String> _months3 = <String>[
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+const List<String> _monthNames = <String>[
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+String _two(int value) => value.toString().padLeft(2, '0');
+
+String _weekday3(int weekday) => _weekdays3[(weekday - 1).clamp(0, 6)];
+
+String _month3(int month) => _months3[(month - 1).clamp(0, 11)];
+
+String _monthName(int month) => _monthNames[(month - 1).clamp(0, 11)];
+
+bool _isSameDay(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
+
+/// The ISO week number of [date]: the week holding its Thursday.
+int _isoWeekNumber(DateTime date) {
+  final DateTime thursday = date.add(Duration(days: 4 - date.weekday));
+  final DateTime yearStart = DateTime(thursday.year, 1, 1);
+  return (thursday.difference(yearStart).inDays ~/ 7) + 1;
+}
+
+String _formatOffset(Duration offset) {
+  final int minutes = offset.inMinutes;
+  final String sign = minutes < 0 ? '-' : '+';
+  final int absolute = minutes.abs();
+  return 'UTC$sign${_two(absolute ~/ 60)}:${_two(absolute % 60)}';
+}
+
+/// The Monday-first month grid the calendar panel renders, padded with the
+/// neighbouring months' edge days the way wall calendars do.
+List<CalendarDay> _monthGrid(DateTime month, DateTime now) {
+  final DateTime first = DateTime(month.year, month.month, 1);
+  final int leading = first.weekday - 1;
+  final int daysInMonth = DateTime(month.year, month.month + 1, 0).day;
+  final List<CalendarDay> days = <CalendarDay>[];
+
+  for (int back = leading; back > 0; back--) {
+    final DateTime day = first.subtract(Duration(days: back));
+    days.add(
+      CalendarDay(
+        year: day.year,
+        month: day.month,
+        day: day.day,
+        currentMonth: false,
+        today: _isSameDay(day, now),
+      ),
+    );
+  }
+  for (int day = 1; day <= daysInMonth; day++) {
+    final DateTime current = DateTime(month.year, month.month, day);
+    days.add(
+      CalendarDay(
+        year: current.year,
+        month: current.month,
+        day: day,
+        currentMonth: true,
+        today: _isSameDay(current, now),
+      ),
+    );
+  }
+  DateTime next = DateTime(month.year, month.month + 1, 1);
+  while (days.length % 7 != 0) {
+    days.add(
+      CalendarDay(
+        year: next.year,
+        month: next.month,
+        day: next.day,
+        currentMonth: false,
+        today: _isSameDay(next, now),
+      ),
+    );
+    next = next.add(const Duration(days: 1));
+  }
+  return days;
 }

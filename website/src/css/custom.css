@@ -807,6 +807,13 @@ html[data-theme] .hyprNavbar .hyprNavbarSearch [class*='dropdownMenu'] {
   --ifm-navbar-height: calc(3.875rem + var(--hypr-bar-height));
 }
 
+/* The classic header replaces the live bar on small screens and when the
+   engine misses its deadline; every offset above keys off the same variable
+   so one rule re-docks the whole page. */
+html.hypr-no-live-bar {
+  --hypr-bar-height: 0px;
+}
+
 .hyprNavbar {
   top: var(--hypr-bar-height);
 }

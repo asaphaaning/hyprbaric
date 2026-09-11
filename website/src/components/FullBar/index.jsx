@@ -24,33 +24,23 @@ function BarSkeleton() {
  * view exactly. The global menu carries documentation navigation, the
  * centered title goes home, and every other cluster keeps its catalog
  * behaviour. Menu activations arrive as postMessage events and route
- * client-side. Desktop only; smaller screens keep the classic navbar and
- * never pay for the engine.
+ * client-side.
+ *
+ * The navbar mounts this only where it belongs (desktop widths); it reports
+ * first paint through `onReady` so the navbar can retire its fallback. Until
+ * then a skeleton holds the strip.
  */
-export default function FullBar() {
+export default function FullBar({onReady}) {
   const history = useHistory();
   const siteRoot = useBaseUrl('/');
   const barPage = useBaseUrl('flutter/bar/index.html');
   const versionUrl = useBaseUrl('flutter/bar/version.json');
   const [expanded, setExpanded] = useState(false);
-  const [desktop, setDesktop] = useState(
-    () => typeof window === 'undefined' || window.matchMedia('(min-width: 997px)').matches,
-  );
   const [version, setVersion] = useState(null);
   const [ready, setReady] = useState(false);
   const [frost, setFrost] = useState(null);
 
   useEffect(() => {
-    const query = window.matchMedia('(min-width: 997px)');
-    const sync = () => setDesktop(query.matches);
-    sync();
-    query.addEventListener('change', sync);
-    return () => query.removeEventListener('change', sync);
-  }, []);
-
-  useEffect(() => {
-    if (!desktop) return undefined;
-
     let cancelled = false;
     const load = async () => {
       try {
@@ -72,15 +62,18 @@ export default function FullBar() {
       cancelled = true;
       if (interval) window.clearInterval(interval);
     };
-  }, [desktop, versionUrl]);
+  }, [versionUrl]);
 
   useEffect(() => {
-    if (!desktop) return undefined;
-
     const onMessage = (event) => {
       if (event.origin !== window.location.origin) return;
       const data = event.data;
       if (!data || typeof data !== 'object') return;
+
+      if (data.source === 'hyprbaric-bar-ready') {
+        onReady?.();
+        return;
+      }
 
       if (data.source === 'hyprbaric-bar-frost') {
         setFrost(validFrost(data.rect) ? data.rect : null);
@@ -103,9 +96,7 @@ export default function FullBar() {
 
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [desktop, history]);
-
-  if (!desktop) return null;
+  }, [history, onReady]);
 
   const src = version
     ? `${barPage}?view=bar&base=${encodeURIComponent(siteRoot)}&v=${version}`

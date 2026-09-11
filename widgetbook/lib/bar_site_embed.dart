@@ -28,6 +28,32 @@ void main() {
       onMenuRect: _postMenuRect,
     ),
   );
+  _reportReady();
+}
+
+/// Tells the host page the bar has painted, so it can retire its fallback.
+///
+/// Waits a few frames so async fixtures (menu headings, title) usually land
+/// before the host swaps chrome. Failures mean there is no host listening.
+void _reportReady() {
+  int frames = 0;
+
+  void tick(_) {
+    if (++frames < 3) {
+      WidgetsBinding.instance.addPostFrameCallback(tick);
+      return;
+    }
+    try {
+      _parentPostMessage(
+        <String, String>{'source': 'hyprbaric-bar-ready'}.jsify(),
+        '*'.toJS,
+      );
+    } catch (_) {
+      // No listening host: the bar itself is unaffected.
+    }
+  }
+
+  WidgetsBinding.instance.addPostFrameCallback(tick);
 }
 
 @JS('window.parent.postMessage')
