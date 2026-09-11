@@ -33,22 +33,70 @@ extension AudioStatusView on AudioStatus {
 /// housings come from [HyprColors] so the mixer reads as the same instrument as
 /// the rest of the bar.
 abstract final class AudioMixerColors {
-  static const Color deckTop = Color(0xFF242527);
-  static const Color deckMiddle = Color(0xFF202123);
-  static const Color deckBottom = Color(0xFF1C1D1F);
-  static const Color console = Color(0xF5090A0C);
-  static const Color rail = Color(0xFF0C0E11);
-  static const Color railBorder = Color(0x1CFFFFFF);
-  static const Color handle = Color(0xFF34363B);
-  static const Color handleBorder = Color(0xFF16181C);
-  static const Color accentBorder = HyprColors.accentSoft;
+  static const Color text = Color(0xFFF7F6FF);
+  static const Color secondary = Color(0xFFB8C4FF);
+  static const Color border = Color(0xFF7B86B0);
+  static const Color divider = Color(0x333A3E49);
 
-  /// Output channel identity. Doubles as the nominal band of its meter.
-  static const Color output = HyprColors.levelNominal;
+  /// A cool charcoal wash that distinguishes the deck without hiding the blur.
+  static const Color deckTop = Color(0x1C43464F);
+  static const Color deckMiddle = Color(0x24444854);
+  static const Color deckBottom = Color(0x1C393E49);
+  static const Color deckBorder = Color(0x30373D49);
+  static const Color console = Color(0x44101730);
+  static const Color rail = Color(0xFF080914);
+  static const Color railBorder = Color(0x333D3D54);
+  static const Color handle = Color(0xFF34364F);
+  static const Color handleBorder = Color(0xFF080A14);
+  static const Color accentBorder = Color(0xFFB8C4FF);
+  static const Color amber = Color(0xFFFFD24D);
 
-  /// Input channel identity, kept in the accent family so a glance separates
-  /// the two channels.
-  static const Color input = Color(0xFF00B8C9);
+  /// Output channel identity, shared by its fader and meter.
+  static const Color output = Color(0xFFC153FA);
+
+  /// Microphone channel identity.
+  static const Color input = Color(0xFFF55DF3);
+
+  /// Translucent charcoal with a restrained blue undertone over desktop blur.
+  static const LinearGradient glass = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: <Color>[Color(0xC914171E), Color(0xBC101218), Color(0xD00B0E13)],
+    stops: <double>[0, 0.55, 1],
+  );
+}
+
+/// Typography shared by the display and audio instruments.
+abstract final class AudioMixerText {
+  /// Compact uppercase instrument headings.
+  static const TextStyle label = TextStyle(
+    fontFamily: 'Inter',
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 1.1,
+    color: AudioMixerColors.text,
+    height: 1.25,
+  );
+
+  /// Device names, units, and scale legends.
+  static const TextStyle meta = TextStyle(
+    fontFamily: 'Roboto Condensed',
+    fontSize: 10.5,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.3,
+    color: AudioMixerColors.secondary,
+    height: 1.3,
+  );
+
+  /// Numeric values with the reference's condensed proportions.
+  static const TextStyle value = TextStyle(
+    fontFamily: 'Roboto Condensed',
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.3,
+    color: AudioMixerColors.text,
+    height: 1.3,
+  );
 }
 
 /// Decibels for a PipeWire or PulseAudio volume percentage.

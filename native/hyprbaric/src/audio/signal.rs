@@ -2,7 +2,39 @@
 
 use crate::signals;
 
-use super::{Command, Endpoint, EndpointKind, Report, Snapshot};
+use super::{Command, Endpoint, EndpointKind, OutputId, Outputs, Report, Snapshot};
+
+impl From<signals::AudioOutputId> for OutputId {
+    fn from(id: signals::AudioOutputId) -> Self {
+        Self(id.name)
+    }
+}
+
+impl From<&OutputId> for signals::AudioOutputId {
+    fn from(id: &OutputId) -> Self {
+        Self { name: id.0.clone() }
+    }
+}
+
+impl From<&Outputs> for signals::AudioOutputs {
+    fn from(outputs: &Outputs) -> Self {
+        match outputs {
+            Outputs::Available { devices, selected } => Self::Available {
+                devices: devices
+                    .iter()
+                    .map(|device| signals::AudioOutput {
+                        id: (&device.id).into(),
+                        name: device.name.clone(),
+                    })
+                    .collect(),
+                selected: selected.as_ref().map(Into::into),
+            },
+            Outputs::Unavailable { message } => Self::Unavailable {
+                message: message.clone(),
+            },
+        }
+    }
+}
 
 impl From<signals::AudioEndpointKind> for EndpointKind {
     fn from(kind: signals::AudioEndpointKind) -> Self {
@@ -25,7 +57,12 @@ impl From<EndpointKind> for signals::AudioEndpointKind {
 impl From<&Snapshot> for signals::AudioStatus {
     fn from(snapshot: &Snapshot) -> Self {
         match snapshot {
-            Snapshot::Available { output, input } => Self::Available {
+            Snapshot::Available {
+                output,
+                input,
+                outputs,
+            } => Self::Available {
+                outputs: outputs.into(),
                 output: output.as_ref().map(Into::into),
                 input: input.as_ref().map(Into::into),
             },
@@ -53,6 +90,7 @@ impl From<&Report> for signals::AudioCommandResult {
 impl From<&Command> for signals::AudioCommand {
     fn from(command: &Command) -> Self {
         match command {
+            Command::SelectOutput { id } => Self::SelectOutput { id: id.into() },
             Command::SetVolume { kind, volume } => Self::SetVolume {
                 kind: (*kind).into(),
                 volume: volume.as_u8(),

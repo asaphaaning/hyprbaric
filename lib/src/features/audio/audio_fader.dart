@@ -6,23 +6,23 @@ import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
 import 'audio_chrome.dart';
+import 'audio_meter.dart';
 
 /// Fixed geometry of one fader, shared by its painter and its hit testing.
 ///
 /// [handleCenterY] and [valueForY] are exact inverses. Deriving one without the
 /// other is what let a plain press on the handle move the value.
 abstract final class AudioFaderMetrics {
-  static const double width = 41;
-  static const double height = 152;
-  static const double meterWidth = 6;
-  static const double trackLeft = 15;
+  static const double width = 94;
+  static const double height = 172;
+  static const double meterWidth = 15;
+  static const double trackLeft = 59;
   static const double trackWidth = width - trackLeft;
-  static const double handleHeight = 15;
-  static const double slotWidth = 6;
+  static const double handleHeight = 23;
+  static const double slotWidth = 11;
   static const int meterSegments = 24;
 
-  static double _travel(double height) =>
-      math.max(0, height - handleHeight);
+  static double _travel(double height) => math.max(0, height - handleHeight);
 
   static double handleCenterY(double value, double height) =>
       handleHeight / 2 + (1 - value.clamp(0, 1)) * _travel(height);
@@ -92,10 +92,7 @@ class AudioFaderState extends State<AudioFader> {
     bool send = false,
     bool force = false,
   }) {
-    final double next = AudioFaderMetrics.valueForY(
-      position.dy,
-      size.height,
-    );
+    final double next = AudioFaderMetrics.valueForY(position.dy, size.height);
     final int volume = (next * 100).round();
     setState(() => _volume = volume.toDouble());
     widget.onPreviewVolume(volume);
@@ -114,9 +111,7 @@ class AudioFaderState extends State<AudioFader> {
   }
 
   void _nudge(int delta) {
-    setState(
-      () => _volume = (_volume + delta).clamp(0, 100).toDouble(),
-    );
+    setState(() => _volume = (_volume + delta).clamp(0, 100).toDouble());
     widget.onPreviewVolume(_volume.round());
     _sendVolume(force: true);
   }
@@ -143,17 +138,20 @@ class AudioFaderState extends State<AudioFader> {
               top: 0,
               bottom: 0,
               width: AudioFaderMetrics.meterWidth,
-              child: CustomPaint(
-                painter: HyprSegmentedMeterPainter(
-                  value: endpoint.muted ? 0 : (widget.meterLevel ?? _volume / 100),
-                  ramp: ramp,
-                  segments: AudioFaderMetrics.meterSegments,
-                  direction: HyprMeterDirection.bottomToTop,
-                  segmentRadius: 1.5,
-                  trackColor: AudioMixerColors.rail,
-                  trackBorderColor: AudioMixerColors.railBorder,
-                ),
+              child: AudioMeter(
+                level: endpoint.muted
+                    ? 0
+                    : (widget.meterLevel ?? _volume / 100),
+                accent: widget.accent,
+                direction: HyprMeterDirection.bottomToTop,
               ),
+            ),
+            const Positioned(
+              left: 26,
+              width: 27,
+              top: 3,
+              bottom: 5,
+              child: ExcludeSemantics(child: AudioDecibelScale()),
             ),
             Positioned(
               left: AudioFaderMetrics.trackLeft,
@@ -217,20 +215,11 @@ class _FaderTrack extends StatelessWidget {
           final Size size = constraints.biggest;
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTapDown: (TapDownDetails details) => onPreview(
-              details.localPosition,
-              size,
-              send: true,
-              force: true,
-            ),
+            onTapDown: (TapDownDetails details) =>
+                onPreview(details.localPosition, size, send: true, force: true),
             onVerticalDragStart: (DragStartDetails details) {
               onBegin();
-              onPreview(
-                details.localPosition,
-                size,
-                send: true,
-                force: true,
-              );
+              onPreview(details.localPosition, size, send: true, force: true);
             },
             onVerticalDragUpdate: (DragUpdateDetails details) =>
                 onPreview(details.localPosition, size, send: true),
@@ -270,17 +259,18 @@ class AudioDisabledFader extends StatelessWidget {
             top: 0,
             bottom: 0,
             width: AudioFaderMetrics.meterWidth,
-            child: CustomPaint(
-              painter: HyprSegmentedMeterPainter(
-                value: 0,
-                ramp: ramp,
-                segments: AudioFaderMetrics.meterSegments,
-                direction: HyprMeterDirection.bottomToTop,
-                segmentRadius: 1.5,
-                trackColor: AudioMixerColors.rail,
-                trackBorderColor: AudioMixerColors.railBorder,
-              ),
+            child: AudioMeter(
+              level: 0,
+              accent: accent,
+              direction: HyprMeterDirection.bottomToTop,
             ),
+          ),
+          const Positioned(
+            left: 26,
+            width: 27,
+            top: 3,
+            bottom: 5,
+            child: ExcludeSemantics(child: AudioDecibelScale()),
           ),
           Positioned(
             left: AudioFaderMetrics.trackLeft,
@@ -331,26 +321,38 @@ class AudioFaderPainter extends CustomPainter {
       height: track.height,
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(slot, const Radius.circular(3)),
+      RRect.fromRectAndRadius(slot, const Radius.circular(5.5)),
       Paint()
         ..shader = const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: <Color>[Color(0xFF15161A), Color(0xFF222329)],
+          colors: <Color>[Color(0xFF030504), Color(0xFF10110E)],
         ).createShader(slot),
+    );
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(slot.deflate(.4), const Radius.circular(5)),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = .7
+        ..color = const Color(0x665B5540),
     );
 
     final double handleCenterY = AudioFaderMetrics.handleCenterY(
       value,
       track.height,
     );
-    final Color levelColor = ramp.colorAt(value.clamp(0, 1));
+    final Color levelColor = Color.lerp(
+      ramp.nominal,
+      const Color(0xFFF520FF),
+      .45,
+    )!;
     if (!muted) {
       final Rect fill = Rect.fromLTRB(
-        slot.center.dx - 1,
+        slot.center.dx - .75,
         handleCenterY,
-        slot.center.dx + 1,
-        slot.bottom,
+        slot.center.dx + .75,
+        slot.bottom - 5,
       );
       canvas.drawRRect(
         RRect.fromRectAndRadius(fill, const Radius.circular(1)),
@@ -365,15 +367,36 @@ class AudioFaderPainter extends CustomPainter {
     );
     final RRect handle = RRect.fromRectAndRadius(
       handleRect,
-      const Radius.circular(3.5),
+      const Radius.circular(4),
+    );
+    canvas.drawRRect(
+      handle.shift(const Offset(0, 2)),
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.65)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
     );
     canvas.drawRRect(
       handle,
       Paint()
-        ..color = Colors.black.withValues(alpha: 0.42)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+        ..shader = const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[
+            Color(0xFF757A9C),
+            AudioMixerColors.handle,
+            Color(0xFF23263F),
+            Color(0xFF454861),
+          ],
+          stops: <double>[0, .22, .7, 1],
+        ).createShader(handleRect),
     );
-    canvas.drawRRect(handle, Paint()..color = AudioMixerColors.handle);
+    canvas.drawLine(
+      handleRect.topLeft.translate(4, 1),
+      handleRect.topRight.translate(-4, 1),
+      Paint()
+        ..color = const Color(0x667E85B0)
+        ..strokeWidth = .6,
+    );
     canvas.drawRRect(
       handle.deflate(0.5),
       Paint()
@@ -382,8 +405,19 @@ class AudioFaderPainter extends CustomPainter {
         ..color = emphasized ? highlight : AudioMixerColors.handleBorder,
     );
     canvas.drawRRect(
+      handle.deflate(1.2),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = .5
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: <Color>[Color(0x667E85B0), Color(0x001B1C2D)],
+        ).createShader(handleRect),
+    );
+    canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromCenter(center: handleRect.center, width: 20, height: 1),
+        Rect.fromCenter(center: handleRect.center, width: 18, height: 1.6),
         const Radius.circular(1.5),
       ),
       Paint()..color = muted ? HyprColors.textFaint : levelColor,

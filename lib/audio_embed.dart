@@ -8,6 +8,11 @@ export 'src/bindings/bindings.dart'
     show
         AudioEndpoint,
         AudioEndpointKind,
+        AudioOutput,
+        AudioOutputId,
+        AudioOutputs,
+        AudioOutputsAvailable,
+        AudioOutputsUnavailable,
         AudioStatus,
         AudioStatusAvailable,
         AudioStatusUnavailable,

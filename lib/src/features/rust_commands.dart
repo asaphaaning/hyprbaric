@@ -196,6 +196,9 @@ class _NetworkOpenSettingsIntent extends NetworkIntent {
 sealed class AudioIntent extends RustIntent {
   const AudioIntent();
 
+  const factory AudioIntent.selectOutput(AudioOutputId id) =
+      _AudioSelectOutputIntent;
+
   const factory AudioIntent.setVolume({
     required AudioEndpointKind kind,
     required int volume,
@@ -205,6 +208,18 @@ sealed class AudioIntent extends RustIntent {
     required AudioEndpointKind kind,
     required bool muted,
   }) = _AudioSetMutedIntent;
+}
+
+class _AudioSelectOutputIntent extends AudioIntent {
+  const _AudioSelectOutputIntent(this.id);
+
+  final AudioOutputId id;
+
+  @override
+  String get debugLabel => 'audio_select_output:${id.name}';
+
+  @override
+  void send() => AudioCommandSelectOutput(id: id).sendSignalToRust();
 }
 
 class _AudioSetVolumeIntent extends AudioIntent {

@@ -5,6 +5,7 @@ import 'package:widgetbook_annotation/widgetbook_annotation.dart';
 
 import '../../audio/audio_fixtures.dart';
 import '../../audio/audio_mixer_preview.dart';
+import '../../audio/audio_mixer_scene.dart';
 import '../../catalog/catalog_frame.dart';
 
 @UseCase(name: 'Ready', type: AudioPanel, path: '[Widgets]/Audio')
@@ -51,7 +52,7 @@ Widget buildUnavailableAudioPanel(BuildContext context) {
 
 @UseCase(name: 'Interactive', type: AudioPanel, path: '[Widgets]/Audio')
 Widget buildInteractiveAudioPanel(BuildContext context) {
-  return const CatalogCanvas(child: AudioMixerPreview());
+  return const CatalogCanvas(child: AudioMixerPreview(animateMeters: false));
 }
 
 class _AudioPanelStory extends StatelessWidget {
@@ -64,7 +65,7 @@ class _AudioPanelStory extends StatelessWidget {
   Widget build(BuildContext context) {
     return CatalogCanvas(
       child: AudioPanel(
-        borderRadius: const BorderRadius.all(Radius.circular(18)),
+        outputDescription: 'Headphone / Line Out',
         status: audio,
         brightnessStatus: brightness,
         onSetVolume: _ignoreVolume,
@@ -83,3 +84,7 @@ void _ignoreInt(int _) {}
 void _ignoreVolume(AudioEndpointKind _, int _) {}
 
 void _ignoreMuted(AudioEndpointKind _, {required bool muted}) {}
+
+@UseCase(name: 'Reference', type: AudioPanel, path: '[Widgets]/Audio')
+Widget buildReferenceAudioPanel(BuildContext context) =>
+    const AudioMixerScene();

@@ -15,6 +15,11 @@ export 'src/bindings/bindings.dart'
         AppearanceStatus,
         AudioEndpoint,
         AudioEndpointKind,
+        AudioOutput,
+        AudioOutputId,
+        AudioOutputs,
+        AudioOutputsAvailable,
+        AudioOutputsUnavailable,
         AudioStatus,
         AudioStatusAvailable,
         AudioStatusUnavailable,
@@ -132,9 +137,17 @@ export 'src/features/audio/audio_chrome.dart'
     show AudioMessage, audioDecibelReadout;
 export 'src/features/audio/audio_fader.dart'
     show AudioDisabledFader, AudioFader;
+export 'src/features/audio/audio_meter.dart' show AudioDecibelScale, AudioMeter;
 export 'src/features/audio/audio_meter_levels.dart' show AudioMeterLevels;
+export 'src/features/audio/audio_mixer_icon.dart' show AudioMixerIcon;
 export 'src/features/audio/audio_mixer_layout.dart'
-    show AudioMasterRail, AudioMixerFooter, AudioMixerHeader, AudioMixerStage;
+    show
+        AudioMasterRail,
+        AudioMixerFooter,
+        AudioMixerHeader,
+        AudioMixerStage,
+        AudioOutputSelector;
+export 'src/features/audio/audio_mixer_surface.dart' show AudioMixerSurface;
 export 'src/features/audio/audio_panel.dart' show AudioPanel;
 export 'src/features/audio/brightness_control.dart'
     show BrightnessControl, BrightnessControlPresentation;

@@ -70,16 +70,21 @@ class _AudioMixerPreviewState extends State<AudioMixerPreview>
         final AudioMeterDance dance = AudioMeterDance.sample(_meterClock.value);
         final AudioEndpoint? output = _audio.output;
         final AudioEndpoint? input = _audio.input;
-        final AudioMeterLevels levels = AudioMeterLevels(
-          output: dance.output * (output?.volume ?? 0) / 100,
-          input: dance.input * (input?.volume ?? 0) / 100,
-        );
+        final AudioMeterLevels levels = !widget.animateMeters
+            ? const AudioMeterLevels(output: .23, input: .86)
+            : AudioMeterLevels(
+                output: dance.output * (output?.volume ?? 0) / 100,
+                input: dance.input * (input?.volume ?? 0) / 100,
+              );
 
         return AudioPanel(
-          borderRadius: HyprRadii.popoverRadius,
+          outputDescription: output?.name == 'EVO4'
+              ? 'Headphone / Line Out'
+              : null,
           status: AudioFixtures.status(_audio),
           brightnessStatus: AudioFixtures.brightnessStatus(_brightness),
           meterLevels: levels,
+          onSelectOutput: _selectOutput,
           onSetVolume: _setVolume,
           onSetMuted: _setMuted,
           onSetBrightness: _setBrightness,
@@ -87,6 +92,23 @@ class _AudioMixerPreviewState extends State<AudioMixerPreview>
         );
       },
     );
+  }
+
+  void _selectOutput(AudioOutputId id) {
+    final choices = _audio.outputs as AudioOutputsAvailable;
+    final device = choices.devices.firstWhere((device) => device.id == id);
+    setState(() {
+      _audio = _audio.copyWith(
+        outputs: choices.copyWith(selected: () => id),
+        output: () => AudioEndpoint(
+          kind: AudioEndpointKind.output,
+          id: id.name,
+          name: device.name,
+          volume: _audio.output?.volume ?? 19,
+          muted: false,
+        ),
+      );
+    });
   }
 
   void _setVolume(AudioEndpointKind kind, int volume) {
@@ -195,6 +217,7 @@ AudioStatusAvailable _withEndpoint(
 }) {
   return switch (kind) {
     AudioEndpointKind.output => AudioStatusAvailable(
+      outputs: status.outputs,
       output: status.output == null
           ? null
           : AudioFixtures.updateEndpoint(
@@ -205,6 +228,7 @@ AudioStatusAvailable _withEndpoint(
       input: status.input,
     ),
     AudioEndpointKind.input => AudioStatusAvailable(
+      outputs: status.outputs,
       output: status.output,
       input: status.input == null
           ? null

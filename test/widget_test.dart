@@ -16,6 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hyprbaric/src/bindings/bindings.dart';
 import 'package:hyprbaric/src/features/audio/audio_fader.dart';
+import 'package:hyprbaric/src/features/audio/audio_mixer_layout.dart';
 import 'package:hyprbaric/src/features/audio/audio_panel.dart';
 import 'package:hyprbaric/src/features/audio/brightness_control.dart';
 import 'package:hyprbaric/src/features/controls/control_rocker.dart';
@@ -244,6 +245,19 @@ NetworkStatus _networkStatus({
 
 AudioStatus _audioStatus() {
   return const AudioStatusAvailable(
+    outputs: AudioOutputsAvailable(
+      selected: AudioOutputId(name: 'evo4'),
+      devices: <AudioOutput>[
+        AudioOutput(
+          id: AudioOutputId(name: 'evo4'),
+          name: 'EVO4',
+        ),
+        AudioOutput(
+          id: AudioOutputId(name: 'speakers'),
+          name: 'Built-in Speakers',
+        ),
+      ],
+    ),
     output: AudioEndpoint(
       kind: AudioEndpointKind.output,
       id: '117',
@@ -1134,6 +1148,7 @@ void main() {
               onConnectNetwork: (_, _) {},
               onOpenNetworkSettings: () {},
               onSetAudioVolume: (_, _) {},
+              onSelectAudioOutput: (_) {},
               onSetAudioMuted: (_, {required bool muted}) {},
               onSetBrightness: (_) {},
               onOpenAudioMixer: () {},
@@ -2933,6 +2948,91 @@ void main() {
     expect(find.text('Fiber_5G'), findsNothing);
   });
 
+  for (final double screenHeight in <double>[600, 1080]) {
+    testWidgets(
+      'bar mixer fits a $screenHeight screen and releases its native region',
+      (WidgetTester tester) async {
+        await tester.binding.setSurfaceSize(Size(1280, screenHeight));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        final List<Map<String, Object?>> regions = <Map<String, Object?>>[];
+        _setRegionMock((Object? message) {
+          regions.add(_regionPayloadFromMessage(message));
+          return _pigeonSuccess();
+        });
+        final _RecordingRustDispatcher dispatcher = _RecordingRustDispatcher();
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              rustCommandDispatcherProvider.overrideWithValue(dispatcher),
+              audioStatusProvider.overrideWith(
+                (ref) => Stream.value(_audioStatus()),
+              ),
+              brightnessStatusProvider.overrideWith(
+                (ref) => Stream.value(
+                  const BrightnessStatusAvailable(device: 'eDP-1', value: 80),
+                ),
+              ),
+            ],
+            child: const Hyprbaric(),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.bySemanticsLabel('Audio and display controls'));
+        await tester.pumpAndSettle();
+
+        final Finder panel = find.byType(AudioPanel);
+        final Rect bounds = tester.getRect(panel);
+        expect(bounds.width, closeTo(AudioPanel.width, .001));
+        expect(bounds.bottom, lessThanOrEqualTo(screenHeight - 8));
+        expect(
+          tester.widget<AudioPanel>(panel).borderRadius,
+          AudioPanel.radius,
+        );
+        expect(find.text('80%'), findsOneWidget);
+        expect(find.text('EVO4 Analog Surround 4.0'), findsOneWidget);
+
+        final Map<Object?, Object?> nativeRegion =
+            regions.last['menu']! as Map<Object?, Object?>;
+        expect(nativeRegion['w'], bounds.width.round());
+        expect(nativeRegion['h'], bounds.height.round());
+        expect(nativeRegion['r_tl'], AudioPanel.radius.topLeft.x);
+
+        await tester.tap(find.byType(AudioOutputSelector));
+        await tester.pumpAndSettle();
+        expect(tester.getRect(panel), bounds);
+        final Rect choiceBounds = tester.getRect(
+          find.text('Built-in Speakers'),
+        );
+        expect(bounds.contains(choiceBounds.center), isTrue);
+        await tester.tap(find.text('Built-in Speakers'));
+        await tester.pump();
+        expect(
+          dispatcher.intents.map((intent) => intent.debugLabel),
+          contains('audio_select_output:speakers'),
+        );
+        await tester.tap(find.byType(AudioOutputSelector));
+        await tester.pumpAndSettle();
+
+        final Finder openMixer = find.text('Pavucontrol');
+        await tester.ensureVisible(openMixer);
+        await tester.pumpAndSettle();
+        await tester.tap(openMixer);
+        await tester.pumpAndSettle();
+
+        expect(
+          dispatcher.intents.map((intent) => intent.debugLabel),
+          contains('app_launch:org.pulseaudio.pavucontrol.desktop'),
+        );
+        expect(panel, findsNothing);
+        expect(regions.last['menu'], isNull);
+        expect(regions.last['capture_all_clicks'], false);
+        expect(tester.takeException(), isNull);
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.linux),
+    );
+  }
+
   testWidgets('network panel renders typed snapshot data directly', (
     WidgetTester tester,
   ) async {
@@ -3171,9 +3271,9 @@ void main() {
     expect(find.text('MIC'), findsNWidgets(2));
     expect(find.text('EVO4 Analog Surround 4.0'), findsOneWidget);
     expect(find.text('MASTER'), findsOneWidget);
-    expect(find.text('PAVUCONTROL →'), findsOneWidget);
+    expect(find.text('Pavucontrol'), findsOneWidget);
     expect(find.text('Built-in Mic'), findsOneWidget);
-    expect(find.text('M'), findsNWidgets(2));
+    expect(find.text('Mute'), findsNWidgets(2));
     expect(
       find.bySemanticsLabel('EVO4 Analog Surround 4.0 volume'),
       findsOneWidget,
@@ -3181,12 +3281,13 @@ void main() {
     expect(find.bySemanticsLabel('Built-in Mic volume'), findsOneWidget);
     expect(find.text('pipewire'), findsNothing);
 
-    await tester.tap(find.text('PAVUCONTROL →'));
+    await tester.ensureVisible(find.text('Pavucontrol'));
+    await tester.tap(find.text('Pavucontrol'));
     await tester.pumpAndSettle();
 
     expect(
       dispatcher.intents.map((RustIntent intent) => intent.debugLabel),
-      contains('app_launch:pavucontrol.desktop'),
+      contains('app_launch:org.pulseaudio.pavucontrol.desktop'),
     );
     expect(find.text('MIXER'), findsNothing);
   });
@@ -3212,12 +3313,13 @@ void main() {
     await tester.pump();
 
     expect(find.text('MIXER'), findsOneWidget);
-    expect(find.text('DISPLAY 72%'), findsOneWidget);
+    expect(find.text('DISPLAY'), findsOneWidget);
+    expect(find.text('72%'), findsOneWidget);
     expect(find.text('OUT'), findsOneWidget);
     expect(find.text('MIC'), findsNWidgets(2));
     expect(find.text('MASTER'), findsOneWidget);
-    expect(find.text('PAVUCONTROL →'), findsOneWidget);
-    expect(tester.getSize(find.byType(AudioPanel)).width, 336);
+    expect(find.text('Pavucontrol'), findsOneWidget);
+    expect(tester.getSize(find.byType(AudioPanel)).width, 354);
   });
 
   testWidgets('brightness control renders available and unavailable states', (

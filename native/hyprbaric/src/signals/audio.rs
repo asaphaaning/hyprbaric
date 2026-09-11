@@ -13,6 +13,10 @@ pub enum AudioEndpointKind {
 /// reports do not need nullable side fields.
 #[derive(Serialize, Deserialize, DartSignal, SignalPiece, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum AudioCommand {
+    /// Select the default playback device by stable PipeWire identity.
+    SelectOutput {
+        id: AudioOutputId,
+    },
     SetVolume {
         kind: AudioEndpointKind,
         volume: u8,
@@ -21,6 +25,34 @@ pub enum AudioCommand {
         kind: AudioEndpointKind,
         muted: bool,
     },
+}
+
+/// Stable PipeWire node name; numeric node ids are resolved by Rust.
+#[derive(Serialize, Deserialize, SignalPiece, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct AudioOutputId {
+    /// PipeWire's unique node name.
+    pub name: String,
+}
+
+/// A selectable playback device.
+#[derive(Serialize, Deserialize, SignalPiece, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct AudioOutput {
+    /// Stable device identity.
+    pub id: AudioOutputId,
+    /// Human-facing device description.
+    pub name: String,
+}
+
+/// Output discovery is independent of volume and mute availability.
+#[derive(Serialize, Deserialize, SignalPiece, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum AudioOutputs {
+    /// Available devices and the currently selected default.
+    Available {
+        devices: Vec<AudioOutput>,
+        selected: Option<AudioOutputId>,
+    },
+    /// User-facing discovery failure.
+    Unavailable { message: String },
 }
 
 #[derive(Serialize, Deserialize, SignalPiece, Clone, Debug, PartialEq, Eq, Hash)]
@@ -36,6 +68,7 @@ pub struct AudioEndpoint {
 #[derive(Serialize, RustSignal)]
 pub enum AudioStatus {
     Available {
+        outputs: AudioOutputs,
         output: Option<AudioEndpoint>,
         input: Option<AudioEndpoint>,
     },

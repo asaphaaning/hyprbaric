@@ -20,6 +20,13 @@ class AudioController extends _$AudioController {
   @override
   void build() {}
 
+  /// Changes playback routing; the confirmed endpoint arrives from Rust.
+  void selectOutput(AudioOutputId id) {
+    ref
+        .read(rustCommandDispatcherProvider)
+        .dispatch(AudioIntent.selectOutput(id));
+  }
+
   void setVolume(AudioEndpointKind kind, int volume) {
     final int clampedVolume = volume.clamp(0, 100).toInt();
     if (kind == AudioEndpointKind.output) {
