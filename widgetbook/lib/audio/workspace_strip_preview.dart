@@ -32,7 +32,8 @@ class _WorkspaceStripPreviewState extends State<WorkspaceStripPreview> {
   /// focusing one occupies it. Folding the active id in keeps the preview from
   /// rendering a state the real bar cannot produce.
   List<int> get _occupiedWorkspaceIds {
-    return <int>{..._occupied, _activeWorkspace}.toList(growable: false)..sort();
+    return <int>{..._occupied, _activeWorkspace}.toList(growable: false)
+      ..sort();
   }
 
   @override

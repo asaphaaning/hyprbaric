@@ -152,7 +152,7 @@ class NetworkEntryTileState extends State<NetworkEntryTile> {
               errorMessage: widget.errorMessage,
               onToggleVisibility: widget.onTogglePasswordVisibility,
               onCancel: widget.onCancel,
-               onSubmit: widget.onSubmit,
+              onSubmit: widget.onSubmit,
             ),
         ],
       ),
@@ -231,6 +231,7 @@ class _NetworkSecurityBadge extends StatelessWidget {
     );
   }
 }
+
 class _NetworkActionBadge extends StatelessWidget {
   const _NetworkActionBadge({required this.label});
 

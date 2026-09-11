@@ -186,11 +186,7 @@ class _BatteryChargeMeterPainter extends CustomPainter {
     }
 
     final int charge = percentage.clamp(0, 100);
-    for (
-      int index = 0;
-      index < BatteryMeterGeometry.segmentCount;
-      index += 1
-    ) {
+    for (int index = 0; index < BatteryMeterGeometry.segmentCount; index += 1) {
       final double threshold =
           (index + 1) / BatteryMeterGeometry.segmentCount * 100;
       final bool lit = active && threshold <= charge;

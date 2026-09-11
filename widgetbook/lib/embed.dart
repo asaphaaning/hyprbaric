@@ -83,9 +83,7 @@ class _Configuration {
     final LandingPreview? resolved = preview;
     callback.callAsFunction(
       null,
-      resolved == null
-          ? 'Unknown preview requested'.toJS
-          : null,
+      resolved == null ? 'Unknown preview requested'.toJS : null,
     );
   }
 }

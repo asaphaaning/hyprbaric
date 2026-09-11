@@ -329,9 +329,7 @@ class OsdSegment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color fill = active || peak
-        ? color
-        : HyprColors.levelSlot;
+    final Color fill = active || peak ? color : HyprColors.levelSlot;
     return AnimatedContainer(
       duration: HyprDurations.osdPeakTick,
       curve: Curves.linear,
