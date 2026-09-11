@@ -31,8 +31,10 @@ void main() {
   });
 
   test('the nominal gap survives at the meter\'s shipping width', () {
-    expect(BatteryMeterGeometry.forWidth(294).gap,
-        BatteryMeterGeometry.nominalGap);
+    expect(
+      BatteryMeterGeometry.forWidth(294).gap,
+      BatteryMeterGeometry.nominalGap,
+    );
   });
 
   test('the charge ramp is shared rather than restated per widget', () {
