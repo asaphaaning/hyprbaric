@@ -31,7 +31,10 @@ void main() {
       await tester.pumpWidget(_fader(volume, sent));
       await tester.pump();
       final Rect box = tester.getRect(find.byType(AudioFader));
-      final double y = AudioFaderMetrics.handleCenterY(volume / 100, box.height);
+      final double y = AudioFaderMetrics.handleCenterY(
+        volume / 100,
+        box.height,
+      );
       await tester.tapAt(Offset(box.left + 28, box.top + y));
       await tester.pump();
       expect(sent, isEmpty, reason: 'press at $volume moved the value: $sent');

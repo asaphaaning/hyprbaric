@@ -41,7 +41,7 @@ final class AudioControllerProvider
   }
 }
 
-String _$audioControllerHash() => r'31d4c3f51391ab300c5eb570e5fb6d5c4fe81300';
+String _$audioControllerHash() => r'ac7808d96eee4369e346d8a9bab256f36c94138a';
 
 abstract class _$AudioController extends $Notifier<void> {
   void build();
