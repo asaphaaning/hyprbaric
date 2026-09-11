@@ -81,6 +81,9 @@ void main() {
   });
 
   test('previews render at the shipping popover radius', () {
-    expect(HyprRadii.popoverRadius, const BorderRadius.all(Radius.circular(18)));
+    expect(
+      HyprRadii.popoverRadius,
+      const BorderRadius.all(Radius.circular(18)),
+    );
   });
 }

@@ -132,46 +132,46 @@ class _HyprInteractiveTileState extends State<HyprInteractiveTile> {
     final Widget tile = _withDisabledOpacity(
       state,
       MouseRegion(
-      cursor: _interactive ? widget.cursor : MouseCursor.defer,
-      onEnter: _interactive ? (_) => _setHovered(true) : null,
-      onExit: _interactive
-          ? (_) {
-              _setHovered(false);
-              _setPressed(false);
-            }
-          : null,
-      child: GestureDetector(
-        behavior: widget.behavior,
-        onTap: _interactive ? widget.onPressed : null,
-        onTapDown: _interactive ? (_) => _setPressed(true) : null,
-        onTapCancel: _interactive ? () => _setPressed(false) : null,
-        onTapUp: _interactive ? (_) => _setPressed(false) : null,
-        child: AnimatedScale(
-          scale:
-              widget.scaleBuilder?.call(state) ??
-              (state.pressed ? widget.pressedScale : 1),
-          duration: state.pressed ? widget.pressedDuration : widget.duration,
-          curve: state.pressed ? widget.pressedCurve : widget.curve,
-          child: AnimatedContainer(
-            width: widget.width,
-            height: widget.height,
-            constraints: widget.constraints,
-            duration: widget.duration,
-            curve: widget.curve,
-            padding: widget.padding,
-            decoration: ShapeDecoration(
-              color: _fillColor(state),
-              shadows: widget.shadowsBuilder?.call(state),
-              shape: RoundedSuperellipseBorder(
-                borderRadius: widget.borderRadius,
-                side: BorderSide(color: _borderColor(state)),
+        cursor: _interactive ? widget.cursor : MouseCursor.defer,
+        onEnter: _interactive ? (_) => _setHovered(true) : null,
+        onExit: _interactive
+            ? (_) {
+                _setHovered(false);
+                _setPressed(false);
+              }
+            : null,
+        child: GestureDetector(
+          behavior: widget.behavior,
+          onTap: _interactive ? widget.onPressed : null,
+          onTapDown: _interactive ? (_) => _setPressed(true) : null,
+          onTapCancel: _interactive ? () => _setPressed(false) : null,
+          onTapUp: _interactive ? (_) => _setPressed(false) : null,
+          child: AnimatedScale(
+            scale:
+                widget.scaleBuilder?.call(state) ??
+                (state.pressed ? widget.pressedScale : 1),
+            duration: state.pressed ? widget.pressedDuration : widget.duration,
+            curve: state.pressed ? widget.pressedCurve : widget.curve,
+            child: AnimatedContainer(
+              width: widget.width,
+              height: widget.height,
+              constraints: widget.constraints,
+              duration: widget.duration,
+              curve: widget.curve,
+              padding: widget.padding,
+              decoration: ShapeDecoration(
+                color: _fillColor(state),
+                shadows: widget.shadowsBuilder?.call(state),
+                shape: RoundedSuperellipseBorder(
+                  borderRadius: widget.borderRadius,
+                  side: BorderSide(color: _borderColor(state)),
+                ),
               ),
+              clipBehavior: widget.clipBehavior,
+              child: widget.builder(context, state),
             ),
-            clipBehavior: widget.clipBehavior,
-            child: widget.builder(context, state),
           ),
         ),
-      ),
       ),
     );
 
