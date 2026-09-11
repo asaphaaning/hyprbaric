@@ -1,7 +1,6 @@
 import 'dart:js_interop';
 
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/widgets.dart';
 import 'package:hyprbaric/widget_catalog.dart';
 
 import 'audio/docs_bar_preview.dart';
@@ -17,28 +16,16 @@ import 'audio/docs_bar_preview.dart';
 ///
 /// The host page loads `flutter/bar/index.html?base=<site-root>` and listens
 /// for `{source: 'hyprbaric-bar', url}` messages to route client-side. Open
-/// menu geometry is reported as `{source: 'hyprbaric-bar-frost', rect}`
-/// messages so the page can frost exactly the popup area instead of a whole
-/// layer.
+/// menu geometry arrives as `{source: 'hyprbaric-bar-frost', rect}` messages
+/// so the page can frost exactly the popup area instead of a whole layer.
 void main() {
   final String baseUrl = Uri.base.queryParameters['base'] ?? '/';
-  final String home = DocsDestination.home.resolve(baseUrl);
 
   runApp(
-    ProviderScope(
-      overrides: docsBarOverrides(
-        baseUrl: baseUrl,
-        onNavigate: _postNavigate,
-      ),
-      // Above the MaterialApp Hyprbaric builds, so this alignment must not
-      // need a Directionality.
-      child: Stack(
-        alignment: Alignment.topLeft,
-        children: [
-          Hyprbaric(onTitleTap: () => _postNavigate(home)),
-          const _MenuFrostReporter(),
-        ],
-      ),
+    DocsBarPreview(
+      baseUrl: baseUrl,
+      onNavigate: _postNavigate,
+      onMenuRect: _postMenuRect,
     ),
   );
 }
@@ -61,49 +48,10 @@ void _postNavigate(String url) {
   }
 }
 
-/// Forwards the open menu region to the hosting page for its frost island.
-///
-/// The dropdowns already measure this rect for the native input region; the
-/// site embed reuses the same geometry so the page can blur exactly the
-/// popup area. Reports null when no menu is open so the island hides.
-class _MenuFrostReporter extends ConsumerStatefulWidget {
-  const _MenuFrostReporter();
+void _postMenuRect(LayerShellMenuRegion? region) {
+  final Rect? rect = region?.rect;
+  final BorderRadius? radius = region?.radius;
 
-  @override
-  ConsumerState<_MenuFrostReporter> createState() => _MenuFrostReporterState();
-}
-
-class _MenuFrostReporterState extends ConsumerState<_MenuFrostReporter> {
-  VoidCallback? _detach;
-
-  @override
-  void initState() {
-    super.initState();
-    final LayerShellRegionManager manager = ref.read(
-      layerShellRegionManagerProvider,
-    );
-
-    void report() {
-      final LayerShellMenuRegion? region = manager.menuRegion.value;
-      _postMenuRect(region?.rect, region?.radius);
-    }
-
-    manager.menuRegion.addListener(report);
-    _detach = () => manager.menuRegion.removeListener(report);
-    report();
-  }
-
-  @override
-  void dispose() {
-    _detach?.call();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => const SizedBox.shrink();
-}
-
-void _postMenuRect(Rect? rect, BorderRadius? radius) {
   try {
     _parentPostMessage(
       <String, Object?>{

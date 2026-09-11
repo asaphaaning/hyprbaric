@@ -628,6 +628,12 @@ html[data-theme] .hyprNavbar .hyprNavbarSearch [class*='dropdownMenu'] {
   .hyprNavbarNav .hyprNavbarTab:nth-child(4) { display: none; }
 }
 
+@media (min-width: 997px) {
+  /* Search lives in the live bar on desktop; the navbar keeps its box only
+     for small screens, where the bar unmounts. */
+  .hyprNavbarSearch { display: none; }
+}
+
 @media (max-width: 996px) {
   .hyprNavbarInner { padding: 0 20px; }
   .hyprNavbarNav { display: none; }

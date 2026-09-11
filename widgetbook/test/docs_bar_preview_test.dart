@@ -66,6 +66,35 @@ void main() {
     expect(find.text('Hyprbaric'), findsOneWidget);
   });
 
+  testWidgets('the workspace strip keeps a few indicators', (
+    WidgetTester tester,
+  ) async {
+    await _pumpBar(tester, const DocsBarPreview());
+
+    for (final int id in <int>[1, 2, 3, 4, 5]) {
+      expect(
+        find.byKey(ValueKey<String>('workspace-indicator-$id')),
+        findsOneWidget,
+      );
+    }
+    expect(
+      find.byKey(const ValueKey<String>('workspace-indicator-6')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('selecting a workspace moves the active indicator', (
+    WidgetTester tester,
+  ) async {
+    await _pumpBar(tester, const DocsBarPreview());
+
+    await tester.tap(find.text('IV'));
+    await tester.pump();
+
+    // The strip recenters its window on the new active workspace.
+    expect(find.text('VI'), findsOneWidget);
+  });
+
   testWidgets('the centered title navigates home', (WidgetTester tester) async {
     final List<String> navigated = <String>[];
 
@@ -97,6 +126,50 @@ void main() {
     await tester.pump();
 
     expect(navigated, <String>['/hyprbaric/docs/intro']);
+  });
+
+  testWidgets('the search entry routes to the search page', (
+    WidgetTester tester,
+  ) async {
+    final List<String> navigated = <String>[];
+
+    await _pumpBar(
+      tester,
+      DocsBarPreview(baseUrl: '/hyprbaric/', onNavigate: navigated.add),
+    );
+
+    await tester.tap(find.text('Search the docs'));
+    await tester.pump();
+
+    expect(navigated, <String>['/hyprbaric/search']);
+  });
+
+  testWidgets('the open menu region is reported for page frost', (
+    WidgetTester tester,
+  ) async {
+    final List<LayerShellMenuRegion?> regions = <LayerShellMenuRegion?>[];
+
+    await _pumpBar(
+      tester,
+      DocsBarPreview(baseUrl: '/hyprbaric/', onMenuRect: regions.add),
+    );
+    await tester.pumpAndSettle();
+
+    // Closed bar, so the last report carries no region.
+    expect(regions.last, isNull);
+
+    await tester.tap(find.text('Docs'));
+    await tester.pumpAndSettle();
+
+    final LayerShellMenuRegion? open = regions.last;
+    expect(open, isNotNull);
+    expect(open!.rect.width, greaterThan(200));
+    expect(open.rect.height, greaterThan(200));
+
+    await tester.tap(find.text('Docs'));
+    await tester.pumpAndSettle();
+
+    expect(regions.last, isNull);
   });
 }
 
