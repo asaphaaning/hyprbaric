@@ -107,7 +107,7 @@ class BrightnessKnobState extends State<BrightnessKnob> {
   Widget build(BuildContext context) {
     final double knobDimension = switch (widget.presentation) {
       BrightnessKnobPresentation.labeled => 76,
-      BrightnessKnobPresentation.console => 104,
+      BrightnessKnobPresentation.console => 112,
     };
     final double target = widget.value / 100;
     final Widget knob = RepaintBoundary(

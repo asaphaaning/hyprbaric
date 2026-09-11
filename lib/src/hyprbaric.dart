@@ -551,7 +551,9 @@ class _BarViewState extends ConsumerState<_BarView> {
   void _openAudioMixer() {
     ref
         .read(rustCommandDispatcherProvider)
-        .dispatch(const LauncherIntent.launch('pavucontrol.desktop'));
+        .dispatch(
+          const LauncherIntent.launch('org.pulseaudio.pavucontrol.desktop'),
+        );
   }
 
   void _setPowerProfile(PowerProfile profile) {
@@ -741,6 +743,9 @@ class _BarViewState extends ConsumerState<_BarView> {
                             onOpenNetworkSettings: _openNetworkSettings,
                             onSetAudioVolume: _setAudioVolume,
                             onSetAudioMuted: _setAudioMuted,
+                            onSelectAudioOutput: ref
+                                .read(audioControllerProvider.notifier)
+                                .selectOutput,
                             onSetBrightness: _setBrightnessFromPanel,
                             onOpenAudioMixer: _openAudioMixer,
                             onSetPowerProfile: _setPowerProfile,

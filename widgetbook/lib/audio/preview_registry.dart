@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:hyprbaric/widget_catalog.dart';
 
 import 'audio_mixer_preview.dart';
 import 'controls_panel_preview.dart';
@@ -13,7 +14,7 @@ import 'workspace_strip_preview.dart';
 /// keeps the matching list of skeletons, and `preview_registry_test.dart`
 /// asserts the two agree, so a rename cannot silently fall back to the mixer.
 enum LandingPreview {
-  mixer(name: 'mixer', width: 336),
+  mixer(name: 'mixer', width: AudioPanel.width),
   controls(name: 'controls', width: 432),
   network(name: 'network', width: 340),
   power(name: 'power', width: 320),

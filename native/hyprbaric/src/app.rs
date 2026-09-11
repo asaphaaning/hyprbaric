@@ -249,6 +249,9 @@ impl App {
             }
             Command::Audio(command) => {
                 match command {
+                    audio::Command::SelectOutput { id } => {
+                        self.components.audio().select_output(id).await;
+                    }
                     audio::Command::SetVolume { kind, volume } => {
                         self.components.audio().set_volume(kind, volume).await;
                     }

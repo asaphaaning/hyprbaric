@@ -1,58 +1,134 @@
 import 'package:flutter/material.dart';
 
 import '../../bindings/bindings.dart';
-import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
 import 'audio_channel_strip.dart';
 import 'audio_chrome.dart';
+import 'audio_meter.dart';
 import 'audio_meter_levels.dart';
+import 'audio_mixer_icon.dart';
 import 'brightness_control.dart';
 
-/// Mixer title and the currently selected output endpoint.
+/// Mixer title and the active output device selector.
 class AudioMixerHeader extends StatelessWidget {
-  const AudioMixerHeader({super.key, required this.output});
+  const AudioMixerHeader({
+    super.key,
+    required this.output,
+    this.description,
+    this.onSelectOutput,
+    this.expanded = false,
+  });
 
   final AudioEndpoint? output;
+  final String? description;
+  final VoidCallback? onSelectOutput;
+  final bool expanded;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        HyprSpacing.roomy,
-        HyprSpacing.xxl + HyprSpacing.hairline,
-        HyprSpacing.roomy,
-        HyprSpacing.xxl,
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 19, 13, 9),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AudioMixerColors.divider)),
       ),
-      child: HyprPanelHeader(
-        title: 'MIXER',
-        titleStyle: HyprTypography.mixerLegend,
-        trailing: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 176),
-          child: HyprWell(
-            height: 26,
-            padding: const EdgeInsets.symmetric(
-              horizontal: HyprSpacing.lg + HyprSpacing.xs,
-            ),
-            borderColor: const Color(0x52000000),
-            shadowColor: const Color(0x80000000),
-            child: Text(
-              output?.name ?? 'No output device',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: HyprTypography.mixerMeta.copyWith(
-                color: output == null
-                    ? HyprColors.textFaint
-                    : const Color(0xFFD1EEF0),
-              ),
+      child: Row(
+        children: <Widget>[
+          const AudioMixerIcon(),
+          const SizedBox(width: 11),
+          Text(
+            'MIXER',
+            style: AudioMixerText.label.copyWith(
+              fontSize: 13,
+              letterSpacing: 1.7,
+              color: AudioMixerColors.secondary,
             ),
           ),
+          const SizedBox(width: 60),
+          Expanded(
+            child: AudioOutputSelector(
+              output: output,
+              description: description,
+              onPressed: onSelectOutput,
+              expanded: expanded,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Reusable two-line endpoint well. Device selection belongs to the host.
+class AudioOutputSelector extends StatelessWidget {
+  const AudioOutputSelector({
+    super.key,
+    required this.output,
+    this.description,
+    this.onPressed,
+    this.expanded = false,
+  });
+
+  final AudioEndpoint? output;
+  final String? description;
+  final VoidCallback? onPressed;
+  final bool expanded;
+
+  @override
+  Widget build(BuildContext context) {
+    return HyprInteractiveTile(
+      semanticLabel: 'Select output device',
+      onPressed: onPressed,
+      borderRadius: BorderRadius.circular(7),
+      color: const Color(0xAA090C12),
+      borderColor: const Color(0x22333742),
+      builder: (context, state) => Padding(
+        padding: const EdgeInsets.fromLTRB(28, 5, 8, 5),
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    output?.name ?? 'No output device',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AudioMixerText.meta.copyWith(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: AudioMixerColors.text,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    output == null
+                        ? 'No device connected'
+                        : (description ?? 'Output device'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AudioMixerText.meta.copyWith(fontSize: 9.5),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 5),
+            Icon(
+              expanded
+                  ? Icons.keyboard_arrow_up_rounded
+                  : Icons.keyboard_arrow_down_rounded,
+              size: 21,
+              color: AudioMixerColors.secondary,
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-/// Layered brightness deck and two-channel audio console.
+/// Brightness deck above two independently controlled channel strips.
 class AudioMixerStage extends StatelessWidget {
   const AudioMixerStage({
     super.key,
@@ -63,9 +139,6 @@ class AudioMixerStage extends StatelessWidget {
     required this.onSetVolume,
     required this.onSetMuted,
     required this.onSetBrightness,
-
-    /// Live signal levels for the channel ladders and master rail. Null in
-    /// the bar, where every meter follows its endpoint volume.
     this.meterLevels,
   });
 
@@ -78,84 +151,56 @@ class AudioMixerStage extends StatelessWidget {
   final ValueChanged<int> onSetBrightness;
   final AudioMeterLevels? meterLevels;
 
-  /// Where the console begins, below the brightness deck.
-  static const double _consoleTop = 117;
-
-  /// Top padding inside the console that clears the knob notch.
-  static const double _notchClearance = 74;
-
   @override
   Widget build(BuildContext context) {
-    final double illumination = brightnessStatus?.isAvailable ?? false
-        ? (brightnessStatus!.displayValue / 100).clamp(0, 1).toDouble()
-        : 0;
-
-    return Stack(
-      clipBehavior: Clip.none,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        Positioned(
-          top: 0,
-          left: HyprSpacing.roomy,
-          right: HyprSpacing.roomy,
-          child: _BrightnessDeck(illumination: illumination),
-        ),
-        // Non-positioned, so the console sizes the stage instead of a fixed
-        // height that overflows the moment text scaling grows the strips.
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            HyprSpacing.roomy,
-            _consoleTop,
-            HyprSpacing.roomy,
-            0,
-          ),
-          child: ClipPath(
-            clipper: const _ConsoleNotchClipper(),
-            child: ColoredBox(
-              color: AudioMixerColors.console,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  HyprSpacing.panel,
-                  _notchClearance,
-                  HyprSpacing.panel,
-                  HyprSpacing.section,
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Expanded(
-                      child: AudioChannelStrip(
-                        channel: AudioMixerChannel.output,
-                        endpoint: output,
-                        fallbackName: 'No output device',
-                        onSetVolume: onSetVolume,
-                        onSetMuted: onSetMuted,
-                      ),
-                    ),
-                    const SizedBox(width: HyprSpacing.xxl),
-                    Expanded(
-                      child: AudioChannelStrip(
-                        channel: AudioMixerChannel.input,
-                        endpoint: input,
-                        fallbackName: 'No input device',
-                        onSetVolume: onSetVolume,
-                        onSetMuted: onSetMuted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+        CustomPaint(
+          painter: const _BrightnessDeckPainter(),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(27, 13, 25, 22),
+            child: BrightnessControl(
+              status: brightnessStatus,
+              loading: brightnessLoading,
+              presentation: BrightnessControlPresentation.console,
+              onSetBrightness: onSetBrightness,
             ),
           ),
         ),
-        Positioned(
-          top: 13,
-          left: 0,
-          right: 0,
-          child: BrightnessControl(
-            status: brightnessStatus,
-            loading: brightnessLoading,
-            presentation: BrightnessControlPresentation.console,
-            onSetBrightness: onSetBrightness,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(15, 15, 15, 17),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Expanded(
+                  child: AudioChannelStrip(
+                    channel: AudioMixerChannel.output,
+                    endpoint: output,
+                    fallbackName: 'No output device',
+                    onSetVolume: onSetVolume,
+                    onSetMuted: onSetMuted,
+                    meterLevel: meterLevels?.output,
+                  ),
+                ),
+                const VerticalDivider(
+                  width: 1,
+                  thickness: 0.5,
+                  color: AudioMixerColors.divider,
+                ),
+                Expanded(
+                  child: AudioChannelStrip(
+                    channel: AudioMixerChannel.input,
+                    endpoint: input,
+                    fallbackName: 'No input device',
+                    onSetVolume: onSetVolume,
+                    onSetMuted: onSetMuted,
+                    meterLevel: meterLevels?.input,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -163,129 +208,60 @@ class AudioMixerStage extends StatelessWidget {
   }
 }
 
-class _BrightnessDeck extends StatelessWidget {
-  const _BrightnessDeck({required this.illumination});
-
-  static const double _paintHeight = 197;
-
-  final double illumination;
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _BrightnessDeckPainter(illumination: illumination),
-      // The console removes a circular clearance for the knob. Keep this
-      // field taller than that clearance so the deck, not the desktop, is
-      // visible all the way around the lower arc.
-      child: const SizedBox(height: _paintHeight),
-    );
-  }
-}
-
+/// The broad, smooth saddle around the dial, painted behind the controls.
 class _BrightnessDeckPainter extends CustomPainter {
-  const _BrightnessDeckPainter({required this.illumination});
-
-  final double illumination;
+  const _BrightnessDeckPainter();
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Rect deckBounds = Rect.fromLTWH(0, 0, size.width, 196.5);
-    final Paint deckPaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: <Color>[
-          AudioMixerColors.deckTop,
-          AudioMixerColors.deckMiddle,
-          AudioMixerColors.deckBottom,
-        ],
-        stops: <double>[0, 0.48, 1],
-      ).createShader(deckBounds);
-    final RRect deck = RRect.fromRectAndCorners(
-      Rect.fromLTWH(0, 0, size.width, 131),
-      topLeft: const Radius.circular(16),
-      topRight: const Radius.circular(16),
-    );
-    final Path silhouette = Path()
-      ..addRRect(deck)
-      ..addOval(
-        Rect.fromCircle(center: Offset(size.width / 2, 122), radius: 74.5),
-      );
-
-    canvas.save();
-    canvas.clipPath(silhouette);
-    canvas.drawRect(deckBounds, deckPaint);
-    canvas.drawRect(
-      deckBounds,
+    final double shoulder = size.height - 81;
+    final double width = size.width;
+    final Path deck = Path()
+      ..lineTo(0, shoulder)
+      ..lineTo(width * .08, shoulder)
+      ..cubicTo(
+        width * .27,
+        shoulder,
+        width * .17,
+        size.height,
+        width * .5,
+        size.height,
+      )
+      ..cubicTo(
+        width * .83,
+        size.height,
+        width * .73,
+        shoulder,
+        width * .92,
+        shoulder,
+      )
+      ..lineTo(width, shoulder)
+      ..lineTo(width, 0)
+      ..close();
+    canvas.drawPath(
+      deck,
       Paint()
-        ..shader = const RadialGradient(
-          center: Alignment(-0.42, -0.92),
-          radius: 1.1,
+        ..shader = const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: <Color>[
-            Color(0x16FFFFFF),
-            Color(0x08FFFFFF),
-            Colors.transparent,
+            AudioMixerColors.deckTop,
+            AudioMixerColors.deckMiddle,
+            AudioMixerColors.deckBottom,
           ],
-          stops: <double>[0, 0.42, 1],
-        ).createShader(deckBounds),
+        ).createShader(Offset.zero & size),
     );
-
-    if (illumination > 0) {
-      final Offset lampCenter = Offset(size.width / 2 - 10, 114);
-      final Rect lampBounds = Rect.fromCircle(center: lampCenter, radius: 96);
-      canvas.drawCircle(
-        lampCenter,
-        96,
-        Paint()
-          ..shader = RadialGradient(
-            colors: <Color>[
-              const Color(0x18F2D77A).withValues(alpha: 0.09 * illumination),
-              const Color(0x0CF2D77A).withValues(alpha: 0.045 * illumination),
-              Colors.transparent,
-            ],
-            stops: const <double>[0, 0.48, 1],
-          ).createShader(lampBounds)
-          ..blendMode = BlendMode.plus,
-      );
-    }
-
-    canvas.restore();
-    canvas.drawLine(
-      const Offset(12, 0),
-      Offset(size.width - 12, 0),
+    canvas.drawPath(
+      deck,
       Paint()
-        ..color = Colors.white.withValues(alpha: 0.07)
-        ..strokeWidth = 1,
+        ..color = AudioMixerColors.deckBorder
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = .5,
     );
   }
 
   @override
-  bool shouldRepaint(_BrightnessDeckPainter oldDelegate) =>
-      illumination != oldDelegate.illumination;
-}
-
-class _ConsoleNotchClipper extends CustomClipper<Path> {
-  const _ConsoleNotchClipper();
-
-  @override
-  Path getClip(Size size) {
-    final Path console = Path()
-      ..addRRect(
-        RRect.fromRectAndCorners(
-          Offset.zero & size,
-          bottomLeft: const Radius.circular(HyprRadii.chassis),
-          bottomRight: const Radius.circular(HyprRadii.chassis),
-        ),
-      );
-    final Path clearance = Path()
-      ..addOval(
-        Rect.fromCircle(center: Offset(size.width / 2, -6), radius: 74),
-      );
-    return Path.combine(PathOperation.difference, console, clearance);
-  }
-
-  @override
-  bool shouldReclip(_ConsoleNotchClipper oldClipper) => false;
+  bool shouldRepaint(_BrightnessDeckPainter oldDelegate) => false;
 }
 
 /// Compact aggregate meter for the output endpoint.
@@ -293,59 +269,69 @@ class AudioMasterRail extends StatelessWidget {
   const AudioMasterRail({super.key, required this.output, this.meterLevel});
 
   final AudioEndpoint? output;
-
-  /// Live output signal for the aggregate meter. See [AudioFader.meterLevel].
   final double? meterLevel;
 
   @override
   Widget build(BuildContext context) {
     final int volume = output?.volume ?? 0;
     final bool muted = output?.muted ?? true;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: HyprSpacing.roomy,
-            vertical: HyprSpacing.xl + HyprSpacing.hairline,
-          ),
-          child: Row(
-            children: <Widget>[
-              Text('MASTER', style: HyprTypography.mixerLabel),
-              const SizedBox(width: HyprSpacing.xxl),
-              Expanded(
-                child: SizedBox(
-                  height: HyprSpacing.xl,
-                  child: CustomPaint(
-                    painter: HyprSegmentedMeterPainter(
-                      value: muted ? 0 : (meterLevel ?? volume / 100),
-                      ramp: HyprLevelRamp.audio,
-                      trackColor: AudioMixerColors.rail,
-                    ),
+    final Widget readout = AudioUnitReadout(
+      text: output == null ? '--' : audioDecibelReadout(volume, muted: muted),
+      unit: 'dB',
+      color: AudioMixerColors.text,
+      size: 12,
+      unitSize: 12,
+    );
+    final Widget label = Text(
+      'MASTER',
+      style: AudioMixerText.label.copyWith(
+        fontSize: 10,
+        color: AudioMixerColors.secondary,
+      ),
+    );
+    final Widget meter = AudioMeter(
+      level: muted ? 0 : (meterLevel ?? volume / 100),
+      accent: AudioMixerColors.output,
+    );
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 15),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 16),
+      decoration: const BoxDecoration(
+        border: Border(
+          top: BorderSide(color: AudioMixerColors.divider),
+          bottom: BorderSide(color: AudioMixerColors.divider),
+        ),
+      ),
+      child: MediaQuery.textScalerOf(context).scale(10) > 14
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                SizedBox(
+                  width: double.infinity,
+                  child: Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    runSpacing: 6,
+                    children: <Widget>[label, readout],
                   ),
                 ),
-              ),
-              const SizedBox(width: HyprSpacing.xxl),
-              SizedBox(
-                width: 54,
-                child: AudioUnitReadout(
-                  text: audioDecibelReadout(volume, muted: muted),
-                  unit: 'dB',
-                  color: HyprColors.text,
-                  textAlign: TextAlign.right,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const HyprPanelDivider(),
-      ],
+                const SizedBox(height: 10),
+                meter,
+              ],
+            )
+          : Row(
+              children: <Widget>[
+                label,
+                const SizedBox(width: 20),
+                Expanded(child: meter),
+                const SizedBox(width: 17),
+                readout,
+              ],
+            ),
     );
   }
 }
 
-/// Input device and the external mixer affordance.
+/// Input device and external mixer action along the bottom edge.
 class AudioMixerFooter extends StatelessWidget {
   const AudioMixerFooter({
     super.key,
@@ -358,23 +344,72 @@ class AudioMixerFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Widget device = Row(
+      children: <Widget>[
+        Text(
+          'MIC',
+          style: AudioMixerText.label.copyWith(
+            fontSize: 10,
+            color: AudioMixerColors.secondary,
+          ),
+        ),
+        Container(
+          width: .5,
+          height: 16,
+          margin: const EdgeInsets.symmetric(horizontal: 12),
+          color: AudioMixerColors.border,
+        ),
+        Expanded(
+          child: Text(
+            input?.name ?? 'No input device',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AudioMixerText.meta.copyWith(color: AudioMixerColors.text),
+          ),
+        ),
+      ],
+    );
+    final Widget action = HyprInteractiveTile(
+      semanticLabel: 'Open Pavucontrol',
+      onPressed: onOpenMixer,
+      borderRadius: BorderRadius.circular(4),
+      builder: (context, state) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Text(
+              'Pavucontrol',
+              style: AudioMixerText.meta.copyWith(color: AudioMixerColors.text),
+            ),
+            const SizedBox(width: 5),
+            const Icon(
+              Icons.north_east_rounded,
+              size: 15,
+              color: AudioMixerColors.secondary,
+            ),
+          ],
+        ),
+      ),
+    );
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        HyprSpacing.roomy,
-        HyprSpacing.xl,
-        HyprSpacing.roomy,
-        HyprSpacing.xxl,
-      ),
-      child: HyprPanelHeader(
-        title: input?.name ?? 'No input device',
-        titleStyle: HyprTypography.mixerMeta,
-        titleColor: input == null ? HyprColors.textFaint : null,
-        leading: Text('MIC', style: HyprTypography.mixerLabel),
-        leadingGap: HyprSpacing.xxl,
-        actionLabel: 'PAVUCONTROL →',
-        actionStyle: HyprTypography.mixerLabel,
-        onAction: onOpenMixer,
-      ),
+      padding: const EdgeInsets.fromLTRB(21, 14, 15, 17),
+      child: MediaQuery.textScalerOf(context).scale(10) > 14
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                device,
+                const SizedBox(height: 8),
+                Align(alignment: Alignment.centerRight, child: action),
+              ],
+            )
+          : Row(
+              children: <Widget>[
+                Expanded(child: device),
+                const SizedBox(width: 10),
+                action,
+              ],
+            ),
     );
   }
 }

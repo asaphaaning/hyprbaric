@@ -23,6 +23,7 @@ class HyprSegmentedMeterPainter extends CustomPainter {
     this.trackColor,
     this.trackRadius = HyprRadii.tag,
     this.trackBorderColor,
+    this.glow = 0,
   });
 
   /// Level to display, as a fraction of the scale.
@@ -45,6 +46,9 @@ class HyprSegmentedMeterPainter extends CustomPainter {
   final Color? trackColor;
   final double trackRadius;
   final Color? trackBorderColor;
+
+  /// Blur radius of the light cast by active segments; zero disables it.
+  final double glow;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -81,13 +85,21 @@ class HyprSegmentedMeterPainter extends CustomPainter {
           ? Rect.fromLTWH(offset, inset, extent, size.height - inset * 2)
           : Rect.fromLTWH(
               inset,
-              size.height - inset - offset - extent,
+              size.height - offset - extent,
               size.width - inset * 2,
               extent,
             );
       paint.color = index < active
           ? ramp.colorAt(index / segments)
           : inactiveColor;
+      if (index < active && glow > 0) {
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(segment, Radius.circular(segmentRadius)),
+          Paint()
+            ..color = paint.color.withValues(alpha: .45)
+            ..maskFilter = MaskFilter.blur(BlurStyle.normal, glow),
+        );
+      }
       canvas.drawRRect(
         RRect.fromRectAndRadius(segment, Radius.circular(segmentRadius)),
         paint,
@@ -97,7 +109,8 @@ class HyprSegmentedMeterPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant HyprSegmentedMeterPainter oldDelegate) {
-    return value != oldDelegate.value ||
+    return glow != oldDelegate.glow ||
+        value != oldDelegate.value ||
         ramp != oldDelegate.ramp ||
         segments != oldDelegate.segments ||
         gap != oldDelegate.gap ||

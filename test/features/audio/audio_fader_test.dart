@@ -31,8 +31,18 @@ void main() {
       await tester.pumpWidget(_fader(volume, sent));
       await tester.pump();
       final Rect box = tester.getRect(find.byType(AudioFader));
-      final double y = AudioFaderMetrics.handleCenterY(volume / 100, box.height);
-      await tester.tapAt(Offset(box.left + 28, box.top + y));
+      final double y = AudioFaderMetrics.handleCenterY(
+        volume / 100,
+        box.height,
+      );
+      await tester.tapAt(
+        Offset(
+          box.left +
+              AudioFaderMetrics.trackLeft +
+              AudioFaderMetrics.trackWidth / 2,
+          box.top + y,
+        ),
+      );
       await tester.pump();
       expect(sent, isEmpty, reason: 'press at $volume moved the value: $sent');
     }
@@ -56,9 +66,21 @@ void main() {
     await tester.pump();
     final Rect box = tester.getRect(find.byType(AudioFader));
     final TestGesture g = await tester.startGesture(
-      Offset(box.left + 28, box.center.dy),
+      Offset(
+        box.left +
+            AudioFaderMetrics.trackLeft +
+            AudioFaderMetrics.trackWidth / 2,
+        box.center.dy,
+      ),
     );
-    await g.moveTo(Offset(box.left + 28, box.top - 40));
+    await g.moveTo(
+      Offset(
+        box.left +
+            AudioFaderMetrics.trackLeft +
+            AudioFaderMetrics.trackWidth / 2,
+        box.top - 40,
+      ),
+    );
     await tester.pump();
     await g.up();
     await tester.pump();

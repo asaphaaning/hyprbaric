@@ -80,7 +80,7 @@ These destinations are not configurable in TOML. Point the XDG user directories 
 - **Notifications**: hyprbaric normally claims `org.freedesktop.Notifications` and serves desktop notifications itself. If another server already owns the name, hyprbaric leaves it in place and automatically observes its notifications instead. Sandboxed applications additionally need a selected XDG Notification portal backend.
 - **System tray**: StatusNotifier/AppIndicator items are discovered over D-Bus, and no configuration is required.
 - **Network**: status and connection changes go through NetworkManager’s D-Bus API. The popup’s settings action opens the first available system editor: `nm-connection-editor`, then `gnome-control-center wifi`, then `systemsettings kcm_networkmanagement`. That editor is session-owned, like launcher apps, so it outlives the bar.
-- **Audio**: volume, mute, and endpoint state come from PipeWire through `wpctl`.
+- **Audio**: Volume, mute, and endpoint state come from PipeWire through `wpctl`. The mixer lists playback devices using `pw-dump` and selects the default output with `wpctl set-default`; Pavucontrol remains available from the footer.
 - **Power and Caffeine**: battery data from UPower, profiles from power-profiles-daemon, and idle/sleep inhibition and session actions from systemd-logind.
 
 ## Logging

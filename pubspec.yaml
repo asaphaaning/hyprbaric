@@ -65,6 +65,14 @@ flutter:
     - assets/wallpaper-demo.png
 
   fonts:
+    - family: Roboto Condensed
+      fonts:
+        - asset: assets/fonts/RobotoCondensed-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/RobotoCondensed-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/RobotoCondensed-Bold.ttf
+          weight: 700
     - family: Inter
       fonts:
         - asset: assets/fonts/InterVariable.ttf

@@ -101,7 +101,7 @@ class BrightnessKnobPainter extends CustomPainter {
     double lampProgress,
     bool lit,
   ) {
-    final double faceRadius = width * 0.35;
+    final double faceRadius = width * 0.36;
     final double lipRadius = faceRadius + 5;
 
     _paintLampSpill(canvas, center, width, lampProgress, lit);
@@ -177,8 +177,8 @@ class BrightnessKnobPainter extends CustomPainter {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: <Color>[
-            Color(0xFF3B3D42),
-            Color(0xFF303237),
+            Color(0xFF353A58),
+            Color(0xFF252A43),
             Color(0xFF1B1C1F),
             Color(0xFF0B0C0E),
           ],
@@ -213,10 +213,10 @@ class BrightnessKnobPainter extends CustomPainter {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: <Color>[
-            Color(0xFF101113),
-            Color(0xFF121316),
-            Color(0xFF1B1D20),
-            Color(0xFF25272A),
+            Color(0xFF0C1020),
+            Color(0xFF131728),
+            Color(0xFF1D2239),
+            Color(0xFF252A43),
           ],
           stops: <double>[0, 0.42, 0.76, 1],
         ).createShader(faceRect),
@@ -267,7 +267,7 @@ class BrightnessKnobPainter extends CustomPainter {
 
     final double warmth = progress * progress;
     final Color lamp = Color.lerp(
-      const Color(0xFFF8FAF5),
+      const Color(0xFFFFC52F),
       const Color(0xFFFFCF55),
       warmth,
     )!;
@@ -278,7 +278,7 @@ class BrightnessKnobPainter extends CustomPainter {
       Paint()
         ..shader = RadialGradient(
           colors: <Color>[
-            lamp.withValues(alpha: 0.10 * progress),
+            lamp.withValues(alpha: 0.025 * progress),
             lamp.withValues(alpha: 0.04 * progress),
             Colors.transparent,
           ],
@@ -294,10 +294,10 @@ class BrightnessKnobPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
-        ..strokeWidth = width * 0.14
-        ..color = lamp.withValues(alpha: 0.08 + progress * 0.08)
+        ..strokeWidth = width * 0.09
+        ..color = lamp.withValues(alpha: 0.04 + progress * 0.04)
         ..blendMode = BlendMode.plus
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, width * 0.075),
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, width * 0.045),
     );
   }
 
@@ -311,16 +311,16 @@ class BrightnessKnobPainter extends CustomPainter {
     const int dots = 28;
     // A blur sigma that tracks the value would rebuild the mask every frame of
     // a scrub, so hold it constant and carry the change in alpha instead.
-    const double glowSigma = 3.6;
-    const Color inactive = Color(0xFF2D3033);
+    const double glowSigma = 2.5;
+    const Color inactive = Color(0xFF596087);
 
     final double radius = width * 0.567;
     final double glowRadius = 3.1 + progress * 0.7;
     final double illuminatedDots = lit ? progress * dots : 0;
     final double warmth = progress * progress;
     final Color lamp = Color.lerp(
-      const Color(0xFFF8FAF5),
-      const Color(0xFFFFD05A),
+      const Color(0xFFFFC52F),
+      const Color(0xFFFFDC65),
       warmth,
     )!;
 
@@ -332,9 +332,7 @@ class BrightnessKnobPainter extends CustomPainter {
 
     for (int index = 0; index < dots; index += 1) {
       final double fraction = index / (dots - 1);
-      final double angle = _degreesToRadians(
-        _startAngle + fraction * _sweepAngle - 90,
-      );
+      final double angle = _degreesToRadians(150 + fraction * 240);
       final Offset dot =
           center + Offset(math.cos(angle), math.sin(angle)) * radius;
       final double intensity = Curves.easeOutCubic.transform(
@@ -358,10 +356,10 @@ class BrightnessKnobPainter extends CustomPainter {
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, glowSigma);
 
     if (!steadyGlow.getBounds().isEmpty) {
-      canvas.drawPath(steadyGlow, glowPaint(0.34));
+      canvas.drawPath(steadyGlow, glowPaint(0.55));
     }
     if (edge case final Offset dot) {
-      canvas.drawCircle(dot, glowRadius, glowPaint(0.34 * edgeIntensity));
+      canvas.drawCircle(dot, glowRadius, glowPaint(0.55 * edgeIntensity));
     }
 
     final Paint core = Paint();

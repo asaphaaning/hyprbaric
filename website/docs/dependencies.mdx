@@ -63,3 +63,5 @@ A capability reports **Ready** when every probe passes, **Missing** when an opti
 ## Packaging policy
 
 The packaging source of truth is [`packaging/runtime_capabilities.yaml`](https://github.com/asaphaaning/hyprbaric/blob/master/packaging/runtime_capabilities.yaml). The Rust runtime mirrors that contract when it probes the host. Packages should install core and service dependencies as hard dependencies and leave optional backends as recommended or optional metadata, so a lean install is possible and features can be added later.
+
+The mixer’s output-device chooser also uses `pw-dump` from your distribution’s PipeWire tools package. If device discovery is unavailable, volume and mute controls continue to work and the chooser shows the error.

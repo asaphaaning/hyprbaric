@@ -330,6 +330,7 @@ pub(crate) async fn handle_network_settings_request(
 
 pub(crate) async fn handle_audio_command(State(context): State<App>, command: AudioCommand) {
     let command = match command {
+        AudioCommand::SelectOutput { id } => audio::Command::SelectOutput { id: id.into() },
         AudioCommand::SetVolume { kind, volume } => audio::Command::SetVolume {
             kind: audio::Kind::from(kind),
             volume: audio::Percent::new(volume),
