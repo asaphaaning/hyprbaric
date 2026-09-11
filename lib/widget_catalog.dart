@@ -74,6 +74,11 @@ export 'src/bindings/bindings.dart'
         NetworkEntry,
         NetworkEntryState,
         NetworkInterface,
+        NetworkInterfaceKind,
+        NetworkJoinRequest,
+        NetworkSecurity,
+        NetworkSecurityOpen,
+        NetworkSecurityPersonal,
         NetworkStatus,
         NetworkTraffic,
         NetworkTransfer,
@@ -171,7 +176,10 @@ export 'src/features/global_menu/global_menu_section.dart'
     show GlobalMenuSectionPanel;
 export 'src/features/launcher/app_launcher_console.dart'
     show AppLauncherConsole;
+export 'src/features/network/network_navigation.dart';
 export 'src/features/network/network_panel.dart' show NetworkPanel;
+export 'src/features/network/network_traffic_history.dart';
+export 'src/features/network/network_traffic_ring.dart';
 export 'src/features/power/battery_chip.dart' show BatteryChip;
 export 'src/features/power/power_panel.dart' show PowerPanel;
 export 'src/features/power/power_profile_pad.dart' show PowerProfilePad;

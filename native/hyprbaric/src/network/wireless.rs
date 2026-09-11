@@ -1,12 +1,12 @@
 //! NetworkManager Wi-Fi reads and effects.
 
-use nmrs::{DeviceState, NetworkManager, WifiSecurity};
+use nmrs::{DeviceState, DeviceType, NetworkManager, WifiSecurity};
 use tokio::sync::Mutex;
 use tracing::instrument;
 
 use super::{
-    Error,
-    domain::{Entry, EntryState, Interface, Snapshot},
+    Error, Join, Security,
+    domain::{Entry, EntryState, Interface, InterfaceKind, Snapshot},
     traffic::{self, Sample},
 };
 
@@ -147,7 +147,6 @@ impl Client {
             let password = request
                 .password
                 .as_deref()
-                .map(str::trim)
                 .filter(|value| !value.is_empty())
                 .ok_or(Error::MissingPassword)?;
             WifiSecurity::WpaPsk {
@@ -159,6 +158,68 @@ impl Client {
 
         manager
             .connect(&request.ssid, None, security)
+            .await
+            .map_err(Error::NetworkManager)
+    }
+
+    /// Creates a profile for a manually entered network, including hidden SSIDs.
+    #[instrument(name = "network::join_profile", skip(self, request), fields(ssid = %request.ssid), err)]
+    pub(super) async fn join(&self, request: Join) -> Result<(), Error> {
+        request.validate()?;
+        let builder = nmrs::builders::WifiConnectionBuilder::new(request.ssid)
+            .hidden(request.hidden)
+            .autoconnect(request.auto_connect)
+            .ipv4_auto()
+            .ipv6_auto();
+        let settings = match request.security {
+            Security::Open => builder.open().build(),
+            Security::Personal(password) => builder.wpa_psk(password).build(),
+        };
+        self.manager()
+            .await?
+            .add_and_activate_connection(settings, None, None)
+            .await
+            .map(|_| ())
+            .map_err(Error::NetworkManager)
+    }
+
+    /// Disconnects only the explicitly selected interface.
+    #[instrument(name = "network::disconnect", skip(self), err)]
+    pub(super) async fn disconnect(&self, interface: &str) -> Result<(), Error> {
+        let device = self
+            .manager()
+            .await?
+            .list_devices()
+            .await
+            .map_err(Error::NetworkManager)?
+            .into_iter()
+            .find(|device| device.interface == interface)
+            .ok_or_else(|| Error::InterfaceNotFound {
+                interface: interface.to_owned(),
+            })?;
+        let bus = zbus::Connection::system()
+            .await
+            .map_err(Error::DeviceAccess)?;
+        let proxy = DeviceProxy::builder(&bus)
+            .path(device.path.as_str())
+            .map_err(Error::DeviceAccess)?
+            .build()
+            .await
+            .map_err(Error::DeviceAccess)?;
+        proxy.disconnect().await.map_err(Error::DeviceAccess)
+    }
+
+    /// Updates the radio's automatic connection policy without a global killswitch.
+    #[instrument(name = "network::auto_connect", skip(self), err)]
+    pub(super) async fn set_auto_connect(
+        &self,
+        interface: &str,
+        enabled: bool,
+    ) -> Result<(), Error> {
+        self.manager()
+            .await?
+            .wifi(interface)
+            .set_enabled(enabled)
             .await
             .map_err(Error::NetworkManager)
     }
@@ -198,6 +259,13 @@ impl Connect {
 
 /// Reads and normalizes NetworkManager interface rows.
 async fn interfaces(manager: &NetworkManager) -> Result<Vec<Interface>, Error> {
+    let radios = manager
+        .list_wifi_devices()
+        .await
+        .inspect_err(|error| {
+            tracing::warn!(%error, "Could not read Wi-Fi autoconnect policy");
+        })
+        .unwrap_or_default();
     Ok(manager
         .list_devices()
         .await
@@ -205,6 +273,13 @@ async fn interfaces(manager: &NetworkManager) -> Result<Vec<Interface>, Error> {
         .into_iter()
         .filter(|device| !device.interface.trim().is_empty())
         .map(|device| Interface {
+            kind: interface_kind(device.device_type),
+            speed_mbps: device.speed_mbps.filter(|speed| *speed > 0),
+            frequency_mhz: device.frequency,
+            auto_connect: radios
+                .iter()
+                .find(|radio| radio.interface == device.interface)
+                .map(|radio| radio.autoconnect),
             name: device.interface,
             address: device
                 .ip4_address
@@ -241,4 +316,50 @@ async fn visible_networks(
         .collect();
 
     Ok(Entry::visible(entries))
+}
+
+/// Parse NetworkManager device types once; UI code never guesses from names.
+fn interface_kind(kind: DeviceType) -> InterfaceKind {
+    match kind {
+        DeviceType::Wifi => InterfaceKind::Wifi,
+        DeviceType::Ethernet => InterfaceKind::Ethernet,
+        // NM_DEVICE_TYPE_TUN, IP_TUNNEL and WIREGUARD (nm-dbus-interface.h).
+        DeviceType::Other(16 | 17 | 29) => InterfaceKind::Tunnel,
+        _ => InterfaceKind::Other,
+    }
+}
+
+/// The single device-scoped D-Bus operation absent from nmrs' high-level API.
+#[zbus::proxy(
+    interface = "org.freedesktop.NetworkManager.Device",
+    default_service = "org.freedesktop.NetworkManager"
+)]
+trait Device {
+    /// Disconnect this device without changing the global radio state.
+    fn disconnect(&self) -> zbus::Result<()>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn device_families_do_not_depend_on_interface_names() {
+        assert_eq!(interface_kind(DeviceType::Wifi), InterfaceKind::Wifi);
+        assert_eq!(
+            interface_kind(DeviceType::Ethernet),
+            InterfaceKind::Ethernet
+        );
+        for code in [16, 17, 29] {
+            assert_eq!(
+                interface_kind(DeviceType::Other(code)),
+                InterfaceKind::Tunnel
+            );
+        }
+        assert_eq!(interface_kind(DeviceType::Loopback), InterfaceKind::Other);
+        assert_eq!(
+            interface_kind(DeviceType::Other(65535)),
+            InterfaceKind::Other
+        );
+    }
 }

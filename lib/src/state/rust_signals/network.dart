@@ -2,7 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bindings/bindings.dart';
 
-Stream<NetworkStatus> _networkStatusStream() async* {
+/// Every received snapshot, including identical idle observations.
+Stream<NetworkStatus> networkStatusUpdates() async* {
   final latest = NetworkStatus.latestRustSignal;
   if (latest != null) {
     yield latest.message;
@@ -26,7 +27,7 @@ Stream<NetworkCommandResult> _networkCommandResultStream() async* {
 
 /// Live NetworkManager Wi-Fi state emitted from Rust.
 final networkStatusProvider = StreamProvider<NetworkStatus>(
-  (ref) => _networkStatusStream(),
+  (ref) => networkStatusUpdates(),
 );
 
 /// Results from Wi-Fi scan, toggle, connect, and settings commands.

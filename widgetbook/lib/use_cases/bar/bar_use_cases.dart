@@ -131,7 +131,12 @@ abstract final class BarFixtures {
       ),
     ],
     interfaces: <NetworkInterface>[
-      NetworkInterface(name: 'wlo1', address: '192.168.1.42', active: true),
+      NetworkInterface(
+        kind: NetworkInterfaceKind.wifi,
+        name: 'wlo1',
+        address: '192.168.1.42',
+        active: true,
+      ),
     ],
   );
 

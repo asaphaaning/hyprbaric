@@ -10,6 +10,8 @@
 //! modules so the public runtime does not need to coordinate raw system data.
 
 mod domain;
+
+pub use domain::{Join, Security};
 mod settings;
 mod signal;
 mod traffic;
@@ -67,6 +69,8 @@ pub struct Wifi {
     events: broadcast::Sender<Snapshot>,
     results: broadcast::Sender<Report>,
     counters: Mutex<Option<traffic::Sample>>,
+    /// Serializes reads and holds the latest confirmed connection facts.
+    snapshot: Mutex<Snapshot>,
     wireless: wireless::Client,
 }
 
@@ -90,6 +94,10 @@ pub enum Command {
     },
     /// Open a system network settings application.
     OpenSettings,
+    /// Disconnect a single interface.
+    Disconnect { interface: String },
+    /// Set a Wi-Fi interface's automatic connection policy.
+    SetAutoConnect { interface: String, enabled: bool },
 }
 
 /// A network command report published to subscribers.
@@ -129,9 +137,10 @@ impl Wifi {
             events,
             results,
             counters: Mutex::new(initial_sample),
+            snapshot: Mutex::new(initial_snapshot.clone()),
             wireless,
         });
-        spawn_poll(Arc::clone(&wifi), initial_snapshot.clone(), config.clone());
+        spawn_poll(Arc::clone(&wifi), config.clone());
 
         (wifi, initial_snapshot)
     }
@@ -149,9 +158,9 @@ impl Wifi {
     /// Starts a Wi-Fi scan and refreshes the visible network snapshot.
     #[instrument(skip(self))]
     pub async fn scan(&self) {
-        self.send_snapshot(self.read_snapshot(wireless::Scan::Requested).await);
+        self.refresh(wireless::Scan::Requested).await;
         self.send_report(Command::Scan, self.wireless.scan().await);
-        self.refresh().await;
+        self.refresh(wireless::Scan::Idle).await;
     }
 
     /// Enables or disables Wi-Fi through NetworkManager.
@@ -161,7 +170,7 @@ impl Wifi {
             Command::SetWifiEnabled { enabled },
             self.wireless.set_enabled(enabled).await,
         );
-        self.refresh().await;
+        self.refresh(wireless::Scan::Idle).await;
     }
 
     /// Connects to a visible Wi-Fi network.
@@ -174,7 +183,33 @@ impl Wifi {
             Command::Connect { ssid },
             self.wireless.connect(request).await,
         );
-        self.refresh().await;
+        self.refresh(wireless::Scan::Idle).await;
+    }
+
+    /// Disconnects an interface and publishes its refreshed state.
+    #[instrument(name = "network::disconnect_request", skip(self))]
+    pub async fn disconnect(&self, interface: String) {
+        let outcome = self.wireless.disconnect(&interface).await;
+        self.send_report(Command::Disconnect { interface }, outcome);
+        self.refresh(wireless::Scan::Idle).await;
+    }
+
+    /// Changes Wi-Fi autoconnect policy and publishes its refreshed state.
+    #[instrument(name = "network::auto_connect_request", skip(self))]
+    pub async fn set_auto_connect(&self, interface: String, enabled: bool) {
+        let outcome = self.wireless.set_auto_connect(&interface, enabled).await;
+        self.send_report(Command::SetAutoConnect { interface, enabled }, outcome);
+        self.refresh(wireless::Scan::Idle).await;
+    }
+
+    /// Creates and activates an explicitly named Wi-Fi profile.
+    #[instrument(name = "network::join", skip(self, request), fields(ssid = %request.ssid))]
+    pub async fn join(&self, request: Join) {
+        let command = Command::Connect {
+            ssid: request.ssid.clone(),
+        };
+        self.send_report(command, self.wireless.join(request).await);
+        self.refresh(wireless::Scan::Idle).await;
     }
 
     /// Opens the first available system network settings application.
@@ -184,8 +219,10 @@ impl Wifi {
     }
 
     /// Publishes a fresh NetworkManager-backed snapshot.
-    async fn refresh(&self) {
-        self.send_snapshot(self.read_snapshot(wireless::Scan::Idle).await);
+    async fn refresh(&self, scan: wireless::Scan) {
+        let mut current = self.snapshot.lock().await;
+        let snapshot = self.read_snapshot(scan).await;
+        self.publish(&mut current, snapshot);
     }
 
     /// Reads a full snapshot and advances the shared traffic counter baseline.
@@ -205,9 +242,9 @@ impl Wifi {
     }
 
     /// Publishes a snapshot, degrading failed reads into unavailable status.
-    fn send_snapshot(&self, snapshot: Result<Snapshot, Error>) {
-        let snapshot = snapshot.unwrap_or_else(|error| Snapshot::unavailable(error.to_string()));
-        drop(self.events.send(snapshot));
+    fn publish(&self, current: &mut Snapshot, snapshot: Result<Snapshot, Error>) {
+        *current = snapshot.unwrap_or_else(|error| Snapshot::unavailable(error.to_string()));
+        drop(self.events.send(current.clone()));
     }
 
     /// Publishes a typed command report for a system boundary result.
@@ -225,15 +262,17 @@ impl Wifi {
 
 /// Starts periodic full and traffic-only network refreshes.
 #[instrument(skip_all)]
-fn spawn_poll(wifi: Handle, initial_snapshot: Snapshot, config: Configuration) {
+fn spawn_poll(wifi: Handle, config: Configuration) {
     tokio::spawn(async move {
-        let mut previous = initial_snapshot;
         let mut ticker = interval(config.traffic_refresh_interval.duration());
         let mut last_full_refresh = Instant::now();
         ticker.tick().await;
 
         loop {
             ticker.tick().await;
+            // Command refreshes share this guard, so a traffic tick cannot
+            // restore connection facts captured before a completed action.
+            let mut current = wifi.snapshot.lock().await;
             let snapshot = if last_full_refresh.elapsed() >= config.full_refresh_interval.duration()
             {
                 last_full_refresh = Instant::now();
@@ -241,20 +280,19 @@ fn spawn_poll(wifi: Handle, initial_snapshot: Snapshot, config: Configuration) {
                     .await
                     .unwrap_or_else(|error| Snapshot::unavailable(error.to_string()))
             } else {
-                match wifi.read_traffic(previous.traffic.ping_ms).await {
+                match wifi.read_traffic(current.traffic.ping_ms).await {
                     Ok(traffic) => Snapshot {
                         traffic,
                         scanning: false,
-                        ..previous.clone()
+                        ..current.clone()
                     },
                     Err(error) => Snapshot::unavailable(error.to_string()),
                 }
             };
 
-            if snapshot != previous {
-                drop(wifi.events.send(snapshot.clone()));
-                previous = snapshot;
-            }
+            // Every tick is an observation, including a repeated zero rate.
+            // Dropping identical snapshots would erase idle time from history.
+            wifi.publish(&mut current, Ok(snapshot));
         }
     });
 }
@@ -282,6 +320,18 @@ pub enum Error {
     /// No supported network settings application could be launched.
     #[error("no known network settings application is available")]
     SettingsUnavailable,
+    /// SSIDs contain between one and 32 bytes.
+    #[error("network name must contain 1–32 UTF-8 bytes")]
+    InvalidNetworkName,
+    /// The personal network key does not meet the WPA-PSK format.
+    #[error("use 8–63 ASCII characters or a 64-digit hexadecimal key")]
+    InvalidPersonalKey,
+    /// The requested interface disappeared before the operation reached it.
+    #[error("network interface `{interface}` is no longer available")]
+    InterfaceNotFound { interface: String },
+    /// NetworkManager rejected a device-scoped D-Bus operation.
+    #[error("could not change the network interface: {0}")]
+    DeviceAccess(#[source] zbus::Error),
 }
 
 #[cfg(test)]
