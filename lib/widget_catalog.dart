@@ -217,6 +217,7 @@ export 'src/layer_shell_hit_region.dart'
     show LayerShellMenuRegion, LayerShellRegionManager;
 export 'src/state/layer_shell.dart' show layerShellRegionManagerProvider;
 export 'src/state/monitor_workspace.dart' show MonitorWorkspaceResolution;
+export 'src/state/bar_config.dart' show BarConfig, barConfigProvider;
 export 'src/state/rust_signals/app.dart' show appStatusProvider;
 export 'src/state/rust_signals/appearance.dart' show appearanceStatusProvider;
 export 'src/state/rust_signals/audio.dart'

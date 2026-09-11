@@ -1,15 +1,12 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hyprbaric/widget_catalog.dart';
 import 'package:riverpod/misc.dart' show Override;
 
-import '../use_cases/notifications/notification_fixtures.dart';
-import '../use_cases/power/power_fixtures.dart';
+import '../embed/embed_theme.dart';
 import '../use_cases/settings/settings_fixtures.dart';
-import '../use_cases/tray/tray_fixtures.dart';
-import 'audio_fixtures.dart';
 
-/// Where one docs-bar menu row leads.
+/// Where one docs-bar navigation leads: a menu row, the title, or search.
 ///
 /// [target] is site-relative: `http` targets leave the site, `#` targets are
 /// in-page anchors, and everything else is a docs route. [resolve] joins the
@@ -51,7 +48,8 @@ enum DocsDestination {
     itemId: 113,
     label: 'Issues',
     target: 'https://github.com/asaphaaning/hyprbaric/issues',
-  );
+  ),
+  search(itemId: 114, label: 'Search', target: '/search');
 
   const DocsDestination({
     required this.itemId,
@@ -60,6 +58,9 @@ enum DocsDestination {
   });
 
   /// The stable native row id the fixture assigns this destination.
+  ///
+  /// Button-only destinations such as [search] still carry one so every site
+  /// route shares the same vocabulary.
   final int itemId;
 
   /// The row text in the open menu.
@@ -114,32 +115,21 @@ abstract final class DocsBarFixtures {
   );
 
   static const WorkspaceStatus workspace = WorkspaceStatus(
-    id: 1,
-    name: '1',
+    id: 2,
+    name: '2',
     isSpecial: false,
-    occupiedWorkspaceIds: <int>[1, 2],
+    occupiedWorkspaceIds: <int>[1, 2, 4],
     monitors: <MonitorWorkspaceStatus>[],
   );
 
-  static const ClockStatus clock = ClockStatus(
-    timeLabel: '08:18',
-    dateLabel: 'Sun, Aug 30',
-    monthLabel: 'August 2026',
-    weekNumber: 35,
-    utcOffset: 'UTC+02:00',
-    days: <CalendarDay>[],
-  );
-
-  static const CaffeineStatus caffeine = CaffeineStatusAvailable(
-    enabled: false,
-  );
-
-  static const RecordingStatus recording = RecordingStatusIdle();
-
-  static const SetupStatus setup = SetupStatus(state: SetupState.complete);
-
-  static const PortalStatus portal = PortalStatus(
-    colorScheme: PortalColorScheme.preferDark,
+  /// The strip shows [visibleCount] indicators, so the site bar stays compact
+  /// next to the docs menu. The count follows the range preset it belongs
+  /// to, the way the settings panel pairs them.
+  static const WorkspaceSettingsStatus siteWorkspaces = WorkspaceSettingsStatus(
+    indicatorStyle: WorkspaceIndicatorStyle.roman,
+    clickable: true,
+    visibleRange: WorkspaceVisibleRange.small,
+    visibleCount: 5,
   );
 }
 
@@ -290,14 +280,22 @@ class DocsBarDispatcher extends RustCommandDispatcher {
   }
 }
 
-/// The production bar with docs fixtures, for the landing-page embed.
+/// The site bar: workspaces, docs menu, title, and search.
 ///
-/// The global menu carries documentation navigation, the centered title
-/// navigates [homeUrl], and every other cluster keeps its catalog behaviour.
-/// [onNavigate] receives absolute URLs; null keeps the bar inert (tests, the
-/// Widgetbook catalog) exactly as on the desktop.
+/// A minimal production-cluster composition for the landing-page embed. The
+/// workspace strip keeps a few indicators, the global menu carries
+/// documentation navigation, the centered title goes home, and the search
+/// button routes to the search page; no control widgets come along.
+/// [onNavigate] receives absolute URLs, while null keeps every navigation
+/// inert (tests) exactly as on the desktop. [onMenuRect] reports the open
+/// menu region for the host's frost island, or null when none is open.
 class DocsBarPreview extends StatelessWidget {
-  const DocsBarPreview({super.key, this.baseUrl = '/', this.onNavigate});
+  const DocsBarPreview({
+    super.key,
+    this.baseUrl = '/',
+    this.onNavigate,
+    this.onMenuRect,
+  });
 
   /// The site root the host page reports, ending with a `/`.
   final String baseUrl;
@@ -305,18 +303,41 @@ class DocsBarPreview extends StatelessWidget {
   /// Receives absolute navigation URLs, or null to leave the bar inert.
   final ValueChanged<String>? onNavigate;
 
+  /// Receives the open menu region, or null to leave frost reporting off.
+  final ValueChanged<LayerShellMenuRegion?>? onMenuRect;
+
   @override
   Widget build(BuildContext context) {
     final ValueChanged<String>? onNavigate = this.onNavigate;
+    final ValueChanged<LayerShellMenuRegion?>? onMenuRect = this.onMenuRect;
     final String home = DocsDestination.home.resolve(baseUrl);
+    final String search = DocsDestination.search.resolve(baseUrl);
 
     return ProviderScope(
       overrides: docsBarOverrides(
         baseUrl: baseUrl,
         onNavigate: onNavigate ?? (_) {},
       ),
-      child: Hyprbaric(
-        onTitleTap: onNavigate == null ? null : () => onNavigate(home),
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: embedTheme,
+        home: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Stack(
+            children: <Widget>[
+              _DocsSiteBar(
+                onTitleTap: onNavigate == null
+                    ? null
+                    : () => onNavigate(home),
+                onSearch: onNavigate == null
+                    ? null
+                    : () => onNavigate(search),
+              ),
+              if (onMenuRect != null)
+                _MenuFrostReporter(onMenuRect: onMenuRect),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -324,39 +345,25 @@ class DocsBarPreview extends StatelessWidget {
 
 /// Every provider the docs bar pins, for the preview and its tests.
 ///
-/// Tests may pass their own [dispatcher] to observe the intents the bar
-/// emits; the preview routes menu activations to [onNavigate] by default.
+/// Only what the site composition reads: menu and title fixtures plus the
+/// appearance behind the bar chrome. The workspace strip and the search
+/// button take explicit props instead. Tests may pass their own [dispatcher]
+/// to observe the intents the bar emits; the preview routes menu activations
+/// to [onNavigate] by default.
 List<Override> docsBarOverrides({
   required String baseUrl,
   required ValueChanged<String> onNavigate,
   RustCommandDispatcher? dispatcher,
 }) {
   return <Override>[
-    setupGuideAutomaticHostProvider.overrideWithValue(false),
     rustCommandDispatcherProvider.overrideWithValue(
-      dispatcher ?? DocsBarDispatcher(baseUrl: baseUrl, onNavigate: onNavigate),
+      dispatcher ??
+          DocsBarDispatcher(baseUrl: baseUrl, onNavigate: onNavigate),
     ),
-    _stream(workspaceStatusProvider, DocsBarFixtures.workspace),
-    _stream(workspaceSettingsStatusProvider, SettingsFixtures.workspacesRoman),
     _stream(focusedWindowStatusProvider, DocsBarFixtures.focusedWindow),
-    _stream(networkStatusProvider, _DocsNetwork.status),
-    _stream(audioStatusProvider, AudioFixtures.ready),
-    _stream(brightnessStatusProvider, AudioFixtures.brightness),
-    _stream(notificationStatusProvider, NotificationFixtures.populated()),
-    _stream(powerStatusProvider, PowerFixtures.desktop),
-    _stream(clockStatusProvider, DocsBarFixtures.clock),
+    _stream(workspaceStatusProvider, DocsBarFixtures.workspace),
     _stream(appearanceStatusProvider, SettingsFixtures.appearanceDefault),
-    _stream(modulesStatusProvider, SettingsFixtures.modulesAll),
-    _stream(capabilityStatusProvider, SettingsFixtures.capabilities),
-    _stream(scheduleStatusProvider, SettingsFixtures.scheduleEnabled),
-    _stream(nightLightStatusProvider, SettingsFixtures.nightLightOn),
-    _stream(appStatusProvider, SettingsFixtures.app),
-    _stream(trayStatusProvider, TrayFixtures.populated),
     ...DocsMenuFixtures.providers(),
-    _stream(caffeineStatusProvider, DocsBarFixtures.caffeine),
-    _stream(recordingStatusProvider, DocsBarFixtures.recording),
-    _stream(setupStatusProvider, DocsBarFixtures.setup),
-    _stream(portalStatusProvider, DocsBarFixtures.portal),
   ];
 }
 
@@ -365,34 +372,258 @@ Override _stream<T>(StreamProvider<T> provider, T value) {
   return provider.overrideWith((Ref ref) => Stream<T>.value(value));
 }
 
-/// A quiet network world behind the docs bar.
-abstract final class _DocsNetwork {
-  static final NetworkStatus status = NetworkStatus(
-    wifiEnabled: true,
-    devicePresent: true,
-    scanning: false,
-    activeSsid: 'Hyprnet_5G',
-    traffic: NetworkTraffic(
-      upload: NetworkTransfer(
-        bytesPerSecond: Uint64.fromBigInt(BigInt.from(184320)),
-        totalBytes: Uint64.fromBigInt(BigInt.from(482049188)),
+/// The site bar chrome around the workspace strip, the docs menu, the
+/// centered title, and the search entry.
+///
+/// Mirrors the production bar's surface and three-cluster row, minus the
+/// launcher and every control widget. The strip owns its workspace state
+/// locally so clicks stay live without a compositor behind them.
+class _DocsSiteBar extends ConsumerStatefulWidget {
+  const _DocsSiteBar({this.onTitleTap, this.onSearch});
+
+  final VoidCallback? onTitleTap;
+  final VoidCallback? onSearch;
+
+  @override
+  ConsumerState<_DocsSiteBar> createState() => _DocsSiteBarState();
+}
+
+class _DocsSiteBarState extends ConsumerState<_DocsSiteBar> {
+  static const double _centerClusterMaxWidth = 680;
+  static const List<int> _occupiedWorkspaces = <int>[1, 4];
+
+  int _activeWorkspace = 2;
+
+  List<int> get _occupiedWorkspaceIds =>
+      <int>{..._occupiedWorkspaces, _activeWorkspace}.toList(growable: false)
+        ..sort();
+
+  void _setActiveWorkspace(int workspace) {
+    setState(() => _activeWorkspace = workspace < 1 ? 1 : workspace);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final BarConfig bar = ref.watch(barConfigProvider);
+    final HyprPalette palette = context.hyprPalette;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: HyprSurface(
+        borderRadius: BorderRadius.circular(bar.cornerRadius.toDouble()),
+        color: palette.surfaceStrong,
+        borderColor: HyprColors.borderOuter,
+        shadow: false,
+        blur: 16,
+        child: SizedBox(
+          height: bar.height,
+          width: double.infinity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: LayoutBuilder(
+                      builder:
+                          (BuildContext context, BoxConstraints constraints) {
+                            return Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                // A row hands its non-flexible children
+                                // unbounded width, which would stop the box
+                                // below ever scaling down and overflow the bar
+                                // instead. The cap is what it would have had
+                                // on its own.
+                                ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxWidth: constraints.maxWidth,
+                                  ),
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerLeft,
+                                    child: WorkspaceStrip(
+                                      status: WorkspaceStatus(
+                                        id: _activeWorkspace,
+                                        name: '$_activeWorkspace',
+                                        isSpecial: false,
+                                        occupiedWorkspaceIds:
+                                            _occupiedWorkspaceIds,
+                                        monitors:
+                                            const <MonitorWorkspaceStatus>[],
+                                      ),
+                                      settings:
+                                          DocsBarFixtures.siteWorkspaces,
+                                      resolution: MonitorWorkspaceResolution(
+                                        activeWorkspaceId: _activeWorkspace,
+                                        activeWorkspaceName:
+                                            '$_activeWorkspace',
+                                        isSpecial: false,
+                                        monitorName: 'DP-1',
+                                      ),
+                                      onPrevious: () => _setActiveWorkspace(
+                                        _activeWorkspace - 1,
+                                      ),
+                                      onNext: () => _setActiveWorkspace(
+                                        _activeWorkspace + 1,
+                                      ),
+                                      onSelect: _setActiveWorkspace,
+                                    ),
+                                  ),
+                                ),
+                                const Flexible(child: GlobalMenuBar()),
+                              ],
+                            );
+                          },
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: CenterCluster(
+                      maxWidth: _centerClusterMaxWidth,
+                      onTap: widget.onTitleTap,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: _SiteSearchButton(onPressed: widget.onSearch),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
-      download: NetworkTransfer(
-        bytesPerSecond: Uint64.fromBigInt(BigInt.from(2104492)),
-        totalBytes: Uint64.fromBigInt(BigInt.from(4820491880)),
-      ),
-      pingMs: 12,
-    ),
-    networks: <NetworkEntry>[
-      NetworkEntry(
-        ssid: 'Hyprnet_5G',
-        strength: 88,
-        secure: true,
-        state: NetworkEntryState.active,
-      ),
-    ],
-    interfaces: <NetworkInterface>[
-      NetworkInterface(name: 'wlo1', address: '192.168.1.42', active: true),
-    ],
-  );
+    );
+  }
+}
+
+/// The documentation search entry, dressed like the navbar's own field.
+///
+/// A button rather than a field: activating it routes to the search page,
+/// where the plugin's real input lives. Kept quiet like the bar's other
+/// affordances, with a shortcut pill mirroring the navbar's hint.
+class _SiteSearchButton extends StatelessWidget {
+  const _SiteSearchButton({this.onPressed});
+
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool enabled = onPressed != null;
+
+    return HyprInteractionRegion(
+      semanticLabel: 'Search the docs',
+      onPressed: onPressed,
+      builder: (BuildContext context, HyprInteractionState state) {
+        final bool lit = enabled && state.active;
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOut,
+          height: 34,
+          constraints: const BoxConstraints(maxWidth: 300),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: HyprColors.well,
+            border: Border.all(
+              color: lit ? HyprColors.borderSoft : HyprColors.wellBorder,
+            ),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(
+                '/',
+                style: HyprTypography.globalMenuKey.copyWith(
+                  color: HyprColors.textFaint,
+                ),
+              ),
+              const SizedBox(width: 9),
+              Flexible(
+                child: Text(
+                  'Search the docs',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: HyprTypography.barMono.copyWith(
+                    color: HyprColors.textMuted,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(color: HyprColors.wellBorder),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Text(
+                  'Ctrl K',
+                  style: HyprTypography.globalMenuKey.copyWith(
+                    color: HyprColors.textFaint,
+                    fontSize: 10.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Forwards the open menu region to whoever reports frost for the host page.
+///
+/// The dropdowns already measure this rect for the native input region; the
+/// site embed reuses the same geometry so the page can blur exactly the
+/// popup area. Reports null when no menu is open so the island hides.
+class _MenuFrostReporter extends ConsumerStatefulWidget {
+  const _MenuFrostReporter({required this.onMenuRect});
+
+  final ValueChanged<LayerShellMenuRegion?> onMenuRect;
+
+  @override
+  ConsumerState<_MenuFrostReporter> createState() =>
+      _MenuFrostReporterState();
+}
+
+class _MenuFrostReporterState extends ConsumerState<_MenuFrostReporter> {
+  VoidCallback? _detach;
+
+  @override
+  void initState() {
+    super.initState();
+    final LayerShellRegionManager manager = ref.read(
+      layerShellRegionManagerProvider,
+    );
+
+    void report() => widget.onMenuRect(manager.menuRegion.value);
+
+    manager.menuRegion.addListener(report);
+    _detach = () => manager.menuRegion.removeListener(report);
+    report();
+  }
+
+  @override
+  void dispose() {
+    _detach?.call();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
