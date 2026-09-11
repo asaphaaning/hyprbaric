@@ -184,8 +184,13 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
       overlayBox: overlayBox,
     );
 
-    final Widget menuContent = RepaintBoundary(
-      child: widget.menuBuilder(context, _controller),
+    // Rows can arrive after the menu is already up (a snapshot read racing
+    // the open), so the input region follows content resizes instead of
+    // freezing at whatever the first layout measured.
+    final Widget menuContent = SizeChangedLayoutNotifier(
+      child: RepaintBoundary(
+        child: widget.menuBuilder(context, _controller),
+      ),
     );
     final bool measureTransitionBounds =
         widget.transition == LayerShellDropdownTransition.grow;
@@ -197,8 +202,13 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
       builder: (BuildContext overlayContext) {
         final double barHeight = _regionManager.barHeight.toDouble();
         return Positioned.fill(
-          child: Stack(
-            children: <Widget>[
+          child: NotificationListener<SizeChangedLayoutNotification>(
+            onNotification: (_) {
+              _scheduleRegionUpdate(_RegionSyncMode.exactMenu);
+              return false;
+            },
+            child: Stack(
+              children: <Widget>[
               Positioned(
                 top: barHeight,
                 right: 0,
@@ -247,6 +257,7 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
                   ),
                 ),
             ],
+          ),
           ),
         );
       },
