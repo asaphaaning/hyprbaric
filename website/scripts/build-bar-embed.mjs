@@ -3,6 +3,8 @@ import {writeFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
+import {buildSearchIndex} from './build-search-index.mjs';
+
 const website = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const project = path.dirname(website);
 const widgetbook = path.join(project, 'widgetbook');
@@ -17,10 +19,13 @@ export const outputDirectory = output;
  * view converges onto the latest one's), while the iframe viewport sizes a
  * single view exactly.
  */
-export function buildBarEmbed({mode = 'release'} = {}) {
+export async function buildBarEmbed({mode = 'release'} = {}) {
   if (mode !== 'debug' && mode !== 'release') {
     throw new Error(`Unsupported bar embed build mode: ${mode}`);
   }
+
+  // The search index rides along so it never goes stale behind the bundle.
+  await buildSearchIndex();
 
   return new Promise((resolve, reject) => {
     const child = spawn(

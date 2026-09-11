@@ -13,6 +13,10 @@ const sources = [
   path.join(project, 'widgetbook', 'lib'),
   path.join(project, 'widgetbook', 'pubspec.yaml'),
   path.join(project, 'widgetbook', 'web'),
+  // The search index regenerates inside the bar build, so docs edits ride
+  // along (with a full rebuild, which is slow but always fresh).
+  path.join(website, 'docs'),
+  path.join(website, 'sidebars.js'),
 ].filter(existsSync);
 
 const ignored = [`${path.sep}.dart_tool${path.sep}`, `${path.sep}build${path.sep}`];
