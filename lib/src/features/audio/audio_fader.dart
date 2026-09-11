@@ -21,8 +21,7 @@ abstract final class AudioFaderMetrics {
   static const double slotWidth = 6;
   static const int meterSegments = 24;
 
-  static double _travel(double height) =>
-      math.max(0, height - handleHeight);
+  static double _travel(double height) => math.max(0, height - handleHeight);
 
   static double handleCenterY(double value, double height) =>
       handleHeight / 2 + (1 - value.clamp(0, 1)) * _travel(height);
@@ -92,10 +91,7 @@ class AudioFaderState extends State<AudioFader> {
     bool send = false,
     bool force = false,
   }) {
-    final double next = AudioFaderMetrics.valueForY(
-      position.dy,
-      size.height,
-    );
+    final double next = AudioFaderMetrics.valueForY(position.dy, size.height);
     final int volume = (next * 100).round();
     setState(() => _volume = volume.toDouble());
     widget.onPreviewVolume(volume);
@@ -114,9 +110,7 @@ class AudioFaderState extends State<AudioFader> {
   }
 
   void _nudge(int delta) {
-    setState(
-      () => _volume = (_volume + delta).clamp(0, 100).toDouble(),
-    );
+    setState(() => _volume = (_volume + delta).clamp(0, 100).toDouble());
     widget.onPreviewVolume(_volume.round());
     _sendVolume(force: true);
   }
@@ -145,7 +139,9 @@ class AudioFaderState extends State<AudioFader> {
               width: AudioFaderMetrics.meterWidth,
               child: CustomPaint(
                 painter: HyprSegmentedMeterPainter(
-                  value: endpoint.muted ? 0 : (widget.meterLevel ?? _volume / 100),
+                  value: endpoint.muted
+                      ? 0
+                      : (widget.meterLevel ?? _volume / 100),
                   ramp: ramp,
                   segments: AudioFaderMetrics.meterSegments,
                   direction: HyprMeterDirection.bottomToTop,
@@ -217,20 +213,11 @@ class _FaderTrack extends StatelessWidget {
           final Size size = constraints.biggest;
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTapDown: (TapDownDetails details) => onPreview(
-              details.localPosition,
-              size,
-              send: true,
-              force: true,
-            ),
+            onTapDown: (TapDownDetails details) =>
+                onPreview(details.localPosition, size, send: true, force: true),
             onVerticalDragStart: (DragStartDetails details) {
               onBegin();
-              onPreview(
-                details.localPosition,
-                size,
-                send: true,
-                force: true,
-              );
+              onPreview(details.localPosition, size, send: true, force: true);
             },
             onVerticalDragUpdate: (DragUpdateDetails details) =>
                 onPreview(details.localPosition, size, send: true),
