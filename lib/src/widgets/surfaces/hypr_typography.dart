@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'hypr_colors.dart';
 import 'hypr_console_colors.dart';
+import 'hypr_instrument_surface.dart';
 
 abstract final class HyprTypography {
   static const String uiFamily = 'Inter';
@@ -301,41 +302,24 @@ abstract final class HyprTypography {
   // Console chassis. Roles for the engraved chrome shared by the quick
   // controls console and anything else mounted in the same shell.
 
-  /// Engraved tray heading inside a console chassis.
-  static TextStyle get consoleSection => TextStyle(
-    fontFamily: monoFamily,
-    fontFamilyFallback: <String>['monospace'],
+  /// Supporting section title on the shared instrument material.
+  static TextStyle get consoleSection => HyprInstrumentText.meta.copyWith(
     color: HyprConsoleColors.label,
-    fontSize: size(10.5),
-    fontWeight: FontWeight.w600,
     height: 1,
     letterSpacing: 1.05,
-    shadows: const <Shadow>[
-      Shadow(color: Color(0xBF000000), offset: Offset(0, 1), blurRadius: 2),
-    ],
   );
 
-  /// Silkscreened caption under a console control.
-  static TextStyle get consoleCaption => TextStyle(
-    fontFamily: monoFamily,
-    fontFamilyFallback: <String>['monospace'],
-    color: HyprConsoleColors.textMuted,
-    fontSize: size(10),
-    fontWeight: FontWeight.w700,
+  /// Caption on a console control.
+  static TextStyle get consoleCaption => HyprInstrumentText.meta.copyWith(
+    color: HyprConsoleColors.text,
+    fontWeight: FontWeight.w500,
     height: 1,
-    letterSpacing: 1.45,
+    letterSpacing: .8,
   );
 
   /// [consoleCaption] for the narrow faces of a capture pad or rocker.
-  static TextStyle get consoleCaptionTight => TextStyle(
-    fontFamily: monoFamily,
-    fontFamilyFallback: <String>['monospace'],
-    color: HyprConsoleColors.textFaint,
-    fontSize: size(9),
-    fontWeight: FontWeight.w700,
-    height: 1,
-    letterSpacing: 1.5,
-  );
+  static TextStyle get consoleCaptionTight =>
+      consoleCaption.copyWith(fontSize: 11.5, letterSpacing: .5);
 
   /// Chord hint stamped onto a console face.
   static TextStyle get consoleShortcut => TextStyle(
@@ -401,4 +385,31 @@ abstract final class HyprTypography {
           : style.fontFeatures,
     );
   }
+}
+
+/// Text roles shared by instrument headers and their supporting facts.
+abstract final class HyprInstrumentText {
+  static const title = TextStyle(
+    fontFamily: 'Inter',
+    fontSize: 13,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 1.7,
+    height: 1.25,
+    color: HyprInstrumentColors.secondary,
+  );
+  static const body = TextStyle(
+    fontFamily: 'Roboto Condensed',
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    height: 1.3,
+    color: HyprInstrumentColors.text,
+  );
+  static const meta = TextStyle(
+    fontFamily: 'Roboto Condensed',
+    fontSize: 11.5,
+    fontWeight: FontWeight.w400,
+    letterSpacing: .4,
+    height: 1.3,
+    color: HyprInstrumentColors.secondary,
+  );
 }

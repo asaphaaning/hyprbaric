@@ -56,7 +56,7 @@ class HyprEmptyState extends StatelessWidget {
           Text(
             effectiveMessage,
             textAlign: textAlign,
-            style: messageStyle ?? HyprTypography.popRow,
+            style: messageStyle ?? HyprInstrumentText.body,
           ),
           if (subtitle != null) ...<Widget>[
             SizedBox(height: subtitleGap),
@@ -65,7 +65,7 @@ class HyprEmptyState extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: textAlign,
-              style: subtitleStyle ?? HyprTypography.compactMono,
+              style: subtitleStyle ?? HyprInstrumentText.meta,
             ),
           ],
         ],

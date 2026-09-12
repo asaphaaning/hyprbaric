@@ -474,6 +474,17 @@ final directories = <_widgetbook.WidgetbookNode>[
             ],
           ),
           _widgetbook.WidgetbookComponent(
+            name: 'HyprAmberToggle',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'On and off',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_primitives_shared_primitives_use_cases
+                        .buildAmberToggleStates,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
             name: 'HyprCommandButton',
             useCases: [
               _widgetbook.WidgetbookUseCase(
@@ -1040,6 +1051,17 @@ final directories = <_widgetbook.WidgetbookNode>[
             ],
           ),
           _widgetbook.WidgetbookComponent(
+            name: 'HyprInstrumentHeader',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Shared instrument language',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_primitives_shared_primitives_use_cases
+                        .buildInstrumentHeader,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
             name: 'HyprPopoverPanel',
             useCases: [
               _widgetbook.WidgetbookUseCase(
@@ -1536,6 +1558,12 @@ final directories = <_widgetbook.WidgetbookNode>[
                         .buildPopulatedNotificationPanel,
               ),
               _widgetbook.WidgetbookUseCase(
+                name: 'Reference',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_notifications_notification_panel_use_cases
+                        .buildReferenceNotificationPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
                 name: 'Service unavailable',
                 builder:
                     _hyprbaric_widgetbook_use_cases_notifications_notification_panel_use_cases
@@ -1652,6 +1680,12 @@ final directories = <_widgetbook.WidgetbookNode>[
                 builder:
                     _hyprbaric_widgetbook_use_cases_power_power_panel_use_cases
                         .buildFullPowerPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Laptop — long estimate',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_power_power_panel_use_cases
+                        .buildLongEstimatePowerPanel,
               ),
               _widgetbook.WidgetbookUseCase(
                 name: 'Laptop — low battery',

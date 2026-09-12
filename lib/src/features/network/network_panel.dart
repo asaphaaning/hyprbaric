@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../bindings/bindings.dart';
 import '../../layer_shell_controller.dart';
 import '../../state/layer_shell.dart';
+import '../../widgets/primitives/primitives.dart';
 import 'network_connection_views.dart';
 import 'network_console.dart';
 import 'network_controller.dart';
@@ -277,39 +278,34 @@ class NetworkPanelState extends ConsumerState<NetworkPanel> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.fromLTRB(18, 9, 12, 2),
-                        child: Row(
-                          children: [
-                            const NetworkTopologyIcon(),
-                            const SizedBox(width: 11),
-                            Text(
-                              'NETWORK',
-                              style: NetworkConsole.label.copyWith(
-                                fontSize: 13,
-                                letterSpacing: 2.2,
+                        child: HyprInstrumentHeader(
+                          title: 'Network',
+                          icon: const NetworkTopologyIcon(),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                widget.status.isLoading
+                                    ? 'LOADING'
+                                    : online
+                                    ? 'ONLINE'
+                                    : 'OFFLINE',
+                                style: NetworkConsole.label.copyWith(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w400,
+                                ),
                               ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              widget.status.isLoading
-                                  ? 'LOADING'
-                                  : online
-                                  ? 'ONLINE'
-                                  : 'OFFLINE',
-                              style: NetworkConsole.label.copyWith(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w400,
+                              const SizedBox(width: 8),
+                              IconButton(
+                                tooltip: 'Network options',
+                                onPressed: widget.onOpenSettings,
+                                icon: const Icon(Icons.more_horiz_rounded),
+                                iconSize: 19,
+                                color: NetworkConsole.accent,
+                                visualDensity: VisualDensity.compact,
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              tooltip: 'Network options',
-                              onPressed: widget.onOpenSettings,
-                              icon: const Icon(Icons.more_horiz_rounded),
-                              iconSize: 19,
-                              color: NetworkConsole.accent,
-                              visualDensity: VisualDensity.compact,
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                       NetworkTrafficRing(history: widget.history ?? _history),

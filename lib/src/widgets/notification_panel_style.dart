@@ -4,65 +4,51 @@ import '../bindings/bindings.dart';
 import 'hypr_surface.dart';
 
 abstract final class NotificationPalette {
-  static const Color fg1 = Color(0xECCBD2DA);
-  static const Color fg2 = Color(0xC0ADB6C0);
-  static const Color fg3 = Color(0xA0929DA8);
-  static const Color warmTime = Color(0xD9CBB29E);
+  static const Color fg1 = HyprInstrumentColors.text;
+  static const Color fg2 = HyprInstrumentColors.secondary;
+  static const Color fg3 = HyprInstrumentColors.secondary;
 
-  static const Color tile = Color(0xE60B0C0E);
-  static const Color placeholderFill = Color(0x66000000);
-  static const Color placeholderStroke = Color(0x8C000000);
-  static const Color tileHovered = Color(0xEB121314);
-  static const Color tilePressed = Color(0xF00C0D10);
-  static const Color tileBorder = Color(0x00000000);
-  static const Color well = Color(0xF007080B);
+  static const Color tile = Color(0x40151C2A);
+  static const Color tileHovered = Color(0x60414A62);
+  static const Color tileBorder = Color(0x6051607D);
 }
 
-enum NotificationTilePhase { idle, hovered, pressed }
+/// Presentation identity parsed once at the external application-name boundary.
+enum NotificationSource {
+  github,
+  discord,
+  system,
+  other;
 
-@immutable
-class NotificationTileStyle {
-  const NotificationTileStyle({
-    required this.base,
-    required this.topLight,
-    required this.border,
-    required this.shadow,
-  });
+  static NotificationSource fromName(String name) =>
+      switch (name.toLowerCase()) {
+        'github' => github,
+        'discord' => discord,
+        'system' => system,
+        _ => other,
+      };
 
-  final Color base;
-  final Color topLight;
-  final Color border;
-  final Color shadow;
+  IconData get icon => switch (this) {
+    github => Icons.code_rounded,
+    discord => Icons.forum_rounded,
+    system => Icons.settings_rounded,
+    other => Icons.apps_rounded,
+  };
 
-  factory NotificationTileStyle.forPhase(NotificationTilePhase phase) {
-    return switch (phase) {
-      NotificationTilePhase.idle => const NotificationTileStyle(
-        base: NotificationPalette.tile,
-        topLight: Color(0x0EFFFFFF),
-        border: NotificationPalette.tileBorder,
-        shadow: Color(0x52000000),
-      ),
-      NotificationTilePhase.hovered => const NotificationTileStyle(
-        base: NotificationPalette.tileHovered,
-        topLight: Color(0x13FFFFFF),
-        border: NotificationPalette.tileBorder,
-        shadow: Color(0x57000000),
-      ),
-      NotificationTilePhase.pressed => const NotificationTileStyle(
-        base: NotificationPalette.tilePressed,
-        topLight: Color(0x00000000),
-        border: NotificationPalette.tileBorder,
-        shadow: Color(0x66000000),
-      ),
-    };
-  }
+  Color? get accent => switch (this) {
+    github => const Color(0xFFBA97FF),
+    discord => const Color(0xFF32DFDE),
+    system => const Color(0xFFFF7D86),
+    other => null,
+  };
 }
 
 Color notificationAccent(NotificationEntry entry) {
+  final source = NotificationSource.fromName(entry.app);
   return switch (entry.urgency) {
-    NotificationUrgency.critical => HyprColors.danger,
-    NotificationUrgency.low => _badgeColor(entry.app).withValues(alpha: 0.82),
-    NotificationUrgency.normal => _badgeColor(entry.app),
+    NotificationUrgency.critical => const Color(0xFFFF7D86),
+    NotificationUrgency.low => source.accent ?? _badgeColor(entry.app),
+    NotificationUrgency.normal => source.accent ?? _badgeColor(entry.app),
   };
 }
 

@@ -11,31 +11,30 @@ class NotificationHeader extends StatelessWidget {
     super.key,
     required this.count,
     required this.onClearAll,
+    this.unreadCount,
   });
 
   final int count;
+  final int? unreadCount;
   final VoidCallback onClearAll;
 
   @override
   Widget build(BuildContext context) {
-    return HyprPanelHeader(
+    return HyprInstrumentHeader(
       title: 'Notifications',
-      uppercaseTitle: true,
-      titleTrailing: count > 0 ? NotificationCountPill(count: count) : null,
-      actionKey: const ValueKey<String>('notifications-clear-all'),
-      actionLabel: 'clear all',
-      actionEnabled: count > 0,
-      onAction: onClearAll,
-      titleTrailingGap: 8,
-      titleStyle: HyprTypography.popTitle.copyWith(
-        color: NotificationPalette.fg3,
-        fontSize: HyprTypography.size(10.5),
-        letterSpacing: 0.84,
-        fontWeight: FontWeight.w600,
-      ),
-      actionColor: NotificationPalette.fg3,
-      actionStyle: HyprTypography.compactMono.copyWith(
-        fontSize: HyprTypography.size(11),
+      icon: const Icon(Icons.notifications_none_rounded),
+      subtitle: '${unreadCount ?? count} UNREAD',
+      trailing: OutlinedButton(
+        key: const ValueKey<String>('notifications-clear-all'),
+        onPressed: count > 0 ? onClearAll : null,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: HyprInstrumentColors.secondary,
+          side: const BorderSide(color: Color(0x60566889)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          textStyle: HyprInstrumentText.meta,
+        ),
+        child: const Text('CLEAR ALL'),
       ),
     );
   }
@@ -96,7 +95,7 @@ class NotificationList extends StatelessWidget {
           shrinkWrap: true,
           padding: const EdgeInsets.symmetric(vertical: 4),
           itemCount: entries.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 14),
+          separatorBuilder: (_, _) => const SizedBox(height: 8),
           itemBuilder: (BuildContext context, int index) {
             final NotificationEntry entry = entries[index];
 
@@ -131,20 +130,11 @@ class NotificationPlaceholder extends StatelessWidget {
       message: label,
       subtitle: subtitle,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
-      color: NotificationPalette.placeholderFill,
-      borderColor: NotificationPalette.placeholderStroke,
-      borderRadius: HyprRadii.controlRadius,
-      messageStyle: HyprTypography.compactMonoStrong.copyWith(
-        color: NotificationPalette.fg2,
-        fontSize: HyprTypography.size(11),
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.44,
-      ),
-      subtitleStyle: HyprTypography.compactMono.copyWith(
-        color: NotificationPalette.fg3,
-        fontSize: HyprTypography.size(10),
-        letterSpacing: 0.2,
-      ),
+      color: NotificationPalette.tile,
+      borderColor: NotificationPalette.tileBorder,
+      borderRadius: BorderRadius.circular(11),
+      messageStyle: HyprInstrumentText.body.copyWith(fontSize: 14),
+      subtitleStyle: HyprInstrumentText.meta,
     );
   }
 }

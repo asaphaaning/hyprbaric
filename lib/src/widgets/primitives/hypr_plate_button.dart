@@ -22,6 +22,7 @@ class HyprPlateButton extends StatelessWidget {
     this.shortcut,
     this.frameKey,
     this.faceKey,
+    this.labelStyle,
   });
 
   /// The plate's fixed height, exposed so layout tests do not have to
@@ -42,6 +43,9 @@ class HyprPlateButton extends StatelessWidget {
 
   final Key? frameKey;
   final Key? faceKey;
+
+  /// Optional label role supplied by the containing panel.
+  final TextStyle? labelStyle;
 
   @override
   Widget build(BuildContext context) {
@@ -145,8 +149,9 @@ class HyprPlateButton extends StatelessWidget {
                                 maxLines: 1,
                                 softWrap: false,
                                 overflow: TextOverflow.ellipsis,
-                                style: HyprTypography.compactMonoStrong
-                                    .copyWith(
+                                style:
+                                    labelStyle?.copyWith(color: labelColor) ??
+                                    HyprTypography.compactMonoStrong.copyWith(
                                       color: labelColor,
                                       fontSize: HyprTypography.size(10.5),
                                       fontWeight: FontWeight.w700,
