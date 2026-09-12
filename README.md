@@ -110,6 +110,16 @@ against the web component by `widgetbook/test/preview_registry_test.dart`. When
 the embed has not been built, the previews say so instead of showing a
 placeholder indefinitely.
 
+Controls measures its complete production panel before the shared preview viewport
+scales it into a landing-page card. Capture, Inspect, Toggles, and Bar settings stay
+visible without an internal scrollbar, including on mobile. Desktop popovers
+retain their display-height limit and scroll when needed.
+
+Embedded views use CanvasKit's per-view render surfaces within that single engine,
+so differently sized previews cannot crop each other's canvas. The standalone
+Widgetbook keeps its implicit-view renderer.
+Run `node --test website/scripts/flutter-bootstrap.test.mjs` to check the two bootstrap modes.
+
 ## Architecture
 
 - Flutter owns rendering, interaction, and shared UI state.
