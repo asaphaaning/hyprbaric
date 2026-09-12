@@ -251,7 +251,8 @@ export 'src/theme/hypr_palette.dart' show HyprPalette;
 export 'src/widgets/center_cluster.dart' show CenterCluster;
 export 'src/widgets/hypr_surface.dart';
 export 'src/widgets/left_cluster.dart' show LeftCluster;
-export 'src/widgets/notification_panel.dart' show NotificationPanel;
+export 'src/widgets/notification_panel.dart'
+    show NotificationPanel, kNotificationPanelWidth;
 export 'src/widgets/notification_panel_parts.dart'
     show
         NotificationCountPill,
@@ -279,6 +280,7 @@ export 'src/widgets/primitives/hypr_hardware_toggle.dart'
 export 'src/widgets/primitives/hypr_hover_plate.dart' show HyprHoverPlate;
 export 'src/widgets/primitives/hypr_inline_tag.dart'
     show HyprBracketedTag, HyprInlineTag;
+export 'src/widgets/primitives/hypr_instrument_header.dart';
 export 'src/widgets/primitives/hypr_interaction_region.dart'
     show HyprInteractionRegion, HyprInteractionState;
 export 'src/widgets/primitives/hypr_interactive_tile.dart'

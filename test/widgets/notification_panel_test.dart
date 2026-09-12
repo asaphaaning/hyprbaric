@@ -67,7 +67,7 @@ void main() {
       expect(find.byType(NotificationRow), findsNWidgets(2));
       expect(find.text('GITHUB'), findsOneWidget);
       expect(find.text('DISCORD'), findsOneWidget);
-      expect(find.byType(NotificationCountPill), findsOneWidget);
+      expect(find.text('2 UNREAD'), findsOneWidget);
     });
 
     testWidgets('separates a pending first frame from an empty daemon', (
@@ -123,7 +123,7 @@ void main() {
       expect(find.byType(NotificationCountPill), findsNothing);
       // The slot stays in the tree so the header does not reflow as the last
       // notification drains away.
-      expect(find.text('clear all'), findsOneWidget);
+      expect(find.text('CLEAR ALL'), findsOneWidget);
     });
 
     testWidgets('the notification list rebuilds itself on an interval', (

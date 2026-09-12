@@ -107,7 +107,6 @@ class _SettingsModalOverlayState extends ConsumerState<SettingsModalOverlay> {
                     borderRadius: BorderRadius.circular(
                       SettingsOverlayLayout.surfaceRadius,
                     ),
-                    borderColor: HyprColors.popupStroke,
                     child: SettingsOverlayContent(
                       tab: _tab,
                       onTabChanged: (SettingsTab tab) {

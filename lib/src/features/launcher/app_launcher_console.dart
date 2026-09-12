@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
+import '../../widgets/primitives/primitives.dart';
 import 'app_launcher_detail.dart';
 import 'app_launcher_footer.dart';
 import 'app_launcher_header.dart';
@@ -45,12 +46,18 @@ class AppLauncherConsole extends StatelessWidget {
 
     return HyprPopoverSurface(
       borderRadius: borderRadius,
-      borderColor: HyprColors.popupStroke,
       child: ClipRRect(
         borderRadius: borderRadius,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: HyprInstrumentHeader(
+                title: 'Applications',
+                icon: Icon(Icons.apps_rounded),
+              ),
+            ),
             AppLauncherHeader(
               queryController: queryController,
               queryFocusNode: queryFocusNode,
@@ -58,40 +65,42 @@ class AppLauncherConsole extends StatelessWidget {
             ),
             if (errorMessage != null)
               LauncherErrorStrip(message: errorMessage!),
-            SizedBox(
-              height: 396,
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    flex: 5,
-                    child: AppLauncherResultsList(
-                      results: results,
-                      loading: loading,
-                      iconPathsByEntryId: iconPathsByEntryId,
-                      selectedIndex: selectedIndex,
-                      onSelect: onSelect,
-                      onLaunch: onLaunch,
+            Flexible(
+              child: SizedBox(
+                height: 396,
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      flex: 5,
+                      child: AppLauncherResultsList(
+                        results: results,
+                        loading: loading,
+                        iconPathsByEntryId: iconPathsByEntryId,
+                        selectedIndex: selectedIndex,
+                        onSelect: onSelect,
+                        onLaunch: onLaunch,
+                      ),
                     ),
-                  ),
-                  const VerticalDivider(
-                    width: 1,
-                    thickness: 1,
-                    color: HyprColors.popupStroke,
-                  ),
-                  Expanded(
-                    flex: 4,
-                    child: AppLauncherDetailPane(
-                      entry: selectedEntry,
-                      iconPath: selectedEntry == null
-                          ? null
-                          : selectedEntry.iconPath ??
-                                iconPathsByEntryId[selectedEntry.id],
-                      onLaunch: selectedEntry == null
-                          ? null
-                          : () => onLaunch(selectedEntry),
+                    const VerticalDivider(
+                      width: 1,
+                      thickness: 1,
+                      color: HyprColors.popupStroke,
                     ),
-                  ),
-                ],
+                    Expanded(
+                      flex: 4,
+                      child: AppLauncherDetailPane(
+                        entry: selectedEntry,
+                        iconPath: selectedEntry == null
+                            ? null
+                            : selectedEntry.iconPath ??
+                                  iconPathsByEntryId[selectedEntry.id],
+                        onLaunch: selectedEntry == null
+                            ? null
+                            : () => onLaunch(selectedEntry),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             AppLauncherFooter(resultCount: entries.length),

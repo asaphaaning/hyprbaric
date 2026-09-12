@@ -80,9 +80,9 @@ class ControlRocker extends StatelessWidget {
                       ? context.hyprPalette.accentSoft
                       : HyprConsoleColors.textFaint,
                 ),
-                const SizedBox(height: HyprSpacing.xl),
+                const SizedBox(height: HyprSpacing.lg),
                 _RockerSwitch(value: value, enabled: enabled),
-                const SizedBox(height: HyprSpacing.xl),
+                const SizedBox(height: HyprSpacing.lg),
                 Text(
                   label.toUpperCase(),
                   maxLines: 1,
@@ -92,8 +92,8 @@ class ControlRocker extends StatelessWidget {
                     color: lit
                         ? HyprConsoleColors.text
                         : HyprConsoleColors.textFaint,
-                    fontSize: HyprTypography.size(8),
-                    letterSpacing: 1.05,
+                    fontSize: HyprTypography.size(10),
+                    letterSpacing: .5,
                   ),
                 ),
               ],

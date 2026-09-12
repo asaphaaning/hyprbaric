@@ -18,7 +18,7 @@ enum LandingPreview {
   controls(name: 'controls', width: 432),
   network(name: 'network', width: NetworkPanel.width),
   power(name: 'power', width: PowerPanel.width),
-  notifications(name: 'notifications', width: 380),
+  notifications(name: 'notifications', width: kNotificationPanelWidth),
   workspaces(name: 'workspaces', width: 340);
 
   const LandingPreview({required this.name, required this.width});
