@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hyprbaric/widget_catalog.dart';
 import 'package:hyprbaric_widgetbook/catalog/catalog_theme.dart';
@@ -451,6 +452,54 @@ void main() {
     expect(find.text('-8.2W'), findsOneWidget);
     expect(tester.getSize(find.byType(PowerPanel)).width, PowerPanel.width);
   });
+
+  testWidgets(
+    'time estimates keep a fixed bay through minutes and multiple hour digits',
+    (tester) async {
+      double? labelLeft;
+      for (final sample in [
+        (seconds: 2100, text: '35m'),
+        (seconds: 10080, text: '2h 48m'),
+        (seconds: 46740, text: '12h 59m'),
+        (seconds: 3600000, text: '1000h 00m'),
+      ]) {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: catalogTheme,
+            home: Center(
+              child: PowerPanel(
+                borderRadius: BorderRadius.circular(18),
+                status: AsyncValue.data(
+                  PowerFixtures.battery(
+                    percentage: 72,
+                    state: PowerBatteryState.discharging,
+                    remainingSeconds: sample.seconds,
+                  ),
+                ),
+                latestResult: null,
+                onSetProfile: (_) {},
+              ),
+            ),
+          ),
+        );
+        final label = tester.getRect(find.text('TIME REMAINING'));
+        final bay = tester.getRect(
+          find.byKey(const ValueKey('power-time-bay')),
+        );
+        labelLeft ??= label.left;
+        expect(label.left, labelLeft);
+        expect(label.left, greaterThanOrEqualTo(bay.left));
+        expect(label.right, lessThanOrEqualTo(bay.right));
+        expect(find.text(sample.text, findRichText: true), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        final fitted = find.descendant(
+          of: find.byKey(const ValueKey('power-time-bay')),
+          matching: find.byType(FittedBox),
+        );
+        expect(tester.getSize(fitted).width, lessThanOrEqualTo(bay.width));
+      }
+    },
+  );
 
   testWidgets('desktop power omits battery instruments and retains profiles', (
     tester,

@@ -1671,6 +1671,12 @@ final directories = <_widgetbook.WidgetbookNode>[
                         .buildFullPowerPanel,
               ),
               _widgetbook.WidgetbookUseCase(
+                name: 'Laptop — long estimate',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_power_power_panel_use_cases
+                        .buildLongEstimatePowerPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
                 name: 'Laptop — low battery',
                 builder:
                     _hyprbaric_widgetbook_use_cases_power_power_panel_use_cases
