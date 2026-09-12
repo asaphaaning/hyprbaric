@@ -31,28 +31,18 @@ class AudioMixerHeader extends StatelessWidget {
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: AudioMixerColors.divider)),
       ),
-      child: Row(
-        children: <Widget>[
-          const AudioMixerIcon(),
-          const SizedBox(width: 11),
-          Text(
-            'MIXER',
-            style: AudioMixerText.label.copyWith(
-              fontSize: 13,
-              letterSpacing: 1.7,
-              color: AudioMixerColors.secondary,
-            ),
+      child: HyprInstrumentHeader(
+        title: 'Mixer',
+        icon: const AudioMixerIcon(),
+        trailing: SizedBox(
+          width: 174,
+          child: AudioOutputSelector(
+            output: output,
+            description: description,
+            onPressed: onSelectOutput,
+            expanded: expanded,
           ),
-          const SizedBox(width: 60),
-          Expanded(
-            child: AudioOutputSelector(
-              output: output,
-              description: description,
-              onPressed: onSelectOutput,
-              expanded: expanded,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

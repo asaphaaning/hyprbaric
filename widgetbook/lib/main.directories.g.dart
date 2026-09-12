@@ -1040,6 +1040,17 @@ final directories = <_widgetbook.WidgetbookNode>[
             ],
           ),
           _widgetbook.WidgetbookComponent(
+            name: 'HyprInstrumentHeader',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Shared instrument language',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_primitives_shared_primitives_use_cases
+                        .buildInstrumentHeader,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
             name: 'HyprPopoverPanel',
             useCases: [
               _widgetbook.WidgetbookUseCase(
@@ -1534,6 +1545,12 @@ final directories = <_widgetbook.WidgetbookNode>[
                 builder:
                     _hyprbaric_widgetbook_use_cases_notifications_notification_panel_use_cases
                         .buildPopulatedNotificationPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Reference',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_notifications_notification_panel_use_cases
+                        .buildReferenceNotificationPanel,
               ),
               _widgetbook.WidgetbookUseCase(
                 name: 'Service unavailable',

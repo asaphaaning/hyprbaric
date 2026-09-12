@@ -478,3 +478,38 @@ class _FrameLabel extends StatelessWidget {
 }
 
 void _noop() {}
+
+/// The production header and text roles on the common translucent material.
+@UseCase(
+  name: 'Shared instrument language',
+  type: HyprInstrumentHeader,
+  path: '[Building blocks]/Surfaces',
+)
+Widget buildInstrumentHeader(BuildContext context) {
+  return CatalogFrame(
+    width: 450,
+    child: HyprInstrumentSurface(
+      borderRadius: BorderRadius.circular(16),
+      child: const Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            HyprInstrumentHeader(
+              title: 'Notifications',
+              icon: Icon(Icons.notifications_none_rounded),
+              subtitle: '3 UNREAD',
+            ),
+            SizedBox(height: 16),
+            HyprPanelDivider(color: HyprInstrumentColors.border),
+            SizedBox(height: 16),
+            Text('A clear primary message', style: HyprInstrumentText.body),
+            SizedBox(height: 6),
+            Text('Supporting details', style: HyprInstrumentText.meta),
+          ],
+        ),
+      ),
+    ),
+  );
+}

@@ -1991,7 +1991,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.text('Appearance'), findsWidgets);
+    expect(find.text('APPEARANCE'), findsWidgets);
     expect(find.text('v9.8.7'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.close_rounded));
@@ -2111,7 +2111,7 @@ void main() {
     );
     expect(settingsContent.width, SettingsOverlayLayout.width);
     expect(settingsContent.height, SettingsOverlayLayout.height);
-    expect(find.text('Appearance'), findsWidgets);
+    expect(find.text('APPEARANCE'), findsWidgets);
     expect(find.text('v1.2.3'), findsOneWidget);
     expect(find.text('Position'), findsOneWidget);
 
@@ -3809,11 +3809,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('NOTIFICATIONS'), findsOneWidget);
-    expect(find.text('clear all'), findsOneWidget);
-    expect(
-      find.byKey(const ValueKey<String>('notifications-count-pill')),
-      findsOneWidget,
-    );
+    expect(find.text('CLEAR ALL'), findsOneWidget);
+    expect(find.text('2 UNREAD'), findsOneWidget);
     expect(find.text('SLACK'), findsOneWidget);
     expect(
       find.text('Maya: "wfh today, ping me before standup"'),
@@ -4054,6 +4051,8 @@ void main() {
 
     expect(toasts, contains('Magnifier support is not available yet'));
 
+    await tester.ensureVisible(find.text('KBD'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('KBD'));
     await tester.pump();
 
@@ -4132,6 +4131,8 @@ void main() {
     );
     await tester.pump();
 
+    await tester.ensureVisible(find.text('DND'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('DND'));
     await tester.pump();
 
@@ -4166,6 +4167,8 @@ void main() {
     );
     await tester.pump();
 
+    await tester.ensureVisible(find.text('NIGHT'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('NIGHT'));
     await tester.pump();
 
@@ -4212,6 +4215,8 @@ void main() {
     // backend's last known value was true.
     expect(find.bySemanticsLabel('Night, unavailable'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('NIGHT'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('NIGHT'));
     await tester.pump();
 
@@ -4247,6 +4252,8 @@ void main() {
     );
     await tester.pump();
 
+    await tester.ensureVisible(find.text('CAFFEINE'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('CAFFEINE'));
     await tester.pump();
 
@@ -4289,6 +4296,8 @@ void main() {
     expect(rocker.value, false);
     expect(rocker.enabled, false);
 
+    await tester.ensureVisible(find.text('CAFFEINE'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('CAFFEINE'));
     await tester.pump();
 

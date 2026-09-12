@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'hypr_colors.dart';
 import 'hypr_glass_surface.dart';
+import 'hypr_instrument_surface.dart';
 import 'hypr_surface_frame.dart';
 
 class HyprPopoverSurface extends StatelessWidget {
@@ -14,13 +15,13 @@ class HyprPopoverSurface extends StatelessWidget {
     super.key,
     required this.child,
     required this.borderRadius,
-    this.color = HyprColors.popoverSurface,
-    this.gradient,
-    this.borderColor = HyprColors.popupStroke,
+    this.color = Colors.white,
+    this.gradient = HyprInstrumentColors.glass,
+    this.borderColor = HyprInstrumentColors.border,
     this.blur = 16,
     this.shadow = false,
-    this.inset = true,
-    this.overlayOpacity = 1,
+    this.inset = false,
+    this.overlayOpacity = 0,
   });
 
   final Widget child;

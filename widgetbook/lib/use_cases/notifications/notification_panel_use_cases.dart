@@ -8,6 +8,27 @@ import '../../audio/notification_panel_preview.dart';
 import 'notification_fixtures.dart';
 
 @UseCase(
+  name: 'Reference',
+  type: NotificationPanel,
+  path: '[Widgets]/Notifications',
+)
+Widget buildReferenceNotificationPanel(BuildContext context) => DecoratedBox(
+  decoration: const BoxDecoration(
+    gradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [Color(0xFF172C55), Color(0xFF090D1A), Color(0xFF3B214E)],
+    ),
+  ),
+  child: const Center(
+    child: SingleChildScrollView(
+      padding: EdgeInsets.all(24),
+      child: NotificationPanelPreview(),
+    ),
+  ),
+);
+
+@UseCase(
   name: 'Empty',
   type: NotificationPanel,
   path: '[Widgets]/Notifications',

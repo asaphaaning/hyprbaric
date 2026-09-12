@@ -196,7 +196,8 @@ void main() {
     expect(find.byType(SettingsOverlayContent), findsOneWidget);
     expect(find.byType(SettingsSidebar), findsOneWidget);
     expect(find.byType(SettingsContentHeader), findsOneWidget);
-    expect(find.text('Appearance'), findsNWidgets(2));
+    expect(find.text('Appearance'), findsOneWidget);
+    expect(find.text('APPEARANCE'), findsOneWidget);
 
     await tester.tap(find.text('Modules'));
     await tester.pumpAndSettle();
@@ -243,6 +244,8 @@ void main() {
     );
     expect(night.value, isFalse);
 
+    await tester.ensureVisible(find.text('NIGHT'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('NIGHT'));
     await tester.pumpAndSettle();
 
@@ -389,6 +392,8 @@ void main() {
       ),
     );
 
+    await tester.ensureVisible(find.text('NIGHT'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('NIGHT'));
     await tester.pumpAndSettle();
 
@@ -590,10 +595,13 @@ void main() {
 
     expect(find.byType(NotificationPanel), findsOneWidget);
     expect(find.byType(NotificationHeader), findsOneWidget);
-    expect(find.byType(NotificationCountPill), findsOneWidget);
+    expect(find.text('3 UNREAD'), findsOneWidget);
     expect(find.byType(NotificationList), findsOneWidget);
     expect(find.byType(NotificationRow), findsNWidgets(3));
-    expect(tester.getSize(find.byType(NotificationPanel)).width, 380);
+    expect(
+      tester.getSize(find.byType(NotificationPanel)).width,
+      kNotificationPanelWidth,
+    );
   });
 
   test(

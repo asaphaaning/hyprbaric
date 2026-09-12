@@ -7,6 +7,7 @@ export 'hypr_hardware_toggle.dart';
 export 'hypr_hover_plate.dart';
 export 'hypr_icon_button_style.dart';
 export 'hypr_inline_tag.dart';
+export 'hypr_instrument_header.dart';
 export 'hypr_interaction_region.dart';
 export 'hypr_interactive_tile.dart';
 export 'hypr_interval_rebuild.dart';

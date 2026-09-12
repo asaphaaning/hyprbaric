@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
+import '../../widgets/primitives/primitives.dart';
 import 'power_console.dart';
 import 'power_formatting.dart';
 import 'power_icon.dart';
@@ -159,56 +160,36 @@ class _Header extends StatelessWidget {
           };
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Row(
-        children: [
-          PowerIcon(
-            status?.batteryPresent == true
-                ? PowerSymbol.battery
-                : PowerSymbol.power,
-            color: PowerConsole.pink,
-            size: 38,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  status?.batteryPresent == true ? 'BATTERY' : 'SYSTEM POWER',
-                  style: PowerConsole.value.copyWith(
-                    fontFamily: 'Inter',
-                    fontSize: 19,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 2.2,
+      child: HyprInstrumentHeader(
+        title: status?.batteryPresent == true ? 'Battery' : 'System power',
+        icon: PowerIcon(
+          status?.batteryPresent == true
+              ? PowerSymbol.battery
+              : PowerSymbol.power,
+          color: PowerConsole.pink,
+        ),
+        subtitle: status?.batteryPresent == true
+            ? 'System Power'
+            : 'Power profiles',
+        trailing: status?.batteryPresent == true || loading
+            ? Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 11,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0x80080B12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0x3046516D)),
+                ),
+                child: Text(
+                  label,
+                  style: HyprInstrumentText.meta.copyWith(
+                    color: PowerConsole.pink,
                   ),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  status?.batteryPresent == true
-                      ? 'System Power'
-                      : 'Power profiles',
-                  style: PowerConsole.label,
-                ),
-              ],
-            ),
-          ),
-          if (status?.batteryPresent == true || loading)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-              decoration: BoxDecoration(
-                color: const Color(0x80080B12),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0x3046516D)),
-              ),
-              child: Text(
-                label,
-                style: PowerConsole.label.copyWith(
-                  color: PowerConsole.pink,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-        ],
+              )
+            : null,
       ),
     );
   }

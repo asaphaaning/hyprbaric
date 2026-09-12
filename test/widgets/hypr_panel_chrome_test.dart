@@ -43,9 +43,10 @@ void main() {
         ),
       );
 
-      expect(surface.color, HyprColors.popoverSurface);
-      expect(surface.color, HyprColors.surfaceStrong);
-      expect(surface.borderColor, HyprColors.popupStroke);
+      expect(surface.color, Colors.white);
+      expect(surface.gradient, HyprInstrumentColors.glass);
+      expect(surface.overlayOpacity, 0);
+      expect(surface.borderColor, HyprInstrumentColors.border);
       expect(constrained.constraints, constraints);
       expect(panelPadding.padding, padding);
     },
@@ -77,7 +78,7 @@ void main() {
         tester.getSize(clipFinder),
         tester.getSize(find.byType(HyprGlassSurface)),
       );
-      expect(find.byType(HyprInsetBorder), findsOneWidget);
+      expect(find.byType(HyprInsetBorder), findsNothing);
     },
   );
 
