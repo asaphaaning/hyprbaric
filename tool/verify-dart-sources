@@ -1,0 +1,27 @@
+#!/usr/bin/env sh
+# Verifies the checked-in Dart sources and generated artifacts from a clean tree.
+set -eu
+
+cd "$(git rev-parse --show-toplevel)"
+
+# Git hooks export repository paths. The Flutter SDK has its own Git checkout;
+# let SDK subprocesses discover it without inheriting the application's paths.
+run_sdk() (
+  unset $(git rev-parse --local-env-vars)
+  "$@"
+)
+
+run_sdk dart format lib test pigeons
+run_sdk flutter pub run pigeon --input pigeons/layer_shell_api.dart
+run_sdk dart format lib test pigeons
+run_sdk flutter pub run build_runner build
+run_sdk dart format lib test pigeons
+if ! git diff --exit-code -- lib test pigeons linux/runner/layer_shell_api.g.h linux/runner/layer_shell_api.g.cc; then
+  printf '%s\n' 'Dart formatting or generated sources changed. Review and stage the changes, then retry.' >&2
+  exit 1
+fi
+
+if test -n "$(git ls-files --others --exclude-standard -- ':(glob)lib/**/*.dart' ':(glob)test/**/*.dart' ':(glob)pigeons/**/*.dart')"; then
+  printf '%s\n' 'Untracked Dart outputs must be reviewed and staged.' >&2
+  exit 1
+fi

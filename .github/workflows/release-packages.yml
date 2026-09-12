@@ -69,12 +69,7 @@ jobs:
       - name: Verify generated bindings and Dart formatting
         run: |
           rinf gen
-          dart format lib test pigeons
-          dart run pigeon --input pigeons/layer_shell_api.dart
-          dart format lib test pigeons
-          dart run build_runner build
-          dart format lib test pigeons
-          git diff --exit-code
+          ./tool/verify-dart-sources
 
       - name: Verify Flutter
         run: |

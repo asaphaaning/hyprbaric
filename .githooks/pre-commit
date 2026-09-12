@@ -1,0 +1,22 @@
+#!/usr/bin/env sh
+# Keeps staged Dart changes formatted and their checked-in outputs current.
+set -eu
+
+if ! git diff --cached --name-only --diff-filter=ACMRD | grep -Eq \
+  '^(lib|test|pigeons)/.*\.dart$|^(pubspec\.yaml|pubspec\.lock|build\.yaml)$|^(tool/verify-dart-sources|\.githooks/pre-commit)$'; then
+  exit 0
+fi
+
+# Generation must see the same inputs as the commit. Refuse partial staging
+# before touching files; never silently include the rest of a developer's edit.
+if ! git diff --quiet -- lib test pigeons pubspec.yaml pubspec.lock build.yaml linux/runner/layer_shell_api.g.h linux/runner/layer_shell_api.g.cc; then
+  printf '%s\n' 'Stage or stash remaining Dart inputs and generated outputs before committing.' >&2
+  exit 1
+fi
+
+if test -n "$(git ls-files --others --exclude-standard -- ':(glob)lib/**/*.dart' ':(glob)test/**/*.dart' ':(glob)pigeons/**/*.dart')"; then
+  printf '%s\n' 'Stage or move untracked Dart sources before running code generation.' >&2
+  exit 1
+fi
+
+exec ./tool/verify-dart-sources
