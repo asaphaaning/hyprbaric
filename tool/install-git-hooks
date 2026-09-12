@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+# Enables this checkout's versioned Git hooks.
+set -eu
+
+existing_hooks=$(git config --get core.hooksPath || true)
+if test -n "$existing_hooks" && test "$existing_hooks" != .githooks; then
+  printf '%s\n' "Existing hooks path: $existing_hooks. Integrate .githooks/pre-commit there before replacing it." >&2
+  exit 1
+fi
+
+git config --local core.hooksPath .githooks
+printf '%s\n' 'Enabled versioned Hyprbaric hooks for this repository and its worktrees.'

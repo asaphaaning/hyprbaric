@@ -50,6 +50,9 @@ jobs:
       - name: Generate bindings
         run: rinf gen
 
+      - name: Verify generated Dart and formatting
+        run: ./tool/verify-dart-sources
+
       - name: Verify Flutter
         run: |
           flutter analyze

@@ -50,8 +50,17 @@ Install Flutter and Rust, then run the development build:
 git clone https://github.com/asaphaaning/hyprbaric.git
 cd hyprbaric
 flutter pub get
+./tool/install-git-hooks
 flutter run -d linux
 ```
+
+The installed pre-commit hook runs Dart formatting and regenerates Pigeon and
+Riverpod outputs whenever a staged Dart input changes. If it reports updated
+files, review and stage those files, then commit again. Stage or stash remaining
+Dart edits first: the hook refuses partially staged inputs before changing files
+and never stages changes for you. Run `./tool/verify-dart-sources` manually to
+prepare a commit; CI and release packaging run the same check. Match the Flutter
+version pinned in `.github/workflows/ci.yml` to keep formatting reproducible.
 
 Build and run the matching release bundle:
 
