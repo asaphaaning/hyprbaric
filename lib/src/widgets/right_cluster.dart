@@ -292,7 +292,7 @@ class RightCluster extends ConsumerWidget {
             LayerShellDropdown(
               controller: powerController,
               menuRadius: audioRadius,
-              menuWidth: 320,
+              menuWidth: PowerPanel.width,
               buttonBuilder:
                   (
                     BuildContext context,

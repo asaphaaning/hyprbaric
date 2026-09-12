@@ -7,6 +7,32 @@ import '../../catalog/catalog_frame.dart';
 import '../../audio/power_panel_preview.dart';
 import 'power_fixtures.dart';
 
+@UseCase(name: 'Reference', type: PowerPanel, path: '[Widgets]/Power')
+Widget buildReferencePowerPanel(BuildContext context) => DecoratedBox(
+  decoration: const BoxDecoration(
+    gradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [Color(0xFF172C55), Color(0xFF090D1A), Color(0xFF3B214E)],
+    ),
+  ),
+  child: Center(
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: PowerPanelPreview(
+        initialStatus: PowerFixtures.battery(
+          percentage: 12,
+          state: PowerBatteryState.discharging,
+          remainingSeconds: 2100,
+          powerRateWatts: -12.4,
+          voltage: 11.86,
+          temperatureCelsius: 43,
+        ),
+      ),
+    ),
+  ),
+);
+
 @UseCase(
   name: 'Desktop — no battery',
   type: PowerPanel,

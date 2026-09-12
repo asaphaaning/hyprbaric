@@ -23,14 +23,9 @@ class AudioMixerSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HyprGlassSurface(
+    return HyprInstrumentSurface(
       borderRadius: borderRadius,
-      // The gradient owns opacity; the painter's color must not multiply it.
-      color: Colors.white,
-      gradient: AudioMixerColors.glass,
       borderColor: AudioMixerColors.border.withValues(alpha: .45),
-      frame: HyprSurfaceFrame.popover,
-      inset: false,
       child: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: RadialGradient(

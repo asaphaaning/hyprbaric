@@ -17,7 +17,7 @@ enum LandingPreview {
   mixer(name: 'mixer', width: AudioPanel.width),
   controls(name: 'controls', width: 432),
   network(name: 'network', width: NetworkPanel.width),
-  power(name: 'power', width: 320),
+  power(name: 'power', width: PowerPanel.width),
   notifications(name: 'notifications', width: 380),
   workspaces(name: 'workspaces', width: 340);
 

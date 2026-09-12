@@ -33,8 +33,8 @@ extension AudioStatusView on AudioStatus {
 /// housings come from [HyprColors] so the mixer reads as the same instrument as
 /// the rest of the bar.
 abstract final class AudioMixerColors {
-  static const Color text = Color(0xFFF7F6FF);
-  static const Color secondary = Color(0xFFB8C4FF);
+  static const Color text = HyprInstrumentColors.text;
+  static const Color secondary = HyprInstrumentColors.secondary;
   static const Color border = Color(0xFF7B86B0);
   static const Color divider = Color(0x333A3E49);
 
@@ -48,7 +48,7 @@ abstract final class AudioMixerColors {
   static const Color railBorder = Color(0x333D3D54);
   static const Color handle = Color(0xFF34364F);
   static const Color handleBorder = Color(0xFF080A14);
-  static const Color accentBorder = Color(0xFFB8C4FF);
+  static const Color accentBorder = HyprInstrumentColors.secondary;
   static const Color amber = Color(0xFFFFD24D);
 
   /// Output channel identity, shared by its fader and meter.
@@ -58,12 +58,7 @@ abstract final class AudioMixerColors {
   static const Color input = Color(0xFFF55DF3);
 
   /// Translucent charcoal with a restrained blue undertone over desktop blur.
-  static const LinearGradient glass = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: <Color>[Color(0xC914171E), Color(0xBC101218), Color(0xD00B0E13)],
-    stops: <double>[0, 0.55, 1],
-  );
+  static const LinearGradient glass = HyprInstrumentColors.glass;
 }
 
 /// Typography shared by the display and audio instruments.

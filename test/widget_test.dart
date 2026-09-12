@@ -3480,7 +3480,7 @@ void main() {
     expect(find.text('BATTERY'), findsOneWidget);
     expect(find.text('POWER PROFILE'), findsOneWidget);
     expect(find.text('CHARGE'), findsOneWidget);
-    expect(find.text('REMAINING'), findsOneWidget);
+    expect(find.text('TIME REMAINING'), findsOneWidget);
     expect(find.text('-8.2W'), findsOneWidget);
     expect(find.text('BALANCED'), findsOneWidget);
     expect(

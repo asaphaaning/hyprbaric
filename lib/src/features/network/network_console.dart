@@ -5,8 +5,8 @@ import '../../widgets/primitives/primitives.dart';
 
 /// The network instrument's materials; opacity is owned by the glass itself.
 abstract final class NetworkConsole {
-  static const text = Color(0xFFF7F6FF);
-  static const muted = Color(0xFFB8C4FF);
+  static const text = HyprInstrumentColors.text;
+  static const muted = HyprInstrumentColors.secondary;
   static const accent = Color(0xFFB2BDFF);
   static const download = Color(0xFFB94BFF);
   static const upload = Color(0xFFFF2CAB);
@@ -52,18 +52,8 @@ class NetworkSurface extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => HyprGlassSurface(
+  Widget build(BuildContext context) => HyprInstrumentSurface(
     borderRadius: radius,
-    color: Colors.white,
-    gradient: const LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [Color(0xC914171E), Color(0xBC101218), Color(0xD00B0E13)],
-      stops: [0, .55, 1],
-    ),
-    borderColor: const Color(0x887E86B4),
-    frame: HyprSurfaceFrame.popover,
-    inset: false,
     child: DefaultTextStyle(style: NetworkConsole.body, child: child),
   );
 }
