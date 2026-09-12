@@ -41,7 +41,7 @@ final class NetworkControllerProvider
   }
 }
 
-String _$networkControllerHash() => r'acc53e5cca263d2f532feb0a4f955200353e8b61';
+String _$networkControllerHash() => r'3cb11a32c4b68c6951671a91aff7b18943687f9f';
 
 abstract class _$NetworkController extends $Notifier<void> {
   void build();
