@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import 'audio/preview_registry.dart';
 import 'embed/embed_theme.dart';
+import 'embed/preview_viewport.dart';
 
 void main() => runWidget(const _EmbedViews());
 
@@ -138,15 +139,7 @@ class _PreviewEmbedState extends State<_PreviewEmbed> {
       theme: embedTheme,
       home: Scaffold(
         backgroundColor: Colors.transparent,
-        body: SizedBox.expand(
-          child: FittedBox(
-            fit: BoxFit.contain,
-            child: SizedBox(
-              width: preview.width,
-              child: RepaintBoundary(child: preview.build()),
-            ),
-          ),
-        ),
+        body: PreviewViewport(preview: preview),
       ),
     );
   }
