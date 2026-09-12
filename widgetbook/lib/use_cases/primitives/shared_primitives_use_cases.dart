@@ -513,3 +513,16 @@ Widget buildInstrumentHeader(BuildContext context) {
     ),
   );
 }
+
+@UseCase(
+  name: 'On and off',
+  type: HyprAmberToggle,
+  path: '[Building blocks]/Controls',
+)
+Widget buildAmberToggleStates(BuildContext context) => CatalogFrame(
+  width: 160,
+  child: const Row(
+    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    children: [HyprAmberToggle(value: false), HyprAmberToggle(value: true)],
+  ),
+);

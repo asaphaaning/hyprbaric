@@ -270,6 +270,7 @@ export 'src/widgets/osd_overlay.dart'
         OsdScale,
         OsdSegment;
 export 'src/widgets/primitives/hypr_action_row.dart' show HyprActionRow;
+export 'src/widgets/primitives/hypr_amber_toggle.dart' show HyprAmberToggle;
 export 'src/widgets/primitives/hypr_badge.dart' show HyprBadge;
 export 'src/widgets/primitives/hypr_command_button.dart'
     show HyprCommandButton, HyprCommandButtonVariant;

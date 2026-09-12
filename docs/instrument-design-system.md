@@ -9,3 +9,5 @@ Notifications use colored source badges, outlined message rows, an unread subtit
 Controls keep the settings action visible while their groups scroll on short displays. The launcher results pane shrinks below its preferred height when the shared header or an error message needs room.
 
 Widgetbook renders the production widgets directly. The Notifications reference story supplies the three-message composition, while Building blocks / Surfaces / HyprInstrumentHeader exposes the common header and text roles for future panels. Contextual tray menus keep their existing content hierarchy while inheriting the shared popover material.
+
+Controls and Network share `HyprAmberToggle`, a passive 44×25 indicator with a round ivory thumb and amber glow. Their owning controls provide semantics and callbacks. Unavailable controls stay dim and unlit while retaining their explanatory action. Controls keep the Capture / Inspect / Toggles layout, with translucent charcoal faces, consistent 11.5px captions and the shared body role on the settings action.
