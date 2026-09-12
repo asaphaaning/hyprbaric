@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
-import '../../widgets/primitives/primitives.dart';
-import 'battery_meter_geometry.dart';
-import 'power_colors.dart';
+import 'power_console.dart';
 import 'power_formatting.dart';
+import 'power_icon.dart';
 import 'power_profile_pad.dart';
 
+/// Live battery instrument shared by the bar, Widgetbook and landing preview.
 class PowerPanel extends StatelessWidget {
   const PowerPanel({
     super.key,
@@ -17,7 +16,7 @@ class PowerPanel extends StatelessWidget {
     required this.latestResult,
     required this.onSetProfile,
   });
-
+  static const double width = 450;
   final BorderRadius borderRadius;
   final AsyncValue<PowerStatus> status;
   final PowerCommandResult? latestResult;
@@ -25,411 +24,364 @@ class PowerPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final PowerStatus? snapshot = status.asData?.value;
-    return HyprPopoverPanel(
-      borderRadius: borderRadius,
-      constraints: const BoxConstraints(minWidth: 320, maxWidth: 320),
-      padding: const EdgeInsets.fromLTRB(14, 13, 14, 14),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          const HyprSectionLabel('Battery', trailingLine: true),
-          const SizedBox(height: HyprSpacing.xxl),
-          _BatteryMeter(status: snapshot, loading: status.isLoading),
-          const SizedBox(height: HyprSpacing.section),
-          const HyprSectionLabel('Power profile', trailingLine: true),
-          const SizedBox(height: HyprSpacing.xxl),
-          _ProfileGrid(status: snapshot, onSetProfile: onSetProfile),
-          if (_message(snapshot, latestResult)
-              case final String message) ...<Widget>[
-            const SizedBox(height: HyprSpacing.section),
-            Text(
-              message,
-              style: HyprTypography.popMeta.copyWith(
-                color: HyprColors.textFaint,
-                fontSize: HyprTypography.size(10),
+    final snapshot = status.asData?.value;
+    final message = switch (latestResult) {
+      PowerCommandResultFailed(:final message) => message,
+      _ => snapshot?.profileMessage ?? snapshot?.batteryMessage,
+    };
+    return SizedBox(
+      width: width,
+      child: HyprInstrumentSurface(
+        borderRadius: borderRadius,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _Header(status: snapshot, loading: status.isLoading),
+            if (snapshot?.batteryPresent == true) ...[
+              _BatteryStage(status: snapshot, loading: status.isLoading),
+              PowerBay(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 14,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: PowerMetric(
+                        icon: PowerSymbol.power,
+                        value: formatPowerRate(snapshot?.powerRateWatts),
+                        label: 'POWER',
+                      ),
+                    ),
+                    const _Separator(),
+                    Expanded(
+                      child: PowerMetric(
+                        icon: PowerSymbol.voltage,
+                        value: formatVoltage(snapshot?.voltage),
+                        label: 'VOLTAGE',
+                      ),
+                    ),
+                    const _Separator(),
+                    Expanded(
+                      child: PowerMetric(
+                        icon: PowerSymbol.temperature,
+                        value: formatTemperature(snapshot?.temperatureCelsius),
+                        label: 'TEMP',
+                      ),
+                    ),
+                    const _Separator(),
+                    Expanded(
+                      child: PowerMetric(
+                        icon: PowerSymbol.battery,
+                        value: batteryStateLabel(
+                          snapshot?.state ?? PowerBatteryState.unknown,
+                        ),
+                        label: 'STATUS',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            Padding(
+              padding: const EdgeInsets.all(6),
+              child: PowerBay(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'POWER PROFILE',
+                      style: PowerConsole.label.copyWith(
+                        color: PowerConsole.text,
+                        fontSize: 15,
+                        letterSpacing: 3.4,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        for (final profile in PowerProfile.values) ...[
+                          Expanded(
+                            child: PowerProfilePad(
+                              profile: profile,
+                              active: snapshot?.activeProfile == profile,
+                              enabled:
+                                  snapshot?.availableProfiles.contains(
+                                    profile,
+                                  ) ??
+                                  false,
+                              onPressed: onSetProfile,
+                            ),
+                          ),
+                          if (profile != PowerProfile.values.last)
+                            const SizedBox(width: 10),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
+            if (message != null || status.hasError)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                child: Text(
+                  message ?? 'Power status unavailable',
+                  style: PowerConsole.label.copyWith(letterSpacing: .2),
+                ),
+              ),
           ],
-        ],
+        ),
       ),
     );
   }
 }
 
-class _BatteryMeter extends StatelessWidget {
-  const _BatteryMeter({required this.status, required this.loading});
-
+class _Header extends StatelessWidget {
+  const _Header({required this.status, required this.loading});
   final PowerStatus? status;
   final bool loading;
-
   @override
   Widget build(BuildContext context) {
-    final bool batteryPresent = status?.batteryPresent ?? false;
-    final int percentage = status?.percentage?.clamp(0, 100) ?? 0;
-    return HyprGlassFrame(
-      fill: const Color(0xEB07080A),
-      vignette: true,
-      child: Padding(
-        padding: const EdgeInsets.all(HyprSpacing.section),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            _LedBar(percentage: percentage, active: batteryPresent),
-            const SizedBox(height: HyprSpacing.xxl),
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: _Readout(
-                    value: batteryPresent
-                        ? '${percentage.clamp(0, 100)}'
-                        : loading
-                        ? '--'
-                        : 'N/A',
-                    unit: batteryPresent ? '%' : '',
-                    label: 'Charge',
+    final label = loading
+        ? 'LOADING'
+        : status?.batteryPresent != true
+        ? 'SYSTEM POWER'
+        : switch (status!.state) {
+            PowerBatteryState.charging => 'CHARGING',
+            PowerBatteryState.discharging => 'DISCHARGING',
+            PowerBatteryState.full => 'FULL',
+            PowerBatteryState.empty => 'EMPTY',
+            PowerBatteryState.pendingCharge ||
+            PowerBatteryState.pendingDischarge => 'WAITING',
+            PowerBatteryState.unknown => 'UNKNOWN',
+          };
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        children: [
+          PowerIcon(
+            status?.batteryPresent == true
+                ? PowerSymbol.battery
+                : PowerSymbol.power,
+            color: PowerConsole.pink,
+            size: 38,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  status?.batteryPresent == true ? 'BATTERY' : 'SYSTEM POWER',
+                  style: PowerConsole.value.copyWith(
+                    fontFamily: 'Inter',
+                    fontSize: 19,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 2.2,
                   ),
                 ),
-                const SizedBox(width: HyprSpacing.xl),
-                Expanded(
-                  child: _Readout(
-                    value: batteryPresent ? formatRemaining(status) : '--',
-                    unit: '',
-                    label: 'Remaining',
-                  ),
+                const SizedBox(height: 3),
+                Text(
+                  status?.batteryPresent == true
+                      ? 'System Power'
+                      : 'Power profiles',
+                  style: PowerConsole.label,
                 ),
               ],
             ),
-            const SizedBox(height: HyprSpacing.xxl),
-            _TelemetryStrip(status: status),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LedBar extends StatelessWidget {
-  const _LedBar({required this.percentage, required this.active});
-
-  final int percentage;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: ShapeDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[Color(0xFF070B10), Color(0xFF0B1117)],
-        ),
-        shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(3),
-          side: BorderSide(color: Colors.black.withValues(alpha: 0.6)),
-        ),
-        shadows: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.72),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-            blurStyle: BlurStyle.inner,
           ),
-        ],
-      ),
-      child: SizedBox(
-        height: 18,
-        child: Padding(
-          padding: const EdgeInsets.all(3),
-          child: SizedBox.expand(
-            child: CustomPaint(
-              key: const ValueKey<String>('battery-charge-meter'),
-              painter: _BatteryChargeMeterPainter(
-                percentage: percentage,
-                active: active,
+          if (status?.batteryPresent == true || loading)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+              decoration: BoxDecoration(
+                color: const Color(0x80080B12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0x3046516D)),
               ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Paints the charge segments as a single canvas rather than a flex row.
-///
-/// Twenty `Expanded` children each carrying their own decoration and shadow
-/// cost twenty render objects and twenty shadow layers for a meter that is one
-/// strip of colour. One canvas draws it in a single pass and lets the segments
-/// stay legible when the strip is laid out narrower than its usual width.
-class _BatteryChargeMeterPainter extends CustomPainter {
-  const _BatteryChargeMeterPainter({
-    required this.percentage,
-    required this.active,
-  });
-
-  final int percentage;
-  final bool active;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.width <= 0 || size.height <= 0) {
-      return;
-    }
-
-    final BatteryMeterGeometry geometry = BatteryMeterGeometry.forWidth(
-      size.width,
-    );
-    if (!geometry.isPaintable) {
-      return;
-    }
-
-    final int charge = percentage.clamp(0, 100);
-    for (int index = 0; index < BatteryMeterGeometry.segmentCount; index += 1) {
-      final double threshold =
-          (index + 1) / BatteryMeterGeometry.segmentCount * 100;
-      final bool lit = active && threshold <= charge;
-      final Color color = lit
-          ? PowerColors.forCharge(threshold)
-          : PowerColors.unlit;
-      final RRect segment = RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-          geometry.offsetOf(index),
-          0,
-          geometry.segmentWidth,
-          size.height,
-        ),
-        const Radius.circular(HyprRadii.hairline),
-      );
-
-      if (lit) {
-        canvas.drawRRect(
-          segment,
-          Paint()
-            ..color = color.withValues(alpha: 0.50)
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
-        );
-      }
-
-      canvas.drawRRect(segment, Paint()..color = color);
-      canvas.drawLine(
-        Offset(segment.left + 0.5, 0.5),
-        Offset(segment.right - 0.5, 0.5),
-        Paint()
-          ..color = lit
-              ? PowerColors.segmentHighlight
-              : PowerColors.segmentHighlightDim
-          ..strokeWidth = 0.7,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _BatteryChargeMeterPainter oldDelegate) {
-    return oldDelegate.percentage != percentage || oldDelegate.active != active;
-  }
-}
-
-class _Readout extends StatelessWidget {
-  const _Readout({
-    required this.value,
-    required this.unit,
-    required this.label,
-  });
-
-  final String value;
-  final String unit;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: ShapeDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[Color(0xFF0B1118), Color(0xFF101821)],
-        ),
-        shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(4),
-          side: BorderSide(color: Colors.black.withValues(alpha: 0.60)),
-        ),
-        shadows: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.60),
-            blurRadius: 3,
-            offset: const Offset(0, 1),
-            blurStyle: BlurStyle.inner,
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            RichText(
-              text: TextSpan(
-                children: <InlineSpan>[
-                  TextSpan(
-                    text: value,
-                    style: HyprTypography.compactMonoStrong.copyWith(
-                      color: PowerColors.low,
-                      fontSize: HyprTypography.size(19),
-                      fontWeight: FontWeight.w600,
-                      height: 1,
-                      shadows: <Shadow>[
-                        Shadow(
-                          color: PowerColors.low.withValues(alpha: 0.45),
-                          blurRadius: 6,
-                        ),
-                      ],
-                    ),
-                  ),
-                  TextSpan(
-                    text: unit,
-                    style: HyprTypography.compactMono.copyWith(
-                      color: const Color(0x99D8BC76),
-                      fontSize: HyprTypography.size(11),
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.44,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: HyprSpacing.sm),
-            Text(
-              label.toUpperCase(),
-              style: HyprTypography.compactMonoStrong.copyWith(
-                color: HyprColors.textFaint,
-                fontSize: HyprTypography.size(8.5),
-                letterSpacing: 1.19,
-                height: 1,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TelemetryStrip extends StatelessWidget {
-  const _TelemetryStrip({required this.status});
-
-  final PowerStatus? status;
-
-  @override
-  Widget build(BuildContext context) {
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      alignment: Alignment.centerLeft,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          _TelemetryValue(formatPowerRate(status?.powerRateWatts)),
-          const _TelemetrySep(),
-          _TelemetryValue(formatVoltage(status?.voltage)),
-          const _TelemetrySep(),
-          _TelemetryValue(formatTemperature(status?.temperatureCelsius)),
-          const SizedBox(width: HyprSpacing.xxl),
-          DecoratedBox(
-            decoration: ShapeDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
-              shape: RoundedSuperellipseBorder(
-                borderRadius: BorderRadius.circular(3),
-                side: const BorderSide(color: HyprColors.borderSoft),
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               child: Text(
-                batteryStateLabel(status?.state ?? PowerBatteryState.unknown),
-                style: HyprTypography.compactMono.copyWith(
-                  color: HyprColors.textFaint,
-                  fontSize: HyprTypography.size(9),
-                  letterSpacing: 0.9,
-                  height: 1,
+                label,
+                style: PowerConsole.label.copyWith(
+                  color: PowerConsole.pink,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
   }
 }
 
-class _TelemetryValue extends StatelessWidget {
-  const _TelemetryValue(this.value);
-
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      value,
-      style: HyprTypography.compactMono.copyWith(
-        color: HyprColors.text,
-        fontSize: HyprTypography.size(10),
-        letterSpacing: 0.2,
-      ),
-    );
-  }
-}
-
-class _TelemetrySep extends StatelessWidget {
-  const _TelemetrySep();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: HyprSpacing.xl),
-      child: Text(
-        '·',
-        style: HyprTypography.compactMono.copyWith(
-          color: HyprColors.textFaint.withValues(alpha: 0.5),
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfileGrid extends StatelessWidget {
-  const _ProfileGrid({required this.status, required this.onSetProfile});
-
+class _BatteryStage extends StatelessWidget {
+  const _BatteryStage({required this.status, required this.loading});
   final PowerStatus? status;
-  final ValueChanged<PowerProfile> onSetProfile;
-
+  final bool loading;
   @override
-  Widget build(BuildContext context) {
-    final List<PowerProfile> available =
-        status?.availableProfiles ?? const <PowerProfile>[];
-    final PowerProfile? active = status?.activeProfile;
-    return Row(
-      children: <Widget>[
-        for (final PowerProfile profile in PowerProfile.values) ...<Widget>[
-          Expanded(
-            child: PowerProfilePad(
-              profile: profile,
-              active: active == profile,
-              enabled: available.contains(profile),
-              onPressed: onSetProfile,
+  Widget build(BuildContext context) => SizedBox(
+    height: 152,
+    child: Stack(
+      children: [
+        Positioned.fill(child: CustomPaint(painter: _StagePainter())),
+        Positioned(
+          left: 28,
+          right: 28,
+          top: 16,
+          height: 47,
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xB0080B13),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: CustomPaint(
+              key: const ValueKey<String>('battery-charge-meter'),
+              painter: _ChargePainter(
+                status?.batteryPresent == true ? status?.percentage : null,
+              ),
             ),
           ),
-          if (profile != PowerProfile.values.last)
-            const SizedBox(width: HyprSpacing.lg),
-        ],
+        ),
+        Positioned(
+          left: 32,
+          bottom: 9,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              PowerReadout(
+                value: status?.batteryPresent == true
+                    ? '${status?.percentage?.clamp(0, 100) ?? '--'}'
+                    : loading
+                    ? '--'
+                    : 'N/A',
+                unit: status?.batteryPresent == true ? '%' : '',
+              ),
+              const SizedBox(height: 4),
+              const Text('CHARGE', style: PowerConsole.label),
+            ],
+          ),
+        ),
+        Positioned(
+          right: 24,
+          bottom: 9,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('TIME REMAINING', style: PowerConsole.label),
+              const SizedBox(height: 2),
+              PowerReadout(
+                value: switch (status?.remainingSeconds?.toInt()) {
+                  final seconds? when seconds > 0 && seconds < 3600 =>
+                    '${seconds ~/ 60}',
+                  _ => formatRemaining(status),
+                },
+                unit: switch (status?.remainingSeconds?.toInt()) {
+                  final seconds? when seconds > 0 && seconds < 3600 => 'm',
+                  _ => '',
+                },
+                size: 43,
+              ),
+            ],
+          ),
+        ),
       ],
-    );
-  }
+    ),
+  );
 }
 
-String? _message(PowerStatus? status, PowerCommandResult? latestResult) {
-  if (latestResult case PowerCommandResultFailed(:final message)) {
-    return message;
+class _Separator extends StatelessWidget {
+  const _Separator();
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 1,
+    height: 46,
+    margin: const EdgeInsets.symmetric(horizontal: 6),
+    color: const Color(0x3046516D),
+  );
+}
+
+class _StagePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final width = size.width;
+    final path = Path()
+      ..moveTo(0, 20)
+      ..quadraticBezierTo(0, 0, 20, 0)
+      ..lineTo(width - 20, 0)
+      ..quadraticBezierTo(width, 0, width, 20)
+      ..lineTo(width, 66)
+      ..lineTo(width * .77, 66)
+      ..cubicTo(width * .70, 66, width * .70, 100, width * .62, 100)
+      ..lineTo(width * .38, 100)
+      ..cubicTo(width * .30, 100, width * .30, 66, width * .23, 66)
+      ..lineTo(0, 66)
+      ..close();
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0x55463B60), Color(0x45374152), Color(0x30303C4F)],
+        ).createShader(Offset.zero & size),
+    );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..color = const Color(0x253F4961),
+    );
   }
-  return status?.profileMessage ?? status?.batteryMessage;
+
+  @override
+  bool shouldRepaint(_StagePainter oldDelegate) => false;
+}
+
+class _ChargePainter extends CustomPainter {
+  const _ChargePainter(this.percentage);
+  final int? percentage;
+  @override
+  void paint(Canvas canvas, Size size) {
+    const count = 29;
+    const gap = 5.0;
+    final width = (size.width - gap * (count - 1)) / count;
+    if (width <= 0) return;
+    final litCount = ((percentage ?? 0).clamp(0, 100) * count / 100).ceil();
+    for (var index = 0; index < count; index++) {
+      final lit = index < litCount;
+      final rect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(index * (width + gap), 0, width, size.height),
+        const Radius.circular(3),
+      );
+      if (lit) {
+        canvas.drawRRect(
+          rect,
+          Paint()
+            ..color = const Color(0xAAED54FF)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7),
+        );
+      }
+      canvas.drawRRect(
+        rect,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: lit
+                ? [
+                    const Color(0xFFFF8DF6),
+                    Color.lerp(
+                      const Color(0xFFEB62F2),
+                      const Color(0xFFAD4AEF),
+                      litCount > 1 ? index / (litCount - 1) : 0,
+                    )!,
+                  ]
+                : [const Color(0xFF293044), const Color(0xFF222A3B)],
+          ).createShader(rect.outerRect),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ChargePainter oldDelegate) =>
+      percentage != oldDelegate.percentage;
 }

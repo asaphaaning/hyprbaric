@@ -10,6 +10,7 @@ export 'surfaces/hypr_divider.dart';
 export 'surfaces/hypr_glass_frame.dart';
 export 'surfaces/hypr_glass_surface.dart';
 export 'surfaces/hypr_inset_border.dart';
+export 'surfaces/hypr_instrument_surface.dart';
 export 'surfaces/hypr_popover_surface.dart';
 export 'surfaces/hypr_surface_frame.dart';
 export 'surfaces/hypr_typography.dart';
