@@ -198,6 +198,11 @@ class _Header extends StatelessWidget {
 class _BatteryStage extends StatelessWidget {
   const _BatteryStage({required this.status});
   final PowerStatus? status;
+
+  static const double inset = 28;
+  static const double readoutWidth = 128;
+  static const double notchClearance = 12;
+
   @override
   Widget build(BuildContext context) => SizedBox(
     height: 152,
@@ -205,8 +210,8 @@ class _BatteryStage extends StatelessWidget {
       children: [
         Positioned.fill(child: CustomPaint(painter: _StagePainter())),
         Positioned(
-          left: 28,
-          right: 28,
+          left: inset,
+          right: inset,
           top: 16,
           height: 47,
           child: Container(
@@ -224,15 +229,15 @@ class _BatteryStage extends StatelessWidget {
           ),
         ),
         Positioned(
-          left: 28,
-          right: 28,
+          left: inset,
+          right: inset,
           bottom: 10,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               SizedBox(
-                width: 128,
+                width: readoutWidth,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -247,7 +252,7 @@ class _BatteryStage extends StatelessWidget {
               ),
               SizedBox(
                 key: const ValueKey('power-time-bay'),
-                width: 128,
+                width: readoutWidth,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -283,16 +288,24 @@ class _StagePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final width = size.width;
+    final shoulder =
+        _BatteryStage.inset +
+        _BatteryStage.readoutWidth +
+        _BatteryStage.notchClearance;
+    final notchWidth = (width - shoulder * 2).clamp(0.0, width);
+    final left = (width - notchWidth) / 2;
+    final right = left + notchWidth;
+    final bend = notchWidth / 4;
     final path = Path()
       ..moveTo(0, 20)
       ..quadraticBezierTo(0, 0, 20, 0)
       ..lineTo(width - 20, 0)
       ..quadraticBezierTo(width, 0, width, 20)
       ..lineTo(width, 66)
-      ..lineTo(width * .72, 66)
-      ..cubicTo(width * .66, 66, width * .66, 92, width * .60, 92)
-      ..lineTo(width * .40, 92)
-      ..cubicTo(width * .34, 92, width * .34, 66, width * .28, 66)
+      ..lineTo(right, 66)
+      ..cubicTo(right - bend / 2, 66, right - bend / 2, 92, right - bend, 92)
+      ..lineTo(left + bend, 92)
+      ..cubicTo(left + bend / 2, 92, left + bend / 2, 66, left, 66)
       ..lineTo(0, 66)
       ..close();
     canvas.drawPath(
