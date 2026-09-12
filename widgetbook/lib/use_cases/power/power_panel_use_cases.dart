@@ -55,6 +55,24 @@ Widget buildDischargingPowerPanel(BuildContext context) {
   );
 }
 
+@UseCase(
+  name: 'Laptop — long estimate',
+  type: PowerPanel,
+  path: '[Widgets]/Power',
+)
+Widget buildLongEstimatePowerPanel(BuildContext context) => _PowerPanelStory(
+  status: AsyncValue.data(
+    PowerFixtures.battery(
+      percentage: 100,
+      state: PowerBatteryState.discharging,
+      remainingSeconds: 12 * 3600 + 59 * 60,
+      powerRateWatts: -3.2,
+      voltage: 12.78,
+      temperatureCelsius: 34,
+    ),
+  ),
+);
+
 @UseCase(name: 'Laptop — charging', type: PowerPanel, path: '[Widgets]/Power')
 Widget buildChargingPowerPanel(BuildContext context) {
   return _PowerPanelStory(

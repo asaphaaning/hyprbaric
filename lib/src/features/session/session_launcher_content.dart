@@ -33,7 +33,6 @@ class SessionLauncherCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return HyprPopoverSurface(
       borderRadius: borderRadius,
-      borderColor: HyprColors.popupStroke,
       child: ConstrainedBox(
         constraints: const BoxConstraints(minWidth: 240, maxWidth: 240),
         child: Padding(
@@ -99,7 +98,7 @@ class SessionLauncherActions extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             errorMessage!,
-            style: HyprTypography.popRow.copyWith(
+            style: HyprInstrumentText.body.copyWith(
               color: HyprColors.danger,
               fontSize: HyprTypography.size(12),
             ),
@@ -138,7 +137,7 @@ class SessionLauncherConfirm extends StatelessWidget {
         const SizedBox(height: 10),
         Text(
           action.confirmationPrompt,
-          style: HyprTypography.popRow.copyWith(
+          style: HyprInstrumentText.body.copyWith(
             color: SessionMenuColors.fg2,
             height: 1.25,
           ),
@@ -147,7 +146,7 @@ class SessionLauncherConfirm extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             errorMessage!,
-            style: HyprTypography.popRow.copyWith(
+            style: HyprInstrumentText.body.copyWith(
               color: HyprColors.danger,
               fontSize: HyprTypography.size(12),
             ),
@@ -180,10 +179,10 @@ class SessionLauncherConfirm extends StatelessWidget {
 }
 
 abstract final class SessionMenuColors {
-  static const Color fg0 = Color(0xF7F0F4F8);
-  static const Color fg1 = Color(0xECCBD2DA);
-  static const Color fg2 = Color(0xC8BEC7D0);
-  static const Color fg3 = Color(0xA0929DA8);
+  static const Color fg0 = HyprInstrumentColors.text;
+  static const Color fg1 = HyprInstrumentColors.text;
+  static const Color fg2 = HyprInstrumentColors.secondary;
+  static const Color fg3 = HyprInstrumentColors.secondary;
   static const Color hover = HyprColors.hover;
   static const Color selected = HyprColors.hoverStrong;
   static const Color dangerHover = HyprColors.dangerHoverSoft;
@@ -200,13 +199,9 @@ class SessionPopoverTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HyprPanelHeader(
+    return HyprInstrumentHeader(
       title: label,
-      uppercaseTitle: true,
-      titleStyle: HyprTypography.popTitle.copyWith(
-        color: SessionMenuColors.fg3,
-        letterSpacing: 0,
-      ),
+      icon: const Icon(Icons.power_settings_new_rounded),
     );
   }
 }
@@ -279,7 +274,7 @@ class SessionPowerRow extends StatelessWidget {
                       children: <Widget>[
                         Text(
                           action.label,
-                          style: HyprTypography.popRow.copyWith(
+                          style: HyprInstrumentText.body.copyWith(
                             color: SessionMenuColors.fg0,
                           ),
                         ),

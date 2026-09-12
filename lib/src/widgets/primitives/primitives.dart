@@ -1,4 +1,5 @@
 export 'hypr_action_row.dart';
+export 'hypr_amber_toggle.dart';
 export 'hypr_badge.dart';
 export 'hypr_command_button.dart';
 export 'hypr_empty_state.dart';
@@ -7,6 +8,7 @@ export 'hypr_hardware_toggle.dart';
 export 'hypr_hover_plate.dart';
 export 'hypr_icon_button_style.dart';
 export 'hypr_inline_tag.dart';
+export 'hypr_instrument_header.dart';
 export 'hypr_interaction_region.dart';
 export 'hypr_interactive_tile.dart';
 export 'hypr_interval_rebuild.dart';

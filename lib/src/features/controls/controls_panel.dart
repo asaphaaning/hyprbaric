@@ -68,153 +68,203 @@ class ControlsPanel extends StatelessWidget {
 
     return HyprPopoverPanel(
       borderRadius: borderRadius,
-      constraints: const BoxConstraints(minWidth: 432, maxWidth: 432),
+      constraints: BoxConstraints(
+        minWidth: 432,
+        maxWidth: 432,
+        maxHeight: (MediaQuery.sizeOf(context).height - 80).clamp(
+          160,
+          double.infinity,
+        ),
+      ),
       padding: const EdgeInsets.all(12),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          HyprConsoleTray(
-            label: 'Capture',
-            child: SizedBox(
-              height: 92,
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    flex: 10,
-                    child: ControlCapturePad(
-                      label: 'Region',
-                      shortcut: shortcutLabels[ShortcutSettingId.captureRegion],
-                      icon: Iconsax.maximize_3_copy,
-                      onPressed: () =>
-                          onCaptureScreenshot(ScreenshotMode.region),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(6, 4, 6, 14),
+            child: HyprInstrumentHeader(
+              title: 'Controls',
+              icon: Icon(Icons.tune_rounded),
+            ),
+          ),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  HyprConsoleTray(
+                    label: 'Capture',
+                    child: SizedBox(
+                      height: 92,
+                      child: Row(
+                        children: <Widget>[
+                          Expanded(
+                            flex: 10,
+                            child: ControlCapturePad(
+                              label: 'Region',
+                              shortcut:
+                                  shortcutLabels[ShortcutSettingId
+                                      .captureRegion],
+                              icon: Iconsax.maximize_3_copy,
+                              onPressed: () =>
+                                  onCaptureScreenshot(ScreenshotMode.region),
+                            ),
+                          ),
+                          const SizedBox(
+                            width: HyprSpacing.lg + HyprSpacing.hairline,
+                          ),
+                          Expanded(
+                            flex: 10,
+                            child: ControlCapturePad(
+                              label: 'Window',
+                              shortcut:
+                                  shortcutLabels[ShortcutSettingId
+                                      .captureWindow],
+                              icon: Iconsax.monitor_copy,
+                              onPressed: () =>
+                                  onCaptureScreenshot(ScreenshotMode.window),
+                            ),
+                          ),
+                          const SizedBox(
+                            width: HyprSpacing.lg + HyprSpacing.hairline,
+                          ),
+                          Expanded(
+                            flex: 10,
+                            child: ControlCapturePad(
+                              label: 'Full',
+                              shortcut:
+                                  shortcutLabels[ShortcutSettingId
+                                      .captureFullScreen],
+                              icon: Iconsax.maximize_2_copy,
+                              onPressed: () => onCaptureScreenshot(
+                                ScreenshotMode.fullScreen,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(
+                            width: HyprSpacing.lg + HyprSpacing.hairline,
+                          ),
+                          Expanded(
+                            flex: 14,
+                            child: ControlRecordPad(
+                              active: recordingStatus.active,
+                              availability: recording,
+                              phase: recordingStatus.phase,
+                              startedAtMs: recordingStatus.startedAtMs,
+                              shortcut:
+                                  shortcutLabels[ShortcutSettingId
+                                      .toggleRecording],
+                              onPressed: _guard(recording, onToggleRecording),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(width: HyprSpacing.lg + HyprSpacing.hairline),
-                  Expanded(
-                    flex: 10,
-                    child: ControlCapturePad(
-                      label: 'Window',
-                      shortcut: shortcutLabels[ShortcutSettingId.captureWindow],
-                      icon: Iconsax.monitor_copy,
-                      onPressed: () =>
-                          onCaptureScreenshot(ScreenshotMode.window),
+                  const SizedBox(height: HyprSpacing.xxl),
+                  HyprConsoleTray(
+                    label: 'Inspect',
+                    child: Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: ControlInspectButton(
+                            label: 'Color Pick',
+                            shortcut:
+                                shortcutLabels[ShortcutSettingId.colorPick],
+                            icon: Iconsax.colorfilter_copy,
+                            onPressed: onPickColor,
+                          ),
+                        ),
+                        const SizedBox(
+                          width: HyprSpacing.lg + HyprSpacing.hairline,
+                        ),
+                        Expanded(
+                          child: ControlInspectButton(
+                            label: 'Magnify',
+                            icon: Iconsax.search_zoom_in_1_copy,
+                            availability: _magnifierUnavailable,
+                            onPressed: _guard(_magnifierUnavailable, () {}),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: HyprSpacing.lg + HyprSpacing.hairline),
-                  Expanded(
-                    flex: 10,
-                    child: ControlCapturePad(
-                      label: 'Full',
-                      shortcut:
-                          shortcutLabels[ShortcutSettingId.captureFullScreen],
-                      icon: Iconsax.maximize_2_copy,
-                      onPressed: () =>
-                          onCaptureScreenshot(ScreenshotMode.fullScreen),
-                    ),
-                  ),
-                  const SizedBox(width: HyprSpacing.lg + HyprSpacing.hairline),
-                  Expanded(
-                    flex: 14,
-                    child: ControlRecordPad(
-                      active: recordingStatus.active,
-                      availability: recording,
-                      phase: recordingStatus.phase,
-                      startedAtMs: recordingStatus.startedAtMs,
-                      shortcut:
-                          shortcutLabels[ShortcutSettingId.toggleRecording],
-                      onPressed: _guard(recording, onToggleRecording),
+                  const SizedBox(height: HyprSpacing.xxl),
+                  HyprConsoleTray(
+                    label: 'Toggles',
+                    child: SizedBox(
+                      height: 96,
+                      child: DecoratedBox(
+                        decoration: controlWellDecoration(),
+                        child: Padding(
+                          padding: const EdgeInsets.all(HyprSpacing.md),
+                          child: Row(
+                            children: <Widget>[
+                              Expanded(
+                                child: ControlRocker(
+                                  key: const ValueKey<String>(
+                                    'controls-dnd-rocker',
+                                  ),
+                                  label: 'DND',
+                                  icon: Iconsax.minus_cirlce_copy,
+                                  value: dndEnabled,
+                                  onChanged: onSetDoNotDisturb,
+                                ),
+                              ),
+                              const SizedBox(width: HyprSpacing.md),
+                              Expanded(
+                                child: ControlRocker(
+                                  key: const ValueKey<String>(
+                                    'controls-night-light-rocker',
+                                  ),
+                                  label: 'Night',
+                                  icon: Iconsax.moon_copy,
+                                  value: nightLightStatus.enabled,
+                                  availability: nightLight,
+                                  onChanged: _guarded(
+                                    nightLight,
+                                    onSetNightLight,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: HyprSpacing.md),
+                              Expanded(
+                                child: ControlRocker(
+                                  key: const ValueKey<String>(
+                                    'controls-kbd-rocker',
+                                  ),
+                                  label: 'Kbd',
+                                  icon: Iconsax.keyboard_copy,
+                                  value: false,
+                                  availability: _keyboardLockUnavailable,
+                                  onChanged: _guarded(
+                                    _keyboardLockUnavailable,
+                                    (_) {},
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: HyprSpacing.md),
+                              Expanded(
+                                child: ControlRocker(
+                                  key: const ValueKey<String>(
+                                    'controls-caffeine-rocker',
+                                  ),
+                                  label: 'Caffeine',
+                                  icon: Iconsax.coffee_copy,
+                                  value: caffeineStatus.enabled,
+                                  availability: caffeine,
+                                  onChanged: _guarded(caffeine, onSetCaffeine),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
-              ),
-            ),
-          ),
-          const SizedBox(height: HyprSpacing.xxl),
-          HyprConsoleTray(
-            label: 'Inspect',
-            child: Row(
-              children: <Widget>[
-                Expanded(
-                  child: ControlInspectButton(
-                    label: 'Color Pick',
-                    shortcut: shortcutLabels[ShortcutSettingId.colorPick],
-                    icon: Iconsax.colorfilter_copy,
-                    onPressed: onPickColor,
-                  ),
-                ),
-                const SizedBox(width: HyprSpacing.lg + HyprSpacing.hairline),
-                Expanded(
-                  child: ControlInspectButton(
-                    label: 'Magnify',
-                    icon: Iconsax.search_zoom_in_1_copy,
-                    availability: _magnifierUnavailable,
-                    onPressed: _guard(_magnifierUnavailable, () {}),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: HyprSpacing.xxl),
-          HyprConsoleTray(
-            label: 'Toggles',
-            child: SizedBox(
-              height: 90,
-              child: DecoratedBox(
-                decoration: controlWellDecoration(),
-                child: Padding(
-                  padding: const EdgeInsets.all(HyprSpacing.md),
-                  child: Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: ControlRocker(
-                          key: const ValueKey<String>('controls-dnd-rocker'),
-                          label: 'DND',
-                          icon: Iconsax.minus_cirlce_copy,
-                          value: dndEnabled,
-                          onChanged: onSetDoNotDisturb,
-                        ),
-                      ),
-                      const SizedBox(width: HyprSpacing.md),
-                      Expanded(
-                        child: ControlRocker(
-                          key: const ValueKey<String>(
-                            'controls-night-light-rocker',
-                          ),
-                          label: 'Night',
-                          icon: Iconsax.moon_copy,
-                          value: nightLightStatus.enabled,
-                          availability: nightLight,
-                          onChanged: _guarded(nightLight, onSetNightLight),
-                        ),
-                      ),
-                      const SizedBox(width: HyprSpacing.md),
-                      Expanded(
-                        child: ControlRocker(
-                          key: const ValueKey<String>('controls-kbd-rocker'),
-                          label: 'Kbd',
-                          icon: Iconsax.keyboard_copy,
-                          value: false,
-                          availability: _keyboardLockUnavailable,
-                          onChanged: _guarded(_keyboardLockUnavailable, (_) {}),
-                        ),
-                      ),
-                      const SizedBox(width: HyprSpacing.md),
-                      Expanded(
-                        child: ControlRocker(
-                          key: const ValueKey<String>(
-                            'controls-caffeine-rocker',
-                          ),
-                          label: 'Caffeine',
-                          icon: Iconsax.coffee_copy,
-                          value: caffeineStatus.enabled,
-                          availability: caffeine,
-                          onChanged: _guarded(caffeine, onSetCaffeine),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ),
             ),
           ),

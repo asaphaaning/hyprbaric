@@ -21,7 +21,6 @@ class ClockPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return HyprPopoverSurface(
       borderRadius: borderRadius,
-      borderColor: HyprColors.popupStroke,
       child: SizedBox(
         width: 260,
         child: Padding(
@@ -30,6 +29,11 @@ class ClockPanel extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
+              const HyprInstrumentHeader(
+                title: 'Calendar',
+                icon: Icon(Icons.calendar_month_outlined),
+              ),
+              const SizedBox(height: 14),
               _CalendarHeader(
                 monthLabel: status.monthLabel,
                 onPrevious: () => onCommand(CalendarCommand.previousMonth),
@@ -295,7 +299,7 @@ class _ClockDivider extends StatelessWidget {
 }
 
 abstract final class _ClockColors {
-  static const Color fg1 = Color(0xECCBD2DA);
-  static const Color fg2 = Color(0xC8BEC7D0);
-  static const Color fg3 = Color(0xA0929DA8);
+  static const Color fg1 = HyprInstrumentColors.text;
+  static const Color fg2 = HyprInstrumentColors.secondary;
+  static const Color fg3 = HyprInstrumentColors.secondary;
 }

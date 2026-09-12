@@ -10,7 +10,7 @@ import 'notification_panel_parts.dart';
 /// The dropdown that hosts this panel sizes its overlay slot from the same
 /// constant. Keeping one number here stops the panel from declaring a width
 /// the layer-shell slot silently clamps away.
-const double kNotificationPanelWidth = 380;
+const double kNotificationPanelWidth = 450;
 
 class NotificationPanel extends StatelessWidget {
   const NotificationPanel({
@@ -35,33 +35,35 @@ class NotificationPanel extends StatelessWidget {
     final NotificationStatus? snapshot = status.asData?.value;
     final List<NotificationEntry> entries = snapshot?.entries ?? const [];
 
-    // The same instrument shell the controls panel and the mixer sit in, on
-    // its own ramp. This used to rebuild the surface, gradient, constraints
-    // and padding by hand.
-    return HyprConsoleChassis(
+    return HyprInstrumentSurface(
       borderRadius: borderRadius,
-      ramp: HyprChassisRamp.notifications,
-      surfaceColor: const Color(0xE6070E17),
-      constraints: const BoxConstraints(
-        minWidth: kNotificationPanelWidth,
-        maxWidth: kNotificationPanelWidth,
-        maxHeight: 388,
-      ),
-      padding: HyprSpacing.panelAll,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          NotificationHeader(
-            // Deliberately the length of the list this pill labels, not
-            // snapshot.unreadCount, which Rust documents as the bell's
-            // number and zeroes under do-not-disturb.
-            count: entries.length,
-            onClearAll: onClearAll,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minWidth: kNotificationPanelWidth,
+          maxWidth: kNotificationPanelWidth,
+          maxHeight: 420,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              NotificationHeader(
+                // Clearing depends on retained entries, even when DND zeroes
+                // the backend's unread badge.
+                count: entries.length,
+                unreadCount: snapshot?.unreadCount ?? 0,
+                onClearAll: onClearAll,
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Divider(height: 1, color: Color(0x404D5974)),
+              ),
+              _body(snapshot, entries),
+            ],
           ),
-          const SizedBox(height: 10),
-          _body(snapshot, entries),
-        ],
+        ),
       ),
     );
   }

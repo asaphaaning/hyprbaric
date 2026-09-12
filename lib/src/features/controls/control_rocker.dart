@@ -38,10 +38,10 @@ class ControlRocker extends StatelessWidget {
           pressed: rawState.pressed,
           enabled: enabled && rawState.enabled,
         );
-        final Color accent = context.hyprPalette.accent;
+        const Color accent = HyprAmberToggle.amber;
         final Color rest = lit
             ? Color.alphaBlend(
-                accent.withValues(alpha: 0.12),
+                accent.withValues(alpha: 0.045),
                 HyprConsoleColors.face,
               )
             : HyprConsoleColors.face;
@@ -77,12 +77,15 @@ class ControlRocker extends StatelessWidget {
                   icon,
                   size: 21,
                   color: lit
-                      ? context.hyprPalette.accentSoft
+                      ? HyprAmberToggle.amber
                       : HyprConsoleColors.textFaint,
                 ),
-                const SizedBox(height: HyprSpacing.xl),
-                _RockerSwitch(value: value, enabled: enabled),
-                const SizedBox(height: HyprSpacing.xl),
+                const SizedBox(height: 4),
+                HyprAmberToggle(
+                  key: const ValueKey<String>('control-rocker-switch'),
+                  value: lit,
+                ),
+                const SizedBox(height: 4),
                 Text(
                   label.toUpperCase(),
                   maxLines: 1,
@@ -92,8 +95,8 @@ class ControlRocker extends StatelessWidget {
                     color: lit
                         ? HyprConsoleColors.text
                         : HyprConsoleColors.textFaint,
-                    fontSize: HyprTypography.size(8),
-                    letterSpacing: 1.05,
+                    fontSize: HyprTypography.size(11.5),
+                    letterSpacing: .5,
                   ),
                 ),
               ],
@@ -101,88 +104,6 @@ class ControlRocker extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _RockerSwitch extends StatelessWidget {
-  const _RockerSwitch({required this.value, required this.enabled});
-
-  final bool value;
-  final bool enabled;
-
-  /// Same footprint as [HyprHardwareToggle]: a short well, not a stretched
-  /// pill that fills the rocker face.
-  static const double width = 36;
-  static const double height = 18;
-  static const double capWidth = 20;
-  static const double capHeight = 15;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color accent = context.hyprPalette.accent;
-
-    return AnimatedContainer(
-      key: const ValueKey<String>('control-rocker-switch'),
-      duration: HyprMotion.switcher,
-      curve: HyprMotion.switchInCurve,
-      width: width,
-      height: height,
-      padding: const EdgeInsets.all(1.5),
-      decoration: ShapeDecoration(
-        // Flat, not graded: the reference well is one even tone, and a
-        // vertical falloff here dulled the lit tint by the bottom edge.
-        color: value
-            ? accent.withValues(alpha: enabled ? 0.32 : 0.16)
-            : const Color(0xFF101116),
-        shadows: <BoxShadow>[
-          const BoxShadow(
-            color: Color(0xC8000000),
-            blurRadius: 3,
-            offset: Offset(0, 1),
-          ),
-          if (value && enabled)
-            BoxShadow(
-              color: accent.withValues(alpha: 0.38),
-              blurRadius: 10,
-              spreadRadius: -2,
-            ),
-        ],
-        shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(7),
-          side: const BorderSide(color: Color(0x66000000)),
-        ),
-      ),
-      child: AnimatedAlign(
-        duration: HyprMotion.switcher,
-        curve: HyprMotion.switchInCurve,
-        alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
-          width: capWidth,
-          height: capHeight,
-          decoration: ShapeDecoration(
-            // The cap is a solid moulded key, not a metallic barrel: the
-            // three-stop gradient this used to carry shaded the bottom two
-            // thirds so far down that the unlit cap read charcoal instead of
-            // light grey. The drop shadow below supplies the dimension.
-            color: value
-                ? Color.lerp(accent, Colors.white, 0.44)!
-                : const Color(0xFFABADB1),
-            shadows: <BoxShadow>[
-              const BoxShadow(
-                color: Color(0xB8000000),
-                blurRadius: 4,
-                offset: Offset(0, 2),
-              ),
-              if (value && enabled)
-                BoxShadow(color: accent.withValues(alpha: 0.52), blurRadius: 8),
-            ],
-            shape: RoundedSuperellipseBorder(
-              borderRadius: BorderRadius.circular(6),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

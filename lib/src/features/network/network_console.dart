@@ -196,36 +196,7 @@ class NetworkRadioSwitch extends StatelessWidget {
     child: HyprInteractionRegion(
       semanticLabel: enabled ? 'Disable Wi-Fi' : 'Enable Wi-Fi',
       onPressed: onToggle,
-      builder: (context, state) => Container(
-        width: 44,
-        height: 25,
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: const Color(0x44121115),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: enabled ? const Color(0x665F421B) : NetworkConsole.line,
-          ),
-        ),
-        child: AnimatedAlign(
-          duration: const Duration(milliseconds: 160),
-          alignment: enabled ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            width: 18,
-            height: 18,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: enabled ? const Color(0xFFFFF1D8) : NetworkConsole.muted,
-              border: Border.all(
-                color: enabled ? NetworkConsole.amber : NetworkConsole.line,
-              ),
-              boxShadow: enabled
-                  ? const [BoxShadow(color: Color(0x88FF9C12), blurRadius: 10)]
-                  : null,
-            ),
-          ),
-        ),
-      ),
+      builder: (context, state) => HyprAmberToggle(value: enabled),
     ),
   );
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
+import '../../widgets/primitives/primitives.dart';
 import 'power_console.dart';
 import 'power_formatting.dart';
 import 'power_icon.dart';
@@ -39,11 +40,11 @@ class PowerPanel extends StatelessWidget {
           children: [
             _Header(status: snapshot, loading: status.isLoading),
             if (snapshot?.batteryPresent == true) ...[
-              _BatteryStage(status: snapshot, loading: status.isLoading),
+              _BatteryStage(status: snapshot),
               PowerBay(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
-                  vertical: 14,
+                  vertical: 12,
                 ),
                 child: Row(
                   children: [
@@ -94,8 +95,8 @@ class PowerPanel extends StatelessWidget {
                       'POWER PROFILE',
                       style: PowerConsole.label.copyWith(
                         color: PowerConsole.text,
-                        fontSize: 15,
-                        letterSpacing: 3.4,
+                        fontSize: 13,
+                        letterSpacing: 1.1,
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -159,65 +160,49 @@ class _Header extends StatelessWidget {
           };
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Row(
-        children: [
-          PowerIcon(
-            status?.batteryPresent == true
-                ? PowerSymbol.battery
-                : PowerSymbol.power,
-            color: PowerConsole.pink,
-            size: 38,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  status?.batteryPresent == true ? 'BATTERY' : 'SYSTEM POWER',
-                  style: PowerConsole.value.copyWith(
-                    fontFamily: 'Inter',
-                    fontSize: 19,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 2.2,
+      child: HyprInstrumentHeader(
+        title: status?.batteryPresent == true ? 'Battery' : 'System power',
+        icon: PowerIcon(
+          status?.batteryPresent == true
+              ? PowerSymbol.battery
+              : PowerSymbol.power,
+          color: PowerConsole.pink,
+        ),
+        subtitle: status?.batteryPresent == true
+            ? 'System Power'
+            : 'Power profiles',
+        trailing: status?.batteryPresent == true || loading
+            ? Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 11,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0x80080B12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0x3046516D)),
+                ),
+                child: Text(
+                  label,
+                  style: HyprInstrumentText.meta.copyWith(
+                    color: PowerConsole.pink,
                   ),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  status?.batteryPresent == true
-                      ? 'System Power'
-                      : 'Power profiles',
-                  style: PowerConsole.label,
-                ),
-              ],
-            ),
-          ),
-          if (status?.batteryPresent == true || loading)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-              decoration: BoxDecoration(
-                color: const Color(0x80080B12),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0x3046516D)),
-              ),
-              child: Text(
-                label,
-                style: PowerConsole.label.copyWith(
-                  color: PowerConsole.pink,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-        ],
+              )
+            : null,
       ),
     );
   }
 }
 
 class _BatteryStage extends StatelessWidget {
-  const _BatteryStage({required this.status, required this.loading});
+  const _BatteryStage({required this.status});
   final PowerStatus? status;
-  final bool loading;
+
+  static const double inset = 28;
+  static const double readoutWidth = 128;
+  static const double notchClearance = 12;
+
   @override
   Widget build(BuildContext context) => SizedBox(
     height: 152,
@@ -225,8 +210,8 @@ class _BatteryStage extends StatelessWidget {
       children: [
         Positioned.fill(child: CustomPaint(painter: _StagePainter())),
         Positioned(
-          left: 28,
-          right: 28,
+          left: inset,
+          right: inset,
           top: 16,
           height: 47,
           child: Container(
@@ -244,43 +229,41 @@ class _BatteryStage extends StatelessWidget {
           ),
         ),
         Positioned(
-          left: 32,
-          bottom: 9,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          left: inset,
+          right: inset,
+          bottom: 10,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              PowerReadout(
-                value: status?.batteryPresent == true
-                    ? '${status?.percentage?.clamp(0, 100) ?? '--'}'
-                    : loading
-                    ? '--'
-                    : 'N/A',
-                unit: status?.batteryPresent == true ? '%' : '',
+              SizedBox(
+                width: readoutWidth,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    PowerReadout(
+                      value: '${status?.percentage?.clamp(0, 100) ?? '--'}',
+                      unit: '%',
+                    ),
+                    const SizedBox(height: 4),
+                    const Text('CHARGE', style: PowerConsole.label),
+                  ],
+                ),
               ),
-              const SizedBox(height: 4),
-              const Text('CHARGE', style: PowerConsole.label),
-            ],
-          ),
-        ),
-        Positioned(
-          right: 24,
-          bottom: 9,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('TIME REMAINING', style: PowerConsole.label),
-              const SizedBox(height: 2),
-              PowerReadout(
-                value: switch (status?.remainingSeconds?.toInt()) {
-                  final seconds? when seconds > 0 && seconds < 3600 =>
-                    '${seconds ~/ 60}',
-                  _ => formatRemaining(status),
-                },
-                unit: switch (status?.remainingSeconds?.toInt()) {
-                  final seconds? when seconds > 0 && seconds < 3600 => 'm',
-                  _ => '',
-                },
-                size: 43,
+              SizedBox(
+                key: const ValueKey('power-time-bay'),
+                width: readoutWidth,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('TIME REMAINING', style: PowerConsole.label),
+                    const SizedBox(height: 4),
+                    PowerReadout.duration(switch (status?.remainingSeconds) {
+                      final seconds? => Duration(seconds: seconds.toInt()),
+                      null => null,
+                    }),
+                  ],
+                ),
               ),
             ],
           ),
@@ -305,16 +288,24 @@ class _StagePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final width = size.width;
+    final shoulder =
+        _BatteryStage.inset +
+        _BatteryStage.readoutWidth +
+        _BatteryStage.notchClearance;
+    final notchWidth = (width - shoulder * 2).clamp(0.0, width);
+    final left = (width - notchWidth) / 2;
+    final right = left + notchWidth;
+    final bend = notchWidth / 4;
     final path = Path()
       ..moveTo(0, 20)
       ..quadraticBezierTo(0, 0, 20, 0)
       ..lineTo(width - 20, 0)
       ..quadraticBezierTo(width, 0, width, 20)
       ..lineTo(width, 66)
-      ..lineTo(width * .77, 66)
-      ..cubicTo(width * .70, 66, width * .70, 100, width * .62, 100)
-      ..lineTo(width * .38, 100)
-      ..cubicTo(width * .30, 100, width * .30, 66, width * .23, 66)
+      ..lineTo(right, 66)
+      ..cubicTo(right - bend / 2, 66, right - bend / 2, 92, right - bend, 92)
+      ..lineTo(left + bend, 92)
+      ..cubicTo(left + bend / 2, 92, left + bend / 2, 66, left, 66)
       ..lineTo(0, 66)
       ..close();
     canvas.drawPath(

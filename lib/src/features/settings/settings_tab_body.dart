@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
 import 'about_settings_panel.dart';
 import 'appearance_settings_panel.dart';
@@ -23,16 +22,10 @@ class SettingsContentHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HyprPanelHeader(
+    return HyprInstrumentHeader(
       title: tab.label,
       subtitle: tab.subtitle,
-      titleStyle: HyprTypography.settingHeading.copyWith(
-        fontSize: HyprTypography.size(18),
-        fontWeight: FontWeight.w700,
-      ),
-      subtitleStyle: HyprTypography.popRow.copyWith(
-        fontSize: HyprTypography.size(12),
-      ),
+      icon: const Icon(Icons.settings_outlined),
       trailing: IconButton(
         onPressed: onClose,
         style: settingsCloseButtonStyle(),

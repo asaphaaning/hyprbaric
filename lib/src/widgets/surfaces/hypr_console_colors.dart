@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import 'hypr_colors.dart';
+import 'hypr_instrument_surface.dart';
 
 /// The instrument ramp shared by Hyprbaric's console-styled surfaces.
 ///
@@ -9,31 +10,31 @@ import 'hypr_colors.dart';
 /// console panel should pull its greys from here so the controls panel and
 /// the audio mixer stay lit by the same imaginary light source.
 abstract final class HyprConsoleColors {
-  static const Color tray = Color(0xFF121216);
-  static const Color trayBorder = Color(0x182E3036);
+  static const Color tray = Color(0x40151B28);
+  static const Color trayBorder = Color(0x4048546C);
   static const Color trayHighlight = Color(0x10FFFFFF);
 
   /// Raised faces sitting directly on a [tray].
-  static const Color tile = Color(0xFF17171C);
-  static const Color tileHover = Color(0xFF202027);
-  static const Color tilePressed = Color(0xFF111116);
+  static const Color tile = Color(0x50151A24);
+  static const Color tileHover = Color(0x70404A5C);
+  static const Color tilePressed = Color(0x7010151F);
 
   /// Recessed faces nested inside a [tile], lit from above.
-  static const Color wellTop = Color(0xFF101014);
-  static const Color well = Color(0xFF0D0D0F);
+  static const Color wellTop = Color(0x38101824);
+  static const Color well = Color(0x50080B13);
 
   /// Raised faces nested inside a well, one step darker than [tile].
-  static const Color face = Color(0xFF131318);
-  static const Color faceHover = Color(0xFF1C1C23);
-  static const Color facePressed = Color(0xFF0D0D12);
+  static const Color face = Color(0x40121720);
+  static const Color faceHover = Color(0x60404A5C);
+  static const Color facePressed = Color(0x800A0E16);
 
   /// Hairline that separates a machined face from its surround.
   static const Color seam = Color(0xA6000000);
 
-  static const Color label = Color(0xFF666870);
-  static const Color text = Color(0xFFB0B1B7);
-  static const Color textMuted = Color(0xFF898B93);
-  static const Color textFaint = Color(0xFF555760);
+  static const Color label = HyprInstrumentColors.secondary;
+  static const Color text = HyprInstrumentColors.text;
+  static const Color textMuted = HyprInstrumentColors.secondary;
+  static const Color textFaint = Color(0xFF97A2C3);
 }
 
 /// The vertical tint one instrument shell is lit with.

@@ -36,7 +36,7 @@ class PowerProfilePad extends StatelessWidget {
         enabled: enabled,
         selected: active,
         onPressed: () => onPressed(profile),
-        height: 118,
+        height: 112,
         borderRadius: BorderRadius.circular(12),
         color: const Color(0x30101420),
         hoverColor: const Color(0x50364050),
@@ -71,19 +71,19 @@ class PowerProfilePad extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(icon, color: color, size: 29),
+                    Icon(icon, color: color, size: 26),
                     const SizedBox(height: 3),
                     Text(
                       profileLabel(profile).toUpperCase(),
                       style: PowerConsole.value.copyWith(
-                        fontSize: 15,
-                        letterSpacing: 1.1,
+                        fontSize: 13.5,
+                        letterSpacing: .6,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       profileSubtitle(profile).toUpperCase(),
-                      style: PowerConsole.label.copyWith(fontSize: 11),
+                      style: PowerConsole.label.copyWith(fontSize: 10.5),
                     ),
                   ],
                 ),
@@ -95,7 +95,7 @@ class PowerProfilePad extends StatelessWidget {
                   active
                       ? Icons.radio_button_checked
                       : Icons.radio_button_unchecked,
-                  size: 21,
+                  size: 19,
                   color: active ? color : const Color(0xFF475170),
                 ),
               ),

@@ -7,21 +7,9 @@ abstract final class PowerConsole {
   static const text = HyprInstrumentColors.text;
   static const muted = HyprInstrumentColors.secondary;
   static const pink = Color(0xFFE68AFF);
-  static const label = TextStyle(
-    fontFamily: 'Roboto Condensed',
-    fontSize: 12,
-    fontWeight: FontWeight.w400,
-    letterSpacing: 1.8,
-    color: muted,
-    height: 1.2,
-  );
-  static const value = TextStyle(
-    fontFamily: 'Roboto Condensed',
-    fontSize: 19,
-    fontWeight: FontWeight.w500,
-    color: text,
-    height: 1.2,
-  );
+  static const label = HyprInstrumentText.meta;
+  static TextStyle get value =>
+      HyprInstrumentText.body.copyWith(fontWeight: FontWeight.w500);
 }
 
 /// A translucent raised bay that leaves desktop blur to the compositor.
@@ -29,7 +17,7 @@ class PowerBay extends StatelessWidget {
   const PowerBay({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(14),
+    this.padding = const EdgeInsets.all(12),
   });
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -85,7 +73,7 @@ class PowerMetric extends StatelessWidget {
               fit: BoxFit.scaleDown,
               child: Text(
                 value,
-                style: PowerConsole.value.copyWith(fontSize: 16),
+                style: PowerConsole.value.copyWith(fontSize: 14.5),
               ),
             ),
             const SizedBox(height: 4),
@@ -103,47 +91,72 @@ class PowerMetric extends StatelessWidget {
   );
 }
 
-/// Highlighted numeric display with a smaller, baseline-aligned unit suffix.
+/// Highlighted measurement with smaller, baseline-aligned unit suffixes.
 class PowerReadout extends StatelessWidget {
-  const PowerReadout({
+  PowerReadout({
     super.key,
-    required this.value,
-    this.unit = '',
-    this.size = 45,
-  });
+    required String value,
+    String unit = '',
+    this.size = 40,
+  }) : _parts = [(value: value, unit: unit)];
 
-  /// Formatted measurement, or an explicit unavailable marker.
-  final String value;
+  /// Formats remaining-time estimates without treating the unit letters as digits.
+  factory PowerReadout.duration(Duration? remaining, {Key? key}) {
+    if (remaining == null || remaining.inSeconds <= 0) {
+      return PowerReadout(key: key, value: '--');
+    }
+    final hours = remaining.inHours;
+    final minutes = remaining.inMinutes.remainder(60);
+    return PowerReadout._(
+      key: key,
+      parts: [
+        if (hours > 0) (value: '$hours', unit: 'h '),
+        (value: hours > 0 ? '$minutes'.padLeft(2, '0') : '$minutes', unit: 'm'),
+      ],
+    );
+  }
 
-  /// Compact suffix such as percent or minutes.
-  final String unit;
+  const PowerReadout._({
+    super.key,
+    required List<({String value, String unit})> parts,
+  }) : _parts = parts,
+       size = 40;
 
-  /// Main value's logical font size.
+  final List<({String value, String unit})> _parts;
+
+  /// Preferred logical font size; long estimates scale down within their bay.
   final double size;
 
   @override
-  Widget build(BuildContext context) => ShaderMask(
-    blendMode: BlendMode.srcIn,
-    shaderCallback: (bounds) => const LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [Color(0xFFF0D8FF), PowerConsole.pink],
-    ).createShader(bounds),
-    child: Text.rich(
-      TextSpan(
-        children: [
-          TextSpan(text: value),
-          if (unit.isNotEmpty)
-            TextSpan(
-              text: unit,
-              style: TextStyle(fontSize: size * .66),
-            ),
-        ],
-      ),
-      style: PowerConsole.value.copyWith(
-        fontSize: size,
-        fontWeight: FontWeight.w600,
-        height: 1.1,
+  Widget build(BuildContext context) => FittedBox(
+    fit: BoxFit.scaleDown,
+    alignment: Alignment.centerLeft,
+    child: ShaderMask(
+      blendMode: BlendMode.srcIn,
+      shaderCallback: (bounds) => const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0xFFF0D8FF), PowerConsole.pink],
+      ).createShader(bounds),
+      child: Text.rich(
+        TextSpan(
+          children: [
+            for (final part in _parts) ...[
+              TextSpan(text: part.value),
+              TextSpan(
+                text: part.unit,
+                style: TextStyle(fontSize: size * .62),
+              ),
+            ],
+          ],
+        ),
+        maxLines: 1,
+        softWrap: false,
+        style: PowerConsole.value.copyWith(
+          fontSize: size,
+          fontWeight: FontWeight.w600,
+          height: 1.1,
+        ),
       ),
     ),
   );
