@@ -447,6 +447,28 @@ void main() {
     expect(tester.getSize(find.byType(PowerPanel)).width, PowerPanel.width);
   });
 
+  testWidgets('desktop power omits battery instruments and retains profiles', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildDesktopPowerPanel),
+      ),
+    );
+    expect(find.text('SYSTEM POWER'), findsOneWidget);
+    expect(find.text('BATTERY'), findsNothing);
+    expect(find.text('CHARGE'), findsNothing);
+    expect(find.text('TIME REMAINING'), findsNothing);
+    expect(
+      find.byKey(const ValueKey<String>('battery-charge-meter')),
+      findsNothing,
+    );
+    expect(find.byType(PowerProfilePad), findsNWidgets(3));
+    expect(tester.getSize(find.byType(PowerPanel)).width, PowerPanel.width);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('interactive power story changes the selected production pad', (
     WidgetTester tester,
   ) async {

@@ -66,7 +66,7 @@ class PowerProfilePad extends StatelessWidget {
                 child: CustomPaint(painter: _ProfileSpectrum(profile, color)),
               ),
               Positioned(
-                left: 19,
+                left: 12,
                 top: 12,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -77,7 +77,7 @@ class PowerProfilePad extends StatelessWidget {
                       profileLabel(profile).toUpperCase(),
                       style: PowerConsole.value.copyWith(
                         fontSize: 15,
-                        letterSpacing: 1.6,
+                        letterSpacing: 1.1,
                       ),
                     ),
                     const SizedBox(height: 2),

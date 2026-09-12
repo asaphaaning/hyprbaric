@@ -4,6 +4,7 @@ import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
 import 'power_console.dart';
 import 'power_formatting.dart';
+import 'power_icon.dart';
 import 'power_profile_pad.dart';
 
 /// Live battery instrument shared by the bar, Widgetbook and landing preview.
@@ -15,7 +16,7 @@ class PowerPanel extends StatelessWidget {
     required this.latestResult,
     required this.onSetProfile,
   });
-  static const double width = 600;
+  static const double width = 450;
   final BorderRadius borderRadius;
   final AsyncValue<PowerStatus> status;
   final PowerCommandResult? latestResult;
@@ -30,63 +31,59 @@ class PowerPanel extends StatelessWidget {
     };
     return SizedBox(
       width: width,
-      child: HyprGlassSurface(
-        color: Colors.white,
+      child: HyprInstrumentSurface(
         borderRadius: borderRadius,
-        inset: false,
-        frame: HyprSurfaceFrame.popover,
-        borderColor: const Color(0x887E86B4),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xD01A1D26), Color(0xC0101219), Color(0xD012141C)],
-        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _Header(status: snapshot, loading: status.isLoading),
-            _BatteryStage(status: snapshot, loading: status.isLoading),
-            PowerBay(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: PowerMetric(
-                      icon: Icons.bolt_outlined,
-                      value: formatPowerRate(snapshot?.powerRateWatts),
-                      label: 'POWER',
-                    ),
-                  ),
-                  const _Separator(),
-                  Expanded(
-                    child: PowerMetric(
-                      icon: Icons.waves,
-                      value: formatVoltage(snapshot?.voltage),
-                      label: 'VOLTAGE',
-                    ),
-                  ),
-                  const _Separator(),
-                  Expanded(
-                    child: PowerMetric(
-                      icon: Icons.thermostat_outlined,
-                      value: formatTemperature(snapshot?.temperatureCelsius),
-                      label: 'TEMP',
-                    ),
-                  ),
-                  const _Separator(),
-                  Expanded(
-                    child: PowerMetric(
-                      icon: Icons.battery_4_bar_outlined,
-                      value: batteryStateLabel(
-                        snapshot?.state ?? PowerBatteryState.unknown,
+            if (snapshot?.batteryPresent == true) ...[
+              _BatteryStage(status: snapshot, loading: status.isLoading),
+              PowerBay(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 14,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: PowerMetric(
+                        icon: PowerSymbol.power,
+                        value: formatPowerRate(snapshot?.powerRateWatts),
+                        label: 'POWER',
                       ),
-                      label: 'STATUS',
                     ),
-                  ),
-                ],
+                    const _Separator(),
+                    Expanded(
+                      child: PowerMetric(
+                        icon: PowerSymbol.voltage,
+                        value: formatVoltage(snapshot?.voltage),
+                        label: 'VOLTAGE',
+                      ),
+                    ),
+                    const _Separator(),
+                    Expanded(
+                      child: PowerMetric(
+                        icon: PowerSymbol.temperature,
+                        value: formatTemperature(snapshot?.temperatureCelsius),
+                        label: 'TEMP',
+                      ),
+                    ),
+                    const _Separator(),
+                    Expanded(
+                      child: PowerMetric(
+                        icon: PowerSymbol.battery,
+                        value: batteryStateLabel(
+                          snapshot?.state ?? PowerBatteryState.unknown,
+                        ),
+                        label: 'STATUS',
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
             Padding(
               padding: const EdgeInsets.all(6),
               child: PowerBay(
@@ -161,64 +158,56 @@ class _Header extends StatelessWidget {
             PowerBatteryState.unknown => 'UNKNOWN',
           };
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          const Icon(
-            Icons.battery_2_bar_outlined,
+          PowerIcon(
+            status?.batteryPresent == true
+                ? PowerSymbol.battery
+                : PowerSymbol.power,
             color: PowerConsole.pink,
             size: 38,
           ),
-          const SizedBox(width: 22),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'BATTERY',
+                  status?.batteryPresent == true ? 'BATTERY' : 'SYSTEM POWER',
                   style: PowerConsole.value.copyWith(
-                    fontSize: 20,
-                    letterSpacing: 5,
+                    fontFamily: 'Inter',
+                    fontSize: 19,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 2.2,
                   ),
                 ),
                 const SizedBox(height: 3),
-                const Text('System Power', style: PowerConsole.label),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-            decoration: BoxDecoration(
-              color: const Color(0x80080B12),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0x3046516D)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 13,
-                  height: 13,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: status?.state == PowerBatteryState.charging
-                        ? const Color(0xFF36DFCC)
-                        : const Color(0xFFFF4387),
-                    boxShadow: const [
-                      BoxShadow(color: Color(0x88FF4387), blurRadius: 12),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 13),
                 Text(
-                  label,
-                  style: PowerConsole.label.copyWith(
-                    color: PowerConsole.pink,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  status?.batteryPresent == true
+                      ? 'System Power'
+                      : 'Power profiles',
+                  style: PowerConsole.label,
                 ),
               ],
             ),
           ),
+          if (status?.batteryPresent == true || loading)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+              decoration: BoxDecoration(
+                color: const Color(0x80080B12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0x3046516D)),
+              ),
+              child: Text(
+                label,
+                style: PowerConsole.label.copyWith(
+                  color: PowerConsole.pink,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -231,7 +220,7 @@ class _BatteryStage extends StatelessWidget {
   final bool loading;
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: 142,
+    height: 152,
     child: Stack(
       children: [
         Positioned.fill(child: CustomPaint(painter: _StagePainter())),
@@ -255,37 +244,18 @@ class _BatteryStage extends StatelessWidget {
           ),
         ),
         Positioned(
-          left: 62,
+          left: 32,
           bottom: 9,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ShaderMask(
-                blendMode: BlendMode.srcIn,
-                shaderCallback: (bounds) => const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFFF0D8FF), PowerConsole.pink],
-                ).createShader(bounds),
-                child: Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: status?.batteryPresent == true
-                            ? '${status?.percentage?.clamp(0, 100) ?? '--'}'
-                            : loading
-                            ? '--'
-                            : 'N/A',
-                      ),
-                      if (status?.batteryPresent == true)
-                        TextSpan(
-                          text: '%',
-                          style: PowerConsole.value.copyWith(fontSize: 29),
-                        ),
-                    ],
-                  ),
-                  style: PowerConsole.value.copyWith(fontSize: 45, height: 1),
-                ),
+              PowerReadout(
+                value: status?.batteryPresent == true
+                    ? '${status?.percentage?.clamp(0, 100) ?? '--'}'
+                    : loading
+                    ? '--'
+                    : 'N/A',
+                unit: status?.batteryPresent == true ? '%' : '',
               ),
               const SizedBox(height: 4),
               const Text('CHARGE', style: PowerConsole.label),
@@ -293,20 +263,24 @@ class _BatteryStage extends StatelessWidget {
           ),
         ),
         Positioned(
-          right: 35,
+          right: 24,
           bottom: 9,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('TIME REMAINING', style: PowerConsole.label),
               const SizedBox(height: 2),
-              Text(
-                formatRemaining(status),
-                style: PowerConsole.value.copyWith(
-                  fontSize: 43,
-                  height: 1.1,
-                  color: PowerConsole.pink,
-                ),
+              PowerReadout(
+                value: switch (status?.remainingSeconds?.toInt()) {
+                  final seconds? when seconds > 0 && seconds < 3600 =>
+                    '${seconds ~/ 60}',
+                  _ => formatRemaining(status),
+                },
+                unit: switch (status?.remainingSeconds?.toInt()) {
+                  final seconds? when seconds > 0 && seconds < 3600 => 'm',
+                  _ => '',
+                },
+                size: 43,
               ),
             ],
           ),
@@ -322,7 +296,7 @@ class _Separator extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     width: 1,
     height: 46,
-    margin: const EdgeInsets.symmetric(horizontal: 12),
+    margin: const EdgeInsets.symmetric(horizontal: 6),
     color: const Color(0x3046516D),
   );
 }
@@ -371,10 +345,9 @@ class _ChargePainter extends CustomPainter {
     const gap = 5.0;
     final width = (size.width - gap * (count - 1)) / count;
     if (width <= 0) return;
+    final litCount = ((percentage ?? 0).clamp(0, 100) * count / 100).ceil();
     for (var index = 0; index < count; index++) {
-      final lit =
-          percentage != null &&
-          index < (percentage!.clamp(0, 100) * count / 100).ceil();
+      final lit = index < litCount;
       final rect = RRect.fromRectAndRadius(
         Rect.fromLTWH(index * (width + gap), 0, width, size.height),
         const Radius.circular(3),
@@ -399,7 +372,7 @@ class _ChargePainter extends CustomPainter {
                     Color.lerp(
                       const Color(0xFFEB62F2),
                       const Color(0xFFAD4AEF),
-                      index / count,
+                      litCount > 1 ? index / (litCount - 1) : 0,
                     )!,
                   ]
                 : [const Color(0xFF293044), const Color(0xFF222A3B)],
