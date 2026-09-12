@@ -1671,6 +1671,12 @@ final directories = <_widgetbook.WidgetbookNode>[
                     _hyprbaric_widgetbook_use_cases_power_power_panel_use_cases
                         .buildFailedPowerPanel,
               ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Reference',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_power_power_panel_use_cases
+                        .buildReferencePowerPanel,
+              ),
             ],
           ),
         ],

@@ -444,7 +444,7 @@ void main() {
     expect(find.text('POWER PROFILE'), findsOneWidget);
     expect(find.text('72%', findRichText: true), findsOneWidget);
     expect(find.text('-8.2W'), findsOneWidget);
-    expect(tester.getSize(find.byType(PowerPanel)).width, 320);
+    expect(tester.getSize(find.byType(PowerPanel)).width, PowerPanel.width);
   });
 
   testWidgets('interactive power story changes the selected production pad', (
