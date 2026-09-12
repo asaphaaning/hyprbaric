@@ -195,7 +195,7 @@ class ControlsPanel extends StatelessWidget {
                   HyprConsoleTray(
                     label: 'Toggles',
                     child: SizedBox(
-                      height: 90,
+                      height: 96,
                       child: DecoratedBox(
                         decoration: controlWellDecoration(),
                         child: Padding(

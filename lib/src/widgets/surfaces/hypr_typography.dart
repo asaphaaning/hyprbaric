@@ -319,7 +319,7 @@ abstract final class HyprTypography {
 
   /// [consoleCaption] for the narrow faces of a capture pad or rocker.
   static TextStyle get consoleCaptionTight =>
-      consoleCaption.copyWith(fontSize: 10.5, letterSpacing: .5);
+      consoleCaption.copyWith(fontSize: 11.5, letterSpacing: .5);
 
   /// Chord hint stamped onto a console face.
   static TextStyle get consoleShortcut => TextStyle(

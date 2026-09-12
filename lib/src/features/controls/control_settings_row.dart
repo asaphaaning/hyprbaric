@@ -21,6 +21,10 @@ class ControlSettingsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return HyprPlateButton(
       label: 'BAR SETTINGS',
+      labelStyle: HyprInstrumentText.body.copyWith(
+        fontWeight: FontWeight.w500,
+        letterSpacing: .6,
+      ),
       icon: Iconsax.setting_2_copy,
       semanticLabel: 'Bar settings',
       onPressed: onPressed,

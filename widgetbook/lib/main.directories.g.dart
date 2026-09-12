@@ -474,6 +474,17 @@ final directories = <_widgetbook.WidgetbookNode>[
             ],
           ),
           _widgetbook.WidgetbookComponent(
+            name: 'HyprAmberToggle',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'On and off',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_primitives_shared_primitives_use_cases
+                        .buildAmberToggleStates,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
             name: 'HyprCommandButton',
             useCases: [
               _widgetbook.WidgetbookUseCase(

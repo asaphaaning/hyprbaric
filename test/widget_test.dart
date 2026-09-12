@@ -4028,7 +4028,7 @@ void main() {
             find.byKey(const ValueKey<String>('control-rocker-switch')).first,
           )
           .width,
-      36,
+      44,
     );
 
     await tester.tap(find.text('REGION'));
