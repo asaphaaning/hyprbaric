@@ -104,6 +104,70 @@ Widget _surface({required Widget child, required List<dynamic> overrides}) {
 }
 
 void main() {
+  testWidgets('removing an open submenu keeps the live provider scope valid', (
+    tester,
+  ) async {
+    final visible = ValueNotifier(true);
+    addTearDown(visible.dispose);
+    final dispatcher = _RecordingDispatcher();
+    late ProviderContainer container;
+    await tester.pumpWidget(
+      _surface(
+        overrides: [
+          rustCommandDispatcherProvider.overrideWith((ref) => dispatcher),
+          _section(_file, [_item(label: 'Recent', submenu: _recent)]),
+          _section(_recent, [_item(label: 'Recent document')]),
+        ],
+        child: Consumer(
+          builder: (context, ref, child) {
+            container = ProviderScope.containerOf(context);
+            // The production bar keeps listening while its popup unmounts.
+            ref.watch(globalMenuSectionCacheProvider);
+            return ValueListenableBuilder(
+              valueListenable: visible,
+              builder: (context, shown, child) => shown
+                  ? GlobalMenuSectionPanel(
+                      session: _session,
+                      section: _file,
+                      onActivated: () {},
+                    )
+                  : const SizedBox(),
+            );
+          },
+        ),
+      ),
+    );
+    await tester.pump();
+    final pointer = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await pointer.addPointer(location: Offset.zero);
+    addTearDown(pointer.removePointer);
+    await pointer.moveTo(tester.getCenter(find.text('Recent')));
+    await tester.pumpAndSettle();
+    expect(find.text('Recent document'), findsOneWidget);
+
+    visible.value = false;
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(
+      container.exists(globalMenuSectionProvider(_address(_recent))),
+      isFalse,
+    );
+    expect(
+      dispatcher.intents.where(
+        (intent) => intent.debugLabel == 'global_menu_dismiss',
+      ),
+      hasLength(1),
+    );
+
+    visible.value = true;
+    await tester.pumpAndSettle();
+    await pointer.moveTo(Offset.zero);
+    await pointer.moveTo(tester.getCenter(find.text('Recent')));
+    await tester.pumpAndSettle();
+    expect(find.text('Recent document'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'nested flyouts reach deep commands and dismiss all descendants',
     (tester) async {

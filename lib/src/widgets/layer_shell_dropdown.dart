@@ -109,7 +109,7 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
   final Object _regionOwner = Object();
   final LayerLink _buttonLayerLink = LayerLink();
   final GlobalKey _buttonKey = GlobalKey();
-  final GlobalKey _menuKey = GlobalKey();
+  GlobalKey? _menuKey;
   OverlayEntry? _overlayEntry;
   bool _isOpen = false;
   bool _regionUpdateScheduled = false;
@@ -189,9 +189,13 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
     );
     final bool measureTransitionBounds =
         widget.transition == LayerShellDropdownTransition.grow;
+    // Each opening owns its measurement key, including same-frame reopens
+    // while the previous entry is still waiting to unmount.
+    final menuKey = GlobalKey();
+    _menuKey = menuKey;
     final Widget transitionChild = measureTransitionBounds
         ? menuContent
-        : KeyedSubtree(key: _menuKey, child: menuContent);
+        : KeyedSubtree(key: menuKey, child: menuContent);
 
     _overlayEntry = OverlayEntry(
       builder: (BuildContext overlayContext) {
@@ -221,7 +225,7 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
                   menuWidth: menuWidth,
                   barHeight: barHeight,
                   verticalGap: widget.verticalGap,
-                  menuKey: measureTransitionBounds ? _menuKey : null,
+                  menuKey: measureTransitionBounds ? menuKey : null,
                   child: transitionChild,
                 )
               else
@@ -235,7 +239,7 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
                     _verticalMenuOffset(overlayState) + widget.menuOffset.dy,
                   ),
                   child: KeyedSubtree(
-                    key: measureTransitionBounds ? _menuKey : null,
+                    key: measureTransitionBounds ? menuKey : null,
                     child: DropdownTransition(
                       animation: _animationController,
                       animationCurve: widget.animationCurve,
@@ -323,9 +327,13 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
   }
 
   void _removeOverlay() {
-    _overlayEntry?.remove();
+    final entry = _overlayEntry;
     _overlayEntry = null;
+    _menuKey = null;
+    _pendingRegionMode = null;
     _menuOffsetX = 0;
+    entry?.remove();
+    entry?.dispose();
   }
 
   void _scheduleRegionUpdate(_RegionSyncMode mode) {
@@ -380,7 +388,7 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
       return null;
     }
 
-    final BuildContext? menuContext = _menuKey.currentContext;
+    final BuildContext? menuContext = _menuKey?.currentContext;
     final RenderBox? menuBox = menuContext?.findRenderObject() as RenderBox?;
     if (menuBox == null) {
       return null;
@@ -437,8 +445,9 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
     if ((_menuOffsetX - offsetX).abs() > 0.5) {
       _menuOffsetX = offsetX;
       _overlayEntry?.markNeedsBuild();
+      final entry = _overlayEntry;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_overlayEntry != null && mounted) {
+        if (entry != null && identical(_overlayEntry, entry) && mounted) {
           _scheduleRegionUpdate(_RegionSyncMode.exactMenu);
         }
       });
