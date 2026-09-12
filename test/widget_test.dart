@@ -23,9 +23,8 @@ import 'package:hyprbaric/src/features/controls/control_rocker.dart';
 import 'package:hyprbaric/src/features/controls/control_settings_row.dart';
 import 'package:hyprbaric/src/features/controls/controls_panel.dart';
 import 'package:hyprbaric/src/features/launcher/app_launcher_results.dart';
-import 'package:hyprbaric/src/features/network/network_interfaces.dart';
+import 'package:hyprbaric/src/features/network/network_connection_views.dart';
 import 'package:hyprbaric/src/features/network/network_panel.dart';
-import 'package:hyprbaric/src/features/network/network_wifi_section.dart';
 import 'package:hyprbaric/src/features/power/battery_chip.dart';
 import 'package:hyprbaric/src/features/power/power_panel.dart';
 import 'package:hyprbaric/src/features/rust_commands.dart';
@@ -235,9 +234,23 @@ NetworkStatus _networkStatus({
       ...extraNetworks,
     ],
     interfaces: const <NetworkInterface>[
-      NetworkInterface(name: 'wlo1', address: '192.168.1.42', active: true),
-      NetworkInterface(name: 'eth0', active: false),
-      NetworkInterface(name: 'lo', address: '127.0.0.1', active: true),
+      NetworkInterface(
+        kind: NetworkInterfaceKind.wifi,
+        name: 'wlo1',
+        address: '192.168.1.42',
+        active: true,
+      ),
+      NetworkInterface(
+        kind: NetworkInterfaceKind.ethernet,
+        name: 'eth0',
+        active: false,
+      ),
+      NetworkInterface(
+        kind: NetworkInterfaceKind.other,
+        name: 'lo',
+        address: '127.0.0.1',
+        active: true,
+      ),
     ],
     message: null,
   );
@@ -3053,23 +3066,11 @@ void main() {
     await tester.pump();
 
     expect(find.text('Fiber_5G'), findsOneWidget);
-    expect(
-      find.descendant(
-        of: find.byType(NetworkInterfacesSection),
-        matching: find.text('wlo1'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: find.byType(NetworkInterfacesSection),
-        matching: find.text('192.168.1.42'),
-      ),
-      findsOneWidget,
-    );
-    expect(find.text('NETWORK SETTINGS'), findsOneWidget);
+    expect(find.text('wlo1 · 192.168.1.42'), findsOneWidget);
+    expect(find.text('Network Settings'), findsOneWidget);
 
-    await tester.tap(find.text('NETWORK SETTINGS'));
+    await tester.ensureVisible(find.text('Network Settings'));
+    await tester.tap(find.text('Network Settings'));
     await tester.pump();
 
     expect(openedSettings, true);
@@ -3131,21 +3132,22 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Fiber_5G'), findsOneWidget);
-      expect(find.text('on'), findsOneWidget);
+      expect(find.bySemanticsLabel('Disable Wi-Fi'), findsOneWidget);
 
-      await tester.tap(find.text('on'));
+      await tester.ensureVisible(find.bySemanticsLabel('Disable Wi-Fi'));
+      await tester.tap(find.bySemanticsLabel('Disable Wi-Fi'));
       await tester.pump();
       await tester.pumpAndSettle();
 
-      expect(find.text('off'), findsOneWidget);
-      expect(find.text('Wi-Fi is turned off.'), findsOneWidget);
+      expect(find.bySemanticsLabel('Enable Wi-Fi'), findsOneWidget);
+      expect(find.text('Wi-Fi off'), findsOneWidget);
       expect(find.text('Fiber_5G'), findsNothing);
 
-      await tester.tap(find.text('off'));
+      await tester.tap(find.bySemanticsLabel('Enable Wi-Fi'));
       await tester.pump();
       await tester.pumpAndSettle();
 
-      expect(find.text('on'), findsOneWidget);
+      expect(find.bySemanticsLabel('Disable Wi-Fi'), findsOneWidget);
     },
   );
 
@@ -3175,9 +3177,10 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('on'));
+      await tester.ensureVisible(find.bySemanticsLabel('Disable Wi-Fi'));
+      await tester.tap(find.bySemanticsLabel('Disable Wi-Fi'));
       await tester.pump();
-      await tester.tap(find.text('off'));
+      await tester.tap(find.bySemanticsLabel('Enable Wi-Fi'));
       await tester.pump();
 
       results.add(
@@ -3189,8 +3192,8 @@ void main() {
       network.add(_networkStatus(wifiEnabled: false).copyWith(networks: []));
       await tester.pumpAndSettle();
 
-      expect(find.text('on'), findsOneWidget);
-      expect(find.text('off'), findsNothing);
+      expect(find.bySemanticsLabel('Disable Wi-Fi'), findsOneWidget);
+      expect(find.bySemanticsLabel('Enable Wi-Fi'), findsNothing);
     },
   );
 
@@ -3226,15 +3229,13 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.text('INTERFACES'), findsOneWidget);
-    expect(
-      find.descendant(
-        of: find.byType(NetworkInterfacesSection),
-        matching: find.text('wlo1'),
-      ),
-      findsOneWidget,
-    );
-    expect(find.text('lo'), findsOneWidget);
+    expect(find.text('wlo1 · 192.168.1.42'), findsOneWidget);
+    expect(find.text('Neighbor_1'), findsNothing);
+    await tester.ensureVisible(find.text('Choose network…'));
+    await tester.tap(find.text('Choose network…'));
+    await tester.pumpAndSettle();
+    expect(find.byType(NetworkChooser), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('audio popup renders output and input controls', (
@@ -4360,8 +4361,8 @@ void main() {
 
     // Derived rather than hardcoded: a fixed coordinate only stays outside the
     // popup for as long as the popup keeps landing in one particular place.
-    final Rect popup = tester.getRect(find.text('Fiber_5G'));
-    await tester.tapAt(Offset(popup.left - 40, popup.bottom + 80));
+    final Rect popup = tester.getRect(find.byType(NetworkPanel));
+    await tester.tapAt(Offset(popup.left - 10, popup.center.dy));
     await tester.pump();
     await tester.pumpAndSettle();
 
@@ -4387,13 +4388,17 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text('Choose network…'));
+    await tester.tap(find.text('Choose network…'));
+    await tester.pumpAndSettle();
+
     // The SSID list scrolls inside its own fixed height.
     await tester.scrollUntilVisible(
       find.text('Fiber_2.4G'),
       60,
       scrollable: find
           .descendant(
-            of: find.byType(NetworkWifiSection),
+            of: find.byType(NetworkChooser),
             matching: find.byType(Scrollable),
           )
           .first,
@@ -4407,19 +4412,8 @@ void main() {
       find.widgetWithText(TextField, 'Password for Fiber_2.4G'),
       findsOneWidget,
     );
-    expect(find.text('JOIN'), findsOneWidget);
-    // The row's tap target is the shared interaction primitive now, not a
-    // bespoke InkWell with every overlay colour turned off.
-    final HyprInteractionRegion networkRow = tester
-        .widget<HyprInteractionRegion>(
-          find
-              .ancestor(
-                of: find.text('Fiber_2.4G'),
-                matching: find.byType(HyprInteractionRegion),
-              )
-              .first,
-        );
-    expect(networkRow.onPressed, isNotNull);
+    expect(find.text('Join Fiber_2.4G'), findsOneWidget);
+    expect(find.text('Connect'), findsOneWidget);
 
     await tester.ensureVisible(
       find.byKey(const ValueKey<String>('network-connect-submit')),
@@ -4451,13 +4445,17 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text('Choose network…'));
+    await tester.tap(find.text('Choose network…'));
+    await tester.pumpAndSettle();
+
     // The SSID list scrolls inside its own fixed height.
     await tester.scrollUntilVisible(
       find.text('Fiber_2.4G'),
       60,
       scrollable: find
           .descendant(
-            of: find.byType(NetworkWifiSection),
+            of: find.byType(NetworkChooser),
             matching: find.byType(Scrollable),
           )
           .first,
@@ -4498,13 +4496,17 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text('Choose network…'));
+    await tester.tap(find.text('Choose network…'));
+    await tester.pumpAndSettle();
+
     // The SSID list scrolls inside its own fixed height.
     await tester.scrollUntilVisible(
       find.text('starbucks-guest'),
       60,
       scrollable: find
           .descendant(
-            of: find.byType(NetworkWifiSection),
+            of: find.byType(NetworkChooser),
             matching: find.byType(Scrollable),
           )
           .first,
@@ -4514,6 +4516,7 @@ void main() {
     await tester.pump();
 
     expect(find.widgetWithText(TextField, 'password'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets('session launcher opens from hotkey and closes with escape', (

@@ -53,7 +53,15 @@ flutter pub get
 flutter run -d linux
 ```
 
-For a release bundle, use `flutter build linux --release`. The Linux build output is relocatable; consult the [installation guide](https://asaphaaning.github.io/hyprbaric/docs/installation) for package-build and hyprland autostart guidance.
+Build and run the matching release bundle:
+
+```sh
+flutter build linux --release
+./build/linux/x64/release/bundle/hyprbaric
+```
+
+Release builds do not update `build/linux/x64/debug/bundle`; launching that path
+runs the last debug build. The Linux build output is relocatable; consult the [installation guide](https://asaphaaning.github.io/hyprbaric/docs/installation) for package-build and hyprland autostart guidance.
 
 ## Widget catalog
 

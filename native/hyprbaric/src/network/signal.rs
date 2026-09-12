@@ -6,7 +6,7 @@
 
 use crate::signals;
 
-use super::domain::{Entry, Interface, Traffic, Transfer};
+use super::domain::{Entry, Interface, InterfaceKind, Traffic, Transfer};
 use super::{Command, EntryState, Report, Snapshot};
 
 impl From<&Snapshot> for signals::NetworkStatus {
@@ -44,6 +44,13 @@ impl From<&Command> for signals::NetworkCommand {
             Command::Scan => Self::Scan,
             Command::SetWifiEnabled { enabled } => Self::SetWifiEnabled { enabled: *enabled },
             Command::Connect { ssid } => Self::Connect { ssid: ssid.clone() },
+            Command::Disconnect { interface } => Self::Disconnect {
+                interface: interface.clone(),
+            },
+            Command::SetAutoConnect { interface, enabled } => Self::SetAutoConnect {
+                interface: interface.clone(),
+                enabled: *enabled,
+            },
             Command::OpenSettings => Self::OpenSettings,
         }
     }
@@ -93,6 +100,15 @@ impl From<&Transfer> for signals::NetworkTransfer {
 impl From<&Interface> for signals::NetworkInterface {
     fn from(interface: &Interface) -> Self {
         Self {
+            kind: match interface.kind {
+                InterfaceKind::Wifi => signals::NetworkInterfaceKind::Wifi,
+                InterfaceKind::Ethernet => signals::NetworkInterfaceKind::Ethernet,
+                InterfaceKind::Tunnel => signals::NetworkInterfaceKind::Tunnel,
+                InterfaceKind::Other => signals::NetworkInterfaceKind::Other,
+            },
+            speed_mbps: interface.speed_mbps,
+            frequency_mhz: interface.frequency_mhz,
+            auto_connect: interface.auto_connect,
             name: interface.name.clone(),
             address: interface.address.clone(),
             active: interface.active,

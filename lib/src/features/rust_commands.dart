@@ -123,6 +123,9 @@ class _SetupCompleteIntent extends SetupIntent {
 sealed class NetworkIntent extends RustIntent {
   const NetworkIntent();
 
+  const factory NetworkIntent.join(NetworkJoinRequest request) =
+      _NetworkJoinIntent;
+
   const factory NetworkIntent.scan() = _NetworkScanIntent;
 
   const factory NetworkIntent.setWifiEnabled({required bool enabled}) =
@@ -133,6 +136,14 @@ sealed class NetworkIntent extends RustIntent {
     required String? bssid,
     required String? password,
   }) = _NetworkConnectIntent;
+
+  const factory NetworkIntent.disconnect(NetworkInterface interface) =
+      _NetworkDisconnectIntent;
+
+  const factory NetworkIntent.setAutoConnect(
+    NetworkInterface interface, {
+    required bool enabled,
+  }) = _NetworkAutoConnectIntent;
 
   const factory NetworkIntent.openSettings() = _NetworkOpenSettingsIntent;
 }
@@ -930,4 +941,37 @@ class _WorkspaceAbsoluteIntent extends WorkspaceIntent {
       monitorName: monitorName,
     ).sendSignalToRust();
   }
+}
+
+class _NetworkDisconnectIntent extends NetworkIntent {
+  const _NetworkDisconnectIntent(this.interface);
+  final NetworkInterface interface;
+  @override
+  String get debugLabel => 'network_disconnect:${interface.name}';
+  @override
+  void send() => NetworkInterfaceRequestDisconnect(
+    interface: interface.name,
+  ).sendSignalToRust();
+}
+
+class _NetworkAutoConnectIntent extends NetworkIntent {
+  const _NetworkAutoConnectIntent(this.interface, {required this.enabled});
+  final NetworkInterface interface;
+  final bool enabled;
+  @override
+  String get debugLabel => 'network_auto_connect:${interface.name}:$enabled';
+  @override
+  void send() => NetworkInterfaceRequestSetAutoConnect(
+    interface: interface.name,
+    enabled: enabled,
+  ).sendSignalToRust();
+}
+
+class _NetworkJoinIntent extends NetworkIntent {
+  const _NetworkJoinIntent(this.request);
+  final NetworkJoinRequest request;
+  @override
+  String get debugLabel => 'network_join:${request.ssid}';
+  @override
+  void send() => request.sendSignalToRust();
 }

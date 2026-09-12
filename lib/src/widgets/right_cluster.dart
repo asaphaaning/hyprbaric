@@ -7,6 +7,7 @@ import '../features/audio/audio_panel.dart';
 import '../features/clock/clock_panel.dart';
 import '../features/controls/controls_panel.dart';
 import '../features/network/network_panel.dart';
+import '../features/network/network_traffic_provider.dart';
 import '../features/power/battery_chip.dart';
 import '../features/power/power_panel.dart';
 import '../features/tray/tray_menu_panel.dart';
@@ -175,7 +176,8 @@ class RightCluster extends ConsumerWidget {
               ],
             LayerShellDropdown(
               controller: networkController,
-              menuRadius: networkRadius,
+              menuRadius: NetworkPanel.radius,
+              menuWidth: NetworkPanel.width,
               buttonBuilder:
                   (
                     BuildContext context,
@@ -197,16 +199,28 @@ class RightCluster extends ConsumerWidget {
                     return Consumer(
                       builder:
                           (BuildContext context, WidgetRef ref, Widget? child) {
-                            return NetworkPanel(
-                              borderRadius: networkRadius,
-                              status: ref.watch(networkStatusProvider),
-                              latestResult: ref
-                                  .watch(networkCommandResultProvider)
-                                  .asData
-                                  ?.value,
-                              onSetWifiEnabled: onSetNetworkWifiEnabled,
-                              onConnect: onConnectNetwork,
-                              onOpenSettings: onOpenNetworkSettings,
+                            return ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxHeight:
+                                    (MediaQuery.sizeOf(context).height -
+                                            ref.watch(barHeightProvider) -
+                                            16)
+                                        .clamp(0.0, double.infinity),
+                              ),
+                              child: NetworkPanel(
+                                history: ref.watch(
+                                  networkTrafficHistoryProvider,
+                                ),
+                                borderRadius: NetworkPanel.radius,
+                                status: ref.watch(networkStatusProvider),
+                                latestResult: ref
+                                    .watch(networkCommandResultProvider)
+                                    .asData
+                                    ?.value,
+                                onSetWifiEnabled: onSetNetworkWifiEnabled,
+                                onConnect: onConnectNetwork,
+                                onOpenSettings: onOpenNetworkSettings,
+                              ),
                             );
                           },
                     );

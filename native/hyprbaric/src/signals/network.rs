@@ -8,9 +8,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, SignalPiece, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum NetworkCommand {
     Scan,
-    SetWifiEnabled { enabled: bool },
-    Connect { ssid: String },
+    SetWifiEnabled {
+        enabled: bool,
+    },
+    Connect {
+        ssid: String,
+    },
     OpenSettings,
+    /// Disconnect one NetworkManager interface.
+    Disconnect {
+        interface: String,
+    },
+    /// Change one Wi-Fi interface's automatic connection policy.
+    SetAutoConnect {
+        interface: String,
+        enabled: bool,
+    },
 }
 
 #[derive(Serialize, Deserialize, SignalPiece, Clone, Debug, PartialEq, Eq, Hash)]
@@ -46,6 +59,14 @@ pub struct NetworkTraffic {
 
 #[derive(Serialize, Deserialize, SignalPiece, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NetworkInterface {
+    /// Typed NetworkManager device family.
+    pub kind: NetworkInterfaceKind,
+    /// Ethernet link speed, when reported by the driver.
+    pub speed_mbps: Option<u32>,
+    /// Active Wi-Fi radio frequency in MHz.
+    pub frequency_mhz: Option<u32>,
+    /// Wi-Fi interface autoconnect policy, if known.
+    pub auto_connect: Option<bool>,
     pub name: String,
     pub address: Option<String>,
     pub active: bool,
@@ -94,4 +115,44 @@ pub enum NetworkCommandResult {
         command: NetworkCommand,
         message: String,
     },
+}
+
+/// Device families projected from NetworkManager at the Rust boundary.
+#[derive(Serialize, Deserialize, SignalPiece, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum NetworkInterfaceKind {
+    /// Wireless radio.
+    Wifi,
+    /// Wired Ethernet adapter.
+    Ethernet,
+    /// TUN/TAP, IP tunnel, or WireGuard device.
+    Tunnel,
+    /// Other interfaces.
+    Other,
+}
+
+/// An action scoped to a concrete interface; it never disables all radios.
+#[derive(Deserialize, DartSignal)]
+pub enum NetworkInterfaceRequest {
+    /// Disconnect the selected device.
+    Disconnect { interface: String },
+    /// Change the selected Wi-Fi interface's autoconnect policy.
+    SetAutoConnect { interface: String, enabled: bool },
+}
+
+/// Security for an explicitly named network; open networks cannot carry a key.
+#[derive(Deserialize, Serialize, SignalPiece)]
+pub enum NetworkSecurity {
+    /// Unencrypted Wi-Fi.
+    Open,
+    /// WPA/WPA2 Personal credential.
+    Personal { password: String },
+}
+
+/// Create and activate a manually entered network profile.
+#[derive(Deserialize, DartSignal)]
+pub struct NetworkJoinRequest {
+    pub ssid: String,
+    pub hidden: bool,
+    pub security: NetworkSecurity,
+    pub auto_connect: bool,
 }

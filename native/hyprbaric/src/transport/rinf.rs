@@ -9,18 +9,18 @@ use crate::signals::{
     FocusedWindowStatus, GlobalMenuCommand, GlobalMenuIntegrationStatus, GlobalMenuItemId,
     GlobalMenuSectionId, GlobalMenuSession, HotkeyEvent, ModuleCommand, ModuleCommandResult,
     ModulesStatus, MonitorFocusedWindowStatus, MonitorWorkspaceStatus, NetworkCommandResult,
-    NetworkConnectRequest, NetworkScanRequest, NetworkSetWifiEnabled, NetworkSettingsRequest,
-    NetworkStatus, NightLightCommandResult, NightLightSetEnabled, NightLightSetTemperature,
-    NightLightStatus, NotificationClearRequest, NotificationDismissRequest,
-    NotificationSetDoNotDisturb, NotificationStatus, PortalStatus, PowerCommandResult,
-    PowerSetProfile, PowerStatus, RecordingCommandResult, RecordingRequest, RecordingStatus,
-    ScheduleCommand, ScheduleCommandResult, ScheduleStatus, ScreenshotCaptureRequest,
-    ScreenshotCommandResult, SessionActionAvailability, SessionCommand, SessionCommandResult,
-    SetupCommand, SetupCommandResult, SetupStatus, ShortcutSettingsCommandResult,
-    ShortcutSettingsRequest, ShortcutSettingsSnapshot, TrayActivateRequest,
-    TrayMenuItemActivateRequest, TrayMenuStatus, TrayStatus, WorkspaceSettingsCommand,
-    WorkspaceSettingsCommandResult, WorkspaceSettingsStatus, WorkspaceStatus, WorkspaceSwitch,
-    WorkspaceSwitchKind,
+    NetworkConnectRequest, NetworkInterfaceRequest, NetworkScanRequest, NetworkSetWifiEnabled,
+    NetworkSettingsRequest, NetworkStatus, NightLightCommandResult, NightLightSetEnabled,
+    NightLightSetTemperature, NightLightStatus, NotificationClearRequest,
+    NotificationDismissRequest, NotificationSetDoNotDisturb, NotificationStatus, PortalStatus,
+    PowerCommandResult, PowerSetProfile, PowerStatus, RecordingCommandResult, RecordingRequest,
+    RecordingStatus, ScheduleCommand, ScheduleCommandResult, ScheduleStatus,
+    ScreenshotCaptureRequest, ScreenshotCommandResult, SessionActionAvailability, SessionCommand,
+    SessionCommandResult, SetupCommand, SetupCommandResult, SetupStatus,
+    ShortcutSettingsCommandResult, ShortcutSettingsRequest, ShortcutSettingsSnapshot,
+    TrayActivateRequest, TrayMenuItemActivateRequest, TrayMenuStatus, TrayStatus,
+    WorkspaceSettingsCommand, WorkspaceSettingsCommandResult, WorkspaceSettingsStatus,
+    WorkspaceStatus, WorkspaceSwitch, WorkspaceSwitchKind,
 };
 use crate::{
     app::{
@@ -825,4 +825,43 @@ pub(crate) fn send_portal_signal(color_scheme: portals::ColorScheme) {
         color_scheme: color_scheme.into(),
     }
     .send_signal_to_dart();
+}
+
+/// Projects interface-scoped actions into the application's typed vocabulary.
+pub(crate) async fn handle_network_interface_request(
+    State(context): State<App>,
+    request: NetworkInterfaceRequest,
+) {
+    let command = match request {
+        NetworkInterfaceRequest::Disconnect { interface } => {
+            AppNetworkCommand::Disconnect(interface)
+        }
+        NetworkInterfaceRequest::SetAutoConnect { interface, enabled } => {
+            AppNetworkCommand::SetAutoConnect { interface, enabled }
+        }
+    };
+    dispatch(&context, AppCommand::Network(command)).await;
+}
+
+/// Converts manual Wi-Fi profile input at the transport boundary.
+pub(crate) async fn handle_network_join_request(
+    State(context): State<App>,
+    request: crate::signals::NetworkJoinRequest,
+) {
+    let security = match request.security {
+        crate::signals::NetworkSecurity::Open => network::Security::Open,
+        crate::signals::NetworkSecurity::Personal { password } => {
+            network::Security::Personal(password)
+        }
+    };
+    dispatch(
+        &context,
+        AppCommand::Network(AppNetworkCommand::Join(network::Join {
+            ssid: request.ssid,
+            hidden: request.hidden,
+            security,
+            auto_connect: request.auto_connect,
+        })),
+    )
+    .await;
 }

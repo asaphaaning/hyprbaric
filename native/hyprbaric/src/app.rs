@@ -8,8 +8,8 @@ use crate::{
     bootstrap::Components,
     brightness, caffeine, clock, color_picker,
     hyprland::{self, DesktopSnapshot},
-    launcher, modules, night_light, notifications, portals, power, recording, schedule, screenshot,
-    session, setup, shortcuts, tray, workspaces,
+    launcher, modules, network, night_light, notifications, portals, power, recording, schedule,
+    screenshot, session, setup, shortcuts, tray, workspaces,
 };
 
 mod output;
@@ -80,7 +80,7 @@ pub enum WorkspaceCommand {
 }
 
 /// Network requests whose secrets remain inside the application boundary.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum NetworkCommand {
     /// Scan visible networks.
     Scan,
@@ -95,8 +95,43 @@ pub enum NetworkCommand {
         /// Optional boundary-only network secret.
         password: Option<String>,
     },
+    /// Create a manually named Wi-Fi profile.
+    Join(network::Join),
+    /// Disconnect a single interface.
+    Disconnect(String),
+    /// Change automatic connection policy on a Wi-Fi interface.
+    SetAutoConnect { interface: String, enabled: bool },
     /// Open the host network settings application.
     OpenSettings,
+}
+
+// Dispatch spans retain useful command context while keeping credentials private.
+impl std::fmt::Debug for NetworkCommand {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Scan => formatter.write_str("Scan"),
+            Self::SetWifiEnabled(enabled) => formatter
+                .debug_tuple("SetWifiEnabled")
+                .field(enabled)
+                .finish(),
+            Self::Connect { ssid, bssid, .. } => formatter
+                .debug_struct("Connect")
+                .field("ssid", ssid)
+                .field("bssid", bssid)
+                .finish_non_exhaustive(),
+            Self::Join(request) => formatter.debug_tuple("Join").field(request).finish(),
+            Self::Disconnect(interface) => formatter
+                .debug_tuple("Disconnect")
+                .field(interface)
+                .finish(),
+            Self::SetAutoConnect { interface, enabled } => formatter
+                .debug_struct("SetAutoConnect")
+                .field("interface", interface)
+                .field("enabled", enabled)
+                .finish(),
+            Self::OpenSettings => formatter.write_str("OpenSettings"),
+        }
+    }
 }
 
 /// Immediate result produced while dispatching an application command.
@@ -241,6 +276,16 @@ impl App {
                             .connect(ssid, bssid, password)
                             .await;
                     }
+                    NetworkCommand::Join(request) => self.components.network().join(request).await,
+                    NetworkCommand::Disconnect(interface) => {
+                        self.components.network().disconnect(interface).await;
+                    }
+                    NetworkCommand::SetAutoConnect { interface, enabled } => {
+                        self.components
+                            .network()
+                            .set_auto_connect(interface, enabled)
+                            .await;
+                    }
                     NetworkCommand::OpenSettings => {
                         self.components.network().open_settings().await;
                     }
@@ -380,5 +425,22 @@ impl App {
     #[expect(dead_code, reason = "kept for portal-driven theming state")]
     pub async fn color_scheme(&self) -> Option<portals::ColorScheme> {
         *self.inner.color_scheme.read().await
+    }
+}
+
+#[cfg(test)]
+mod network_command_tests {
+    use super::NetworkCommand;
+
+    #[test]
+    fn dispatch_debug_keeps_wifi_credentials_private() {
+        let command = NetworkCommand::Connect {
+            ssid: "Network".into(),
+            bssid: None,
+            password: Some("private-passphrase".into()),
+        };
+        let debug = format!("{command:?}");
+        assert!(debug.contains("Network"));
+        assert!(!debug.contains("private-passphrase"));
     }
 }

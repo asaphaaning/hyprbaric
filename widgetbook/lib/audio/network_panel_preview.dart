@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hyprbaric/widget_catalog.dart';
 
 import '../use_cases/network/network_fixtures.dart';
+import 'network_traffic_demo.dart';
 
 /// Interactive Network / Wi-Fi preview shared by Widgetbook and the website.
 class NetworkPanelPreview extends StatefulWidget {
@@ -22,16 +24,16 @@ class NetworkPanelPreview extends StatefulWidget {
 class _NetworkPanelPreviewState extends State<NetworkPanelPreview>
     with SingleTickerProviderStateMixin {
   late NetworkStatus _status;
-  late final AnimationController _trafficClock;
+  late final Ticker _trafficClock;
+  TrafficHistory _history = NetworkTrafficDemo.prefill();
+  Duration _elapsed = Duration.zero;
+  Duration _offset = Duration.zero;
 
   @override
   void initState() {
     super.initState();
-    _status = widget.initialStatus ?? NetworkFixtures.connected;
-    _trafficClock = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 4200),
-    );
+    _status = widget.initialStatus ?? NetworkFixtures.reference;
+    _trafficClock = createTicker(_advance);
   }
 
   @override
@@ -50,10 +52,13 @@ class _NetworkPanelPreviewState extends State<NetworkPanelPreview>
 
   void _syncTrafficClock() {
     final bool motionEnabled =
-        widget.animateTraffic && !MediaQuery.disableAnimationsOf(context);
-    if (motionEnabled && !_trafficClock.isAnimating) {
-      _trafficClock.repeat();
-    } else if (!motionEnabled && _trafficClock.isAnimating) {
+        widget.animateTraffic &&
+        !MediaQuery.disableAnimationsOf(context) &&
+        TickerMode.valuesOf(context).enabled;
+    if (motionEnabled && !_trafficClock.isActive) {
+      _offset = _elapsed;
+      _trafficClock.start();
+    } else if (!motionEnabled && _trafficClock.isActive) {
       _trafficClock.stop();
     }
   }
@@ -64,31 +69,35 @@ class _NetworkPanelPreviewState extends State<NetworkPanelPreview>
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _trafficClock,
-      builder: (BuildContext context, Widget? child) {
-        final NetworkStatus status = widget.animateTraffic
-            ? _status.copyWith(
-                traffic: NetworkTrafficDance.sample(_trafficClock.value)
-                    .traffic,
-              )
-            : _status;
-
-        return ProviderScope(
-          child: NetworkPanel(
-            borderRadius: HyprRadii.popoverRadius,
-            status: AsyncData<NetworkStatus>(status),
-            latestResult: null,
-            onSetWifiEnabled: _setWifiEnabled,
-            onConnect: _connect,
-            onOpenSettings: _ignore,
-          ),
-        );
-      },
-    );
+  void _advance(Duration elapsed) {
+    final next = _offset + elapsed;
+    if (next - _elapsed < const Duration(milliseconds: 100)) return;
+    setState(() {
+      _elapsed = next;
+      _history = _history.record(
+        NetworkTrafficDemo.sample(TrafficHistory.window + next),
+      );
+    });
   }
+
+  @override
+  Widget build(BuildContext context) => ProviderScope(
+    child: NetworkPanel(
+      borderRadius: NetworkPanel.radius,
+      history: _history,
+      status: AsyncData<NetworkStatus>(
+        _status.copyWith(traffic: NetworkTrafficDemo.traffic(_history.latest!)),
+      ),
+      latestResult: null,
+      onSetWifiEnabled: _setWifiEnabled,
+      onConnect: _connect,
+      onOpenSettings: _ignore,
+      onScan: _ignore,
+      onJoin: (_) {},
+      onDisconnect: (_) {},
+      onAutoConnect: (_, {required enabled}) {},
+    ),
+  );
 
   void _setWifiEnabled(bool enabled) {
     setState(() {
@@ -116,128 +125,6 @@ class _NetworkPanelPreviewState extends State<NetworkPanelPreview>
             .toList(growable: false),
       );
     });
-  }
-}
-
-/// A deterministic burst pattern that gives catalog previews a lively signal.
-///
-/// The stepwise samples deliberately avoid an eased waveform. Network traffic
-/// tends to idle near a low baseline before short, uneven bursts, so the graph
-/// and parameter rails read like telemetry rather than an animation. It exists
-/// at the story boundary: production panels still receive measurements from
-/// the network runtime.
-@immutable
-class NetworkTrafficDance {
-  const NetworkTrafficDance._({
-    required this.uploadMegabytesPerSecond,
-    required this.downloadMegabytesPerSecond,
-    required this.pingMs,
-  });
-
-  final double uploadMegabytesPerSecond;
-  final double downloadMegabytesPerSecond;
-  final int pingMs;
-
-  static const List<double> _uploadPattern = <double>[
-    .03,
-    .05,
-    .04,
-    .08,
-    .45,
-    .12,
-    .07,
-    1.80,
-    .30,
-    .10,
-    .06,
-    3.80,
-    .18,
-    .08,
-    .05,
-    .12,
-    .90,
-    .24,
-    .04,
-    .08,
-    2.50,
-    .34,
-    .09,
-    .05,
-  ];
-
-  static const List<double> _downloadPattern = <double>[
-    2.0,
-    2.6,
-    3.1,
-    8.5,
-    4.2,
-    18.0,
-    5.8,
-    3.4,
-    12.2,
-    5.1,
-    2.8,
-    7.4,
-    3.0,
-    16.8,
-    4.4,
-    2.2,
-    11.6,
-    4.7,
-    2.9,
-    6.1,
-    15.4,
-    3.8,
-    2.5,
-    5.3,
-  ];
-
-  static NetworkTrafficDance sample(double progress) {
-    final double upload = _samplePattern(_uploadPattern, progress);
-    final double download = _samplePattern(_downloadPattern, progress + .17);
-    final int ping =
-        8 + (_samplePattern(_uploadPattern, progress + .38) * 2).round();
-
-    return NetworkTrafficDance._(
-      uploadMegabytesPerSecond: upload,
-      downloadMegabytesPerSecond: download,
-      pingMs: ping,
-    );
-  }
-
-  NetworkTraffic get traffic {
-    return NetworkTraffic(
-      upload: _transfer(
-        megabytesPerSecond: uploadMegabytesPerSecond,
-        totalMegabytes: 1280 + uploadMegabytesPerSecond * 3,
-      ),
-      download: _transfer(
-        megabytesPerSecond: downloadMegabytesPerSecond,
-        totalMegabytes: 14580 + downloadMegabytesPerSecond * 4,
-      ),
-      pingMs: pingMs,
-    );
-  }
-
-  static double _samplePattern(List<double> pattern, double progress) {
-    final double looped = progress % 1;
-    final int index = (looped * pattern.length).floor() % pattern.length;
-    return pattern[index];
-  }
-
-  static NetworkTransfer _transfer({
-    required double megabytesPerSecond,
-    required double totalMegabytes,
-  }) {
-    const int bytesPerMegabyte = 1024 * 1024;
-    return NetworkTransfer(
-      bytesPerSecond: Uint64.fromBigInt(
-        BigInt.from((megabytesPerSecond * bytesPerMegabyte).round()),
-      ),
-      totalBytes: Uint64.fromBigInt(
-        BigInt.from((totalMegabytes * bytesPerMegabyte).round()),
-      ),
-    );
   }
 }
 
