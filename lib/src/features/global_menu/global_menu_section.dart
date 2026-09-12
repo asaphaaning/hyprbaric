@@ -167,12 +167,17 @@ class _GlobalMenuSectionPanelState
     _cache = ref.read(globalMenuSectionCacheProvider.notifier);
   }
 
-  void _discardFrom(int depth) {
-    for (final branch in _branches.skip(depth).toList().reversed) {
-      final address = GlobalMenuAddress(
-        session: widget.session,
-        section: branch.section,
+  Iterable<GlobalMenuAddress> _addressesFrom(int depth) => _branches
+      .skip(depth)
+      .toList()
+      .reversed
+      .map(
+        (branch) =>
+            GlobalMenuAddress(session: widget.session, section: branch.section),
       );
+
+  void _discardFrom(int depth) {
+    for (final address in _addressesFrom(depth)) {
       _dispatcher.dispatch(GlobalMenuIntent.dismiss(address));
       _cache.forget(address);
     }
@@ -221,9 +226,13 @@ class _GlobalMenuSectionPanelState
   @override
   void dispose() {
     _linger?.cancel();
-    // Closing the root is dispatched by its dropdown owner. Explicitly
-    // release every descendant provider and popup, deepest first.
-    _discardFrom(0);
+    // Section streams auto-dispose when their panels unmount. D-BusMenu rows
+    // are never cached; GTK snapshots belong to the session, not the popup.
+    // Only native popups need explicit release here, deepest first. Mutating
+    // the shared cache during unmount would notify the still-mounted bar.
+    for (final address in _addressesFrom(0)) {
+      _dispatcher.dispatch(GlobalMenuIntent.dismiss(address));
+    }
     _horizontal.dispose();
     super.dispose();
   }

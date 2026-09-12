@@ -29,7 +29,9 @@ final globalMenuStatusProvider = StreamProvider<GlobalMenuStatus>(
 /// Headings trigger a background snapshot. This map is filled as those rows
 /// arrive, so a heading that opens before its own request returns can still
 /// paint. GTK deletions replace the cached rows too. D-BusMenu rows are read
-/// for each opening and never retained in this cache.
+/// for each opening and never retained in this cache. Widget disposal leaves
+/// these session-owned snapshots alone; per-heading streams auto-dispose when
+/// their last panel unmounts.
 final globalMenuSectionCacheProvider =
     NotifierProvider<
       GlobalMenuSectionCache,
@@ -76,6 +78,7 @@ class GlobalMenuSectionCache
   /// Firefox rebuilds native identifiers after a click. Keeping the last
   /// View menu would paint Actual Size as still disabled, and send Zoom In's
   /// old id, until AboutToShow returns.
+  /// Call from a close interaction, never from a widget lifecycle callback.
   void forget(GlobalMenuAddress section) {
     ref.invalidate(globalMenuSectionProvider(section));
     state = <GlobalMenuAddress, GlobalMenuSectionStatus>{...state}
