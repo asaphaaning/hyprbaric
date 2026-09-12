@@ -48,3 +48,8 @@ Its independent download/upload bursts stay within the real ring scales, then
 advance the same history at no more than ten updates per second. Reduced motion
 and inactive ticker views pause updates without clearing the pre-roll. This
 simulation is defined in Widgetbook and never feeds the production bar.
+
+Typography follows the mixer's contrast hierarchy: 13 px medium action text,
+11.5 px secondary facts, and brighter violet/pink readouts. A dark central disc
+separates numeric values from the blue radial glow. Time labels sit outside the
+dotted perimeter with dedicated lower clearance, rather than sharing its edge.

@@ -24,7 +24,7 @@ class NetworkTrafficRing extends StatelessWidget {
           'Download ${latest?.download.toStringAsFixed(1) ?? "unavailable"} Mbps. '
           'Upload ${latest?.upload.toStringAsFixed(1) ?? "unavailable"} Mbps.',
       child: AspectRatio(
-        aspectRatio: 396 / 334,
+        aspectRatio: 396 / 344,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final scale = constraints.maxWidth / 396;
@@ -46,55 +46,58 @@ class NetworkTrafficRing extends StatelessWidget {
                     'NOW',
                     textAlign: TextAlign.center,
                     style: NetworkConsole.body.copyWith(
-                      fontSize: 9 * scale,
+                      fontSize: 10.5 * scale,
+                      height: 1,
                       letterSpacing: 1.1,
                       color: const Color(0xFFE1C2FF),
                     ),
                   ),
                 ),
                 for (final tick in const [
-                  (label: '15s', left: 355.0, top: 159.0),
-                  (label: '30s', left: 188.0, top: 315.0),
-                  (label: '45s', left: 25.0, top: 159.0),
+                  (label: '15s', left: 358.0, top: 157.0),
+                  (label: '30s', left: 188.0, top: 322.0),
+                  (label: '45s', left: 16.0, top: 157.0),
                 ])
                   Positioned(
                     left: tick.left * scale,
                     top: tick.top * scale,
                     child: Text(
                       tick.label,
-                      style: NetworkConsole.body.copyWith(fontSize: 10 * scale),
+                      style: NetworkConsole.body.copyWith(
+                        fontSize: 11.5 * scale,
+                      ),
                     ),
                   ),
                 Positioned(
-                  top: 119 * scale,
-                  left: 130 * scale,
-                  width: 136 * scale,
+                  top: 110 * scale,
+                  left: 126 * scale,
+                  width: 144 * scale,
                   child: Column(
                     children: [
                       Text(
                         'LIVE TRAFFIC',
                         style: NetworkConsole.label.copyWith(
-                          fontSize: 8 * scale,
-                          letterSpacing: 1.7 * scale,
+                          fontSize: 10 * scale,
+                          letterSpacing: 1.35 * scale,
                           color: NetworkConsole.muted,
                         ),
                       ),
                       SizedBox(height: 6 * scale),
                       _Rate(
                         value: latest?.download,
-                        color: NetworkConsole.download,
+                        color: NetworkConsole.downloadText,
                         down: true,
                         scale: scale,
                       ),
                       Container(
-                        margin: EdgeInsets.symmetric(vertical: 7 * scale),
+                        margin: EdgeInsets.symmetric(vertical: 6 * scale),
                         height: .5,
                         width: 80 * scale,
                         color: const Color(0x88536D9F),
                       ),
                       _Rate(
                         value: latest?.upload,
-                        color: NetworkConsole.upload,
+                        color: NetworkConsole.uploadText,
                         down: false,
                         scale: scale,
                       ),
@@ -126,8 +129,8 @@ class _Rate extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     children: [
       SizedBox(
-        width: 126 * scale,
-        height: 30 * scale,
+        width: 136 * scale,
+        height: 33 * scale,
         child: FittedBox(
           fit: BoxFit.scaleDown,
           child: Row(
@@ -144,7 +147,7 @@ class _Rate extends StatelessWidget {
               Text(
                 value?.toStringAsFixed(1) ?? '—',
                 style: NetworkConsole.body.copyWith(
-                  fontSize: 27 * scale,
+                  fontSize: 30 * scale,
                   height: 1.08,
                   fontWeight: FontWeight.w600,
                   color: color,
@@ -156,7 +159,7 @@ class _Rate extends StatelessWidget {
       ),
       Text(
         'Mbps',
-        style: NetworkConsole.body.copyWith(fontSize: 11 * scale, color: color),
+        style: NetworkConsole.body.copyWith(fontSize: 12 * scale, color: color),
       ),
     ],
   );
@@ -177,6 +180,17 @@ class TrafficRingPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     canvas.save();
     canvas.scale(size.width / 396);
+    // Keep the central readout distinct from the blue light under the rings.
+    canvas.drawCircle(
+      _center,
+      74.5,
+      Paint()
+        ..shader = ui.Gradient.radial(
+          _center - const Offset(0, 25),
+          110,
+          const [Color(0xED0B0F19), Color(0x99101726)],
+        ),
+    );
     _track(canvas, 105, 146, NetworkConsole.download);
     _track(canvas, 75, 103, NetworkConsole.upload);
     _trace(
@@ -202,7 +216,7 @@ class TrafficRingPainter extends CustomPainter {
         if (angle < .095 || angle > math.pi * 2 - .095) continue;
         canvas.drawCircle(
           _point(radius, angle),
-          .36,
+          .48,
           Paint()
             ..color = radius == 152
                 ? const Color(0xC9C2B4FB)

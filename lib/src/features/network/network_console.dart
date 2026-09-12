@@ -5,26 +5,42 @@ import '../../widgets/primitives/primitives.dart';
 
 /// The network instrument's materials; opacity is owned by the glass itself.
 abstract final class NetworkConsole {
-  static const text = Color(0xFFF0F0FC);
-  static const muted = Color(0xFFA6B5DC);
-  static const accent = Color(0xFF949FF8);
+  static const text = Color(0xFFF7F6FF);
+  static const muted = Color(0xFFB8C4FF);
+  static const accent = Color(0xFFB2BDFF);
   static const download = Color(0xFFB94BFF);
   static const upload = Color(0xFFFF2CAB);
-  static const line = Color(0x334B536E);
+
+  /// Brighter readout colors preserve the trace identities against dark glass.
+  static const downloadText = Color(0xFFC978FF);
+  static const uploadText = Color(0xFFFF62C2);
+  static const line = Color(0x484B536E);
   static const amber = Color(0xFFFFAF32);
   static const body = TextStyle(
     fontFamily: 'Roboto Condensed',
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: FontWeight.w500,
     height: 1.3,
     color: muted,
-    letterSpacing: .15,
+    letterSpacing: .25,
+  );
+
+  /// Secondary facts use the mixer's clear lavender, with a readable minimum.
+  static const meta = TextStyle(
+    fontFamily: 'Roboto Condensed',
+    fontSize: 11.5,
+    fontWeight: FontWeight.w400,
+    height: 1.3,
+    color: muted,
+    letterSpacing: .3,
   );
   static const label = TextStyle(
     fontFamily: 'Inter',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: FontWeight.w600,
-    letterSpacing: 1.25,
+    letterSpacing: 1.1,
     color: accent,
+    height: 1.25,
   );
 }
 

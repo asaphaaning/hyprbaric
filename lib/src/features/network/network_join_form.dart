@@ -205,7 +205,7 @@ class _NetworkJoinFormState extends State<NetworkJoinForm> {
           Text(
             'Join other network',
             style: NetworkConsole.body.copyWith(
-              fontSize: 13,
+              fontSize: 14,
               color: NetworkConsole.text,
               fontWeight: FontWeight.w600,
             ),

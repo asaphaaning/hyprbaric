@@ -143,7 +143,7 @@ class NetworkWifiOverview extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: NetworkConsole.body.copyWith(
-                        fontSize: 13,
+                        fontSize: 14,
                         color: NetworkConsole.text,
                       ),
                     ),
@@ -158,7 +158,7 @@ class NetworkWifiOverview extends StatelessWidget {
                               active.secure ? 'Secured' : 'Open',
                               '${active.strength}% signal',
                             ].join(' · '),
-                      style: NetworkConsole.body.copyWith(fontSize: 10),
+                      style: NetworkConsole.meta,
                     ),
                   ],
                 ),
@@ -241,7 +241,7 @@ class NetworkWifiOverview extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.right,
-            style: NetworkConsole.body.copyWith(fontSize: 10),
+            style: NetworkConsole.meta,
           ),
         ),
       ],
@@ -357,9 +357,7 @@ class NetworkChooser extends StatelessWidget {
                                           : entry.isActive
                                           ? 'Connected'
                                           : '${entry.secure ? "Secured" : "Open"} · ${entry.strength}% signal',
-                                      style: NetworkConsole.body.copyWith(
-                                        fontSize: 10,
-                                      ),
+                                      style: NetworkConsole.meta,
                                     ),
                                   ],
                                 ),
@@ -387,7 +385,7 @@ class NetworkChooser extends StatelessWidget {
                                   child: Text(
                                     'Connect',
                                     style: TextStyle(
-                                      fontSize: 10,
+                                      fontSize: 11.5,
                                       color: Color(0xFFD3A1FF),
                                     ),
                                   ),
@@ -446,7 +444,7 @@ class NetworkProfileView extends StatelessWidget {
                       ? 'No tunnel interfaces'
                       : 'No Ethernet adapter',
                   style: NetworkConsole.body.copyWith(
-                    fontSize: 13,
+                    fontSize: 14,
                     color: NetworkConsole.text,
                   ),
                 ),
@@ -484,12 +482,13 @@ class NetworkProfileView extends StatelessWidget {
                                   ? 'Tunnel connection'
                                   : 'Wired connection',
                               style: NetworkConsole.body.copyWith(
-                                fontSize: 13,
+                                fontSize: 14,
                                 color: NetworkConsole.text,
                               ),
                             ),
                             Text(
                               '${device.name} · ${device.active ? "Connected" : "Disconnected"}',
+                              style: NetworkConsole.meta,
                             ),
                           ],
                         ),
@@ -560,9 +559,14 @@ class NetworkDetail extends StatelessWidget {
     padding: const EdgeInsets.symmetric(vertical: 3),
     child: Row(
       children: [
-        Expanded(child: Text(label)),
+        Expanded(child: Text(label, style: NetworkConsole.meta)),
         Expanded(
-          child: Text(value, maxLines: 2, overflow: TextOverflow.ellipsis),
+          child: Text(
+            value,
+            style: NetworkConsole.meta,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ],
     ),

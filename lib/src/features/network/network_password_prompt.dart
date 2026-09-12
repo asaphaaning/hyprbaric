@@ -42,15 +42,15 @@ class NetworkPasswordPrompt extends StatelessWidget {
         Text(
           'Join $ssid',
           style: NetworkConsole.body.copyWith(
-            fontSize: 13,
+            fontSize: 14,
             color: NetworkConsole.text,
             fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 2),
-        Text(subtitle),
+        Text(subtitle, style: NetworkConsole.meta),
         const SizedBox(height: 10),
-        Text('Password', style: NetworkConsole.body.copyWith(fontSize: 11)),
+        const Text('Password', style: NetworkConsole.meta),
         const SizedBox(height: 3),
         TextField(
           controller: controller,
@@ -64,12 +64,12 @@ class NetworkPasswordPrompt extends StatelessWidget {
           },
           style: NetworkConsole.body.copyWith(
             color: NetworkConsole.text,
-            fontSize: 12,
+            fontSize: 13,
           ),
           decoration: InputDecoration(
             hintText: 'Password for $ssid',
             hintStyle: NetworkConsole.body.copyWith(
-              color: NetworkConsole.muted.withValues(alpha: .5),
+              color: NetworkConsole.muted.withValues(alpha: .8),
             ),
             isDense: true,
             filled: true,
@@ -191,7 +191,7 @@ class _PasswordEstimate extends StatelessWidget {
         const SizedBox(width: 9),
         Text(
           'Password length · ${password.length}',
-          style: NetworkConsole.body.copyWith(fontSize: 9),
+          style: NetworkConsole.meta,
         ),
       ],
     );

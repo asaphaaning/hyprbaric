@@ -284,7 +284,7 @@ class NetworkPanelState extends ConsumerState<NetworkPanel> {
                             Text(
                               'NETWORK',
                               style: NetworkConsole.label.copyWith(
-                                fontSize: 12,
+                                fontSize: 13,
                                 letterSpacing: 2.2,
                               ),
                             ),
@@ -296,7 +296,7 @@ class NetworkPanelState extends ConsumerState<NetworkPanel> {
                                   ? 'ONLINE'
                                   : 'OFFLINE',
                               style: NetworkConsole.label.copyWith(
-                                fontSize: 9,
+                                fontSize: 10.5,
                                 fontWeight: FontWeight.w400,
                               ),
                             ),
@@ -470,7 +470,7 @@ class NetworkPanelState extends ConsumerState<NetworkPanel> {
                                 const SizedBox(height: 12),
                                 const LinearProgressIndicator(
                                   minHeight: 2,
-                                  color: NetworkConsole.download,
+                                  color: NetworkConsole.downloadText,
                                   backgroundColor: NetworkConsole.line,
                                 ),
                                 const SizedBox(height: 8),
@@ -556,7 +556,7 @@ class _TrafficTotals extends StatelessWidget {
                     : formatBytes(traffic!.download.totalBytes),
                 style: NetworkConsole.body.copyWith(
                   fontSize: 15,
-                  color: NetworkConsole.download,
+                  color: NetworkConsole.downloadText,
                 ),
               ),
               const TextSpan(text: ' received  ·  '),
@@ -566,7 +566,7 @@ class _TrafficTotals extends StatelessWidget {
                     : formatBytes(traffic!.upload.totalBytes),
                 style: NetworkConsole.body.copyWith(
                   fontSize: 15,
-                  color: NetworkConsole.upload,
+                  color: NetworkConsole.uploadText,
                 ),
               ),
               const TextSpan(text: ' sent'),
@@ -578,7 +578,7 @@ class _TrafficTotals extends StatelessWidget {
           traffic?.pingMs == null
               ? 'Latency unavailable · System totals'
               : '${traffic!.pingMs} ms latency · System totals',
-          style: NetworkConsole.body.copyWith(fontSize: 11),
+          style: NetworkConsole.meta,
         ),
       ],
     ),
