@@ -24,10 +24,15 @@ class HyprInstrumentHeader extends StatelessWidget {
     uppercaseTitle: true,
     leading: IconTheme(
       data: const IconThemeData(
-        size: 26,
+        size: 24,
         color: HyprInstrumentColors.secondary,
       ),
-      child: SizedBox.square(dimension: 28, child: Center(child: icon)),
+      child: SizedBox.square(
+        dimension: 28,
+        child: Center(
+          child: SizedBox.square(dimension: 24, child: FittedBox(child: icon)),
+        ),
+      ),
     ),
     leadingGap: 12,
     subtitle: subtitle,
