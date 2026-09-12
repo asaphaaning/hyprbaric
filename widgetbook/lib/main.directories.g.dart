@@ -1400,16 +1400,52 @@ final directories = <_widgetbook.WidgetbookNode>[
             name: 'NetworkPanel',
             useCases: [
               _widgetbook.WidgetbookUseCase(
+                name: 'Choose network',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_network_network_panel_use_cases
+                        .buildNetworkChooser,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Chronology — 27 seconds',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_network_network_panel_use_cases
+                        .buildNetworkTwentySevenSeconds,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Chronology — 4 seconds',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_network_network_panel_use_cases
+                        .buildNetworkFourSeconds,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Chronology — 58 seconds',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_network_network_panel_use_cases
+                        .buildNetworkFiftyEightSeconds,
+              ),
+              _widgetbook.WidgetbookUseCase(
                 name: 'Connected — networks and traffic',
                 builder:
                     _hyprbaric_widgetbook_use_cases_network_network_panel_use_cases
                         .buildConnectedNetworkPanel,
               ),
               _widgetbook.WidgetbookUseCase(
+                name: 'Ethernet',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_network_network_panel_use_cases
+                        .buildNetworkEthernet,
+              ),
+              _widgetbook.WidgetbookUseCase(
                 name: 'Interactive Wi-Fi',
                 builder:
                     _hyprbaric_widgetbook_use_cases_network_network_panel_use_cases
                         .buildInteractiveNetworkPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Join network',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_network_network_panel_use_cases
+                        .buildNetworkJoin,
               ),
               _widgetbook.WidgetbookUseCase(
                 name: 'Loading',
@@ -1424,6 +1460,18 @@ final directories = <_widgetbook.WidgetbookNode>[
                         .buildNoDeviceNetworkPanel,
               ),
               _widgetbook.WidgetbookUseCase(
+                name: 'Other network',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_network_network_panel_use_cases
+                        .buildOtherNetworkPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Reference',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_network_network_panel_use_cases
+                        .buildReferenceNetworkPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
                 name: 'Scanning',
                 builder:
                     _hyprbaric_widgetbook_use_cases_network_network_panel_use_cases
@@ -1434,6 +1482,12 @@ final directories = <_widgetbook.WidgetbookNode>[
                 builder:
                     _hyprbaric_widgetbook_use_cases_network_network_panel_use_cases
                         .buildNetworkServiceError,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'VPN',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_network_network_panel_use_cases
+                        .buildNetworkVpn,
               ),
               _widgetbook.WidgetbookUseCase(
                 name: 'Wi-Fi off',

@@ -10,6 +10,12 @@ class NetworkController extends _$NetworkController {
   @override
   void build() {}
 
+  void join(NetworkJoinRequest request) {
+    ref
+        .read(rustCommandDispatcherProvider)
+        .dispatch(NetworkIntent.join(request));
+  }
+
   void scan() {
     ref
         .read(rustCommandDispatcherProvider)
@@ -32,6 +38,18 @@ class NetworkController extends _$NetworkController {
             password: password,
           ),
         );
+  }
+
+  void disconnect(NetworkInterface interface) {
+    ref
+        .read(rustCommandDispatcherProvider)
+        .dispatch(NetworkIntent.disconnect(interface));
+  }
+
+  void setAutoConnect(NetworkInterface interface, {required bool enabled}) {
+    ref
+        .read(rustCommandDispatcherProvider)
+        .dispatch(NetworkIntent.setAutoConnect(interface, enabled: enabled));
   }
 
   void openSettings() {

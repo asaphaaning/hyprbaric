@@ -607,9 +607,10 @@ void main() {
 
     expect(find.byType(NetworkPanel), findsOneWidget);
     expect(find.text('Hyprnet_5G'), findsOneWidget);
-    expect(find.text('Neighbor_2G'), findsOneWidget);
-    expect(find.text('INTERFACES'), findsOneWidget);
-    expect(tester.getSize(find.byType(NetworkPanel)).width, 340);
+    expect(find.text('Neighbor_2G'), findsNothing);
+    expect(find.text('Choose network…'), findsOneWidget);
+    expect(find.text('wlo1 · 192.168.1.42'), findsOneWidget);
+    expect(tester.getSize(find.byType(NetworkPanel)).width, NetworkPanel.width);
   });
 
   test('tray fixtures preserve item status and menu hierarchy', () {

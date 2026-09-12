@@ -3,18 +3,23 @@ import 'package:hyprbaric/widget_catalog.dart';
 /// Stable network snapshots used by the Widgetbook stories.
 abstract final class NetworkFixtures {
   static const NetworkInterface wifiInterface = NetworkInterface(
+    kind: NetworkInterfaceKind.wifi,
     name: 'wlo1',
+    frequencyMhz: 5180,
+    autoConnect: true,
     address: '192.168.1.42',
     active: true,
   );
 
   static const NetworkInterface ethernetInterface = NetworkInterface(
+    kind: NetworkInterfaceKind.ethernet,
     name: 'eth0',
     address: null,
     active: false,
   );
 
   static const NetworkInterface loopbackInterface = NetworkInterface(
+    kind: NetworkInterfaceKind.other,
     name: 'lo',
     address: '127.0.0.1',
     active: false,
@@ -76,6 +81,35 @@ abstract final class NetworkFixtures {
       wifiInterface,
       ethernetInterface,
       loopbackInterface,
+    ],
+  );
+
+  /// Rich but explicitly simulated reference snapshot.
+  static NetworkStatus get reference => connected.copyWith(
+    activeSsid: () => 'Orbital-5G',
+    traffic: NetworkTraffic(
+      upload: _transfer(bytesPerSecond: 587500, totalBytes: 297795584),
+      download: _transfer(bytesPerSecond: 3550000, totalBytes: 1954210119),
+      pingMs: 12,
+    ),
+    networks: [
+      networks[0].copyWith(ssid: 'Orbital-5G'),
+      networks[1].copyWith(ssid: 'Studio-Guest'),
+      networks[2].copyWith(ssid: 'Workshop'),
+    ],
+    interfaces: [
+      wifiInterface,
+      ethernetInterface.copyWith(
+        active: true,
+        address: () => '192.168.1.42',
+        speedMbps: () => 1000,
+      ),
+      const NetworkInterface(
+        kind: NetworkInterfaceKind.tunnel,
+        name: 'wg0',
+        address: '10.8.0.2',
+        active: true,
+      ),
     ],
   );
 

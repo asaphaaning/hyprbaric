@@ -80,12 +80,33 @@ pub struct Transfer {
 /// One NetworkManager interface row.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Interface {
+    /// NetworkManager's device family, parsed at the boundary.
+    pub kind: InterfaceKind,
+    /// Link speed reported by the driver, in megabits per second.
+    pub speed_mbps: Option<u32>,
+    /// Active radio frequency in MHz, when available.
+    pub frequency_mhz: Option<u32>,
+    /// Whether this Wi-Fi interface may automatically connect.
+    pub auto_connect: Option<bool>,
     /// The system interface name.
     pub name: String,
     /// The preferred IP address without CIDR suffix.
     pub address: Option<String>,
     /// Whether NetworkManager reports the interface as activated.
     pub active: bool,
+}
+
+/// Device families used for connection views, independent of interface names.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InterfaceKind {
+    /// An IEEE 802.11 radio.
+    Wifi,
+    /// A wired Ethernet adapter.
+    Ethernet,
+    /// A TUN/TAP, IP tunnel, or WireGuard interface.
+    Tunnel,
+    /// Another device family, including loopback and bridges.
+    Other,
 }
 
 impl Snapshot {
@@ -206,9 +227,114 @@ impl Transfer {
     }
 }
 
+/// Credentials for a manually named personal network.
+#[derive(Clone, PartialEq, Eq)]
+pub enum Security {
+    /// Unencrypted network, with no secret.
+    Open,
+    /// WPA/WPA2 Personal passphrase (or a 64-digit hexadecimal PSK).
+    Personal(String),
+}
+
+impl std::fmt::Debug for Security {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Open => formatter.write_str("Open"),
+            Self::Personal(_) => formatter.write_str("Personal([redacted])"),
+        }
+    }
+}
+
+/// A manually named connection profile, ready for boundary validation.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Join {
+    /// Exact network name; whitespace is significant.
+    pub ssid: String,
+    /// Whether the access point suppresses its SSID broadcast.
+    pub hidden: bool,
+    /// Security and its corresponding credential.
+    pub security: Security,
+    /// Whether NetworkManager may reconnect this profile automatically.
+    pub auto_connect: bool,
+}
+
+impl Join {
+    /// Checks SSID and personal-key limits before creating a system profile.
+    pub(super) fn validate(&self) -> Result<(), super::Error> {
+        if self.ssid.is_empty() || self.ssid.len() > 32 {
+            return Err(super::Error::InvalidNetworkName);
+        }
+        if let Security::Personal(password) = &self.security {
+            let passphrase = (8..=63).contains(&password.len()) && password.is_ascii();
+            let raw_key =
+                password.len() == 64 && password.bytes().all(|byte| byte.is_ascii_hexdigit());
+            if !passphrase && !raw_key {
+                return Err(super::Error::InvalidPersonalKey);
+            }
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Entry, EntryState, Snapshot};
+    use super::{Entry, EntryState, Join, Security, Snapshot};
+
+    #[test]
+    fn manual_network_names_are_validated_as_utf8_bytes() {
+        let request = Join {
+            ssid: "é".repeat(16),
+            hidden: true,
+            security: Security::Open,
+            auto_connect: true,
+        };
+        assert!(request.validate().is_ok());
+        assert!(
+            Join {
+                ssid: "é".repeat(17),
+                ..request
+            }
+            .validate()
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn personal_keys_preserve_spaces_and_do_not_appear_in_debug_output() {
+        let security = Security::Personal(" secret ".into());
+        assert!(!format!("{security:?}").contains("secret"));
+        let request = Join {
+            ssid: "Private".into(),
+            hidden: true,
+            security,
+            auto_connect: false,
+        };
+        assert!(request.validate().is_ok());
+        assert!(
+            Join {
+                security: Security::Personal("short".into()),
+                ..request.clone()
+            }
+            .validate()
+            .is_err()
+        );
+        assert!(
+            Join {
+                security: Security::Personal("a".repeat(64)),
+                ..request.clone()
+            }
+            .validate()
+            .is_ok()
+        );
+        assert!(
+            Join {
+                security: Security::Personal("z".repeat(64)),
+                ..request
+            }
+            .validate()
+            .is_err()
+        );
+    }
 
     #[test]
     fn unavailable_snapshot_has_no_networks() {

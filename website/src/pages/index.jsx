@@ -48,7 +48,7 @@ const modules = [
   {
     label: 'Network',
     title: 'Traffic and Wi-Fi',
-    text: 'Throughput and ping, the Wi-Fi networks in range, and your interface addresses.',
+    text: 'A glowing minute of download and upload history, plus Wi-Fi and connection details. Explore the simulated traffic below.',
   },
   {
     label: 'Volume',
