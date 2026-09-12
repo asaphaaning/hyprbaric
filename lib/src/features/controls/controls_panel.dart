@@ -33,6 +33,7 @@ class ControlsPanel extends StatelessWidget {
     required this.caffeineStatus,
     required this.onSetCaffeine,
     this.recordingStatus,
+    this.maxHeight,
     this.shortcutLabels = const <ShortcutSettingId, String>{},
   });
 
@@ -49,6 +50,10 @@ class ControlsPanel extends StatelessWidget {
   final CaffeineStatus? caffeineStatus;
   final ValueChanged<bool> onSetCaffeine;
   final RecordingStatus? recordingStatus;
+
+  /// Available panel height. Defaults to the desktop's popover clearance.
+  /// Scaled previews can use infinity to measure the complete panel first.
+  final double? maxHeight;
 
   /// The user's effective chords, keyed by shortcut. A missing entry renders
   /// no hint at all rather than a guessed default.
@@ -71,10 +76,12 @@ class ControlsPanel extends StatelessWidget {
       constraints: BoxConstraints(
         minWidth: 432,
         maxWidth: 432,
-        maxHeight: (MediaQuery.sizeOf(context).height - 80).clamp(
-          160,
-          double.infinity,
-        ),
+        maxHeight:
+            maxHeight ??
+            (MediaQuery.sizeOf(context).height - 80).clamp(
+              160,
+              double.infinity,
+            ),
       ),
       padding: const EdgeInsets.all(12),
       child: Column(

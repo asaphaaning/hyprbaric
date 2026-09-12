@@ -4,10 +4,14 @@
 (() => {
   const scriptUrl = document.currentScript?.src ?? window.location.href;
   const assetRoot = new URL('./', scriptUrl).href;
+  const embedded = !document.body.hasAttribute('data-hyprbaric-catalog');
   const config = {
     assetBase: assetRoot,
     canvasKitBaseUrl: new URL('canvaskit/', assetRoot).href,
     entrypointBaseUrl: assetRoot,
+    // Each differently sized preview needs its own render surface. Sharing an
+    // offscreen surface can crop one view to the dimensions of another view.
+    canvasKitForceMultiSurfaceRasterizer: embedded,
   };
 
   // The standalone catalog owns an implicit view. Embedded previews share
@@ -25,7 +29,7 @@
           try {
             const runner = await engineInitializer.initializeEngine({
               ...config,
-              multiViewEnabled: !document.body.hasAttribute('data-hyprbaric-catalog'),
+              multiViewEnabled: embedded,
             });
             const app = await runner.runApp();
             window.hyprbaricEmbedsApp = app;

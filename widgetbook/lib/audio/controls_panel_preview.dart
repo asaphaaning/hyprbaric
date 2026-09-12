@@ -8,12 +8,17 @@ class ControlsPanelPreview extends StatefulWidget {
   const ControlsPanelPreview({
     super.key,
     this.initialScenario = ControlsFixtures.ready,
+    this.maxHeight,
   });
 
   const ControlsPanelPreview.landing({super.key})
-    : initialScenario = ControlsFixtures.landing;
+    : initialScenario = ControlsFixtures.landing,
+      maxHeight = double.infinity;
 
   final ControlsScenario initialScenario;
+
+  /// Height policy forwarded to the shared production panel.
+  final double? maxHeight;
 
   @override
   State<ControlsPanelPreview> createState() => _ControlsPanelPreviewState();
@@ -41,6 +46,7 @@ class _ControlsPanelPreviewState extends State<ControlsPanelPreview> {
   @override
   Widget build(BuildContext context) {
     return ControlsPanel(
+      maxHeight: widget.maxHeight,
       borderRadius: HyprRadii.popoverRadius,
       onCaptureScreenshot: _ignoreScreenshot,
       onPickColor: _noop,
