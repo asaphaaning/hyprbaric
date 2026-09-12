@@ -2854,6 +2854,56 @@ void main() {
     expect(find.text('Menu content'), findsNothing);
   });
 
+  testWidgets(
+    'reopening a dropdown before the next frame measures the new menu',
+    (tester) async {
+      final payloads = <Map<String, Object?>>[];
+      _setRegionMock((message) {
+        payloads.add(_regionPayloadFromMessage(message));
+        return _pigeonSuccess();
+      });
+      final controller = LayerShellDropdownController();
+      var opening = 0;
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: LayerShellDropdown(
+                controller: controller,
+                buttonBuilder: (context, controller, {required isOpen}) =>
+                    const SizedBox(width: 96, height: 32),
+                menuBuilder: (context, controller) => SizedBox(
+                  width: 180,
+                  height: ++opening * 50,
+                  child: Text('Menu $opening'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      controller.open();
+      await tester.pump();
+      controller.close();
+      controller.open();
+      controller.close();
+      controller.open();
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Menu 1'), findsNothing);
+      expect(find.text('Menu 3'), findsOneWidget);
+      expect(payloads.last['capture_all_clicks'], true);
+      expect((payloads.last['menu'] as Map)['h'], 150);
+
+      controller.close();
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(payloads.last['menu'], isNull);
+      expect(payloads.last['capture_all_clicks'], false);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.linux),
+  );
+
   testWidgets('dropdown can right-anchor the popup to the trigger button', (
     WidgetTester tester,
   ) async {
