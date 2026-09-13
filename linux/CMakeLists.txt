@@ -52,6 +52,20 @@ endfunction()
 set(FLUTTER_MANAGED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/flutter")
 add_subdirectory(${FLUTTER_MANAGED_DIR})
 
+# Dart imports these ignored files. Generate before Flutter's native build
+# backend compiles Dart, including after a clean checkout or a branch switch.
+find_program(RINF_GENERATOR NAMES rinf HINTS "$ENV{HOME}/.cargo/bin")
+if(NOT RINF_GENERATOR)
+  message(FATAL_ERROR
+    "RINF generator missing. Run: cargo install rinf_cli --version 8.10.0 --locked")
+endif()
+add_custom_target(hyprbaric_bindings
+  COMMAND "${RINF_GENERATOR}" gen
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/.."
+  COMMENT "Generating Rust/Dart bindings"
+  VERBATIM)
+add_dependencies(flutter_assemble hyprbaric_bindings)
+
 # System-level dependencies.
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK REQUIRED IMPORTED_TARGET gtk+-3.0)

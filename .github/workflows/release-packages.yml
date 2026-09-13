@@ -92,6 +92,12 @@ jobs:
       - name: Install Fastforge
         run: dart pub global activate fastforge 0.6.12
 
+      - name: Verify Linux build without generated bindings
+        run: |
+          # This directory is ignored generator output, never source.
+          rm -rf lib/src/bindings
+          flutter build linux --release
+
       - name: Build Linux packages
         env:
           FASTFORGE: /home/runner/.pub-cache/bin/fastforge
