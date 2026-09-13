@@ -25,8 +25,9 @@ class SettingsContentHeader extends StatelessWidget {
     return HyprInstrumentHeader(
       title: tab.label,
       subtitle: tab.subtitle,
-      icon: const Icon(Icons.settings_outlined),
+      icon: Icon(tab.icon),
       trailing: IconButton(
+        tooltip: 'Close settings',
         onPressed: onClose,
         style: settingsCloseButtonStyle(),
         icon: const Icon(Icons.close_rounded, size: 18),

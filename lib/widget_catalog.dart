@@ -136,6 +136,8 @@ export 'src/bindings/bindings.dart'
         WorkspaceSettingsStatus,
         WorkspaceStatus,
         WorkspaceVisibleRange;
+export 'src/features/appearance/appearance_controller.dart'
+    show AppearanceController, appearanceControllerProvider;
 export 'src/features/audio/audio_channel_strip.dart'
     show AudioChannelStrip, AudioDbReadout, AudioMixerChannel, AudioMuteButton;
 export 'src/features/audio/audio_chrome.dart'
@@ -176,6 +178,8 @@ export 'src/features/global_menu/global_menu_section.dart'
     show GlobalMenuSectionPanel;
 export 'src/features/launcher/app_launcher_console.dart'
     show AppLauncherConsole;
+export 'src/features/modules/modules_controller.dart'
+    show ModulesController, modulesControllerProvider;
 export 'src/features/network/network_navigation.dart';
 export 'src/features/network/network_panel.dart' show NetworkPanel;
 export 'src/features/network/network_traffic_history.dart';
@@ -214,6 +218,7 @@ export 'src/features/setup/setup_guide_state.dart'
 export 'src/features/tray/tray_menu_panel.dart' show TrayMenuPanel;
 export 'src/features/tray/tray_strip.dart' show TrayStrip;
 export 'src/hyprbaric.dart' show Hyprbaric;
+export 'src/state/appearance.dart' show defaultAppearanceStatus;
 export 'src/state/monitor_workspace.dart' show MonitorWorkspaceResolution;
 export 'src/state/rust_signals/app.dart' show appStatusProvider;
 export 'src/state/rust_signals/appearance.dart' show appearanceStatusProvider;
@@ -247,6 +252,7 @@ export 'src/state/rust_signals/tray.dart'
 export 'src/state/rust_signals/workspace_settings.dart'
     show workspaceSettingsStatusProvider;
 export 'src/state/transient_overlays.dart' show OsdEvent, OsdKind, ToastEntry;
+export 'src/theme/hypr_material_feedback.dart' show instrumentControlsTheme;
 export 'src/theme/hypr_palette.dart' show HyprPalette;
 export 'src/widgets/center_cluster.dart' show CenterCluster;
 export 'src/widgets/hypr_surface.dart';
