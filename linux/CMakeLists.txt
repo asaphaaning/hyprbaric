@@ -95,17 +95,27 @@ install(CODE "
 set(INSTALL_BUNDLE_DATA_DIR "${CMAKE_INSTALL_PREFIX}/data")
 set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib")
 
-# The global-menu companion is a compositor plugin, not a Flutter plugin. It
-# ships beside the executable so Rust can load it through Hyprland at boot.
-set(HYPRBARIC_APPMENU_BUILD_PROBES OFF CACHE BOOL "" FORCE)
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../hyprland-appmenu"
-  "${CMAKE_BINARY_DIR}/hyprbaric-appmenu")
+# The companion must match the target compositor ABI. Generic release builders
+# need no Hyprland SDK: ship its source for the runtime's local rebuild path.
+# SDK-equipped builds still bundle a prebuilt plugin; explicit ON remains strict.
+pkg_check_modules(HYPRLAND QUIET hyprland)
+option(HYPRBARIC_BUILD_APPMENU "Build the compositor-specific AppMenu companion"
+  ${HYPRLAND_FOUND})
+if(HYPRBARIC_BUILD_APPMENU)
+  set(HYPRBARIC_APPMENU_BUILD_PROBES OFF CACHE BOOL "" FORCE)
+  add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../hyprland-appmenu"
+    "${CMAKE_BINARY_DIR}/hyprbaric-appmenu")
+else()
+  message(STATUS "AppMenu: shipping source; rebuild against the destination Hyprland SDK")
+endif()
 
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
 
-install(TARGETS hyprbaric-appmenu LIBRARY DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
-  COMPONENT Runtime)
+if(TARGET hyprbaric-appmenu)
+  install(TARGETS hyprbaric-appmenu LIBRARY DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    COMPONENT Runtime)
+endif()
 
 # Snapshot the companion source so a later compositor-library bump can rebuild
 # the plugin from this bundle without hyprpm's privileged store.
