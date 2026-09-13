@@ -61,7 +61,7 @@ class HyprInstrumentSlider extends StatelessWidget {
       overlayColor: Colors.transparent,
       showValueIndicator: ShowValueIndicator.never,
       trackShape: _InstrumentSliderTrack(kind: kind),
-      thumbShape: const _InstrumentSliderThumb(),
+      thumbShape: const HyprInstrumentSliderThumb(),
     ),
     child: Slider(
       value: value,
@@ -185,8 +185,9 @@ class _InstrumentSliderTrack extends SliderTrackShape {
   }
 }
 
-class _InstrumentSliderThumb extends SliderComponentShape {
-  const _InstrumentSliderThumb();
+/// The shaded, recessed-edge thumb used by all standard instrument sliders.
+class HyprInstrumentSliderThumb extends SliderComponentShape {
+  const HyprInstrumentSliderThumb();
 
   @override
   Size getPreferredSize(bool isEnabled, bool isDiscrete) => const Size(15, 15);

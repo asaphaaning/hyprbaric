@@ -252,7 +252,7 @@ export 'src/state/rust_signals/tray.dart'
 export 'src/state/rust_signals/workspace_settings.dart'
     show workspaceSettingsStatusProvider;
 export 'src/state/transient_overlays.dart' show OsdEvent, OsdKind, ToastEntry;
-export 'src/theme/hypr_material_feedback.dart' show withoutMaterialInk;
+export 'src/theme/hypr_material_feedback.dart' show instrumentControlsTheme;
 export 'src/theme/hypr_palette.dart' show HyprPalette;
 export 'src/widgets/center_cluster.dart' show CenterCluster;
 export 'src/widgets/hypr_surface.dart';

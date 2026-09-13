@@ -39,8 +39,8 @@ class Hyprbaric extends ConsumerWidget {
     );
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: withoutMaterialInk(transparentTheme),
-      darkTheme: withoutMaterialInk(transparentTheme),
+      theme: instrumentControlsTheme(transparentTheme),
+      darkTheme: instrumentControlsTheme(transparentTheme),
       home: const Scaffold(
         backgroundColor: Colors.transparent,
         body: _BarView(),

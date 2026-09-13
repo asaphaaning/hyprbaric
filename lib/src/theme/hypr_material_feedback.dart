@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
-/// Removes Material ink and pressed halos while retaining focus and hover cues.
+import '../widgets/primitives/hypr_instrument_slider.dart';
+
+/// Applies shared slider thumbs and removes Material ink and pressed halos.
 ///
 /// Applied by both the bar and catalog; instrument controls own their custom
 /// face, glow, and displacement feedback independently of Material.
-ThemeData withoutMaterialInk(ThemeData theme) {
+ThemeData instrumentControlsTheme(ThemeData theme) {
   final pressedOverlay = WidgetStateProperty.resolveWith<Color?>(
     (states) =>
         states.contains(WidgetState.pressed) ? Colors.transparent : null,
@@ -19,6 +21,7 @@ ThemeData withoutMaterialInk(ThemeData theme) {
     splashColor: Colors.transparent,
     highlightColor: Colors.transparent,
     sliderTheme: theme.sliderTheme.copyWith(
+      thumbShape: const HyprInstrumentSliderThumb(),
       overlayShape: SliderComponentShape.noOverlay,
       overlayColor: Colors.transparent,
     ),

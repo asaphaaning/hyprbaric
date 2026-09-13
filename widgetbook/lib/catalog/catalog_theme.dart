@@ -51,7 +51,7 @@ abstract final class CatalogPalettes {
 ThemeData catalogThemeFor(HyprPalette palette) {
   final ThemeData base = ThemeData.dark(useMaterial3: true);
 
-  return withoutMaterialInk(
+  return instrumentControlsTheme(
     base.copyWith(
       scaffoldBackgroundColor: const Color(0xFF05090E),
       textTheme: HyprTypography.textTheme(base.textTheme),

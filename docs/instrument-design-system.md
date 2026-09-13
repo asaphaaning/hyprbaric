@@ -18,8 +18,10 @@ Settings uses the production `SettingsOverlayContent` in both the bar and Widget
 
 `HyprSelectContent` and `HyprSelectStyle` centralize the mixer selector’s recessed charcoal face, two-line typography, and lavender chevron. `HyprDropdown<T>` applies that face to finite choices, including schedule Start/Stop, with a bounded charcoal menu and a current-value checkmark. The mixer retains its asynchronous device-selection state and inline menu. Appearance begins directly with its editable settings; the promotional desktop-preview row is removed.
 
-Material feedback is disabled centrally through `withoutMaterialInk` in both the native app and catalog themes: no splash factory, pressed ink highlights, or slider halos. Local slider styles follow the same rule. Custom instrument hover, pressed-face, and glow treatments remain, along with keyboard focus cues.
+Material feedback is disabled centrally through `instrumentControlsTheme` in both the native app and catalog themes: no splash factory, pressed ink highlights, or slider halos. Local slider styles follow the same rule. Custom instrument hover, pressed-face, and glow treatments remain, along with keyboard focus cues.
 
 `HyprInstrumentSlider` shares the setup guide’s recessed amount/spectrum track and shaded thumb with Appearance’s accent-hue control. Settings keeps its standard row height, label, and numeric readout; the spectrum replaces the separate swatch. Hosts retain live-preview and commit callbacks, and the shared slider suppresses Material halos and value bubbles.
 
 Keybinding status messages use an edge-to-edge recessed settings section with a small information icon and wrapping, left-aligned instrument body text. They announce updates as a semantic live region; conflict, recording, and save feedback share this treatment rather than an accent-filled badge.
+
+The hue slider’s `HyprInstrumentSliderThumb` is also the standard slider thumb in the shared bar/catalog theme. Opacity and corner radius reuse the same shaded handle while retaining their amount tracks and existing range semantics.

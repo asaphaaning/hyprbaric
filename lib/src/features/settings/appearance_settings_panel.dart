@@ -313,7 +313,7 @@ class _SliderRow extends StatelessWidget {
               data: SliderTheme.of(context).copyWith(
                 activeTrackColor: accent,
                 inactiveTrackColor: HyprColors.borderSoft,
-                thumbColor: const Color(0xFFE2DFFF),
+                thumbShape: const HyprInstrumentSliderThumb(),
                 activeTickMarkColor: Colors.transparent,
                 inactiveTickMarkColor: Colors.transparent,
                 overlayColor: Colors.transparent,
