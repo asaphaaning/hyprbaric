@@ -24,9 +24,16 @@ cmake -S hyprland-appmenu -B hyprland-appmenu/build
 cmake --build hyprland-appmenu/build
 ```
 
-When built through `flutter build linux`, the production plugin is installed as
+When built through `flutter build linux` on a host providing `hyprland.pc`, the production plugin is installed as
 `lib/hyprbaric-appmenu.so` inside the relocatable Hyprbaric bundle, and the
-source for that plugin is copied to `data/hyprland-appmenu`. Enable the boot
+source for that plugin is always copied to `data/hyprland-appmenu`. Generic
+release builders without the Hyprland SDK ship source without a prebuilt plugin.
+The runtime compiles it against the user's installed Hyprland headers, or falls
+back to hyprpm. Global menus therefore need a matching SDK and CMake (or a
+configured hyprpm installation); the rest of the bar does not need build tools.
+The CMake option `HYPRBARIC_BUILD_APPMENU=ON` requires a prebuilt companion and
+fails if its SDK is missing; `OFF` explicitly selects source-only packaging.
+Enable the boot
 loader with:
 
 ```toml
