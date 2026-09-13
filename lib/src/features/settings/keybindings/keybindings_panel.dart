@@ -263,7 +263,7 @@ class _KeybindingsPanelState extends ConsumerState<KeybindingsPanel> {
     return ListView(
       controller: _scrollController,
       primary: false,
-      padding: const EdgeInsets.only(top: 2, bottom: 8),
+      padding: const EdgeInsets.only(bottom: 8),
       children: <Widget>[
         if (_message != null || snapshot.message != null) ...<Widget>[
           _StatusMessage(message: _message ?? snapshot.message!),
@@ -272,7 +272,10 @@ class _KeybindingsPanelState extends ConsumerState<KeybindingsPanel> {
         for (final ShortcutSettingCategory category
             in ShortcutSettingCategory.values) ...<Widget>[
           if (grouped[category]?.isNotEmpty ?? false) ...<Widget>[
-            HyprSectionLabel(category.label, trailingLine: true),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+              child: HyprSectionLabel(category.label, trailingLine: true),
+            ),
             const SizedBox(height: 8),
             for (final ShortcutSettingsRow row in grouped[category]!)
               Padding(
@@ -470,15 +473,22 @@ class _StatusMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HyprBadge.text(
-      label: message,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      color: HyprColors.fillStrong,
-      borderColor: HyprColors.borderSoft,
-      borderRadius: BorderRadius.circular(7),
-      textColor: HyprInstrumentColors.secondary,
-      style: HyprInstrumentText.body.copyWith(
-        fontSize: HyprTypography.size(11.5),
+    return Semantics(
+      liveRegion: true,
+      child: SettingsSection(
+        tone: SettingsTone.well,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              Icons.info_outline_rounded,
+              size: 18,
+              color: HyprInstrumentColors.secondary,
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message, style: HyprInstrumentText.body)),
+          ],
+        ),
       ),
     );
   }

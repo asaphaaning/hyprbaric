@@ -21,3 +21,5 @@ Settings uses the production `SettingsOverlayContent` in both the bar and Widget
 Material feedback is disabled centrally through `withoutMaterialInk` in both the native app and catalog themes: no splash factory, pressed ink highlights, or slider halos. Local slider styles follow the same rule. Custom instrument hover, pressed-face, and glow treatments remain, along with keyboard focus cues.
 
 `HyprInstrumentSlider` shares the setup guide’s recessed amount/spectrum track and shaded thumb with Appearance’s accent-hue control. Settings keeps its standard row height, label, and numeric readout; the spectrum replaces the separate swatch. Hosts retain live-preview and commit callbacks, and the shared slider suppresses Material halos and value bubbles.
+
+Keybinding status messages use an edge-to-edge recessed settings section with a small information icon and wrapping, left-aligned instrument body text. They announce updates as a semantic live region; conflict, recording, and save feedback share this treatment rather than an accent-filled badge.
