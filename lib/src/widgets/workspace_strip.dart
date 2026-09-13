@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../bindings/bindings.dart';
 import '../state/monitor_workspace.dart';
 import 'hypr_surface.dart';
+import 'motion/hypr_digit_pop.dart';
 import 'primitives/primitives.dart';
 
 class WorkspaceStrip extends StatelessWidget {
@@ -45,9 +46,10 @@ class WorkspaceStrip extends StatelessWidget {
           onPressed: onPrevious,
         ),
         const SizedBox(width: HyprSpacing.xl),
-        for (final int index in visibleWorkspaces) ...<Widget>[
+        for (final (slot, index) in visibleWorkspaces.indexed) ...<Widget>[
           WorkspaceButton(
-            key: ValueKey<String>('workspace-indicator-$index'),
+            key: ValueKey<String>('workspace-slot-$slot'),
+            workspaceId: index,
             label: _workspaceIndicatorLabel(
               index,
               status,
@@ -127,9 +129,13 @@ class WorkspaceButton extends StatelessWidget {
     required this.active,
     required this.occupied,
     this.onPressed,
+    this.workspaceId,
   });
 
   final String label;
+
+  /// Workspace currently represented by this visible slot, if known.
+  final int? workspaceId;
   final bool active;
   final bool occupied;
   final VoidCallback? onPressed;
@@ -199,10 +205,9 @@ class WorkspaceButton extends StatelessWidget {
               alignment: Alignment.center,
               clipBehavior: Clip.none,
               children: <Widget>[
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.clip,
+                HyprDigitPop(
+                  value: label,
+                  unit: HyprPopUnit.label,
                   style: HyprTypography.workspace.copyWith(
                     color: foreground,
                     fontSize: 10.5,

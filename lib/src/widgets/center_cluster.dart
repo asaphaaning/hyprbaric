@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../state/providers.dart';
 import 'hypr_surface.dart';
+import 'motion/hypr_text_swap.dart';
 import 'primitives/primitives.dart';
 
 class CenterCluster extends ConsumerWidget {
@@ -43,6 +44,7 @@ class _WindowTitleChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       label: display.tooltip,
+      excludeSemantics: true,
       child: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
           final double titleMaxWidth = math.max(0, constraints.maxWidth - 28);
@@ -116,11 +118,14 @@ class _WindowTitleText extends StatelessWidget {
           Flexible(
             flex: 2,
             child: _TrailingFadeMask(
-              child: Text(
-                subtitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: HyprTypography.barMono,
+              child: HyprTextSwap(
+                child: Text(
+                  subtitle,
+                  key: ValueKey(subtitle),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: HyprTypography.barMono,
+                ),
               ),
             ),
           ),

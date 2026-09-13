@@ -918,7 +918,9 @@ void main() {
       ),
     );
     final WorkspaceButton readOnly = tester.widget<WorkspaceButton>(
-      find.byKey(const ValueKey<String>('workspace-indicator-3')),
+      find.byWidgetPredicate(
+        (widget) => widget is WorkspaceButton && widget.workspaceId == 3,
+      ),
     );
     expect(readOnly.onPressed, isNull);
   });
@@ -935,12 +937,16 @@ void main() {
 
     expect(find.text('IV'), findsOneWidget);
     await tester.tap(
-      find.byKey(const ValueKey<String>('workspace-indicator-4')),
+      find.byWidgetPredicate(
+        (widget) => widget is WorkspaceButton && widget.workspaceId == 4,
+      ),
     );
     await tester.pumpAndSettle();
 
     final WorkspaceButton active = tester.widget<WorkspaceButton>(
-      find.byKey(const ValueKey<String>('workspace-indicator-4')),
+      find.byWidgetPredicate(
+        (widget) => widget is WorkspaceButton && widget.workspaceId == 4,
+      ),
     );
     expect(active.active, isTrue);
   });
