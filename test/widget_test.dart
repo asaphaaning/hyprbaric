@@ -50,6 +50,7 @@ import 'package:hyprbaric/src/widgets/left_cluster.dart';
 import 'package:hyprbaric/src/widgets/notification_panel.dart';
 import 'package:hyprbaric/src/widgets/primitives/primitives.dart';
 import 'package:hyprbaric/src/widgets/right_cluster.dart';
+import 'package:hyprbaric/src/widgets/workspace_strip.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:rinf/rinf.dart';
 
@@ -1377,11 +1378,15 @@ void main() {
     await tester.pump();
 
     expect(
-      find.byKey(const ValueKey<String>('workspace-indicator-5')),
+      find.byWidgetPredicate(
+        (widget) => widget is WorkspaceButton && widget.workspaceId == 5,
+      ),
       findsOneWidget,
     );
     expect(
-      find.byKey(const ValueKey<String>('workspace-indicator-6')),
+      find.byWidgetPredicate(
+        (widget) => widget is WorkspaceButton && widget.workspaceId == 6,
+      ),
       findsNothing,
     );
   });
@@ -1423,7 +1428,9 @@ void main() {
     await tester.pump();
 
     await tester.tap(
-      find.byKey(const ValueKey<String>('workspace-indicator-5')),
+      find.byWidgetPredicate(
+        (widget) => widget is WorkspaceButton && widget.workspaceId == 5,
+      ),
     );
     await tester.pump();
 
@@ -1593,7 +1600,9 @@ void main() {
     await tester.pump();
 
     await tester.tap(
-      find.byKey(const ValueKey<String>('workspace-indicator-5')),
+      find.byWidgetPredicate(
+        (widget) => widget is WorkspaceButton && widget.workspaceId == 5,
+      ),
     );
     await tester.pump();
 

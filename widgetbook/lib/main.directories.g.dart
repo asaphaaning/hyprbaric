@@ -33,6 +33,8 @@ import 'package:hyprbaric_widgetbook/use_cases/global_menu/global_menu_use_cases
     as _hyprbaric_widgetbook_use_cases_global_menu_global_menu_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/launcher/app_launcher_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_launcher_app_launcher_use_cases;
+import 'package:hyprbaric_widgetbook/use_cases/motion/motion_use_cases.dart'
+    as _hyprbaric_widgetbook_use_cases_motion_motion_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/network/network_panel_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_network_network_panel_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/notifications/notification_atom_use_cases.dart'
@@ -1410,6 +1412,21 @@ final directories = <_widgetbook.WidgetbookNode>[
                 builder:
                     _hyprbaric_widgetbook_use_cases_launcher_app_launcher_use_cases
                         .buildAppLauncher,
+              ),
+            ],
+          ),
+        ],
+      ),
+      _widgetbook.WidgetbookFolder(
+        name: 'Motion',
+        children: [
+          _widgetbook.WidgetbookComponent(
+            name: 'MotionPlayground',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Test drive',
+                builder: _hyprbaric_widgetbook_use_cases_motion_motion_use_cases
+                    .buildMotionTestDrive,
               ),
             ],
           ),

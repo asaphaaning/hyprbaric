@@ -251,6 +251,9 @@ export 'src/theme/hypr_palette.dart' show HyprPalette;
 export 'src/widgets/center_cluster.dart' show CenterCluster;
 export 'src/widgets/hypr_surface.dart';
 export 'src/widgets/left_cluster.dart' show LeftCluster;
+export 'src/widgets/motion/hypr_banner_stack.dart';
+export 'src/widgets/motion/hypr_digit_pop.dart';
+export 'src/widgets/motion/hypr_text_swap.dart';
 export 'src/widgets/notification_panel.dart'
     show NotificationPanel, kNotificationPanelWidth;
 export 'src/widgets/notification_panel_parts.dart'

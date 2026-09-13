@@ -5,6 +5,76 @@ import 'package:hyprbaric/src/state/monitor_workspace.dart';
 import 'package:hyprbaric/src/widgets/workspace_strip.dart';
 
 void main() {
+  for (final style in WorkspaceIndicatorStyle.values) {
+    for (final reduced in [false, true]) {
+      testWidgets('range shifts pop $style labels (reduced: $reduced)', (
+        tester,
+      ) async {
+        int? selected;
+        Future<void> render(int active) => tester.pumpWidget(
+          MaterialApp(
+            home: MediaQuery(
+              data: MediaQueryData(disableAnimations: reduced),
+              child: WorkspaceStrip(
+                status: WorkspaceStatus(
+                  id: active,
+                  name: '$active',
+                  isSpecial: false,
+                  occupiedWorkspaceIds: const [],
+                  monitors: const [],
+                ),
+                settings: WorkspaceSettingsStatus(
+                  indicatorStyle: style,
+                  clickable: true,
+                  visibleRange: WorkspaceVisibleRange.small,
+                  visibleCount: 5,
+                ),
+                resolution: MonitorWorkspaceResolution(
+                  activeWorkspaceId: active,
+                  activeWorkspaceName: '$active',
+                  isSpecial: false,
+                  monitorName: null,
+                ),
+                onPrevious: () {},
+                onNext: () {},
+                onSelect: (id) => selected = id,
+              ),
+            ),
+          ),
+        );
+        Finder slot() => find.byKey(const ValueKey('workspace-slot-0'));
+        int labelCount() => find
+            .descendant(of: slot(), matching: find.byType(Text))
+            .evaluate()
+            .length;
+        await render(1);
+        await render(2);
+        await tester.pump(const Duration(milliseconds: 30));
+        expect(
+          labelCount(),
+          1,
+          reason: 'Selection inside the same range does not pop',
+        );
+        await tester.pumpAndSettle();
+        final originalSize = tester.getSize(slot());
+        await render(4);
+        await tester.pump(const Duration(milliseconds: 30));
+        expect(labelCount(), reduced ? 1 : 2);
+        expect(tester.getSize(slot()), originalSize);
+        await tester.tap(slot());
+        expect(
+          selected,
+          2,
+          reason: 'The slot targets its new workspace during motion',
+        );
+        await render(3);
+        await tester.pumpAndSettle();
+        expect(labelCount(), 1);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
   testWidgets('WorkspaceStrip marks visible workspaces that contain windows', (
     WidgetTester tester,
   ) async {
@@ -78,7 +148,9 @@ void main() {
 
 WorkspaceButton _indicator(WidgetTester tester, int id) {
   return tester.widget<WorkspaceButton>(
-    find.byKey(ValueKey<String>('workspace-indicator-$id')),
+    find.byWidgetPredicate(
+      (widget) => widget is WorkspaceButton && widget.workspaceId == id,
+    ),
   );
 }
 
