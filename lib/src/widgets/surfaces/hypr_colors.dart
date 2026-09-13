@@ -19,13 +19,13 @@ abstract final class HyprColors {
   static const Color popoverTop = Color(0x570B0D12);
   static const Color popoverBottom = Color(0x6B07090D);
   static const Color surfaceSoft = Color(0xB80F1A22);
-  static const Color fill = Color(0x101E9BCF);
+  static const Color fill = Color(0x109715F4);
   static const Color hover = Color(0x0FFFFFFF);
   static const Color hoverStrong = Color(0x14FFFFFF);
-  static const Color fillStrong = Color(0x291E9BCF);
+  static const Color fillStrong = Color(0x299715F4);
   static const Color borderOuter = Color(0x84030A10);
   static const Color border = Color(0x52B4D8E8);
-  static const Color borderSoft = Color(0x34B4D8E8);
+  static const Color borderSoft = Color(0x34B957FF);
   static const Color popupStroke = Color(0x14FFFFFF);
   static const Color popupOuterRing = Color(0x66000000);
   static const Color inset = Color(0x36D8F4FF);
@@ -39,8 +39,8 @@ abstract final class HyprColors {
   static const Color wellBorder = Color(0x4D000000);
   static const Color wellShadow = Color(0x7A000000);
 
-  static const Color accent = Color(0xFF16B7F4);
-  static const Color accentSoft = Color(0xFF55A7FF);
+  static const Color accent = Color(0xFF9715F4);
+  static const Color accentSoft = Color(0xFFB957FF);
   static const Color text = Color(0xFFE9F0F6);
   static const Color textMuted = Color(0xD0C3CCD5);
   static const Color textFaint = Color(0xA69AA5AF);
