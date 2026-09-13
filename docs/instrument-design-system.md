@@ -11,3 +11,19 @@ Controls keep the settings action visible while their groups scroll on short dis
 Widgetbook renders the production widgets directly. The Notifications reference story supplies the three-message composition, while Building blocks / Surfaces / HyprInstrumentHeader exposes the common header and text roles for future panels. Contextual tray menus keep their existing content hierarchy while inheriting the shared popover material.
 
 Controls and Network share `HyprAmberToggle`, a passive 44×25 indicator with a round ivory thumb and amber glow. Their owning controls provide semantics and callbacks. Unavailable controls stay dim and unlit while retaining their explanatory action. Controls keep the Capture / Inspect / Toggles layout, with translucent charcoal faces, consistent 11.5px captions and the shared body role on the settings action.
+
+Settings uses the production `SettingsOverlayContent` in both the bar and Widgetbook. The 960×660 preferred layout constrains to its host; Appearance groups stack below a 640px body width. The sidebar and header stay visible while the page body scrolls. The full Widgetbook story uses a bounded host, avoiding a second enclosing scroll view.
+
+`SettingsSection`, `SettingsField`, `SettingsValue`, and `SettingsChoice` compose the shared instrument text, interaction, well, and command primitives. Edge-to-edge graphite, slate, and recessed section tones meet at fine seams. The darker navigation rail and lighter header remain part of the same clipped translucent chassis. Choices use raised charcoal faces, the same charcoal gasket tone as the Controls settings plate, a pressed offset, and a subtle selected rim; module and workspace toggles use `HyprAmberToggle`. Display and About share the same translucent group surfaces. Widgetbook overrides the appearance and module command boundaries with local state so demonstrations cannot alter the desktop.
+
+`HyprSelectContent` and `HyprSelectStyle` centralize the mixer selector’s recessed charcoal face, two-line typography, and lavender chevron. `HyprDropdown<T>` applies that face to finite choices, including schedule Start/Stop, with a bounded charcoal menu and a current-value checkmark. The mixer retains its asynchronous device-selection state and inline menu. Appearance begins directly with its editable settings; the promotional desktop-preview row is removed.
+
+Material feedback is disabled centrally through `instrumentControlsTheme` in both the native app and catalog themes: no splash factory, pressed ink highlights, or slider halos. Local slider styles follow the same rule. Custom instrument hover, pressed-face, and glow treatments remain, along with keyboard focus cues.
+
+`HyprInstrumentSlider` shares the setup guide’s recessed amount/spectrum track and shaded thumb with Appearance’s accent-hue control. Settings keeps its standard row height, label, and numeric readout; the spectrum replaces the separate swatch. Hosts retain live-preview and commit callbacks, and the shared slider suppresses Material halos and value bubbles.
+
+Keybinding status messages use an edge-to-edge recessed settings section with a small information icon and wrapping, left-aligned instrument body text. They announce updates as a semantic live region; conflict, recording, and save feedback share this treatment rather than an accent-filled badge.
+
+The hue slider’s `HyprInstrumentSliderThumb` is also the standard slider thumb in the shared bar/catalog theme. Opacity and corner radius reuse the same shaded handle while retaining their amount tracks and existing range semantics.
+
+Settings status indicators use `HyprStatusReadout`, a compact `HyprWell` with the shared dark selector fill and uppercase instrument metadata. Active and ready states use the amber switch signal; inactive, warning, and unavailable states retain distinct text colors without colored outlines or button feedback. Capability tiers remain quiet metadata beside the readout.

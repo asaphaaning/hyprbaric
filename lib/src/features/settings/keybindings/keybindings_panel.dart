@@ -9,6 +9,7 @@ import '../../../state/rust_signals/shortcuts.dart';
 import '../../../state/transient_overlays.dart';
 import '../../../widgets/hypr_surface.dart';
 import '../../../widgets/primitives/primitives.dart';
+import '../settings_primitives.dart';
 import 'keybinding_controller.dart';
 
 class KeybindingsPanel extends ConsumerStatefulWidget {
@@ -262,7 +263,7 @@ class _KeybindingsPanelState extends ConsumerState<KeybindingsPanel> {
     return ListView(
       controller: _scrollController,
       primary: false,
-      padding: const EdgeInsets.only(top: 2, bottom: 8),
+      padding: const EdgeInsets.only(bottom: 8),
       children: <Widget>[
         if (_message != null || snapshot.message != null) ...<Widget>[
           _StatusMessage(message: _message ?? snapshot.message!),
@@ -271,7 +272,10 @@ class _KeybindingsPanelState extends ConsumerState<KeybindingsPanel> {
         for (final ShortcutSettingCategory category
             in ShortcutSettingCategory.values) ...<Widget>[
           if (grouped[category]?.isNotEmpty ?? false) ...<Widget>[
-            HyprSectionLabel(category.label, trailingLine: true),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+              child: HyprSectionLabel(category.label, trailingLine: true),
+            ),
             const SizedBox(height: 8),
             for (final ShortcutSettingsRow row in grouped[category]!)
               Padding(
@@ -312,9 +316,9 @@ class _KeybindingsPanelState extends ConsumerState<KeybindingsPanel> {
         ],
         Text(
           'Writing ${snapshot.writablePath}',
-          style: HyprTypography.compactMono.copyWith(
-            color: HyprColors.textFaint,
-            fontSize: HyprTypography.size(10.5),
+          style: HyprInstrumentText.meta.copyWith(
+            color: HyprInstrumentColors.secondary,
+            fontSize: 12,
           ),
         ),
       ],
@@ -369,93 +373,76 @@ class KeybindingRow extends StatelessWidget {
     final String? conflict = row.conflict?.label;
     final bool disabled = row.effectiveMapping is ShortcutMappingViewDisabled;
 
-    return DecoratedBox(
-      decoration: ShapeDecoration(
-        color: recording
-            ? HyprColors.hover
-            : Colors.black.withValues(alpha: 0.16),
-        shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(9),
-          side: BorderSide(
-            color: row.conflict == null
-                ? HyprColors.popupStroke
-                : HyprColors.danger,
+    return SettingsSection(
+      hovered: recording,
+      borderColor: row.conflict == null ? null : HyprColors.danger,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      row.label,
+                      style: HyprInstrumentText.body.copyWith(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      conflict == null
+                          ? row.description
+                          : 'Conflicts with $conflict',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: HyprInstrumentText.body.copyWith(
+                        color: conflict == null
+                            ? HyprInstrumentColors.secondary
+                            : HyprColors.danger,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              HyprBadge.text(
+                label: display,
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                color: recording
+                    ? HyprColors.fillStrong
+                    : Colors.black.withValues(alpha: 0.12),
+                borderColor: HyprColors.borderSoft.withValues(alpha: 0.65),
+                borderRadius: BorderRadius.circular(5),
+                textColor: recording
+                    ? HyprInstrumentColors.text
+                    : HyprInstrumentColors.secondary,
+                style: HyprInstrumentText.meta.copyWith(fontSize: 12),
+              ),
+            ],
           ),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(11),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        row.label,
-                        style: HyprTypography.popRow.copyWith(
-                          fontSize: HyprTypography.size(13),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        conflict == null
-                            ? row.description
-                            : 'Conflicts with $conflict',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: HyprTypography.popRow.copyWith(
-                          color: conflict == null
-                              ? HyprColors.textFaint
-                              : HyprColors.danger,
-                          fontSize: HyprTypography.size(11),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                HyprBadge.text(
-                  label: display,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 4,
-                  ),
-                  color: recording
-                      ? HyprColors.fillStrong
-                      : Colors.black.withValues(alpha: 0.12),
-                  borderColor: HyprColors.popupStroke.withValues(alpha: 0.65),
-                  borderRadius: BorderRadius.circular(5),
-                  textColor: recording ? HyprColors.text : HyprColors.textMuted,
-                  style: HyprTypography.compactMonoStrong.copyWith(
-                    fontSize: HyprTypography.size(11),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 9),
-            Row(
-              children: <Widget>[
-                HyprInlineTag(label: source),
-                const Spacer(),
-                _RowButton(label: 'Record', onPressed: onRecord),
+          const SizedBox(height: 9),
+          Row(
+            children: <Widget>[
+              HyprInlineTag(label: source),
+              const Spacer(),
+              _RowButton(label: 'Record', onPressed: onRecord),
+              const SizedBox(width: 7),
+              _RowButton(
+                label: disabled ? 'Restore' : 'Reset',
+                onPressed: onReset,
+              ),
+              if (!disabled) ...<Widget>[
                 const SizedBox(width: 7),
-                _RowButton(
-                  label: disabled ? 'Restore' : 'Reset',
-                  onPressed: onReset,
-                ),
-                if (!disabled) ...<Widget>[
-                  const SizedBox(width: 7),
-                  _RowButton(label: 'Disable', onPressed: onDisable),
-                ],
+                _RowButton(label: 'Disable', onPressed: onDisable),
               ],
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -474,9 +461,7 @@ class _RowButton extends StatelessWidget {
       onPressed: onPressed,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       constraints: const BoxConstraints(minHeight: 28),
-      textStyle: HyprTypography.compactMonoStrong.copyWith(
-        fontSize: HyprTypography.size(10.5),
-      ),
+      textStyle: HyprInstrumentText.meta.copyWith(fontSize: 12),
     );
   }
 }
@@ -488,15 +473,22 @@ class _StatusMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HyprBadge.text(
-      label: message,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      color: HyprColors.fillStrong,
-      borderColor: HyprColors.popupStroke,
-      borderRadius: BorderRadius.circular(7),
-      textColor: HyprColors.textMuted,
-      style: HyprTypography.popRow.copyWith(
-        fontSize: HyprTypography.size(11.5),
+    return Semantics(
+      liveRegion: true,
+      child: SettingsSection(
+        tone: SettingsTone.well,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              Icons.info_outline_rounded,
+              size: 18,
+              color: HyprInstrumentColors.secondary,
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message, style: HyprInstrumentText.body)),
+          ],
+        ),
       ),
     );
   }
