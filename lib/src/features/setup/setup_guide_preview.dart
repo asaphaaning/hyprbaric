@@ -7,6 +7,10 @@ import 'setup_guide_state.dart';
 import 'setup_guide_style.dart';
 
 /// The live wallpaper and bar preview shown in the setup navigation rail.
+///
+/// Blur only the wallpaper image. Sampling the surrounding window with a
+/// backdrop filter can create unsupported offscreen targets on Impeller GLES
+/// while the native window resizes.
 class SetupGuidePreview extends StatelessWidget {
   const SetupGuidePreview({
     super.key,

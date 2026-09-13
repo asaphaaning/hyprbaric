@@ -275,6 +275,17 @@ void main() {
       );
       expect(tester.getSize(card), const Size(980, 660));
       expect(tester.getSize(preview), const Size(232, 185));
+      expect(
+        find.descendant(of: preview, matching: find.byType(BackdropFilter)),
+        findsNothing,
+        reason:
+            'The preview must not sample the window backdrop: this path '
+            'reproduces a fatal Impeller GLES framebuffer error during resize.',
+      );
+      expect(
+        find.descendant(of: preview, matching: find.byType(ImageFiltered)),
+        findsOneWidget,
+      );
       expect(find.text('LIVE PREVIEW'), findsOneWidget);
       expect(find.byTooltip('Close setup guide'), findsOneWidget);
 

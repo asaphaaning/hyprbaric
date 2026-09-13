@@ -82,13 +82,9 @@ flutter build linux --release
 Release builds do not update `build/linux/x64/debug/bundle`; launching that path
 runs the last debug build. The Linux build output is relocatable; consult the [installation guide](https://asaphaaning.github.io/hyprbaric/docs/installation) for package-build and hyprland autostart guidance.
 
-The Linux runner defaults to GPU-accelerated Skia. Impeller's GLES backend can
-abort with `GL_FRAMEBUFFER_UNSUPPORTED` while rendering offscreen effects on
-some configurations. The renderer choice is applied before the shared engine
-is created, including packaged release builds and additional monitor views.
-For development, `flutter run -d linux --no-enable-impeller` also explicitly
-selects Skia. This is a compatibility workaround; Widgetbook's web renderer
-cannot validate Linux GPU/driver behavior.
+The Linux runner explicitly enables Impeller before creating the shared engine.
+Additional monitor views use the same renderer. Native GPU/driver behavior must
+be checked on Linux; Widgetbook's web renderer is not an Impeller smoke test.
 
 ## Widget catalog
 
