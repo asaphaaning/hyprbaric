@@ -50,9 +50,19 @@ Install Flutter and Rust, then run the development build:
 git clone https://github.com/asaphaaning/hyprbaric.git
 cd hyprbaric
 flutter pub get
+cargo install rinf_cli --version 8.10.0 --locked
+rinf gen
 ./tool/install-git-hooks
 flutter run -d linux
 ```
+
+Rust/Dart bindings under `lib/src/bindings` are generated and are not tracked
+by Git. Linux builds regenerate them before compiling Dart, so changing branches
+cannot leave old protocol types behind. Run `rinf gen` explicitly before using
+the analyzer, tests, or the web Widgetbook from a fresh checkout. Errors such as
+`BrightnessStatus isn't a type` or `AudioOutputs isn't a type` usually indicate
+missing or stale bindings; fix the first generator/import error before the
+downstream Dart errors.
 
 The installed pre-commit hook runs Dart formatting and regenerates Pigeon and
 Riverpod outputs whenever a staged Dart input changes. If it reports updated
