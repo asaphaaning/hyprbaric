@@ -4,10 +4,12 @@ import '../hypr_surface.dart';
 
 /// The recessed selector material shared by the mixer and settings.
 abstract final class HyprSelectStyle {
-  static const fill = Color(0xAA090C12);
+  static const fill = Color(0xFF0C0F15);
   static const border = Color(0x22333742);
   static const radius = BorderRadius.all(Radius.circular(7));
-  static const menuFill = Color(0xFA15181F);
+  static const menuFill = fill;
+  static const focus = Color(0x148F9BC9);
+  static const hover = Color(0x0C8F9BC9);
   static const menuRadius = BorderRadius.all(Radius.circular(9));
 }
 
@@ -124,48 +126,57 @@ class HyprDropdown<T> extends StatelessWidget {
         side: BorderSide(color: HyprSelectStyle.border),
       ),
     ),
-    child: DropdownButtonHideUnderline(
-      child: DropdownButton<T>(
-        value: value,
-        isExpanded: true,
-        icon: const SizedBox.shrink(),
-        dropdownColor: HyprSelectStyle.menuFill,
-        borderRadius: HyprSelectStyle.menuRadius,
-        menuMaxHeight: 240,
-        style: HyprInstrumentText.body.copyWith(fontSize: 12),
-        selectedItemBuilder: (context) => [
-          for (final option in values)
-            HyprSelectContent(
-              title: format(option),
-              subtitle: label,
-              enabled: onChanged != null,
-            ),
-        ],
-        items: [
-          for (final option in values)
-            DropdownMenuItem<T>(
-              value: option,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Row(
-                  children: [
-                    Expanded(child: Text(format(option))),
-                    if (option == value)
-                      const Icon(
-                        Icons.check_rounded,
-                        size: 15,
-                        color: HyprInstrumentColors.secondary,
-                      ),
-                  ],
+    child: Theme(
+      data: Theme.of(context).copyWith(
+        focusColor: HyprSelectStyle.focus,
+        hoverColor: HyprSelectStyle.hover,
+        splashFactory: NoSplash.splashFactory,
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: value,
+          isExpanded: true,
+          icon: const SizedBox.shrink(),
+          dropdownColor: HyprSelectStyle.menuFill,
+          borderRadius: HyprSelectStyle.menuRadius,
+          menuMaxHeight: 240,
+          style: HyprInstrumentText.body.copyWith(fontSize: 12),
+          selectedItemBuilder: (context) => [
+            for (final option in values)
+              HyprSelectContent(
+                title: format(option),
+                subtitle: label,
+                enabled: onChanged != null,
+              ),
+          ],
+          items: [
+            for (final option in values)
+              DropdownMenuItem<T>(
+                value: option,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(format(option))),
+                      if (option == value)
+                        const Icon(
+                          Icons.check_rounded,
+                          size: 15,
+                          color: HyprInstrumentColors.secondary,
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-        ],
-        onChanged: onChanged == null
-            ? null
-            : (next) {
-                if (next != null) onChanged!(next);
-              },
+          ],
+          onChanged: onChanged == null
+              ? null
+              : (next) {
+                  if (next != null) onChanged!(next);
+                },
+        ),
       ),
     ),
   );
