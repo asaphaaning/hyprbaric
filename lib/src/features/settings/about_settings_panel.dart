@@ -21,20 +21,20 @@ class AboutSettingsPanel extends ConsumerWidget {
         const _ProductHeader(),
         SettingsSection(
           tone: SettingsTone.well,
-          child: HyprCommandButton(
+          child: HyprPlateButton(
             key: const ValueKey<String>('run-setup-guide'),
             label: 'Run setup guide again',
-            icon: const Icon(Icons.auto_awesome_rounded, size: 15),
+            semanticLabel: 'Run setup guide again',
+            icon: Icons.auto_awesome_outlined,
             onPressed: () =>
                 ref.read(setupGuideRequestProvider.notifier).show(),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            constraints: const BoxConstraints(minHeight: 36),
-            color: Colors.black.withValues(alpha: 0.14),
-            borderColor: HyprInstrumentColors.border.withValues(alpha: .3),
-            foregroundColor: HyprInstrumentColors.secondary,
-            hoverForegroundColor: HyprInstrumentColors.text,
-            hoverBorderColor: context.hyprPalette.borderSoft,
-            textStyle: HyprInstrumentText.meta.copyWith(fontSize: 12),
+            labelStyle: HyprInstrumentText.body.copyWith(
+              fontWeight: FontWeight.w500,
+              letterSpacing: .6,
+            ),
+            labelColor: HyprConsoleColors.text,
+            iconColor: HyprConsoleColors.textMuted,
+            trailingColor: HyprConsoleColors.textFaint,
           ),
         ),
         if (status.entries.isNotEmpty) ...<Widget>[
