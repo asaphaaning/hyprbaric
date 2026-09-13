@@ -41,58 +41,54 @@ class _AppearanceSettingsPanelState
     return ListView(
       padding: EdgeInsets.zero,
       children: <Widget>[
+        AppearancePreview(status: view),
         SettingsColumns(
-          first: Column(
-            children: [
-              AppearancePreview(status: view),
-              const SizedBox(height: 16),
-              SettingsCard(
-                title: 'Layout & placement',
-                child: Column(
-                  children: [
-                    _PositionRow(
-                      value: view.position,
-                      onChanged: (AppearancePosition position) {
-                        final AppearanceStatus next = view.copyWith(
-                          position: position,
-                        );
-                        _preview(next);
-                        _commit(
-                          () => ref
-                              .read(appearanceControllerProvider.notifier)
-                              .setPosition(position),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _MonitorRow(
-                      value: view.monitor,
-                      monitors: ref
-                          .watch(currentWorkspaceStatusProvider)
-                          .maybeWhen(
-                            data: (WorkspaceStatus status) => status.monitors,
-                            orElse: () => const <MonitorWorkspaceStatus>[],
-                          ),
-                      onChanged: (AppearanceMonitorTarget monitor) {
-                        final AppearanceStatus next = view.copyWith(
-                          monitor: monitor,
-                        );
-                        _preview(next);
-                        _commit(
-                          () => ref
-                              .read(appearanceControllerProvider.notifier)
-                              .setMonitor(monitor),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+          first: SettingsSection(
+            title: 'Layout & placement',
+            child: Column(
+              children: [
+                _PositionRow(
+                  value: view.position,
+                  onChanged: (AppearancePosition position) {
+                    final AppearanceStatus next = view.copyWith(
+                      position: position,
+                    );
+                    _preview(next);
+                    _commit(
+                      () => ref
+                          .read(appearanceControllerProvider.notifier)
+                          .setPosition(position),
+                    );
+                  },
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                _MonitorRow(
+                  value: view.monitor,
+                  monitors: ref
+                      .watch(currentWorkspaceStatusProvider)
+                      .maybeWhen(
+                        data: (WorkspaceStatus status) => status.monitors,
+                        orElse: () => const <MonitorWorkspaceStatus>[],
+                      ),
+                  onChanged: (AppearanceMonitorTarget monitor) {
+                    final AppearanceStatus next = view.copyWith(
+                      monitor: monitor,
+                    );
+                    _preview(next);
+                    _commit(
+                      () => ref
+                          .read(appearanceControllerProvider.notifier)
+                          .setMonitor(monitor),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
-          second: SettingsCard(
+          second: SettingsSection(
             title: 'Visual refinement',
+            tone: SettingsTone.well,
             child: Column(
               children: [
                 _SliderRow(
@@ -178,27 +174,29 @@ class _AppearanceSettingsPanelState
             ),
           ),
         ),
-        const SizedBox(height: 16),
-        HyprCommandButton(
-          label: 'Restore defaults',
-          icon: const Icon(Icons.restore_rounded, size: 15),
-          onPressed: _isDefault(view)
-              ? null
-              : () {
-                  ref.read(appearancePreviewProvider.notifier).clear();
-                  setState(() => _draft = null);
-                  ref
-                      .read(appearanceControllerProvider.notifier)
-                      .restoreDefaults();
-                },
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          constraints: const BoxConstraints(minHeight: 36),
-          color: Colors.black.withValues(alpha: 0.14),
-          borderColor: HyprColors.borderSoft,
-          foregroundColor: HyprInstrumentColors.secondary,
-          hoverForegroundColor: HyprInstrumentColors.text,
-          hoverBorderColor: context.hyprPalette.borderSoft,
-          textStyle: HyprInstrumentText.meta.copyWith(fontSize: 12),
+        SettingsSection(
+          tone: SettingsTone.well,
+          child: HyprCommandButton(
+            label: 'Restore defaults',
+            icon: const Icon(Icons.restore_rounded, size: 15),
+            onPressed: _isDefault(view)
+                ? null
+                : () {
+                    ref.read(appearancePreviewProvider.notifier).clear();
+                    setState(() => _draft = null);
+                    ref
+                        .read(appearanceControllerProvider.notifier)
+                        .restoreDefaults();
+                  },
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            constraints: const BoxConstraints(minHeight: 36),
+            color: Colors.black.withValues(alpha: 0.14),
+            borderColor: HyprColors.borderSoft,
+            foregroundColor: HyprInstrumentColors.secondary,
+            hoverForegroundColor: HyprInstrumentColors.text,
+            hoverBorderColor: context.hyprPalette.borderSoft,
+            textStyle: HyprInstrumentText.meta.copyWith(fontSize: 12),
+          ),
         ),
       ],
     );
@@ -337,13 +335,16 @@ class _SliderRow extends StatelessWidget {
                 overlayColor: accent.withValues(alpha: 0.16),
                 trackHeight: 3,
               ),
-              child: Slider(
-                value: value.clamp(min, max),
-                min: min,
-                max: max,
-                divisions: divisions,
-                onChanged: onChanged,
-                onChangeEnd: onChangeEnd,
+              child: SizedBox(
+                height: 32,
+                child: Slider(
+                  value: value.clamp(min, max),
+                  min: min,
+                  max: max,
+                  divisions: divisions,
+                  onChanged: onChanged,
+                  onChangeEnd: onChangeEnd,
+                ),
               ),
             ),
           ),

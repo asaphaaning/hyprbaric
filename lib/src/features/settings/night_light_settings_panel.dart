@@ -82,7 +82,7 @@ class _NightLightSettingsPanelState
     return ListView(
       padding: EdgeInsets.zero,
       children: <Widget>[
-        SettingsCard(
+        SettingsSection(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
@@ -221,7 +221,7 @@ class _NightLightSettingsPanelState
             ],
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 1),
         _ScheduleCard(
           view: scheduleView,
           enabled: true,
@@ -265,7 +265,8 @@ class _ScheduleCard extends StatelessWidget {
         ? HyprInstrumentColors.text
         : HyprInstrumentColors.secondary;
 
-    return SettingsCard(
+    return SettingsSection(
+      tone: SettingsTone.well,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[

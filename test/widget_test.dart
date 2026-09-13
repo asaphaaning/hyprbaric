@@ -2385,6 +2385,7 @@ void main() {
       120,
       scrollable: find.byType(Scrollable),
     );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Restore defaults'));
     await tester.pump();
 

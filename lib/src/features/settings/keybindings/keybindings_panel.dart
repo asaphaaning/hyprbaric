@@ -370,7 +370,7 @@ class KeybindingRow extends StatelessWidget {
     final String? conflict = row.conflict?.label;
     final bool disabled = row.effectiveMapping is ShortcutMappingViewDisabled;
 
-    return SettingsCard(
+    return SettingsSection(
       hovered: recording,
       borderColor: row.conflict == null ? null : HyprColors.danger,
       child: Column(

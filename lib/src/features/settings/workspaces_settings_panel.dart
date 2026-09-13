@@ -30,7 +30,7 @@ class WorkspacesSettingsPanel extends ConsumerWidget {
                 .setIndicatorStyle(value);
           },
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 1),
         _ClickableRow(
           value: status.clickable,
           onChanged: (bool value) {
@@ -39,7 +39,7 @@ class WorkspacesSettingsPanel extends ConsumerWidget {
                 .setClickable(clickable: value);
           },
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 1),
         _SegmentRow<WorkspaceVisibleRange>(
           label: 'Visible range',
           subtitle:
@@ -157,7 +157,7 @@ class _WorkspaceSettingsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SettingsCard(
+    return SettingsSection(
       hovered: hovered,
       child: SettingsField(
         label: label,

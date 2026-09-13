@@ -20,7 +20,7 @@ class ModulesSettingsPanel extends ConsumerWidget {
     return ListView.separated(
       padding: EdgeInsets.zero,
       itemCount: _moduleRows.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      separatorBuilder: (_, _) => const SizedBox(height: 1),
       itemBuilder: (BuildContext context, int index) {
         final _ModuleRowData row = _moduleRows[index];
         final bool enabled = status.isEnabled(row.module);
@@ -120,7 +120,7 @@ class _ModuleRow extends StatelessWidget {
       semanticToggled: enabled,
       onPressed: () => onChanged(!enabled),
       builder: (BuildContext context, HyprInteractionState state) =>
-          SettingsCard(
+          SettingsSection(
             hovered: state.hovered,
             child: SettingsField(
               label: row.label,

@@ -3,62 +3,70 @@ import 'package:flutter/material.dart';
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
 
-/// A settings group built from the same glass material as the bar's panels.
-class SettingsCard extends StatelessWidget {
-  const SettingsCard({
+/// The tonal bays in the settings instrument chassis.
+enum SettingsTone { graphite, slate, well }
+
+/// An edge-to-edge instrument bay; the containing chassis clips its corners.
+class SettingsSection extends StatelessWidget {
+  const SettingsSection({
     super.key,
     required this.child,
     this.title,
     this.hovered = false,
     this.borderColor,
+    this.tone = SettingsTone.graphite,
   });
 
   final Widget child;
   final String? title;
   final bool hovered;
-
-  /// Optional semantic outline, such as a shortcut conflict.
   final Color? borderColor;
+  final SettingsTone tone;
 
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(14),
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Color(hovered ? 0x802A303C : 0x60242A35),
-          const Color(0x38151820),
-        ],
+  Widget build(BuildContext context) {
+    final colors = switch (tone) {
+      SettingsTone.graphite => const [Color(0x70303844), Color(0x50191D26)],
+      SettingsTone.slate => const [Color(0xA0404655), Color(0x70303644)],
+      SettingsTone.well => const [Color(0x90080B12), Color(0x700E121A)],
+    };
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: colors,
+        ),
+        border: Border(
+          top: BorderSide(color: borderColor ?? const Color(0x12FFFFFF)),
+          bottom: BorderSide(color: borderColor ?? const Color(0x65000000)),
+        ),
       ),
-      border: Border.all(
-        color:
-            borderColor ??
-            HyprInstrumentColors.border.withValues(alpha: hovered ? .55 : .24),
+      child: ColoredBox(
+        color: hovered ? HyprConsoleColors.tileHover : Colors.transparent,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (title case final title?) ...[
+                Text(
+                  title.toUpperCase(),
+                  style: HyprInstrumentText.title.copyWith(
+                    fontSize: 11,
+                    letterSpacing: 1.8,
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+              child,
+            ],
+          ),
+        ),
       ),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (title case final title?) ...[
-            Text(
-              title.toUpperCase(),
-              style: HyprInstrumentText.title.copyWith(
-                fontSize: 11,
-                letterSpacing: 1.8,
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-          child,
-        ],
-      ),
-    ),
-  );
+    );
+  }
 }
 
 /// The label, explanation, and optional control shared by settings rows.
@@ -107,26 +115,28 @@ class SettingsField extends StatelessWidget {
   );
 }
 
-/// A tabular readout that uses the shared recessed badge primitive.
+/// A tabular readout that uses the shared recessed well primitive.
 class SettingsValue extends StatelessWidget {
   const SettingsValue(this.label, {super.key});
   final String label;
 
   @override
-  Widget build(BuildContext context) => HyprBadge.text(
-    label: label,
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-    color: const Color(0x55080B10),
-    borderColor: HyprInstrumentColors.border.withValues(alpha: .3),
-    borderRadius: BorderRadius.circular(8),
-    textColor: HyprInstrumentColors.secondary,
-    style: HyprInstrumentText.body.copyWith(
-      fontFeatures: HyprTypography.tabularNumbers,
+  Widget build(BuildContext context) => HyprWell(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    color: HyprConsoleColors.seam,
+    borderRadius: BorderRadius.circular(7),
+    borderColor: const Color(0x384F596F),
+    child: Text(
+      label,
+      style: HyprInstrumentText.body.copyWith(
+        color: HyprInstrumentColors.text,
+        fontFeatures: HyprTypography.tabularNumbers,
+      ),
     ),
   );
 }
 
-/// Lavender selection material, shared by position, monitor, and workspace choices.
+/// Raised console keys with warm indicators for the selected choice.
 class SettingsChoice extends StatelessWidget {
   const SettingsChoice({
     super.key,
@@ -142,36 +152,83 @@ class SettingsChoice extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     selected: selected,
     child: IntrinsicWidth(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(9),
-          gradient: selected
-              ? const LinearGradient(
+      child: HyprWell(
+        padding: const EdgeInsets.all(3),
+        borderRadius: BorderRadius.circular(10),
+        color: HyprConsoleColors.seam,
+        child: HyprInteractionRegion(
+          semanticLabel: label,
+          onPressed: onPressed,
+          builder: (context, state) => Transform.translate(
+            offset: Offset(0, state.pressed ? 1 : 0),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(7),
+                gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0xFFD2CFFF), Color(0xFFAAA8E9)],
-                )
-              : null,
-        ),
-        child: HyprCommandButton(
-          label: label,
-          onPressed: onPressed,
-          pressedScale: 1,
-          constraints: const BoxConstraints(minHeight: 34),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-          borderRadius: BorderRadius.circular(9),
-          color: selected ? Colors.transparent : const Color(0x44080B10),
-          hoverColor: const Color(0x227E86B4),
-          borderColor: HyprInstrumentColors.border.withValues(
-            alpha: selected ? .7 : .24,
+                  colors: state.pressed
+                      ? const [Color(0xFF13161D), Color(0xFF1C2029)]
+                      : [
+                          state.hovered
+                              ? const Color(0xFF3A4050)
+                              : const Color(0xFF303440),
+                          const Color(0xFF171B23),
+                        ],
+                ),
+                border: Border.all(
+                  color: selected
+                      ? const Color(0x8069532C)
+                      : const Color(0x404B5264),
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x70000000),
+                    offset: Offset(0, 2),
+                    blurRadius: 3,
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 11,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(2),
+                        color: selected
+                            ? HyprAmberToggle.amber
+                            : const Color(0xFF50586E),
+                        boxShadow: selected
+                            ? const [
+                                BoxShadow(
+                                  color: Color(0x88FFAF32),
+                                  blurRadius: 8,
+                                ),
+                              ]
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      label,
+                      style: HyprInstrumentText.body.copyWith(
+                        color: selected
+                            ? HyprInstrumentColors.text
+                            : HyprInstrumentColors.secondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-          foregroundColor: selected
-              ? const Color(0xFF171825)
-              : HyprInstrumentColors.secondary,
-          hoverForegroundColor: selected
-              ? const Color(0xFF171825)
-              : HyprInstrumentColors.text,
-          textStyle: HyprInstrumentText.body,
         ),
       ),
     ),
@@ -188,15 +245,17 @@ class SettingsColumns extends StatelessWidget {
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
       if (constraints.maxWidth < 640) {
-        return Column(children: [first, const SizedBox(height: 16), second]);
+        return Column(children: [first, second]);
       }
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: first),
-          const SizedBox(width: 16),
-          Expanded(child: second),
-        ],
+      return IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: first),
+            const SizedBox(width: 1),
+            Expanded(child: second),
+          ],
+        ),
       );
     },
   );

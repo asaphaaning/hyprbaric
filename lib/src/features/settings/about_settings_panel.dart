@@ -19,32 +19,29 @@ class AboutSettingsPanel extends ConsumerWidget {
       padding: EdgeInsets.zero,
       children: <Widget>[
         const _ProductHeader(),
-        const SizedBox(height: 10),
-        HyprCommandButton(
-          key: const ValueKey<String>('run-setup-guide'),
-          label: 'Run setup guide again',
-          icon: const Icon(Icons.auto_awesome_rounded, size: 15),
-          onPressed: () => ref.read(setupGuideRequestProvider.notifier).show(),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          constraints: const BoxConstraints(minHeight: 36),
-          color: Colors.black.withValues(alpha: 0.14),
-          borderColor: HyprInstrumentColors.border.withValues(alpha: .3),
-          foregroundColor: HyprInstrumentColors.secondary,
-          hoverForegroundColor: HyprInstrumentColors.text,
-          hoverBorderColor: context.hyprPalette.borderSoft,
-          textStyle: HyprInstrumentText.meta.copyWith(fontSize: 12),
+        SettingsSection(
+          tone: SettingsTone.well,
+          child: HyprCommandButton(
+            key: const ValueKey<String>('run-setup-guide'),
+            label: 'Run setup guide again',
+            icon: const Icon(Icons.auto_awesome_rounded, size: 15),
+            onPressed: () =>
+                ref.read(setupGuideRequestProvider.notifier).show(),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            constraints: const BoxConstraints(minHeight: 36),
+            color: Colors.black.withValues(alpha: 0.14),
+            borderColor: HyprInstrumentColors.border.withValues(alpha: .3),
+            foregroundColor: HyprInstrumentColors.secondary,
+            hoverForegroundColor: HyprInstrumentColors.text,
+            hoverBorderColor: context.hyprPalette.borderSoft,
+            textStyle: HyprInstrumentText.meta.copyWith(fontSize: 12),
+          ),
         ),
         if (status.entries.isNotEmpty) ...<Widget>[
-          const SizedBox(height: 12),
-          Text(
-            'System',
-            style: HyprInstrumentText.meta.copyWith(
-              color: HyprInstrumentColors.secondary,
-              fontSize: 12,
-              letterSpacing: 0,
-            ),
+          const SettingsSection(
+            tone: SettingsTone.slate,
+            child: Text('SYSTEM', style: HyprInstrumentText.title),
           ),
-          const SizedBox(height: 12),
           ..._spacedRows(
             status.entries.map(
               (CapabilityEntry entry) => _CapabilityRow(entry: entry),
@@ -68,7 +65,7 @@ class _ProductHeader extends ConsumerWidget {
           orElse: () => '...',
         );
 
-    return SettingsCard(
+    return SettingsSection(
       child: Row(
         children: <Widget>[
           DecoratedBox(
@@ -139,7 +136,7 @@ class _CapabilityRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final _StatusTone tone = _StatusTone.forAvailability(entry.availability);
 
-    return SettingsCard(
+    return SettingsSection(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -277,7 +274,7 @@ List<Widget> _spacedRows(Iterable<Widget> rows) {
   final List<Widget> widgets = <Widget>[];
   for (final Widget row in rows) {
     if (widgets.isNotEmpty) {
-      widgets.add(const SizedBox(height: 12));
+      widgets.add(const SizedBox(height: 1));
     }
     widgets.add(row);
   }
