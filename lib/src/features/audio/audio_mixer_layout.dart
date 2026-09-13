@@ -68,51 +68,16 @@ class AudioOutputSelector extends StatelessWidget {
     return HyprInteractiveTile(
       semanticLabel: 'Select output device',
       onPressed: onPressed,
-      borderRadius: BorderRadius.circular(7),
-      color: const Color(0xAA090C12),
-      borderColor: const Color(0x22333742),
-      builder: (context, state) => Padding(
+      borderRadius: HyprSelectStyle.radius,
+      color: HyprSelectStyle.fill,
+      borderColor: HyprSelectStyle.border,
+      builder: (context, state) => HyprSelectContent(
+        title: output?.name ?? 'No output device',
+        subtitle: output == null
+            ? 'No device connected'
+            : (description ?? 'Output device'),
+        expanded: expanded,
         padding: const EdgeInsets.fromLTRB(28, 5, 8, 5),
-        child: Row(
-          children: <Widget>[
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    output?.name ?? 'No output device',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AudioMixerText.meta.copyWith(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: AudioMixerColors.text,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    output == null
-                        ? 'No device connected'
-                        : (description ?? 'Output device'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AudioMixerText.meta.copyWith(fontSize: 9.5),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 5),
-            Icon(
-              expanded
-                  ? Icons.keyboard_arrow_up_rounded
-                  : Icons.keyboard_arrow_down_rounded,
-              size: 21,
-              color: AudioMixerColors.secondary,
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bindings/bindings.dart';
 import '../../state/providers.dart';
-import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
+import 'settings_primitives.dart';
 
 class ModulesSettingsPanel extends ConsumerWidget {
   const ModulesSettingsPanel({super.key});
@@ -20,7 +20,7 @@ class ModulesSettingsPanel extends ConsumerWidget {
     return ListView.separated(
       padding: EdgeInsets.zero,
       itemCount: _moduleRows.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => const SizedBox(height: 1),
       itemBuilder: (BuildContext context, int index) {
         final _ModuleRowData row = _moduleRows[index];
         final bool enabled = status.isEnabled(row.module);
@@ -116,73 +116,18 @@ class _ModuleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return HyprInteractionRegion(
-      enabled: true,
+      semanticLabel: row.label,
+      semanticToggled: enabled,
       onPressed: () => onChanged(!enabled),
-      builder: (BuildContext context, HyprInteractionState state) {
-        final bool hovered = state.hovered;
-        return DecoratedBox(
-          decoration: ShapeDecoration(
-            color: hovered
-                ? context.hyprPalette.fill
-                : Colors.black.withValues(alpha: 0.16),
-            shape: RoundedSuperellipseBorder(
-              borderRadius: HyprRadii.panelRadius,
-              side: BorderSide(
-                color: hovered
-                    ? context.hyprPalette.borderSoft
-                    : HyprColors.popupStroke,
-              ),
+      builder: (BuildContext context, HyprInteractionState state) =>
+          SettingsSection(
+            hovered: state.hovered,
+            child: SettingsField(
+              label: row.label,
+              subtitle: subtitle,
+              trailing: HyprAmberToggle(value: enabled),
             ),
           ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-            child: Row(
-              children: <Widget>[
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        row.label,
-                        style: HyprTypography.popRow.copyWith(
-                          fontSize: HyprTypography.size(13),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: HyprTypography.popRow.copyWith(
-                          color: HyprColors.textFaint,
-                          fontSize: HyprTypography.size(11),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                HyprBadge.text(
-                  label: enabled ? 'On' : 'Off',
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  color: Colors.black.withValues(alpha: 0.12),
-                  borderColor: HyprColors.popupStroke.withValues(alpha: 0.65),
-                  borderRadius: HyprRadii.cardRadius,
-                  textColor: enabled
-                      ? context.hyprPalette.accent
-                      : HyprColors.textMuted,
-                  style: HyprTypography.compactMonoStrong.copyWith(
-                    fontSize: HyprTypography.size(11),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                HyprToggleSwitch(value: enabled),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }

@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bindings/bindings.dart';
 import '../../state/providers.dart';
-import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
+import 'settings_primitives.dart';
 
 class WorkspacesSettingsPanel extends ConsumerWidget {
   const WorkspacesSettingsPanel({super.key});
@@ -30,7 +30,7 @@ class WorkspacesSettingsPanel extends ConsumerWidget {
                 .setIndicatorStyle(value);
           },
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 1),
         _ClickableRow(
           value: status.clickable,
           onChanged: (bool value) {
@@ -39,7 +39,7 @@ class WorkspacesSettingsPanel extends ConsumerWidget {
                 .setClickable(clickable: value);
           },
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 1),
         _SegmentRow<WorkspaceVisibleRange>(
           label: 'Visible range',
           subtitle:
@@ -77,6 +77,8 @@ class _ClickableRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return HyprInteractionRegion(
+      semanticLabel: 'Clickable workspaces',
+      semanticToggled: value,
       enabled: true,
       onPressed: () => onChanged(!value),
       builder: (BuildContext context, HyprInteractionState state) {
@@ -86,26 +88,7 @@ class _ClickableRow extends StatelessWidget {
               ? 'Direct indicator clicks switch workspaces.'
               : 'Direct indicator clicks are ignored.',
           hovered: state.hovered,
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              HyprBadge.text(
-                label: value ? 'On' : 'Off',
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                color: Colors.black.withValues(alpha: 0.12),
-                borderColor: HyprColors.popupStroke.withValues(alpha: 0.65),
-                borderRadius: HyprRadii.cardRadius,
-                textColor: value
-                    ? context.hyprPalette.accent
-                    : HyprColors.textMuted,
-                style: HyprTypography.compactMonoStrong.copyWith(
-                  fontSize: HyprTypography.size(11),
-                ),
-              ),
-              const SizedBox(width: 10),
-              HyprToggleSwitch(value: value),
-            ],
-          ),
+          trailing: HyprAmberToggle(value: value),
         );
       },
     );
@@ -137,7 +120,9 @@ class _SegmentRow<T> extends StatelessWidget {
       label: label,
       subtitle: subtitle,
       valueLabel: valueLabel,
-      child: Row(
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 6,
         children: <Widget>[
           for (final T option in values) ...<Widget>[
             _SegmentButton(
@@ -172,77 +157,15 @@ class _WorkspaceSettingsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: ShapeDecoration(
-        color: hovered
-            ? context.hyprPalette.fill
-            : Colors.black.withValues(alpha: 0.16),
-        shape: RoundedSuperellipseBorder(
-          borderRadius: HyprRadii.panelRadius,
-          side: BorderSide(
-            color: hovered
-                ? context.hyprPalette.borderSoft
-                : HyprColors.popupStroke,
-          ),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        label,
-                        style: HyprTypography.popRow.copyWith(
-                          fontSize: HyprTypography.size(13),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: HyprTypography.popRow.copyWith(
-                          color: HyprColors.textFaint,
-                          fontSize: HyprTypography.size(11),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (valueLabel != null) _ValueBadge(label: valueLabel!),
-                ?trailing,
-              ],
-            ),
-            if (child != null) ...<Widget>[const SizedBox(height: 8), child!],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ValueBadge extends StatelessWidget {
-  const _ValueBadge({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return HyprBadge.text(
-      label: label,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      color: Colors.black.withValues(alpha: 0.12),
-      borderColor: HyprColors.popupStroke.withValues(alpha: 0.65),
-      borderRadius: HyprRadii.cardRadius,
-      textColor: HyprColors.textMuted,
-      style: HyprTypography.compactMonoStrong.copyWith(
-        fontSize: HyprTypography.size(11),
+    return SettingsSection(
+      hovered: hovered,
+      child: SettingsField(
+        label: label,
+        subtitle: subtitle,
+        trailing:
+            trailing ??
+            (valueLabel == null ? null : SettingsValue(valueLabel!)),
+        child: child,
       ),
     );
   }
@@ -261,21 +184,10 @@ class _SegmentButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HyprCommandButton(
+    return SettingsChoice(
       label: label,
-      onPressed: selected ? null : onPressed,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      constraints: const BoxConstraints(minHeight: 30),
-      color: selected
-          ? context.hyprPalette.fillStrong
-          : Colors.black.withValues(alpha: 0.12),
-      borderColor: selected
-          ? context.hyprPalette.borderSoft
-          : HyprColors.popupStroke,
-      foregroundColor: selected ? HyprColors.text : HyprColors.textMuted,
-      textStyle: HyprTypography.compactMonoStrong.copyWith(
-        fontSize: HyprTypography.size(10.5),
-      ),
+      selected: selected,
+      onPressed: onPressed,
     );
   }
 }
