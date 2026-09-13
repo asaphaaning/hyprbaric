@@ -51,10 +51,12 @@ abstract final class CatalogPalettes {
 ThemeData catalogThemeFor(HyprPalette palette) {
   final ThemeData base = ThemeData.dark(useMaterial3: true);
 
-  return base.copyWith(
-    scaffoldBackgroundColor: const Color(0xFF05090E),
-    textTheme: HyprTypography.textTheme(base.textTheme),
-    primaryTextTheme: HyprTypography.textTheme(base.primaryTextTheme),
-    extensions: <ThemeExtension<dynamic>>[palette],
+  return withoutMaterialInk(
+    base.copyWith(
+      scaffoldBackgroundColor: const Color(0xFF05090E),
+      textTheme: HyprTypography.textTheme(base.textTheme),
+      primaryTextTheme: HyprTypography.textTheme(base.primaryTextTheme),
+      extensions: <ThemeExtension<dynamic>>[palette],
+    ),
   );
 }

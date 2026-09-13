@@ -12,6 +12,7 @@ import 'features/setup/setup_guide_host.dart';
 import 'layer_shell_controller.dart';
 import 'layer_shell_hit_region.dart';
 import 'state/providers.dart';
+import 'theme/hypr_material_feedback.dart';
 import 'widgets/center_cluster.dart';
 import 'widgets/hypr_surface.dart';
 import 'widgets/layer_shell_dropdown.dart';
@@ -38,8 +39,8 @@ class Hyprbaric extends ConsumerWidget {
     );
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: transparentTheme,
-      darkTheme: transparentTheme,
+      theme: withoutMaterialInk(transparentTheme),
+      darkTheme: withoutMaterialInk(transparentTheme),
       home: const Scaffold(
         backgroundColor: Colors.transparent,
         body: _BarView(),

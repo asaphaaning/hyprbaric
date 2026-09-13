@@ -330,7 +330,8 @@ class _SliderRow extends StatelessWidget {
                 thumbColor: const Color(0xFFE2DFFF),
                 activeTickMarkColor: Colors.transparent,
                 inactiveTickMarkColor: Colors.transparent,
-                overlayColor: accent.withValues(alpha: 0.16),
+                overlayColor: Colors.transparent,
+                overlayShape: SliderComponentShape.noOverlay,
                 trackHeight: 3,
               ),
               child: SizedBox(

@@ -345,8 +345,8 @@ class SetupGuideSlider extends StatelessWidget {
         data: SliderTheme.of(context).copyWith(
           trackHeight: 6,
           activeTrackColor: context.setupGuideAccent,
-          overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
-          overlayColor: Colors.white.withValues(alpha: .08),
+          overlayShape: SliderComponentShape.noOverlay,
+          overlayColor: Colors.transparent,
           trackShape: _SetupSliderTrack(kind: kind),
           thumbShape: const _SetupSliderThumb(),
         ),

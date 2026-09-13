@@ -136,7 +136,7 @@ class SettingsValue extends StatelessWidget {
   );
 }
 
-/// Raised console keys with warm indicators for the selected choice.
+/// Raised console keys with a subtle selected rim and a charcoal gasket.
 class SettingsChoice extends StatelessWidget {
   const SettingsChoice({
     super.key,
@@ -155,7 +155,8 @@ class SettingsChoice extends StatelessWidget {
       child: HyprWell(
         padding: const EdgeInsets.all(3),
         borderRadius: BorderRadius.circular(10),
-        color: HyprConsoleColors.seam,
+        color: HyprPlateFace.ring,
+        shadowColor: Colors.transparent,
         child: HyprInteractionRegion(
           semanticLabel: label,
           onPressed: onPressed,
@@ -194,37 +195,13 @@ class SettingsChoice extends StatelessWidget {
                   horizontal: 14,
                   vertical: 11,
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 4,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(2),
-                        color: selected
-                            ? HyprAmberToggle.amber
-                            : const Color(0xFF50586E),
-                        boxShadow: selected
-                            ? const [
-                                BoxShadow(
-                                  color: Color(0x88FFAF32),
-                                  blurRadius: 8,
-                                ),
-                              ]
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      label,
-                      style: HyprInstrumentText.body.copyWith(
-                        color: selected
-                            ? HyprInstrumentColors.text
-                            : HyprInstrumentColors.secondary,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  label,
+                  style: HyprInstrumentText.body.copyWith(
+                    color: selected
+                        ? HyprInstrumentColors.text
+                        : HyprInstrumentColors.secondary,
+                  ),
                 ),
               ),
             ),
