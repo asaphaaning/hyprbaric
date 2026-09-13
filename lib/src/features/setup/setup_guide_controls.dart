@@ -147,7 +147,7 @@ class SetupGuideControls extends StatelessWidget {
                   value: appearance.opacity.toDouble(),
                   min: 20,
                   max: 100,
-                  kind: SetupGuideSliderKind.amount,
+                  kind: HyprSliderKind.amount,
                   onChanged: (double value) => onOpacityPreview(value.round()),
                   onChangeEnd: (double value) =>
                       onOpacityCommitted(value.round()),
@@ -189,7 +189,7 @@ class SetupGuideControls extends StatelessWidget {
                 value: appearance.accentHue.toDouble(),
                 min: 0,
                 max: 359,
-                kind: SetupGuideSliderKind.hue,
+                kind: HyprSliderKind.hue,
                 onChanged: (double value) => onAccentPreview(value.round()),
                 onChangeEnd: (double value) => onAccentCommitted(value.round()),
               ),

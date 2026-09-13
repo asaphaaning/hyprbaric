@@ -133,40 +133,32 @@ class _AppearanceSettingsPanelState
                   },
                 ),
                 const SizedBox(height: 16),
-                _SliderRow(
+                _AppearanceRow(
                   label: 'Accent hue',
                   valueLabel: '${view.accentHue}°',
                   subtitle: 'Drives highlights and active states.',
-                  value: view.accentHue.toDouble(),
-                  min: 0,
-                  max: 359,
-                  divisions: 359,
-                  accent: HyprInstrumentColors.secondary,
-                  leadingValue: DecoratedBox(
-                    decoration: ShapeDecoration(
-                      color: context.hyprPalette.accent,
-                      shape: RoundedSuperellipseBorder(
-                        borderRadius: HyprRadii.compactRadius,
-                        side: BorderSide(
-                          color: context.hyprPalette.accentSoft.withValues(
-                            alpha: 0.45,
-                          ),
-                        ),
-                      ),
+                  child: SizedBox(
+                    height: 32,
+                    child: HyprInstrumentSlider(
+                      value: view.accentHue.toDouble(),
+                      min: 0,
+                      max: 359,
+                      divisions: 359,
+                      kind: HyprSliderKind.hue,
+                      accent: HyprInstrumentColors.secondary,
+                      onChanged: (value) {
+                        _preview(view.copyWith(accentHue: value.round()));
+                      },
+                      onChangeEnd: (value) {
+                        final hue = value.round();
+                        _commit(
+                          () => ref
+                              .read(appearanceControllerProvider.notifier)
+                              .setAccentHue(hue),
+                        );
+                      },
                     ),
-                    child: const SizedBox.square(dimension: 22),
                   ),
-                  onChanged: (double value) {
-                    _preview(view.copyWith(accentHue: value.round()));
-                  },
-                  onChangeEnd: (double value) {
-                    final int accentHue = value.round();
-                    _commit(
-                      () => ref
-                          .read(appearanceControllerProvider.notifier)
-                          .setAccentHue(accentHue),
-                    );
-                  },
                 ),
               ],
             ),
@@ -295,7 +287,6 @@ class _SliderRow extends StatelessWidget {
     required this.accent,
     required this.onChanged,
     required this.onChangeEnd,
-    this.leadingValue,
   });
 
   final String label;
@@ -308,7 +299,6 @@ class _SliderRow extends StatelessWidget {
   final Color accent;
   final ValueChanged<double> onChanged;
   final ValueChanged<double> onChangeEnd;
-  final Widget? leadingValue;
 
   @override
   Widget build(BuildContext context) {
@@ -318,10 +308,6 @@ class _SliderRow extends StatelessWidget {
       valueLabel: valueLabel,
       child: Row(
         children: <Widget>[
-          if (leadingValue != null) ...<Widget>[
-            leadingValue!,
-            const SizedBox(width: 8),
-          ],
           Expanded(
             child: SliderTheme(
               data: SliderTheme.of(context).copyWith(
