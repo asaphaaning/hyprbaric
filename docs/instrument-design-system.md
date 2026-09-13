@@ -25,3 +25,5 @@ Material feedback is disabled centrally through `instrumentControlsTheme` in bot
 Keybinding status messages use an edge-to-edge recessed settings section with a small information icon and wrapping, left-aligned instrument body text. They announce updates as a semantic live region; conflict, recording, and save feedback share this treatment rather than an accent-filled badge.
 
 The hue slider’s `HyprInstrumentSliderThumb` is also the standard slider thumb in the shared bar/catalog theme. Opacity and corner radius reuse the same shaded handle while retaining their amount tracks and existing range semantics.
+
+Settings status indicators use `HyprStatusReadout`, a compact `HyprWell` with the shared dark selector fill and uppercase instrument metadata. Active and ready states use the amber switch signal; inactive, warning, and unavailable states retain distinct text colors without colored outlines or button feedback. Capability tiers remain quiet metadata beside the readout.

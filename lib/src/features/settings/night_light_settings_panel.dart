@@ -112,21 +112,11 @@ class _NightLightSettingsPanelState
                       ],
                     ),
                   ),
-                  HyprBadge.text(
+                  HyprStatusReadout(
                     label: view.badgeLabel,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    color: Colors.black.withValues(alpha: 0.12),
-                    borderColor: HyprInstrumentColors.border
-                        .withValues(alpha: .3)
-                        .withValues(alpha: 0.65),
-                    borderRadius: BorderRadius.circular(5),
-                    textColor: view.available && view.enabled
-                        ? HyprColors.accent
+                    color: view.available && view.enabled
+                        ? HyprAmberToggle.amber
                         : HyprInstrumentColors.secondary,
-                    style: HyprInstrumentText.meta.copyWith(fontSize: 12),
                   ),
                 ],
               ),

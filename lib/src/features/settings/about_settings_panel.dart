@@ -154,31 +154,15 @@ class _CapabilityRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              HyprBadge.text(
-                label: entry.tier.label,
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                color: Colors.black.withValues(alpha: 0.10),
-                borderColor: HyprInstrumentColors.border
-                    .withValues(alpha: .3)
-                    .withValues(alpha: 0.65),
-                borderRadius: HyprRadii.cardRadius,
-                textColor: HyprInstrumentColors.secondary,
+              Text(
+                entry.tier.label.toUpperCase(),
                 style: HyprInstrumentText.meta.copyWith(
-                  fontSize: HyprTypography.size(10),
+                  fontSize: 10,
+                  letterSpacing: .8,
                 ),
               ),
-              const SizedBox(width: 6),
-              HyprBadge.text(
-                label: tone.label,
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                color: tone.color.withValues(alpha: 0.08),
-                borderColor: tone.color.withValues(alpha: 0.28),
-                borderRadius: HyprRadii.cardRadius,
-                textColor: tone.color,
-                style: HyprInstrumentText.meta.copyWith(
-                  fontSize: HyprTypography.size(10),
-                ),
-              ),
+              const SizedBox(width: 10),
+              HyprStatusReadout(label: tone.label, color: tone.color),
             ],
           ),
           const SizedBox(height: 3),
@@ -243,7 +227,7 @@ class _StatusTone {
     return switch (availability) {
       CapabilityAvailability.available => const _StatusTone(
         label: 'Ready',
-        color: HyprColors.accent,
+        color: HyprAmberToggle.amber,
       ),
       CapabilityAvailability.degraded => const _StatusTone(
         label: 'Partial',

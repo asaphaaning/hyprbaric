@@ -26,6 +26,7 @@ export 'hypr_section_label.dart';
 export 'hypr_segmented_meter.dart';
 export 'hypr_select.dart';
 export 'hypr_spinner.dart';
+export 'hypr_status_readout.dart';
 export 'hypr_text_field_chrome.dart';
 export 'hypr_toggle_switch.dart';
 export 'hypr_well.dart';
