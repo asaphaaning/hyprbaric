@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 
 abstract final class HyprColors {
+  /// Neutral coverage that lets Hyprland blur the desktop behind a guide.
+  ///
+  /// Alpha must exceed the documented `ignore_alpha = 0.05` layer rule.
+  /// Fully transparent paint is skipped by the compositor. This faint neutral
+  /// veil avoids the black modal scrim without adding a Flutter blur pass.
+  static const Color desktopBlurCoverage = Color(0x0E808080);
+
   static const Color surface = Color(0xB80A1118);
   static const Color surfaceStrong = Color(0xC4071018);
 

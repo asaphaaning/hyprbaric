@@ -14,6 +14,7 @@ import 'package:hyprbaric/src/layer_shell_controller.dart';
 import 'package:hyprbaric/src/native/layer_shell_api.g.dart';
 import 'package:hyprbaric/src/state/providers.dart';
 import 'package:hyprbaric/src/theme/hypr_palette.dart';
+import 'package:hyprbaric/src/widgets/surfaces/hypr_colors.dart';
 import 'package:hyprbaric/src/widgets/surfaces/hypr_typography.dart';
 import 'package:hyprbaric/src/widgets/transient_overlays.dart';
 
@@ -66,6 +67,7 @@ void main() {
     ) async {
       await tester.binding.setSurfaceSize(size);
       addTearDown(() => tester.binding.setSurfaceSize(null));
+      var desktopTaps = 0;
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -75,17 +77,43 @@ void main() {
                   Stream.value(const SetupStatus(state: SetupState.required)),
             ),
           ],
-          child: _surface(const SetupGuideHost()),
+          child: _surface(
+            Stack(
+              fit: StackFit.expand,
+              children: [
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => desktopTaps++,
+                ),
+                const SetupGuideHost(),
+              ],
+            ),
+          ),
         ),
       );
       await tester.pumpAndSettle();
       final card = find.byKey(const ValueKey<String>('setup-guide'));
       expect(tester.getRect(card).center, size.center(Offset.zero));
       expect(tester.getSize(card), cardSize);
+      final coverage = find.byWidgetPredicate(
+        (widget) =>
+            widget is ColoredBox &&
+            widget.color == HyprColors.desktopBlurCoverage,
+      );
+      expect(tester.getSize(coverage), size);
+      final color = tester.widget<ColoredBox>(coverage).color;
+      expect(color.a, greaterThan(0.05), reason: 'Hyprland blur cutoff');
+      expect(color.a, lessThan(0.06), reason: 'Avoid a dimming scrim');
+      expect(color.r, closeTo(0.5, 0.01));
+      expect(color.g, color.r);
+      expect(color.b, color.r);
+      await tester.tapAt(const Offset(2, 2));
+      expect(desktopTaps, 1, reason: 'Blur coverage must not intercept input');
       expect(find.byTooltip('Close setup guide').hitTestable(), findsOneWidget);
       await tester.tap(find.byTooltip('Close setup guide'));
       await tester.pumpAndSettle();
       expect(card, findsNothing);
+      expect(coverage, findsNothing);
       expect(tester.takeException(), isNull);
     });
   }

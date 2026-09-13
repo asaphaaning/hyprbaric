@@ -17,7 +17,7 @@ import 'setup_guide_style.dart';
 
 /// The setup journey in the shared instrument shell.
 ///
-/// The surrounding desktop stays transparent; Hyprland owns its blur. The
+/// Faint neutral coverage activates Hyprland's desktop blur. The
 /// native input region follows the laid-out card, with keyboard focus on click.
 class SetupGuideOverlay extends ConsumerStatefulWidget {
   const SetupGuideOverlay({
@@ -176,7 +176,9 @@ class _SetupGuideOverlayState extends ConsumerState<SetupGuideOverlay> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              const ColoredBox(color: Colors.transparent),
+              const IgnorePointer(
+                child: ColoredBox(color: HyprColors.desktopBlurCoverage),
+              ),
               Center(
                 child: LayoutBuilder(
                   builder: (BuildContext context, BoxConstraints constraints) {

@@ -408,6 +408,7 @@ class _SetupDesktopOverlayState extends State<_SetupDesktopOverlay> {
         fit: StackFit.expand,
         children: [
           ImageFiltered(
+            enabled: open,
             imageFilter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
             child: Image.asset('assets/wallpaper-demo.png', fit: BoxFit.cover),
           ),
