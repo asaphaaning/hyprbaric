@@ -6,6 +6,7 @@ import '../../bindings/bindings.dart';
 import '../../state/providers.dart';
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
+import 'settings_primitives.dart';
 
 class NightLightSettingsPanel extends ConsumerStatefulWidget {
   const NightLightSettingsPanel({super.key});
@@ -81,157 +82,143 @@ class _NightLightSettingsPanelState
     return ListView(
       padding: EdgeInsets.zero,
       children: <Widget>[
-        DecoratedBox(
-          decoration: ShapeDecoration(
-            color: Colors.black.withValues(alpha: view.available ? 0.16 : 0.10),
-            shape: RoundedSuperellipseBorder(
-              borderRadius: BorderRadius.circular(9),
-              side: BorderSide(
-                color: view.available
-                    ? HyprColors.popupStroke
-                    : HyprColors.popupStroke.withValues(alpha: 0.55),
-              ),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            'Night light',
-                            style: HyprTypography.popRow.copyWith(
-                              fontSize: HyprTypography.size(13),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            view.available
-                                ? 'hyprsunset ${view.enabled ? 'active' : 'ready'}'
-                                : 'hyprsunset unavailable',
-                            style: HyprTypography.popRow.copyWith(
-                              color: HyprColors.textFaint,
-                              fontSize: HyprTypography.size(11),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    HyprBadge.text(
-                      label: view.badgeLabel,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      color: Colors.black.withValues(alpha: 0.12),
-                      borderColor: HyprColors.popupStroke.withValues(
-                        alpha: 0.65,
-                      ),
-                      borderRadius: BorderRadius.circular(5),
-                      textColor: view.available && view.enabled
-                          ? HyprColors.accent
-                          : HyprColors.textMuted,
-                      style: HyprTypography.compactMonoStrong.copyWith(
-                        fontSize: HyprTypography.size(11),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: <Widget>[
-                    SizedBox(
-                      width: 118,
-                      child: TextField(
-                        controller: _temperatureController,
-                        focusNode: _temperatureFocus,
-                        enabled: true,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: <TextInputFormatter>[
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        onSubmitted: (_) => _applyTemperature(),
-                        style: HyprTypography.compactMonoStrong.copyWith(
-                          color: view.available
-                              ? HyprColors.text
-                              : HyprColors.text,
-                          fontSize: HyprTypography.size(12),
-                        ),
-                        decoration: InputDecoration(
-                          isDense: true,
-                          suffixText: 'K',
-                          suffixStyle: HyprTypography.compactMono.copyWith(
-                            color: HyprColors.textFaint,
-                            fontSize: HyprTypography.size(11),
-                          ),
-                          filled: true,
-                          fillColor: Colors.black.withValues(alpha: 0.16),
-                          border: _inputBorder(HyprColors.popupStroke),
-                          enabledBorder: _inputBorder(HyprColors.popupStroke),
-                          focusedBorder: _inputBorder(HyprColors.accentSoft),
-                          disabledBorder: _inputBorder(
-                            HyprColors.popupStroke.withValues(alpha: 0.45),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 9,
+        SettingsCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Night light',
+                          style: HyprInstrumentText.body.copyWith(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    HyprCommandButton(
-                      label: 'Apply',
-                      onPressed: _applyTemperature,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 8,
-                      ),
-                      constraints: const BoxConstraints(minHeight: 34),
-                      textStyle: HyprTypography.compactMonoStrong.copyWith(
-                        fontSize: HyprTypography.size(10.5),
-                      ),
-                    ),
-                    const Spacer(),
-                    HyprCommandButton(
-                      label: view.buttonLabel,
-                      onPressed: () => ref
-                          .read(nightLightControllerProvider.notifier)
-                          .setEnabled(enabled: !view.enabled),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 8,
-                      ),
-                      constraints: const BoxConstraints(minHeight: 34),
-                      textStyle: HyprTypography.compactMonoStrong.copyWith(
-                        fontSize: HyprTypography.size(10.5),
-                      ),
-                    ),
-                  ],
-                ),
-                if (detail != null) ...<Widget>[
-                  const SizedBox(height: 10),
-                  Text(
-                    detail,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: HyprTypography.popRow.copyWith(
-                      color: _localError == null
-                          ? HyprColors.textFaint
-                          : HyprColors.danger,
-                      fontSize: HyprTypography.size(11),
+                        const SizedBox(height: 2),
+                        Text(
+                          view.available
+                              ? 'hyprsunset ${view.enabled ? 'active' : 'ready'}'
+                              : 'hyprsunset unavailable',
+                          style: HyprInstrumentText.body.copyWith(
+                            color: HyprInstrumentColors.secondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  HyprBadge.text(
+                    label: view.badgeLabel,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    color: Colors.black.withValues(alpha: 0.12),
+                    borderColor: HyprInstrumentColors.border
+                        .withValues(alpha: .3)
+                        .withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(5),
+                    textColor: view.available && view.enabled
+                        ? HyprColors.accent
+                        : HyprInstrumentColors.secondary,
+                    style: HyprInstrumentText.meta.copyWith(fontSize: 12),
+                  ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: <Widget>[
+                  SizedBox(
+                    width: 118,
+                    child: TextField(
+                      controller: _temperatureController,
+                      focusNode: _temperatureFocus,
+                      enabled: true,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: <TextInputFormatter>[
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
+                      onSubmitted: (_) => _applyTemperature(),
+                      style: HyprInstrumentText.meta.copyWith(
+                        color: view.available
+                            ? HyprInstrumentColors.text
+                            : HyprInstrumentColors.text,
+                        fontSize: HyprTypography.size(12),
+                      ),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        suffixText: 'K',
+                        suffixStyle: HyprInstrumentText.meta.copyWith(
+                          color: HyprInstrumentColors.secondary,
+                          fontSize: 12,
+                        ),
+                        filled: true,
+                        fillColor: Colors.black.withValues(alpha: 0.16),
+                        border: _inputBorder(
+                          HyprInstrumentColors.border.withValues(alpha: .3),
+                        ),
+                        enabledBorder: _inputBorder(
+                          HyprInstrumentColors.border.withValues(alpha: .3),
+                        ),
+                        focusedBorder: _inputBorder(HyprColors.accentSoft),
+                        disabledBorder: _inputBorder(
+                          HyprInstrumentColors.border
+                              .withValues(alpha: .3)
+                              .withValues(alpha: 0.45),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 9,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  HyprCommandButton(
+                    label: 'Apply',
+                    onPressed: _applyTemperature,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    constraints: const BoxConstraints(minHeight: 34),
+                    textStyle: HyprInstrumentText.meta.copyWith(fontSize: 12),
+                  ),
+                  const Spacer(),
+                  HyprCommandButton(
+                    label: view.buttonLabel,
+                    onPressed: () => ref
+                        .read(nightLightControllerProvider.notifier)
+                        .setEnabled(enabled: !view.enabled),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    constraints: const BoxConstraints(minHeight: 34),
+                    textStyle: HyprInstrumentText.meta.copyWith(fontSize: 12),
+                  ),
+                ],
+              ),
+              if (detail != null) ...<Widget>[
+                const SizedBox(height: 10),
+                Text(
+                  detail,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: HyprInstrumentText.body.copyWith(
+                    color: _localError == null
+                        ? HyprInstrumentColors.secondary
+                        : HyprColors.danger,
+                    fontSize: 12,
+                  ),
+                ),
               ],
-            ),
+            ],
           ),
         ),
         const SizedBox(height: 10),
@@ -274,84 +261,74 @@ class _ScheduleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color contentColor = enabled ? HyprColors.text : HyprColors.textFaint;
+    final Color contentColor = enabled
+        ? HyprInstrumentColors.text
+        : HyprInstrumentColors.secondary;
 
-    return DecoratedBox(
-      decoration: ShapeDecoration(
-        color: Colors.black.withValues(alpha: enabled ? 0.14 : 0.08),
-        shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(9),
-          side: BorderSide(
-            color: HyprColors.popupStroke.withValues(alpha: enabled ? 1 : 0.45),
-          ),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: enabled ? () => onChanged(enabled: !view.enabled) : null,
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          'Schedule',
-                          style: HyprTypography.popRow.copyWith(
-                            color: contentColor,
-                            fontSize: HyprTypography.size(13),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${_formatHour(view.startHour)} - ${_formatHour(view.stopHour)}',
-                          style: HyprTypography.compactMono.copyWith(
-                            color: HyprColors.textFaint,
-                            fontSize: HyprTypography.size(11),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  HyprToggleSwitch(
-                    key: const ValueKey<String>('night-light-schedule-toggle'),
-                    value: view.enabled,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
+    return SettingsCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: enabled ? () => onChanged(enabled: !view.enabled) : null,
+            child: Row(
               children: <Widget>[
                 Expanded(
-                  child: _HourSelect(
-                    key: const ValueKey<String>('night-light-schedule-start'),
-                    label: 'Start',
-                    value: view.startHour,
-                    enabled: enabled,
-                    onChanged: (int value) => onChanged(startHour: value),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Schedule',
+                        style: HyprInstrumentText.body.copyWith(
+                          color: contentColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${_formatHour(view.startHour)} - ${_formatHour(view.stopHour)}',
+                        style: HyprInstrumentText.meta.copyWith(
+                          color: HyprInstrumentColors.secondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _HourSelect(
-                    key: const ValueKey<String>('night-light-schedule-stop'),
-                    label: 'Stop',
-                    value: view.stopHour,
-                    enabled: enabled,
-                    onChanged: (int value) => onChanged(stopHour: value),
-                  ),
+                HyprAmberToggle(
+                  key: const ValueKey<String>('night-light-schedule-toggle'),
+                  value: view.enabled,
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _HourSelect(
+                  key: const ValueKey<String>('night-light-schedule-start'),
+                  label: 'Start',
+                  value: view.startHour,
+                  enabled: enabled,
+                  onChanged: (int value) => onChanged(startHour: value),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _HourSelect(
+                  key: const ValueKey<String>('night-light-schedule-stop'),
+                  label: 'Stop',
+                  value: view.stopHour,
+                  enabled: enabled,
+                  onChanged: (int value) => onChanged(stopHour: value),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -379,7 +356,9 @@ class _HourSelect extends StatelessWidget {
         shape: RoundedSuperellipseBorder(
           borderRadius: BorderRadius.circular(6),
           side: BorderSide(
-            color: HyprColors.popupStroke.withValues(alpha: enabled ? 1 : 0.45),
+            color: HyprInstrumentColors.border
+                .withValues(alpha: .3)
+                .withValues(alpha: enabled ? 1 : 0.45),
           ),
         ),
       ),
@@ -389,9 +368,9 @@ class _HourSelect extends StatelessWidget {
           children: <Widget>[
             Text(
               label,
-              style: HyprTypography.popRow.copyWith(
-                color: HyprColors.textFaint,
-                fontSize: HyprTypography.size(10.5),
+              style: HyprInstrumentText.body.copyWith(
+                color: HyprInstrumentColors.secondary,
+                fontSize: 12,
               ),
             ),
             const SizedBox(width: 8),
@@ -402,10 +381,12 @@ class _HourSelect extends StatelessWidget {
                   isDense: true,
                   isExpanded: true,
                   dropdownColor: HyprColors.surfaceStrong,
-                  iconEnabledColor: HyprColors.textMuted,
-                  iconDisabledColor: HyprColors.textFaint,
-                  style: HyprTypography.compactMonoStrong.copyWith(
-                    color: enabled ? HyprColors.text : HyprColors.textFaint,
+                  iconEnabledColor: HyprInstrumentColors.secondary,
+                  iconDisabledColor: HyprInstrumentColors.secondary,
+                  style: HyprInstrumentText.meta.copyWith(
+                    color: enabled
+                        ? HyprInstrumentColors.text
+                        : HyprInstrumentColors.secondary,
                     fontSize: HyprTypography.size(11.5),
                   ),
                   onChanged: enabled

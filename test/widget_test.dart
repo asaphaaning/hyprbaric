@@ -2172,8 +2172,18 @@ void main() {
     expect(find.text('Notifications'), findsOneWidget);
     expect(find.text('Audio & Display'), findsOneWidget);
     expect(find.text('Global menu'), findsOneWidget);
-    expect(find.text('Off'), findsNWidgets(2));
-    expect(find.text('On'), findsNWidgets(3));
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is HyprAmberToggle && !widget.value,
+      ),
+      findsNWidgets(2),
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is HyprAmberToggle && widget.value,
+      ),
+      findsNWidgets(3),
+    );
   });
 
   testWidgets('global menu settings names a blocked companion', (
@@ -2406,6 +2416,8 @@ void main() {
     await tester.pump();
     await tester.pump();
 
+    await tester.ensureVisible(find.text('All'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('All'));
     await tester.pump();
 

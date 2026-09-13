@@ -13,20 +13,21 @@ class SettingsVersionFooter extends ConsumerWidget {
         .watch(appStatusProvider)
         .maybeWhen(data: (status) => status.version, orElse: () => '...');
 
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Text(
           'hyprbaric',
-          style: HyprTypography.compactMono.copyWith(
-            color: HyprColors.textFaint,
+          style: HyprInstrumentText.meta.copyWith(
+            color: HyprInstrumentColors.secondary,
             fontWeight: FontWeight.w600,
           ),
         ),
-        const Spacer(),
+        const SizedBox(height: 4),
         Text(
           'v$version',
-          style: HyprTypography.compactMono.copyWith(
-            color: HyprColors.textFaint,
+          style: HyprInstrumentText.meta.copyWith(
+            color: HyprInstrumentColors.secondary,
             fontSize: HyprTypography.size(10),
           ),
         ),

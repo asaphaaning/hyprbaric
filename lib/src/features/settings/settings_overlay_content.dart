@@ -26,7 +26,7 @@ class SettingsOverlayContent extends StatelessWidget {
       child: Row(
         children: <Widget>[
           SettingsSidebar(activeTab: tab, onTabChanged: onTabChanged),
-          const VerticalDivider(width: 1, color: HyprColors.popupStroke),
+          const VerticalDivider(width: 1, color: HyprColors.borderSoft),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(SettingsOverlayLayout.bodyPadding),
