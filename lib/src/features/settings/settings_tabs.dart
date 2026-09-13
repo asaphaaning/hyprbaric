@@ -8,7 +8,7 @@ enum SettingsTab {
   appearance(
     'Appearance',
     'How the bar looks and feels.',
-    Icons.palette_outlined,
+    Icons.desktop_windows_outlined,
   ),
   modules('Modules', 'Show and hide bar modules.', Icons.grid_view_rounded),
   workspaces(
@@ -48,13 +48,13 @@ class SettingsSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 190,
+      width: 176,
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            const SettingsSectionTitle('Bar settings'),
+            const SettingsSectionTitle('Hyprbaric'),
             const SizedBox(height: 14),
             for (final SettingsTab tab in SettingsTab.values)
               SettingsTabButton(
@@ -86,21 +86,21 @@ class SettingsTabButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 5),
+      padding: const EdgeInsets.only(bottom: 8),
       child: HyprActionRow(
         title: tab.label,
         onPressed: onPressed,
         selected: active,
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
-        borderRadius: BorderRadius.circular(8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+        borderRadius: BorderRadius.circular(10),
         hoverColor: HyprColors.hover,
-        selectedColor: context.hyprPalette.fill,
-        selectedBorderColor: context.hyprPalette.accentSoft,
-        selectedBorderWidth: 1.8,
-        titleColor: HyprColors.textMuted,
-        selectedTitleColor: HyprColors.text,
-        titleStyle: HyprTypography.popRow.copyWith(fontWeight: FontWeight.w600),
-        leadingGap: 9,
+        selectedColor: const Color(0x383F4368),
+        selectedBorderColor: HyprInstrumentColors.border,
+        selectedBorderWidth: 1,
+        titleColor: HyprInstrumentColors.secondary,
+        selectedTitleColor: HyprInstrumentColors.text,
+        titleStyle: HyprInstrumentText.body,
+        leadingGap: 12,
         leadingBuilder:
             (
               BuildContext context, {
@@ -108,10 +108,10 @@ class SettingsTabButton extends StatelessWidget {
               required bool selected,
             }) => Icon(
               tab.icon,
-              size: 15,
+              size: 20,
               color: selected
-                  ? context.hyprPalette.accentSoft
-                  : HyprColors.textFaint,
+                  ? HyprInstrumentColors.secondary
+                  : HyprInstrumentColors.secondary,
             ),
       ),
     );
@@ -127,7 +127,7 @@ class SettingsSectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label.toUpperCase(),
-      style: HyprTypography.popTitle.copyWith(color: HyprColors.textFaint),
+      style: HyprInstrumentText.title.copyWith(fontSize: 10, letterSpacing: 2),
     );
   }
 }

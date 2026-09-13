@@ -68,7 +68,7 @@ class SettingsRow extends StatelessWidget {
         color: Colors.black.withValues(alpha: 0.16),
         shape: RoundedSuperellipseBorder(
           borderRadius: BorderRadius.circular(9),
-          side: const BorderSide(color: HyprColors.popupStroke),
+          side: const BorderSide(color: HyprColors.borderSoft),
         ),
       ),
       child: Padding(
@@ -81,17 +81,17 @@ class SettingsRow extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     row.label,
-                    style: HyprTypography.popRow.copyWith(
-                      fontSize: HyprTypography.size(13),
+                    style: HyprInstrumentText.body.copyWith(
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     row.subtitle,
-                    style: HyprTypography.popRow.copyWith(
-                      color: HyprColors.textFaint,
-                      fontSize: HyprTypography.size(11),
+                    style: HyprInstrumentText.body.copyWith(
+                      color: HyprInstrumentColors.secondary,
+                      fontSize: 12,
                     ),
                   ),
                 ],
@@ -101,12 +101,10 @@ class SettingsRow extends StatelessWidget {
               label: row.value,
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               color: Colors.black.withValues(alpha: 0.12),
-              borderColor: HyprColors.popupStroke.withValues(alpha: 0.65),
+              borderColor: HyprColors.borderSoft.withValues(alpha: 0.65),
               borderRadius: BorderRadius.circular(5),
-              textColor: HyprColors.textMuted,
-              style: HyprTypography.compactMonoStrong.copyWith(
-                fontSize: HyprTypography.size(11),
-              ),
+              textColor: HyprInstrumentColors.secondary,
+              style: HyprInstrumentText.meta.copyWith(fontSize: 12),
             ),
           ],
         ),

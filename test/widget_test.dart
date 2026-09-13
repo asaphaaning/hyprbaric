@@ -2181,8 +2181,18 @@ void main() {
     expect(find.text('Notifications'), findsOneWidget);
     expect(find.text('Audio & Display'), findsOneWidget);
     expect(find.text('Global menu'), findsOneWidget);
-    expect(find.text('Off'), findsNWidgets(2));
-    expect(find.text('On'), findsNWidgets(3));
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is HyprAmberToggle && !widget.value,
+      ),
+      findsNWidgets(2),
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is HyprAmberToggle && widget.value,
+      ),
+      findsNWidgets(3),
+    );
   });
 
   testWidgets('global menu settings names a blocked companion', (
@@ -2384,6 +2394,7 @@ void main() {
       120,
       scrollable: find.byType(Scrollable),
     );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Restore defaults'));
     await tester.pump();
 
@@ -2415,6 +2426,8 @@ void main() {
     await tester.pump();
     await tester.pump();
 
+    await tester.ensureVisible(find.text('All'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('All'));
     await tester.pump();
 
@@ -2478,6 +2491,27 @@ void main() {
       dispatcher.intents.map((RustIntent intent) => intent.debugLabel),
       contains('schedule_daily_window:nightLight:true:21:7'),
     );
+
+    final start = find.byKey(
+      const ValueKey<String>('night-light-schedule-start'),
+    );
+    await tester.ensureVisible(start);
+    await tester.pumpAndSettle();
+    await tester.tap(start);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('22:00'),
+      48,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('22:00').last);
+    await tester.pumpAndSettle();
+    expect(
+      dispatcher.intents.map((RustIntent intent) => intent.debugLabel),
+      contains('schedule_daily_window:nightLight:false:22:7'),
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets(

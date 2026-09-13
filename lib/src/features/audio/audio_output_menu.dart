@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../bindings/bindings.dart';
+import '../../widgets/primitives/primitives.dart';
 import 'audio_chrome.dart';
 import 'audio_output_selection.dart' as selection;
 
@@ -33,8 +34,8 @@ class AudioOutputMenu extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(13, 8, 13, 10),
       decoration: const BoxDecoration(
-        color: Color(0xFA15181F),
-        borderRadius: BorderRadius.all(Radius.circular(9)),
+        color: HyprSelectStyle.menuFill,
+        borderRadius: HyprSelectStyle.menuRadius,
         border: Border.fromBorderSide(BorderSide(color: Color(0x557B8190))),
         boxShadow: <BoxShadow>[
           BoxShadow(
