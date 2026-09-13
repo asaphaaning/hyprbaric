@@ -32,6 +32,19 @@ test -x "$appimage"
 appimage_offset=$("$appimage" --appimage-offset)
 test "$appimage_offset" -gt 0
 
+# A generic builder may not have the compositor SDK. Every package must retain
+# the complete companion inputs so the existing runtime rebuild can work.
+require_companion_source() {
+  listing=$1
+  for source in CMakeLists.txt src/main.cpp protocols/appmenu.xml protocols/gtk-shell.xml; do
+    printf '%s\n' "$listing" | grep --fixed-strings --quiet "data/hyprland-appmenu/$source"
+  done
+}
+require_companion_source "$(unsquashfs -offset "$appimage_offset" -ll "$appimage")"
+require_companion_source "$(dpkg-deb --fsys-tarfile "$deb" | bsdtar -tf -)"
+require_companion_source "$(rpm --query --package --list "$rpm_package")"
+require_companion_source "$(bsdtar -tf "$pacman")"
+
 test "$(dpkg-deb --field "$deb" Package)" = "$app_name"
 test "$(dpkg-deb --field "$deb" Version)" = "$package_version"
 deb_dependencies=$(dpkg-deb --field "$deb" Depends)
