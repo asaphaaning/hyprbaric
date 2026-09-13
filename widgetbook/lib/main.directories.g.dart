@@ -1911,6 +1911,17 @@ final directories = <_widgetbook.WidgetbookNode>[
               ),
             ],
           ),
+          _widgetbook.WidgetbookComponent(
+            name: 'SetupGuideOverlay',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Desktop overlay',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_setup_setup_guide_use_cases
+                        .buildSetupDesktopOverlay,
+              ),
+            ],
+          ),
         ],
       ),
       _widgetbook.WidgetbookFolder(

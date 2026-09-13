@@ -1,8 +1,12 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hyprbaric/widget_catalog.dart';
 import 'package:widgetbook_annotation/widgetbook_annotation.dart';
 
 import '../../catalog/catalog_frame.dart';
+import '../settings/settings_demo.dart';
 import 'setup_fixtures.dart';
 
 @UseCase(name: 'Welcome', type: SetupGuideCard, path: '[Widgets]/Setup')
@@ -289,9 +293,11 @@ Widget _guideCard({
   ValueChanged<bool>? onGlobalMenuChanged,
 }) {
   const double width = 980;
-  const double height = 600;
+  const double height = 660;
 
   return SetupGuideCard(
+    step: step,
+    onStepSelected: onStepSelected ?? (_) {},
     width: width,
     height: height,
     preview: SetupGuidePreview(
@@ -361,3 +367,83 @@ Widget _controls({
 void _ignore<T>(T _) {}
 
 void _noop() {}
+
+@UseCase(
+  name: 'Desktop overlay',
+  type: SetupGuideOverlay,
+  path: '[Widgets]/Setup',
+)
+Widget buildSetupDesktopOverlay(BuildContext context) =>
+    const _SetupDesktopOverlay();
+
+/// Exercises the actual positioned overlay over a simulated blurred desktop.
+class _SetupDesktopOverlay extends StatefulWidget {
+  const _SetupDesktopOverlay();
+  @override
+  State<_SetupDesktopOverlay> createState() => _SetupDesktopOverlayState();
+}
+
+class _SetupDesktopOverlayState extends State<_SetupDesktopOverlay> {
+  bool open = true;
+  @override
+  Widget build(BuildContext context) => ProviderScope(
+    overrides: [
+      appearanceControllerProvider.overrideWith(DemoAppearanceController.new),
+      appearanceStatusProvider.overrideWith(
+        (ref) => Stream.value(ref.watch(demoAppearanceProvider)),
+      ),
+      modulesControllerProvider.overrideWith(DemoModulesController.new),
+      modulesStatusProvider.overrideWith(
+        (ref) => Stream.value(ref.watch(demoModulesProvider)),
+      ),
+      workspaceSettingsControllerProvider.overrideWith(
+        _SetupWorkspaceController.new,
+      ),
+      workspaceSettingsStatusProvider.overrideWith(
+        (ref) => Stream.value(ref.watch(_setupWorkspaces)),
+      ),
+    ],
+    child: Scaffold(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          ImageFiltered(
+            imageFilter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Image.asset('assets/wallpaper-demo.png', fit: BoxFit.cover),
+          ),
+          if (open)
+            SetupGuideOverlay(
+              launch: SetupLaunch.manual,
+              onFinished: () => setState(() => open = false),
+              onSkipped: () => setState(() => open = false),
+            )
+          else
+            Center(
+              child: TextButton(
+                onPressed: () => setState(() => open = true),
+                child: const Text('Open setup guide'),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
+final _setupWorkspaces =
+    NotifierProvider<_SetupWorkspaces, WorkspaceSettingsStatus>(
+      _SetupWorkspaces.new,
+    );
+
+class _SetupWorkspaces extends Notifier<WorkspaceSettingsStatus> {
+  @override
+  WorkspaceSettingsStatus build() => SetupFixtures.workspacesRoman;
+  void setStyle(WorkspaceIndicatorStyle style) =>
+      state = state.copyWith(indicatorStyle: style);
+}
+
+class _SetupWorkspaceController extends WorkspaceSettingsController {
+  @override
+  void setIndicatorStyle(WorkspaceIndicatorStyle style) =>
+      ref.read(_setupWorkspaces.notifier).setStyle(style);
+}

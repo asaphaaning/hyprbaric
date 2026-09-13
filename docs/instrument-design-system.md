@@ -27,3 +27,5 @@ Keybinding status messages use an edge-to-edge recessed settings section with a 
 The hue slider’s `HyprInstrumentSliderThumb` is also the standard slider thumb in the shared bar/catalog theme. Opacity and corner radius reuse the same shaded handle while retaining their amount tracks and existing range semantics.
 
 Settings status indicators use `HyprStatusReadout`, a compact `HyprWell` with the shared dark selector fill and uppercase instrument metadata. Active and ready states use the amber switch signal; inactive, warning, and unavailable states retain distinct text colors without colored outlines or button feedback. Capability tiers remain quiet metadata beside the readout.
+
+The setup guide uses the same instrument surface, action-row navigation, headers, tonal settings sections, and ringed keys. Its live preview is contained in the navigation rail. Widgetbook includes the full `SetupGuideOverlay` over a simulated blurred desktop, alongside individual steps. Native input follows the measured card only, and on-demand keyboard focus keeps desktop shortcuts available; the guide no longer captures the entire screen.

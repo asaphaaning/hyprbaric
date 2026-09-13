@@ -1048,7 +1048,7 @@ void main() {
     expect(find.byType(SetupGuideCard), findsOneWidget);
     expect(find.byType(SetupGuidePreview), findsOneWidget);
     expect(find.byType(SetupGuideControls), findsOneWidget);
-    expect(find.text('01 — WELCOME'), findsOneWidget);
+    expect(find.text('SETUP GUIDE · 1 / 5'), findsOneWidget);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -1057,7 +1057,36 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.text('04 — LAYOUT'), findsOneWidget);
+    expect(find.text('SETUP GUIDE · 4 / 5'), findsOneWidget);
+  });
+
+  testWidgets('desktop setup overlay navigates, closes and reopens', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1024, 768);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildSetupDesktopOverlay),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(SetupGuideOverlay), findsOneWidget);
+    await tester.tap(find.text('GET STARTED'));
+    await tester.pumpAndSettle();
+    expect(find.text('SETUP GUIDE · 2 / 5'), findsOneWidget);
+    await tester.tap(find.text('CONTINUE'));
+    await tester.pumpAndSettle();
+    expect(find.text('SETUP GUIDE · 3 / 5'), findsOneWidget);
+    await tester.tap(find.byTooltip('Close setup guide'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SetupGuideOverlay), findsNothing);
+    await tester.tap(find.text('Open setup guide'));
+    await tester.pumpAndSettle();
+    expect(find.text('SETUP GUIDE · 1 / 5'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('interactive setup story advances through the real sequence', (
@@ -1075,7 +1104,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('01 — WELCOME'), findsOneWidget);
+    expect(find.text('SETUP GUIDE · 1 / 5'), findsOneWidget);
 
     final SetupGuideControls controls = tester.widget<SetupGuideControls>(
       find.byType(SetupGuideControls),
@@ -1083,7 +1112,7 @@ void main() {
     controls.onNext();
     await tester.pumpAndSettle();
 
-    expect(find.text('02 — TRANSPARENCY'), findsOneWidget);
+    expect(find.text('SETUP GUIDE · 2 / 5'), findsOneWidget);
 
     tester
         .widget<SetupGuideControls>(find.byType(SetupGuideControls))

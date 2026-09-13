@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../bindings/bindings.dart';
+import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
+import '../settings/settings_primitives.dart';
 import 'setup_guide_state.dart';
 import 'setup_guide_style.dart';
 
-/// The copy, controls, progress, and navigation pane of the v6 guide.
+/// The current setup step composed from shared instrument controls.
 class SetupGuideControls extends StatelessWidget {
   const SetupGuideControls({
     super.key,
@@ -49,62 +51,74 @@ class SetupGuideControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final int index = SetupStep.sequence.indexOf(step);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(34, 26, 40, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            '${(index + 1).toString().padLeft(2, '0')} — ${step.label.toUpperCase()}',
-            style: setupMono(size: 9.5, spacing: 1.6),
-          ),
-          const SizedBox(height: 18),
-          Text(_title(step), style: SetupGuideTypography.stepTitle),
-          const SizedBox(height: 12),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 365),
-            child: Text(
-              _subtitle(step),
-              style: SetupGuideTypography.stepSubtitle,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SettingsSection(
+          tone: SettingsTone.slate,
+          child: HyprInstrumentHeader(
+            title: step.label,
+            icon: Icon(setupStepIcon(step)),
+            subtitle:
+                'SETUP GUIDE · ${index + 1} / ${SetupStep.sequence.length}',
+            trailing: IconButton(
+              tooltip: 'Close setup guide',
+              onPressed: onSkip,
+              icon: const Icon(Icons.close_rounded, size: 18),
+              color: HyprInstrumentColors.secondary,
             ),
           ),
-          const SizedBox(height: 26),
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 260),
-              switchInCurve: const Cubic(.2, .9, .25, 1),
-              child: SingleChildScrollView(
-                key: ValueKey<SetupStep>(step),
-                padding: const EdgeInsets.only(right: 4, bottom: 2),
-                child: _controls(context),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            key: ValueKey<SetupStep>(step),
+            child: SettingsSection(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    _title(step),
+                    style: HyprInstrumentText.body.copyWith(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    _subtitle(step),
+                    style: HyprInstrumentText.meta.copyWith(fontSize: 13),
+                  ),
+                  const SizedBox(height: 28),
+                  _controls(context),
+                ],
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(top: 24, bottom: 22),
-            child: Row(
-              children: <Widget>[
-                _Progress(active: step, onSelected: onStepSelected),
-                const Spacer(),
-                SetupGuideButton(
-                  label: index == 0 ? 'Skip' : 'Back',
-                  onPressed: index == 0 ? onSkip : onBack,
-                ),
-                const SizedBox(width: 17),
-                SetupGuideButton(
-                  label: index == SetupStep.sequence.length - 1
-                      ? 'Finish'
-                      : index == 0
-                      ? 'Get started'
-                      : 'Continue',
-                  kind: SetupGuideButtonKind.primary,
-                  onPressed: onNext,
-                ),
-              ],
-            ),
+        ),
+        SettingsSection(
+          tone: SettingsTone.well,
+          child: Row(
+            children: [
+              _Progress(active: step, onSelected: onStepSelected),
+              const Spacer(),
+              SetupGuideButton(
+                label: index == 0 ? 'Skip' : 'Back',
+                onPressed: index == 0 ? onSkip : onBack,
+              ),
+              const SizedBox(width: 10),
+              SetupGuideButton(
+                label: index == SetupStep.sequence.length - 1
+                    ? 'Finish'
+                    : index == 0
+                    ? 'Get started'
+                    : 'Continue',
+                kind: SetupGuideButtonKind.primary,
+                onPressed: onNext,
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -412,7 +426,6 @@ class _ChoiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color accent = context.setupGuideAccent;
     return HyprInteractionRegion(
       semanticLabel: title,
       semanticToggled: selected,
@@ -423,32 +436,20 @@ class _ChoiceCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(13),
-            gradient: selected
-                ? LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: <Color>[
-                      Color.lerp(const Color(0xFF343740), accent, .20)!,
-                      Color.lerp(const Color(0xFF292B33), accent, .14)!,
-                    ],
-                  )
-                : LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: <Color>[
-                      state.hovered
-                          ? const Color(0xFF484A54)
-                          : SetupGuideColors.faceTop,
-                      state.hovered
-                          ? const Color(0xFF353740)
-                          : SetupGuideColors.faceBottom,
-                    ],
-                  ),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                state.hovered
+                    ? const Color(0xFF3A4050)
+                    : const Color(0xFF303440),
+                const Color(0xFF171B23),
+              ],
+            ),
             border: Border.all(
               color: selected
-                  ? accent.withValues(alpha: .72)
-                  : const Color(0x59000000),
-              width: selected ? 2.5 : 1,
+                  ? const Color(0xB08F7542)
+                  : const Color(0x404B5264),
             ),
             boxShadow: <BoxShadow>[
               const BoxShadow(
@@ -591,28 +592,22 @@ class _ControlWell extends StatelessWidget {
   final Widget trailing;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 18, 16),
-      decoration: setupWell(),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(title, style: SetupGuideTypography.rowTitle),
-                const SizedBox(height: 5),
-                Text(subtitle, style: SetupGuideTypography.cardSubtitle),
-              ],
-            ),
-          ),
-          const SizedBox(width: 20),
-          trailing,
-        ],
+  Widget build(BuildContext context) => HyprWell(
+    padding: const EdgeInsets.all(16),
+    color: const Color(0x900B0E14),
+    borderRadius: BorderRadius.circular(10),
+    borderColor: const Color(0x304F596F),
+    child: LayoutBuilder(
+      builder: (context, constraints) => SettingsField(
+        label: title,
+        subtitle: subtitle,
+        trailing: constraints.maxWidth >= 440 ? trailing : null,
+        child: constraints.maxWidth < 440
+            ? Align(alignment: Alignment.centerRight, child: trailing)
+            : null,
       ),
-    );
-  }
+    ),
+  );
 }
 
 class _Value extends StatelessWidget {
@@ -730,70 +725,20 @@ class _Segmented extends StatelessWidget {
   final List<_SegmentOption> options;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: setupWell(radius: 8),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: options
-            .map(
-              (_SegmentOption option) => Semantics(
-                button: true,
-                label: option.label,
-                selected: option.selected,
-                child: GestureDetector(
-                  onTap: option.onPressed,
-                  child: Container(
-                    height: 28,
-                    padding: const EdgeInsets.symmetric(horizontal: 11),
-                    alignment: Alignment.center,
-                    decoration: option.selected
-                        ? BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: <Color>[
-                                Color.lerp(
-                                  const Color(0xFF40434C),
-                                  context.setupGuideAccent,
-                                  .26,
-                                )!,
-                                Color.lerp(
-                                  const Color(0xFF30323A),
-                                  context.setupGuideAccent,
-                                  .18,
-                                )!,
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(6),
-                            boxShadow: const <BoxShadow>[
-                              BoxShadow(
-                                color: Color(0x29FFFFFF),
-                                offset: Offset(0, 1),
-                                blurStyle: BlurStyle.inner,
-                              ),
-                            ],
-                          )
-                        : null,
-                    child: Text(
-                      option.label,
-                      style: setupMono(
-                        color: option.selected
-                            ? const Color(0xFFE2E3E8)
-                            : SetupGuideColors.textFaint,
-                        size: 9,
-                        spacing: .4,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            )
-            .toList(growable: false),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      for (final option in options)
+        Padding(
+          padding: const EdgeInsets.only(left: 6),
+          child: SettingsChoice(
+            label: option.label,
+            selected: option.selected,
+            onPressed: option.onPressed,
+          ),
+        ),
+    ],
+  );
 }
 
 class _Progress extends StatelessWidget {

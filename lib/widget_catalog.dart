@@ -211,12 +211,15 @@ export 'src/features/settings/settings_tabs.dart'
 export 'src/features/settings/workspaces_settings_panel.dart'
     show WorkspacesSettingsPanel;
 export 'src/features/setup/setup_guide_controls.dart' show SetupGuideControls;
-export 'src/features/setup/setup_guide_overlay.dart' show SetupGuideCard;
+export 'src/features/setup/setup_guide_overlay.dart'
+    show SetupGuideCard, SetupGuideOverlay;
 export 'src/features/setup/setup_guide_preview.dart' show SetupGuidePreview;
 export 'src/features/setup/setup_guide_state.dart'
     show SetupLaunch, SetupStep, setupGuideAutomaticHostProvider;
 export 'src/features/tray/tray_menu_panel.dart' show TrayMenuPanel;
 export 'src/features/tray/tray_strip.dart' show TrayStrip;
+export 'src/features/workspaces/workspace_controller.dart'
+    show WorkspaceSettingsController, workspaceSettingsControllerProvider;
 export 'src/hyprbaric.dart' show Hyprbaric;
 export 'src/state/appearance.dart' show defaultAppearanceStatus;
 export 'src/state/monitor_workspace.dart' show MonitorWorkspaceResolution;

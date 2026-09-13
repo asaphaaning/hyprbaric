@@ -56,6 +56,123 @@ void main() {
     expect(find.byKey(const ValueKey<String>('setup-guide')), findsOneWidget);
   });
 
+  for (final (size, cardSize) in [
+    (const Size(1200, 800), const Size(980, 660)),
+    (const Size(3840, 1720), const Size(980, 660)),
+    (const Size(640, 480), const Size(592, 440)),
+  ]) {
+    testWidgets('complete setup overlay has visible centered bounds at $size', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(size);
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            setupGuideAutomaticHostProvider.overrideWithValue(true),
+            setupStatusProvider.overrideWith(
+              (_) =>
+                  Stream.value(const SetupStatus(state: SetupState.required)),
+            ),
+          ],
+          child: _surface(const SetupGuideHost()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final card = find.byKey(const ValueKey<String>('setup-guide'));
+      expect(tester.getRect(card).center, size.center(Offset.zero));
+      expect(tester.getSize(card), cardSize);
+      expect(find.byTooltip('Close setup guide').hitTestable(), findsOneWidget);
+      await tester.tap(find.byTooltip('Close setup guide'));
+      await tester.pumpAndSettle();
+      expect(card, findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets(
+    'setup releases keyboard while unlaid out and recovers after resize',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+      final modes = <NativeLayerShellKeyboardMode>[];
+      const regionChannel = BasicMessageChannel<Object?>(
+        'dev.flutter.pigeon.hyprbaric.NativeLayerShellHostApi.setRegion',
+        NativeLayerShellHostApi.pigeonChannelCodec,
+      );
+      final regions = <NativeLayerShellRegionRequest>[];
+      tester.binding.defaultBinaryMessenger.setMockMessageHandler(
+        regionChannel.name,
+        (message) async {
+          final arguments =
+              regionChannel.codec.decodeMessage(message) as List<Object?>;
+          regions.add(arguments.single! as NativeLayerShellRegionRequest);
+          return regionChannel.codec.encodeMessage(<Object?>[null]);
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMessageHandler(
+          regionChannel.name,
+          null,
+        ),
+      );
+
+      tester.binding.defaultBinaryMessenger.setMockMessageHandler(
+        _keyboardModeChannel.name,
+        (message) async {
+          final arguments =
+              _keyboardModeChannel.codec.decodeMessage(message)
+                  as List<Object?>;
+          modes.add(arguments.single! as NativeLayerShellKeyboardMode);
+          return _keyboardModeChannel.codec.encodeMessage(<Object?>[null]);
+        },
+      );
+      addTearDown(() {
+        tester.binding.defaultBinaryMessenger.setMockMessageHandler(
+          _keyboardModeChannel.name,
+          null,
+        );
+        return tester.binding.setSurfaceSize(null);
+      });
+      try {
+        await tester.binding.setSurfaceSize(const Size(1200, 800));
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              setupGuideAutomaticHostProvider.overrideWithValue(true),
+              setupStatusProvider.overrideWith(
+                (_) =>
+                    Stream.value(const SetupStatus(state: SetupState.required)),
+              ),
+            ],
+            child: _surface(const SetupGuideHost()),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(modes.last, NativeLayerShellKeyboardMode.onDemand);
+        await tester.binding.setSurfaceSize(const Size(200, 100));
+        await tester.pumpAndSettle();
+        expect(find.byTooltip('Close setup guide'), findsNothing);
+        expect(modes.last, NativeLayerShellKeyboardMode.none);
+        expect(regions.last.passiveRegions, isEmpty);
+        expect(regions.every((region) => !region.captureAllClicks), isTrue);
+        await tester.binding.setSurfaceSize(const Size(1200, 800));
+        await tester.pumpAndSettle();
+        expect(
+          find.byTooltip('Close setup guide').hitTestable(),
+          findsOneWidget,
+        );
+        expect(modes.last, NativeLayerShellKeyboardMode.onDemand);
+        await tester.tap(find.byTooltip('Close setup guide'));
+        await tester.pumpAndSettle();
+        expect(modes.last, NativeLayerShellKeyboardMode.none);
+        expect(modes, isNot(contains(NativeLayerShellKeyboardMode.exclusive)));
+        expect(tester.takeException(), isNull);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    },
+  );
+
   testWidgets('required setup opens once on the automatic host', (
     WidgetTester tester,
   ) async {
@@ -131,57 +248,55 @@ void main() {
     expect(openingCount, 0);
   });
 
-  testWidgets('guide preserves the v6 split geometry and control vocabulary', (
-    WidgetTester tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets(
+    'guide uses the instrument shell and keeps its control vocabulary',
+    (WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          setupGuideAutomaticHostProvider.overrideWithValue(true),
-          setupStatusProvider.overrideWith(
-            (_) => Stream<SetupStatus>.value(
-              const SetupStatus(state: SetupState.required),
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            setupGuideAutomaticHostProvider.overrideWithValue(true),
+            setupStatusProvider.overrideWith(
+              (_) => Stream<SetupStatus>.value(
+                const SetupStatus(state: SetupState.required),
+              ),
             ),
-          ),
-        ],
-        child: _surface(const SetupGuideHost()),
-      ),
-    );
-    await tester.pumpAndSettle();
+          ],
+          child: _surface(const SetupGuideHost()),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    final Finder card = find.byKey(const ValueKey<String>('setup-guide'));
-    final Finder preview = find.byKey(
-      const ValueKey<String>('setup-guide-preview'),
-    );
-    expect(tester.getSize(card), const Size(980, 600));
-    expect(tester.getSize(preview), const Size(441, 600));
-    expect(find.text('LIVE PREVIEW'), findsNothing);
-    expect(
-      find.byKey(const ValueKey<String>('setup-guide-seam')),
-      findsOneWidget,
-    );
+      final Finder card = find.byKey(const ValueKey<String>('setup-guide'));
+      final Finder preview = find.byKey(
+        const ValueKey<String>('setup-guide-preview'),
+      );
+      expect(tester.getSize(card), const Size(980, 660));
+      expect(tester.getSize(preview), const Size(232, 185));
+      expect(find.text('LIVE PREVIEW'), findsOneWidget);
+      expect(find.byTooltip('Close setup guide'), findsOneWidget);
 
-    await tester.tap(find.text('GET STARTED'));
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(const ValueKey<String>('setup-guide-amount-slider')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey<String>('setup-guide-hue-slider')),
-      findsNothing,
-    );
+      await tester.tap(find.text('GET STARTED'));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey<String>('setup-guide-amount-slider')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('setup-guide-hue-slider')),
+        findsNothing,
+      );
 
-    await tester.tap(find.text('CONTINUE'));
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(const ValueKey<String>('setup-guide-hue-slider')),
-      findsOneWidget,
-    );
-  });
+      await tester.tap(find.text('CONTINUE'));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey<String>('setup-guide-hue-slider')),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('escape skips the guide from any step', (
     WidgetTester tester,
@@ -393,6 +508,17 @@ void main() {
       await controller.releaseKeyboard('setup-guide');
 
       expect(modes, <String>['exclusive', 'exclusive', 'none']);
+
+      modes.clear();
+      await controller.claimKeyboard(
+        'setup-guide',
+        mode: LayerShellKeyboardMode.onDemand,
+      );
+      await controller.claimKeyboard('settings-modal');
+      await controller.releaseKeyboard('settings-modal');
+      expect(modes, ['onDemand', 'exclusive', 'onDemand']);
+      await controller.releaseKeyboard('setup-guide');
+      expect(modes.last, 'none');
     } finally {
       // Invariants are verified before tearDowns run, so the platform
       // override must be restored in the body itself.
@@ -416,7 +542,7 @@ void main() {
     for (final TextStyle role in roles) {
       expect(
         role.fontFamily,
-        anyOf(HyprTypography.uiFamily, HyprTypography.monoFamily),
+        anyOf(HyprInstrumentText.body.fontFamily, HyprTypography.monoFamily),
         reason: 'roles must not hardcode a family literal',
       );
       expect(role.fontSize, isNotNull);

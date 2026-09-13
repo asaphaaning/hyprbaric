@@ -8,15 +8,17 @@ import '../../bindings/bindings.dart';
 import '../../layer_shell_controller.dart';
 import '../../layer_shell_hit_region.dart';
 import '../../state/providers.dart';
+import '../../widgets/hypr_surface.dart';
+import '../../widgets/primitives/primitives.dart';
 import 'setup_guide_controls.dart';
 import 'setup_guide_preview.dart';
 import 'setup_guide_state.dart';
 import 'setup_guide_style.dart';
 
-/// The split-stage setup guide from the v6 product reference.
+/// The setup journey in the shared instrument shell.
 ///
 /// The surrounding desktop stays transparent; Hyprland owns its blur. The
-/// full-surface native input region still keeps the guide modal.
+/// native input region follows the laid-out card, with keyboard focus on click.
 class SetupGuideOverlay extends ConsumerStatefulWidget {
   const SetupGuideOverlay({
     super.key,
@@ -48,6 +50,7 @@ class _SetupGuideOverlayState extends ConsumerState<SetupGuideOverlay> {
     145,
   ];
 
+  final GlobalKey _cardKey = GlobalKey(debugLabel: 'setup-guide-bounds');
   final FocusNode _focusNode = FocusNode(debugLabel: 'setup-guide');
   late final LayerShellController _layerShellController;
   late final LayerShellRegionManager _regionManager;
@@ -59,23 +62,6 @@ class _SetupGuideOverlayState extends ConsumerState<SetupGuideOverlay> {
     super.initState();
     _layerShellController = ref.read(layerShellControllerProvider);
     _regionManager = ref.read(layerShellRegionManagerProvider);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-
-      _focusNode.requestFocus();
-      unawaited(_layerShellController.claimKeyboard(_regionOwner));
-      unawaited(_updateRegion());
-    });
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => unawaited(_updateRegion()),
-    );
   }
 
   @override
@@ -96,18 +82,30 @@ class _SetupGuideOverlayState extends ConsumerState<SetupGuideOverlay> {
       return;
     }
 
-    final Size size = MediaQuery.sizeOf(context);
+    final renderObject = _cardKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderBox ||
+        !renderObject.attached ||
+        !renderObject.hasSize ||
+        renderObject.size.isEmpty) {
+      await _regionManager.removePassiveRegions(owner: _regionOwner);
+      await _layerShellController.releaseKeyboard(_regionOwner);
+      return;
+    }
+    final bounds = renderObject.localToGlobal(Offset.zero) & renderObject.size;
+
     await _regionManager.setPassiveRegions(
       owner: _regionOwner,
       regions: <LayerShellMenuRegion>[
-        LayerShellMenuRegion(
-          rect: Offset.zero & size,
-          radius: BorderRadius.zero,
-        ),
+        LayerShellMenuRegion(rect: bounds, radius: BorderRadius.circular(18)),
       ],
       debugLabel: 'setup-guide-open',
     );
 
+    if (!mounted) return;
+    await _layerShellController.claimKeyboard(
+      _regionOwner,
+      mode: LayerShellKeyboardMode.onDemand,
+    );
     if (mounted && !_readyReported) {
       _readyReported = true;
       widget.onReady?.call();
@@ -175,142 +173,89 @@ class _SetupGuideOverlayState extends ConsumerState<SetupGuideOverlay> {
         child: Focus(
           autofocus: true,
           focusNode: _focusNode,
-          child: Center(
-            child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints constraints) {
-                final double width = (constraints.maxWidth - 48).clamp(
-                  640,
-                  980,
-                );
-                final double height = (constraints.maxHeight - 40).clamp(
-                  500,
-                  600,
-                );
-
-                return SetupGuideCard(
-                  width: width,
-                  height: height,
-                  preview: SetupGuidePreview(
-                    step: _step,
-                    appearance: appearance,
-                    workspaces: workspaces,
-                  ),
-                  controls: SetupGuideControls(
-                    step: _step,
-                    appearance: appearance,
-                    workspaces: workspaces,
-                    accentPresets: _accentPresets,
-                    onStepSelected: _go,
-                    onBack: _back,
-                    onNext: _next,
-                    onSkip: widget.onSkipped,
-                    onOpacityPreview: _previewOpacity,
-                    onOpacityCommitted: _setOpacity,
-                    onAccentPreview: _previewAccent,
-                    onAccentCommitted: _setAccent,
-                    onPositionChanged: (AppearancePosition position) {
-                      ref
-                          .read(appearanceControllerProvider.notifier)
-                          .setPosition(position);
-                    },
-                    onWorkspaceStyleChanged: (WorkspaceIndicatorStyle style) {
-                      ref
-                          .read(workspaceSettingsControllerProvider.notifier)
-                          .setIndicatorStyle(style);
-                    },
-                    globalMenuEnabled: ref
-                        .watch(currentModulesProvider)
-                        .isEnabled(ModuleId.globalMenu),
-                    globalMenuIntegration: ref
-                        .watch(globalMenuIntegrationProvider)
-                        .asData
-                        ?.value,
-                    onGlobalMenuChanged: (bool enabled) {
-                      ref
-                          .read(modulesControllerProvider.notifier)
-                          .setEnabled(ModuleId.globalMenu, enabled: enabled);
-                    },
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The split-stage chassis that pairs the live preview with its controls.
-///
-/// The overlay owns the compositor plumbing; this card owns the layout, so the
-/// catalog can present the guide without a layer-shell surface.
-class SetupGuideCard extends StatelessWidget {
-  const SetupGuideCard({
-    super.key,
-    required this.width,
-    required this.height,
-    required this.preview,
-    required this.controls,
-  });
-
-  final double width;
-  final double height;
-  final Widget preview;
-  final Widget controls;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      key: const ValueKey<String>('setup-guide'),
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0xE0000000),
-            blurRadius: 90,
-            spreadRadius: -30,
-            offset: Offset(0, 42),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: SetupGuideColors.chassis,
-            border: Border.all(color: const Color(0x80000000)),
-          ),
           child: Stack(
             fit: StackFit.expand,
-            children: <Widget>[
-              Positioned(
-                left: width * .45,
-                top: 0,
-                right: 0,
-                bottom: 0,
-                child: controls,
-              ),
-              Positioned(
-                left: 0,
-                top: 0,
-                width: width * .45,
-                bottom: 0,
-                child: ClipPath(
-                  key: const ValueKey<String>('setup-guide-preview'),
-                  clipper: const SetupStageClipper(),
-                  child: preview,
-                ),
-              ),
-              IgnorePointer(
-                child: CustomPaint(
-                  key: const ValueKey<String>('setup-guide-seam'),
-                  painter: SetupSeamPainter(
-                    split: .45,
-                    accent: context.setupGuideAccent,
-                  ),
+            children: [
+              const ColoredBox(color: Colors.transparent),
+              Center(
+                child: LayoutBuilder(
+                  builder: (BuildContext context, BoxConstraints constraints) {
+                    WidgetsBinding.instance.addPostFrameCallback(
+                      (_) => unawaited(_updateRegion()),
+                    );
+                    if (constraints.maxWidth < 560 ||
+                        constraints.maxHeight < 320) {
+                      return const SizedBox.shrink();
+                    }
+                    final double width = (constraints.maxWidth - 48).clamp(
+                      0,
+                      980,
+                    );
+                    final double height = (constraints.maxHeight - 40).clamp(
+                      0,
+                      660,
+                    );
+
+                    return SizedBox(
+                      key: _cardKey,
+                      width: width,
+                      height: height,
+                      child: SetupGuideCard(
+                        width: width,
+                        height: height,
+                        step: _step,
+                        onStepSelected: _go,
+                        preview: SetupGuidePreview(
+                          step: _step,
+                          appearance: appearance,
+                          workspaces: workspaces,
+                        ),
+                        controls: SetupGuideControls(
+                          step: _step,
+                          appearance: appearance,
+                          workspaces: workspaces,
+                          accentPresets: _accentPresets,
+                          onStepSelected: _go,
+                          onBack: _back,
+                          onNext: _next,
+                          onSkip: widget.onSkipped,
+                          onOpacityPreview: _previewOpacity,
+                          onOpacityCommitted: _setOpacity,
+                          onAccentPreview: _previewAccent,
+                          onAccentCommitted: _setAccent,
+                          onPositionChanged: (AppearancePosition position) {
+                            ref
+                                .read(appearanceControllerProvider.notifier)
+                                .setPosition(position);
+                          },
+                          onWorkspaceStyleChanged:
+                              (WorkspaceIndicatorStyle style) {
+                                ref
+                                    .read(
+                                      workspaceSettingsControllerProvider
+                                          .notifier,
+                                    )
+                                    .setIndicatorStyle(style);
+                              },
+                          globalMenuEnabled: ref
+                              .watch(currentModulesProvider)
+                              .isEnabled(ModuleId.globalMenu),
+                          globalMenuIntegration: ref
+                              .watch(globalMenuIntegrationProvider)
+                              .asData
+                              ?.value,
+                          onGlobalMenuChanged: (bool enabled) {
+                            ref
+                                .read(modulesControllerProvider.notifier)
+                                .setEnabled(
+                                  ModuleId.globalMenu,
+                                  enabled: enabled,
+                                );
+                          },
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -319,4 +264,137 @@ class SetupGuideCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Settings-style setup chassis with step navigation and a compact live preview.
+///
+/// Both the native overlay and catalog compose this same clipped glass shell.
+class SetupGuideCard extends StatelessWidget {
+  const SetupGuideCard({
+    super.key,
+    required this.width,
+    required this.height,
+    required this.preview,
+    required this.controls,
+    required this.step,
+    required this.onStepSelected,
+  });
+
+  final double width;
+  final double height;
+  final Widget preview;
+  final Widget controls;
+  final SetupStep step;
+  final ValueChanged<SetupStep> onStepSelected;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    key: const ValueKey<String>('setup-guide'),
+    width: width,
+    height: height,
+    child: HyprInstrumentSurface(
+      borderRadius: BorderRadius.circular(18),
+      child: Row(
+        children: [
+          SizedBox(
+            width: width < 700 ? 164 : 232,
+            child: ColoredBox(
+              color: const Color(0x7007090E),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 24, 18, 20),
+                    child: Text(
+                      'HYPRBARIC',
+                      style: HyprInstrumentText.title.copyWith(
+                        fontSize: 10,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      children: [
+                        for (final entry in SetupStep.sequence)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: HyprActionRow(
+                              title: entry.label,
+                              selected: step == entry,
+                              onPressed: () => onStepSelected(entry),
+                              titleStyle: HyprInstrumentText.body.copyWith(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              titleColor: HyprInstrumentColors.secondary,
+                              color: Colors.transparent,
+                              selectedColor: const Color(0x50656895),
+                              borderColor: Colors.transparent,
+                              selectedBorderColor: HyprInstrumentColors.border,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 14,
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                              leadingGap: 12,
+                              leadingBuilder:
+                                  (
+                                    context, {
+                                    required hovered,
+                                    required selected,
+                                  }) => Icon(
+                                    setupStepIcon(entry),
+                                    size: 20,
+                                    color: HyprInstrumentColors.secondary,
+                                  ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (height >= 560 && width >= 700) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+                      child: Text(
+                        'LIVE PREVIEW',
+                        style: HyprInstrumentText.meta.copyWith(
+                          fontSize: 10,
+                          letterSpacing: 1.3,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      key: const ValueKey<String>('setup-guide-preview'),
+                      height: 185,
+                      child: ClipRect(
+                        child: FittedBox(
+                          fit: BoxFit.cover,
+                          child: SizedBox(
+                            width: 400,
+                            height: 340,
+                            child: preview,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  const Padding(
+                    padding: EdgeInsets.all(18),
+                    child: Text(
+                      'Make it yours.',
+                      style: HyprInstrumentText.meta,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const VerticalDivider(width: 1, color: Color(0x457E86B4)),
+          Expanded(child: controls),
+        ],
+      ),
+    ),
+  );
 }

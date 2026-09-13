@@ -6,7 +6,7 @@ import '../../bindings/bindings.dart';
 import 'setup_guide_state.dart';
 import 'setup_guide_style.dart';
 
-/// The image-backed live stage shown in the left half of the v6 guide.
+/// The live wallpaper and bar preview shown in the setup navigation rail.
 class SetupGuidePreview extends StatelessWidget {
   const SetupGuidePreview({
     super.key,
