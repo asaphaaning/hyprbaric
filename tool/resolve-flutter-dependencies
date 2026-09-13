@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+# Resolves every Flutter package that repository-wide analysis traverses.
+set -eu
+
+cd "$(git rev-parse --show-toplevel)"
+
+flutter pub get --enforce-lockfile
+(
+  cd widgetbook
+  flutter pub get --enforce-lockfile
+)
