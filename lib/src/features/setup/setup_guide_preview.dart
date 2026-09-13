@@ -27,14 +27,18 @@ class SetupGuidePreview extends StatelessWidget {
         fit: StackFit.expand,
         children: <Widget>[
           Positioned.fill(
-            child: Image.asset(setupGuideWallpaper, fit: BoxFit.cover),
-          ),
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 34, sigmaY: 34),
-              child: const ColoredBox(color: Color(0x79000000)),
+            child: ClipRect(
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(
+                  sigmaX: 34,
+                  sigmaY: 34,
+                  tileMode: TileMode.clamp,
+                ),
+                child: Image.asset(setupGuideWallpaper, fit: BoxFit.cover),
+              ),
             ),
           ),
+          const Positioned.fill(child: ColoredBox(color: Color(0x79000000))),
           const Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(

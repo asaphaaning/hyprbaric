@@ -98,6 +98,11 @@ GtkWindow *hyprbaric_create_window(GtkApplication *application,
 
 FlView *hyprbaric_create_view(GtkWindow *window, char **dart_entrypoint_args) {
   g_autoptr(FlDartProject) project = fl_dart_project_new();
+  // Impeller GLES can abort on unsupported offscreen framebuffer attachments.
+  // Keep Linux on GPU-backed Skia until that driver compatibility is resolved.
+  fl_dart_project_set_enable_impeller(project, FALSE);
+  g_message("hyprbaric::renderer: defaulting to Skia for Linux "
+            "framebuffer compatibility");
   fl_dart_project_set_dart_entrypoint_arguments(project, dart_entrypoint_args);
 
   FlView *view = fl_view_new(project);
