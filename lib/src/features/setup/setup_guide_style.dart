@@ -6,7 +6,6 @@ import '../../widgets/primitives/hypr_instrument_slider.dart';
 const String setupGuideWallpaper = 'assets/wallpaper-demo.png';
 
 abstract final class SetupGuideColors {
-  static const Color scrim = Color(0xB8000308);
   static const Color text = Color(0xFFF0F1F4);
   static const Color textMuted = Color(0xFF92949C);
   static const Color textFaint = Color(0xFF60636C);
