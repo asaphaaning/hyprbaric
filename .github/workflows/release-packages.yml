@@ -61,7 +61,7 @@ jobs:
           test "$hub_version" = "$app_version"
 
       - name: Resolve Flutter dependencies
-        run: flutter pub get --enforce-lockfile
+        run: ./tool/resolve-flutter-dependencies
 
       - name: Install RINF code generator
         run: cargo install rinf_cli --version 8.10.0 --locked
