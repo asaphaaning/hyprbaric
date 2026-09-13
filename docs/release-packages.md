@@ -35,3 +35,7 @@ installed compositor, falling back to hyprpm. This preserves ABI compatibility
 instead of shipping a plugin compiled for an arbitrary CI compositor. Global
 menus require the matching development headers and CMake or a working hyprpm
 setup; other bar features do not require that toolchain.
+
+The Linux build runs `rinf gen` before Flutter's Dart compilation on every build.
+The CLI is required even if an old bindings directory exists: reusing stale
+protocol definitions after switching branches is not a supported build mode.
