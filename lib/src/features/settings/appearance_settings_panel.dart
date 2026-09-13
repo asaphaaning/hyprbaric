@@ -5,7 +5,6 @@ import '../../bindings/bindings.dart';
 import '../../state/providers.dart';
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
-import 'appearance_preview.dart';
 import 'settings_primitives.dart';
 
 class AppearanceSettingsPanel extends ConsumerStatefulWidget {
@@ -41,7 +40,6 @@ class _AppearanceSettingsPanelState
     return ListView(
       padding: EdgeInsets.zero,
       children: <Widget>[
-        AppearancePreview(status: view),
         SettingsColumns(
           first: SettingsSection(
             title: 'Layout & placement',

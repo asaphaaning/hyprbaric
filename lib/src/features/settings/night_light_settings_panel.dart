@@ -350,68 +350,13 @@ class _HourSelect extends StatelessWidget {
   final ValueChanged<int> onChanged;
 
   @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: ShapeDecoration(
-        color: Colors.black.withValues(alpha: 0.16),
-        shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(6),
-          side: BorderSide(
-            color: HyprInstrumentColors.border
-                .withValues(alpha: .3)
-                .withValues(alpha: enabled ? 1 : 0.45),
-          ),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-        child: Row(
-          children: <Widget>[
-            Text(
-              label,
-              style: HyprInstrumentText.body.copyWith(
-                color: HyprInstrumentColors.secondary,
-                fontSize: 12,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<int>(
-                  value: value,
-                  isDense: true,
-                  isExpanded: true,
-                  dropdownColor: HyprColors.surfaceStrong,
-                  iconEnabledColor: HyprInstrumentColors.secondary,
-                  iconDisabledColor: HyprInstrumentColors.secondary,
-                  style: HyprInstrumentText.meta.copyWith(
-                    color: enabled
-                        ? HyprInstrumentColors.text
-                        : HyprInstrumentColors.secondary,
-                    fontSize: HyprTypography.size(11.5),
-                  ),
-                  onChanged: enabled
-                      ? (int? next) {
-                          if (next != null) {
-                            onChanged(next);
-                          }
-                        }
-                      : null,
-                  items: List<DropdownMenuItem<int>>.generate(
-                    24,
-                    (int hour) => DropdownMenuItem<int>(
-                      value: hour,
-                      child: Text(_formatHour(hour)),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => HyprDropdown<int>(
+    label: label,
+    value: value,
+    values: List<int>.generate(24, (hour) => hour),
+    format: _formatHour,
+    onChanged: enabled ? onChanged : null,
+  );
 }
 
 class _NightLightView {

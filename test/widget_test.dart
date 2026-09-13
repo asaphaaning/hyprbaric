@@ -2482,6 +2482,27 @@ void main() {
       dispatcher.intents.map((RustIntent intent) => intent.debugLabel),
       contains('schedule_daily_window:nightLight:true:21:7'),
     );
+
+    final start = find.byKey(
+      const ValueKey<String>('night-light-schedule-start'),
+    );
+    await tester.ensureVisible(start);
+    await tester.pumpAndSettle();
+    await tester.tap(start);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('22:00'),
+      48,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('22:00').last);
+    await tester.pumpAndSettle();
+    expect(
+      dispatcher.intents.map((RustIntent intent) => intent.debugLabel),
+      contains('schedule_daily_window:nightLight:false:22:7'),
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets(
