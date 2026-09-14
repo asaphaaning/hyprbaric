@@ -67,15 +67,6 @@ Widget buildInteractiveSetupGuide(BuildContext context) {
 }
 
 @UseCase(
-  name: 'Stage — every step',
-  type: SetupGuidePreview,
-  path: '[Building blocks]/Setup',
-)
-Widget buildSetupGuidePreviewSteps(BuildContext context) {
-  return const _SetupGuidePreviewStates();
-}
-
-@UseCase(
   name: 'Controls — every step',
   type: SetupGuideControls,
   path: '[Building blocks]/Setup',
@@ -190,35 +181,6 @@ class _InteractiveSetupGuideStoryState
   }
 }
 
-class _SetupGuidePreviewStates extends StatelessWidget {
-  const _SetupGuidePreviewStates();
-
-  @override
-  Widget build(BuildContext context) {
-    return CatalogCanvas(
-      child: Wrap(
-        spacing: 20,
-        runSpacing: 20,
-        children: <Widget>[
-          for (final SetupStep step in SetupStep.sequence)
-            _LabelledStage(
-              label: step.label,
-              child: SizedBox(
-                width: 320,
-                height: 420,
-                child: SetupGuidePreview(
-                  step: step,
-                  appearance: SetupFixtures.appearanceDefault,
-                  workspaces: SetupFixtures.workspacesRoman,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
 class _SetupGuideControlsStates extends StatelessWidget {
   const _SetupGuideControlsStates();
 
@@ -300,11 +262,6 @@ Widget _guideCard({
     onStepSelected: onStepSelected ?? (_) {},
     width: width,
     height: height,
-    preview: SetupGuidePreview(
-      step: step,
-      appearance: appearance,
-      workspaces: workspaces,
-    ),
     controls: _controls(
       step: step,
       globalMenuEnabled: globalMenuEnabled,

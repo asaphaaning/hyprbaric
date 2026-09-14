@@ -1046,7 +1046,8 @@ void main() {
     await tester.pump();
 
     expect(find.byType(SetupGuideCard), findsOneWidget);
-    expect(find.byType(SetupGuidePreview), findsOneWidget);
+    expect(find.text('LIVE PREVIEW'), findsNothing);
+    expect(find.text('Make it yours.'), findsNothing);
     expect(find.byType(SetupGuideControls), findsOneWidget);
     expect(find.text('SETUP GUIDE · 1 / 5'), findsOneWidget);
 
@@ -1121,7 +1122,7 @@ void main() {
 
     expect(
       tester
-          .widget<SetupGuidePreview>(find.byType(SetupGuidePreview))
+          .widget<SetupGuideControls>(find.byType(SetupGuideControls))
           .appearance
           .opacity,
       30,

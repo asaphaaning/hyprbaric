@@ -298,23 +298,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final Finder card = find.byKey(const ValueKey<String>('setup-guide'));
-      final Finder preview = find.byKey(
-        const ValueKey<String>('setup-guide-preview'),
-      );
       expect(tester.getSize(card), const Size(980, 660));
-      expect(tester.getSize(preview), const Size(232, 185));
-      expect(
-        find.descendant(of: preview, matching: find.byType(BackdropFilter)),
-        findsNothing,
-        reason:
-            'The preview must not sample the window backdrop: this path '
-            'reproduces a fatal Impeller GLES framebuffer error during resize.',
-      );
-      expect(
-        find.descendant(of: preview, matching: find.byType(ImageFiltered)),
-        findsOneWidget,
-      );
-      expect(find.text('LIVE PREVIEW'), findsOneWidget);
+      expect(find.text('LIVE PREVIEW'), findsNothing);
+      expect(find.text('Make it yours.'), findsNothing);
       expect(find.byTooltip('Close setup guide'), findsOneWidget);
 
       await tester.tap(find.text('GET STARTED'));

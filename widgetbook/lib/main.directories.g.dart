@@ -990,17 +990,6 @@ final directories = <_widgetbook.WidgetbookNode>[
               ),
             ],
           ),
-          _widgetbook.WidgetbookComponent(
-            name: 'SetupGuidePreview',
-            useCases: [
-              _widgetbook.WidgetbookUseCase(
-                name: 'Stage — every step',
-                builder:
-                    _hyprbaric_widgetbook_use_cases_setup_setup_guide_use_cases
-                        .buildSetupGuidePreviewSteps,
-              ),
-            ],
-          ),
         ],
       ),
       _widgetbook.WidgetbookFolder(

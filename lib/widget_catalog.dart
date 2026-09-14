@@ -213,7 +213,6 @@ export 'src/features/settings/workspaces_settings_panel.dart'
 export 'src/features/setup/setup_guide_controls.dart' show SetupGuideControls;
 export 'src/features/setup/setup_guide_overlay.dart'
     show SetupGuideCard, SetupGuideOverlay;
-export 'src/features/setup/setup_guide_preview.dart' show SetupGuidePreview;
 export 'src/features/setup/setup_guide_state.dart'
     show SetupLaunch, SetupStep, setupGuideAutomaticHostProvider;
 export 'src/features/tray/tray_menu_panel.dart' show TrayMenuPanel;

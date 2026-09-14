@@ -11,7 +11,6 @@ import '../../state/providers.dart';
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
 import 'setup_guide_controls.dart';
-import 'setup_guide_preview.dart';
 import 'setup_guide_state.dart';
 import 'setup_guide_style.dart';
 
@@ -207,11 +206,6 @@ class _SetupGuideOverlayState extends ConsumerState<SetupGuideOverlay> {
                         height: height,
                         step: _step,
                         onStepSelected: _go,
-                        preview: SetupGuidePreview(
-                          step: _step,
-                          appearance: appearance,
-                          workspaces: workspaces,
-                        ),
                         controls: SetupGuideControls(
                           step: _step,
                           appearance: appearance,
@@ -268,7 +262,7 @@ class _SetupGuideOverlayState extends ConsumerState<SetupGuideOverlay> {
   }
 }
 
-/// Settings-style setup chassis with step navigation and a compact live preview.
+/// Settings-style setup chassis with step navigation and controls.
 ///
 /// Both the native overlay and catalog compose this same clipped glass shell.
 class SetupGuideCard extends StatelessWidget {
@@ -276,7 +270,6 @@ class SetupGuideCard extends StatelessWidget {
     super.key,
     required this.width,
     required this.height,
-    required this.preview,
     required this.controls,
     required this.step,
     required this.onStepSelected,
@@ -284,7 +277,6 @@ class SetupGuideCard extends StatelessWidget {
 
   final double width;
   final double height;
-  final Widget preview;
   final Widget controls;
   final SetupStep step;
   final ValueChanged<SetupStep> onStepSelected;
@@ -354,39 +346,6 @@ class SetupGuideCard extends StatelessWidget {
                             ),
                           ),
                       ],
-                    ),
-                  ),
-                  if (height >= 560 && width >= 700) ...[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
-                      child: Text(
-                        'LIVE PREVIEW',
-                        style: HyprInstrumentText.meta.copyWith(
-                          fontSize: 10,
-                          letterSpacing: 1.3,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      key: const ValueKey<String>('setup-guide-preview'),
-                      height: 185,
-                      child: ClipRect(
-                        child: FittedBox(
-                          fit: BoxFit.cover,
-                          child: SizedBox(
-                            width: 400,
-                            height: 340,
-                            child: preview,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                  const Padding(
-                    padding: EdgeInsets.all(18),
-                    child: Text(
-                      'Make it yours.',
-                      style: HyprInstrumentText.meta,
                     ),
                   ),
                 ],
