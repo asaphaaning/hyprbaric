@@ -95,7 +95,12 @@ class _TrayCell extends StatelessWidget {
             fit: StackFit.expand,
             clipBehavior: Clip.none,
             children: <Widget>[
-              Center(child: _TrayIcon(icon: item.icon)),
+              Center(
+                child: ColorFiltered(
+                  colorFilter: _trayGrayscale,
+                  child: _TrayIcon(icon: item.icon),
+                ),
+              ),
               if (_statusDotColor(item.status) case final Color color)
                 Positioned(
                   right: 1.5,
@@ -119,6 +124,31 @@ class _TrayCell extends StatelessWidget {
     );
   }
 }
+
+// Preserve luminance detail while lifting black to 20% gray on the dark bar.
+// Each RGB channel becomes 0.8 × luminance + 51; alpha stays unchanged.
+const ColorFilter _trayGrayscale = ColorFilter.matrix(<double>[
+  0.17008,
+  0.57216,
+  0.05776,
+  0,
+  51,
+  0.17008,
+  0.57216,
+  0.05776,
+  0,
+  51,
+  0.17008,
+  0.57216,
+  0.05776,
+  0,
+  51,
+  0,
+  0,
+  0,
+  1,
+  0,
+]);
 
 class _TrayIcon extends StatelessWidget {
   const _TrayIcon({required this.icon});
@@ -149,8 +179,6 @@ class _TrayIcon extends StatelessWidget {
           height: 13,
           gaplessPlayback: true,
           filterQuality: FilterQuality.medium,
-          color: tint,
-          colorBlendMode: BlendMode.srcIn,
           errorBuilder: (_, _, _) =>
               Icon(Icons.apps_rounded, size: 13, color: tint),
         );
@@ -174,7 +202,6 @@ class _ThemedTrayIcon extends StatelessWidget {
         width: 13,
         height: 13,
         fallback: fallback,
-        colorFilter: ColorFilter.mode(tint, BlendMode.srcIn),
       );
     }
 
@@ -184,8 +211,6 @@ class _ThemedTrayIcon extends StatelessWidget {
       height: 13,
       fallback: fallback,
       filterQuality: FilterQuality.medium,
-      color: tint,
-      colorBlendMode: BlendMode.srcIn,
       gaplessPlayback: true,
     );
   }
