@@ -6,8 +6,8 @@ use serde::{Deserialize, Deserializer, de};
 
 pub const DEFAULT_OPACITY: u8 = 77;
 pub const DEFAULT_CORNER_RADIUS: u8 = 12;
-/// Violet accent shared with the instrument UI; amber controls stay distinct.
-pub const DEFAULT_ACCENT_HUE: u16 = 275;
+/// Purple-pink default for appearance highlights; semantic colors stay distinct.
+pub const DEFAULT_ACCENT_HUE: u16 = 285;
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]

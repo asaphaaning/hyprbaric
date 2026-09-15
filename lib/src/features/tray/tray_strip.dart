@@ -101,7 +101,8 @@ class _TrayCell extends StatelessWidget {
                   child: _TrayIcon(icon: item.icon),
                 ),
               ),
-              if (_statusDotColor(item.status) case final Color color)
+              if (_statusDotColor(item.status, context.hyprPalette.accentSoft)
+                  case final Color color)
                 Positioned(
                   right: 1.5,
                   bottom: 1.5,
@@ -216,9 +217,9 @@ class _ThemedTrayIcon extends StatelessWidget {
   }
 }
 
-Color? _statusDotColor(TrayItemStatus status) {
+Color? _statusDotColor(TrayItemStatus status, Color accent) {
   return switch (status) {
-    TrayItemStatus.active => HyprColors.accentSoft,
+    TrayItemStatus.active => accent,
     TrayItemStatus.needsAttention => const Color(0xFFE5C96F),
     TrayItemStatus.unknown || TrayItemStatus.passive => null,
   };

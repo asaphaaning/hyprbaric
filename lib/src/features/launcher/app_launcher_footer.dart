@@ -100,7 +100,9 @@ class LauncherKeycap extends StatelessWidget {
             child: Text(
               label,
               style: HyprTypography.compactMonoStrong.copyWith(
-                color: primary ? HyprColors.accentSoft : HyprColors.textMuted,
+                color: primary
+                    ? context.hyprPalette.accentSoft
+                    : HyprColors.textMuted,
                 fontSize: HyprTypography.size(9.5),
                 fontWeight: FontWeight.w600,
                 height: 1,

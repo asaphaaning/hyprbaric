@@ -401,7 +401,9 @@ class _LauncherActionRow extends StatelessWidget {
                 child: Icon(
                   icon,
                   size: 11,
-                  color: primary ? HyprColors.accentSoft : HyprColors.textFaint,
+                  color: primary
+                      ? context.hyprPalette.accentSoft
+                      : HyprColors.textFaint,
                 ),
               ),
             ),
