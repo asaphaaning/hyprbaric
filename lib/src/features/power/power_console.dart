@@ -133,11 +133,7 @@ class PowerReadout extends StatelessWidget {
     alignment: Alignment.centerLeft,
     child: ShaderMask(
       blendMode: BlendMode.srcIn,
-      shaderCallback: (bounds) => const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [Color(0xFFF0D8FF), PowerConsole.pink],
-      ).createShader(bounds),
+      shaderCallback: HyprAmberLight.gradient.createShader,
       child: Text.rich(
         TextSpan(
           children: [
@@ -155,6 +151,7 @@ class PowerReadout extends StatelessWidget {
         style: PowerConsole.value.copyWith(
           fontSize: size,
           fontWeight: FontWeight.w600,
+          shadows: const [Shadow(color: HyprAmberLight.glow, blurRadius: 8)],
           height: 1.1,
         ),
       ),

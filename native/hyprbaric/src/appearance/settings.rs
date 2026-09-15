@@ -91,7 +91,7 @@ mod tests {
         assert!(source.contains("monitor = \"primary\""));
         assert!(source.contains("opacity = 82"));
         assert!(source.contains("corner_radius = 12"));
-        assert!(source.contains("accent_hue = 285"));
+        assert!(source.contains("accent_hue = 218"));
         assert_eq!(next.opacity().as_u8(), 82);
 
         fs::remove_dir_all(root).expect("fixture config should be removed");
@@ -112,7 +112,7 @@ mod tests {
         assert!(source.contains("monitor = \"primary\""));
         assert!(source.contains("opacity = 77"));
         assert!(source.contains("corner_radius = 12"));
-        assert!(source.contains("accent_hue = 285"));
+        assert!(source.contains("accent_hue = 218"));
         assert_eq!(next, Configuration::default());
     }
 

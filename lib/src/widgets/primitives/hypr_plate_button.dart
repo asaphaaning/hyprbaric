@@ -61,7 +61,6 @@ class HyprPlateButton extends StatelessWidget {
               color: HyprPlateFace.ring,
               shape: RoundedSuperellipseBorder(
                 borderRadius: BorderRadius.all(Radius.circular(15)),
-                side: BorderSide(color: Color(0x99000000)),
               ),
             ),
             child: Padding(

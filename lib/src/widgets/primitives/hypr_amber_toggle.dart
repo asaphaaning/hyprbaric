@@ -10,7 +10,7 @@ class HyprAmberToggle extends StatelessWidget {
   final bool value;
 
   /// Warm signal color shared with the owning control's active icon.
-  static const amber = Color(0xFFFFAF32);
+  static const amber = HyprAmberLight.edge;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -32,12 +32,10 @@ class HyprAmberToggle extends StatelessWidget {
         height: 18,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: value
-              ? const Color(0xFFFFF1D8)
-              : HyprInstrumentColors.secondary,
+          color: value ? HyprAmberLight.core : HyprInstrumentColors.secondary,
           border: Border.all(color: value ? amber : const Color(0x484B536E)),
           boxShadow: value
-              ? const [BoxShadow(color: Color(0x88FF9C12), blurRadius: 10)]
+              ? const [BoxShadow(color: HyprAmberLight.glow, blurRadius: 10)]
               : null,
         ),
       ),
