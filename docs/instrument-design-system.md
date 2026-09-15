@@ -27,3 +27,11 @@ Keybinding status messages use an edge-to-edge recessed settings section with a 
 The hue slider’s `HyprInstrumentSliderThumb` is also the standard slider thumb in the shared bar/catalog theme. Opacity and corner radius reuse the same shaded handle while retaining their amount tracks and existing range semantics.
 
 Settings status indicators use `HyprStatusReadout`, a compact `HyprWell` with the shared dark selector fill and uppercase instrument metadata. Active and ready states use the amber switch signal; inactive, warning, and unavailable states retain distinct text colors without colored outlines or button feedback. Capability tiers remain quiet metadata beside the readout.
+
+The setup guide uses the same instrument surface, action-row navigation, headers, tonal settings sections, and ringed keys. Its navigation rail contains only the brand and setup steps; the miniature live preview and tagline have been removed. Widgetbook includes the full `SetupGuideOverlay` over a simulated blurred desktop, alongside individual steps. Native input follows the measured card only, and on-demand keyboard focus keeps desktop shortcuts available; the guide no longer captures the entire screen.
+
+The setup shell does not sample the surrounding window with a `BackdropFilter`. Desktop translucency remains compositor-owned. The Linux runner uses Impeller. Renderer failures must be addressed in the affected rendering path; Skia is not a fallback policy.
+
+The setup overlay paints `HyprColors.desktopBlurCoverage` behind its card: neutral grey at 14/255 alpha, just above the recommended Hyprland `ignore_alpha = 0.05` threshold. Zero-alpha paint cannot activate compositor blur. This faint coverage replaces the old 34% black scrim, ignores pointer events, and disappears with the guide. Settings and setup contribute pixels to the same native layer, so overlapping them does not stack desktop blur filters or change compositor rules. Widgetbook simulates the compositor blur only while its guide is open.
+
+The stock accent hue is violet (`275°`) in Rust configuration, Flutter startup defaults, and Widgetbook. The fallback palette uses the same violet hue for highlights, soft accents, fills, and tinted borders. Amber controls retain their semantic warmth; explicit custom accent hues remain supported.

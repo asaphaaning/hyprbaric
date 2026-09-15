@@ -7,7 +7,7 @@ abstract final class SettingsFixtures {
     monitor: AppearanceMonitorTargetPrimary(),
     opacity: 77,
     cornerRadius: 12,
-    accentHue: 197,
+    accentHue: 275,
   );
 
   static const AppearanceStatus appearanceCustom = AppearanceStatus(

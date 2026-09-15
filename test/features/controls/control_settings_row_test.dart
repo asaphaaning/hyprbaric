@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hyprbaric/src/features/controls/control_settings_row.dart';
+import 'package:hyprbaric/src/widgets/surfaces/hypr_console_colors.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 void main() {
@@ -24,7 +25,7 @@ void main() {
 
     // The gasket is a single flat slab: one solid tone, no gradient and no
     // drop shadow to lift it off the tray.
-    expect(frameDecoration.color, const Color(0xFF16181D));
+    expect(frameDecoration.color, HyprPlateFace.ring);
     expect(frameDecoration.gradient, isNull);
     expect(frameDecoration.shadows, isNull);
 

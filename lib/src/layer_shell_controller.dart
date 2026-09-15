@@ -157,25 +157,37 @@ class LayerShellController {
 
   /// Compositor keyboard claims by owner, scoped to this view.
   ///
-  /// Several overlays (settings, setup guide, launchers, network password)
-  /// need exclusive keyboard while open. Each one claims on open and releases
-  /// on close; the mode stays exclusive until the last claim is released, so
-  /// overlapping overlays cannot strand each other without keyboard access.
-  /// The set lives on the controller because every native view carries its
+  /// Modal pickers request exclusive access; the setup window uses on-demand
+  /// focus so desktop shortcuts remain available. Releasing an exclusive owner
+  /// restores any remaining on-demand claim instead of dropping keyboard input.
+  /// Claims live on the controller because every native view carries its
   /// own keyboard mode on its own channel.
-  final Set<String> _keyboardOwners = <String>{};
+  final Map<String, LayerShellKeyboardMode> _keyboardOwners = {};
 
-  Future<void> claimKeyboard(String owner) {
-    _keyboardOwners.add(owner);
-    return setKeyboardMode(LayerShellKeyboardMode.exclusive);
+  /// Claims keyboard access; exclusive owners take precedence over on-demand.
+  Future<void> claimKeyboard(
+    String owner, {
+    LayerShellKeyboardMode mode = LayerShellKeyboardMode.exclusive,
+  }) {
+    _keyboardOwners[owner] = mode;
+    return setKeyboardMode(_claimedKeyboardMode);
   }
 
   Future<void> releaseKeyboard(String owner) {
+    final previous = _claimedKeyboardMode;
     _keyboardOwners.remove(owner);
-    if (_keyboardOwners.isNotEmpty) {
-      return Future<void>.value();
+    final next = _claimedKeyboardMode;
+    return next == previous ? Future<void>.value() : setKeyboardMode(next);
+  }
+
+  LayerShellKeyboardMode get _claimedKeyboardMode {
+    if (_keyboardOwners.containsValue(LayerShellKeyboardMode.exclusive)) {
+      return LayerShellKeyboardMode.exclusive;
     }
-    return setKeyboardMode(LayerShellKeyboardMode.none);
+    if (_keyboardOwners.containsValue(LayerShellKeyboardMode.onDemand)) {
+      return LayerShellKeyboardMode.onDemand;
+    }
+    return LayerShellKeyboardMode.none;
   }
 
   Future<void> setSize({int? width, int? height}) {
