@@ -29,7 +29,7 @@ const AppearanceStatus defaultAppearanceStatus = AppearanceStatus(
   monitor: AppearanceMonitorTargetPrimary(),
   opacity: 77,
   cornerRadius: 12,
-  accentHue: 197,
+  accentHue: 275,
 );
 
 final appearanceStatusProvider = StreamProvider<AppearanceStatus>(

@@ -118,7 +118,7 @@ class HyprPlateFace {
   );
 
   /// The flat gasket the face is sunk into: one solid slab, no bezel.
-  static const Color ring = Color(0xFF16181D);
+  static const Color ring = Color(0xFF1C1F25);
 
   /// The hairline just inside the face's top border.
   static const Color rimLight = Color(0x1AFFFFFF);

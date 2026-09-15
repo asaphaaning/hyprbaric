@@ -2049,7 +2049,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey<String>('run-setup-guide')));
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.close_rounded), findsNothing);
+    expect(find.byTooltip('Close setup guide'), findsOneWidget);
     expect(find.text('GET STARTED'), findsOneWidget);
     await tester.tap(find.text('GET STARTED'));
     await tester.pumpAndSettle();
@@ -2058,19 +2058,24 @@ void main() {
     // The settings modal closes underneath the guide. Its teardown must not
     // release the guide's still-open keyboard claim.
     expect(keyboardModes, isNotEmpty);
-    expect(
-      keyboardModes,
-      everyElement(NativeLayerShellKeyboardMode.exclusive.name),
-    );
+    expect(keyboardModes.last, NativeLayerShellKeyboardMode.onDemand.name);
     final List<Object?> regions =
         regionRequests.last['regions']! as List<Object?>;
     expect(regions, hasLength(1));
     final Map<String, Object?> guideRegion =
         regions.single! as Map<String, Object?>;
-    expect(guideRegion['x'], 0);
-    expect(guideRegion['y'], 0);
-    expect(guideRegion['w']! as int, greaterThan(40));
-    expect(guideRegion['h']! as int, greaterThan(40));
+    final cardBounds = tester.getRect(
+      find.byKey(const ValueKey<String>('setup-guide')),
+    );
+    expect(guideRegion['x'], cardBounds.left.round());
+    expect(guideRegion['y'], cardBounds.top.round());
+    expect(guideRegion['w'], cardBounds.width.round());
+    expect(guideRegion['h'], cardBounds.height.round());
+    expect(cardBounds.left, greaterThan(0));
+    expect(cardBounds.top, greaterThan(0));
+    await tester.tap(find.byTooltip('Close setup guide'));
+    await tester.pumpAndSettle();
+    expect(keyboardModes.last, NativeLayerShellKeyboardMode.none.name);
     debugDefaultTargetPlatformOverride = null;
   });
 

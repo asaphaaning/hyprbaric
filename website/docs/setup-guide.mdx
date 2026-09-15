@@ -11,6 +11,8 @@ Selecting **Finish** keeps the tried choices and records completion in the user 
 
 If completion cannot be written, the bar toasts the reason and reopens the guide so nothing is lost silently.
 
+The guide uses Hyprland's [layer blur rules](installation.mdx#blur-behind-the-bar) to soften the desktop, including when opened without Settings. A faint neutral backdrop keeps it above the recommended `ignore_alpha = 0.05` threshold without the heavy black dimming overlay. Blur is supplied by the compositor; the guide does not apply another Flutter blur to the desktop. Pointer input outside the guide remains available.
+
 ## Disable the automatic guide
 
 To prevent the guide from ever opening automatically, add this to `config.toml`:
