@@ -39,6 +39,7 @@ class SetupGuideOverlay extends ConsumerStatefulWidget {
 class _SetupGuideOverlayState extends ConsumerState<SetupGuideOverlay> {
   static const String _regionOwner = 'setup-guide';
   static const List<int> _accentPresets = <int>[
+    218,
     285,
     197,
     238,

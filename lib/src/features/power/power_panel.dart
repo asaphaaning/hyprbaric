@@ -347,27 +347,22 @@ class _ChargePainter extends CustomPainter {
         canvas.drawRRect(
           rect,
           Paint()
-            ..color = const Color(0xAAED54FF)
+            ..color = HyprAmberLight.glow
             ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7),
         );
       }
       canvas.drawRRect(
         rect,
         Paint()
-          ..shader = LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: lit
-                ? [
-                    const Color(0xFFFF8DF6),
-                    Color.lerp(
-                      const Color(0xFFEB62F2),
-                      const Color(0xFFAD4AEF),
-                      litCount > 1 ? index / (litCount - 1) : 0,
-                    )!,
-                  ]
-                : [const Color(0xFF293044), const Color(0xFF222A3B)],
-          ).createShader(rect.outerRect),
+          ..shader =
+              (lit
+                      ? HyprAmberLight.gradient
+                      : const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFF293044), Color(0xFF222A3B)],
+                        ))
+                  .createShader(rect.outerRect),
       );
     }
   }
