@@ -71,9 +71,9 @@ class _ProductHeader extends ConsumerWidget {
           DecoratedBox(
             decoration: ShapeDecoration(
               color: context.hyprPalette.fillStrong,
-              shape: RoundedSuperellipseBorder(
+              shape: const RoundedSuperellipseBorder(
                 borderRadius: HyprRadii.cardRadius,
-                side: BorderSide(color: context.hyprPalette.borderSoft),
+                side: BorderSide(color: HyprColors.borderSoft),
               ),
             ),
             child: Padding(

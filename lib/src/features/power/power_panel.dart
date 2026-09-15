@@ -166,7 +166,7 @@ class _Header extends StatelessWidget {
           status?.batteryPresent == true
               ? PowerSymbol.battery
               : PowerSymbol.power,
-          color: PowerConsole.pink,
+          color: HyprInstrumentColors.secondary,
         ),
         subtitle: status?.batteryPresent == true
             ? 'System Power'

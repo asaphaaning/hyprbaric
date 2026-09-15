@@ -184,7 +184,7 @@ class _AppearanceSettingsPanelState
             borderColor: HyprColors.borderSoft,
             foregroundColor: HyprInstrumentColors.secondary,
             hoverForegroundColor: HyprInstrumentColors.text,
-            hoverBorderColor: context.hyprPalette.borderSoft,
+            hoverBorderColor: HyprColors.borderSoft,
             textStyle: HyprInstrumentText.meta.copyWith(fontSize: 12),
           ),
         ),

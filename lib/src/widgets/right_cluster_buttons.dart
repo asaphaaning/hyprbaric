@@ -182,23 +182,25 @@ class NotificationButton extends StatelessWidget {
             ),
           ),
           if (showBadge)
-            const Positioned(
+            Positioned(
               right: 5,
               top: 5,
               child: IgnorePointer(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: HyprColors.accentSoft,
+                    color: context.hyprPalette.accentSoft,
                     shape: BoxShape.circle,
                     boxShadow: <BoxShadow>[
                       BoxShadow(
-                        color: Color(0x6622BFFF),
+                        color: context.hyprPalette.accentSoft.withValues(
+                          alpha: .4,
+                        ),
                         blurRadius: 8,
                         spreadRadius: 0.5,
                       ),
                     ],
                   ),
-                  child: SizedBox.square(dimension: 6),
+                  child: const SizedBox.square(dimension: 6),
                 ),
               ),
             ),

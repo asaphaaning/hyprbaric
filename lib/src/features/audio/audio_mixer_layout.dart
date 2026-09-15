@@ -33,7 +33,7 @@ class AudioMixerHeader extends StatelessWidget {
       ),
       child: HyprInstrumentHeader(
         title: 'Mixer',
-        icon: const AudioMixerIcon(),
+        icon: const AudioMixerIcon(color: AudioMixerColors.secondary),
         trailing: SizedBox(
           width: 174,
           child: AudioOutputSelector(

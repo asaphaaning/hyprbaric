@@ -155,7 +155,9 @@ class _NightLightSettingsPanelState
                         enabledBorder: _inputBorder(
                           HyprInstrumentColors.border.withValues(alpha: .3),
                         ),
-                        focusedBorder: _inputBorder(HyprColors.accentSoft),
+                        focusedBorder: _inputBorder(
+                          HyprInstrumentColors.border,
+                        ),
                         disabledBorder: _inputBorder(
                           HyprInstrumentColors.border
                               .withValues(alpha: .3)

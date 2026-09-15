@@ -62,7 +62,7 @@ class AppLauncherHeader extends StatelessWidget {
                       fontWeight: FontWeight.w400,
                       letterSpacing: -0.16,
                     ),
-                    cursorColor: HyprColors.accent,
+                    cursorColor: context.hyprPalette.accent,
                   ),
                 ),
                 const SizedBox(width: 10),
