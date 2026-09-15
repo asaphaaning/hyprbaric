@@ -33,7 +33,7 @@ const List<SettingsRowData> appearanceRows = <SettingsRowData>[
   ),
   SettingsRowData('Opacity', 'Background transparency.', '55%'),
   SettingsRowData('Corner radius', 'Round the bar edges.', '14px'),
-  SettingsRowData('Accent hue', 'Drives highlights and active states.', '238°'),
+  SettingsRowData('Accent hue', 'Drives highlights and active states.', '285°'),
 ];
 
 const List<SettingsRowData> keybindRows = <SettingsRowData>[];

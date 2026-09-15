@@ -202,7 +202,9 @@ class AppLauncherResultTile extends StatelessWidget {
                   width: 2,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(1),
-                    color: selected ? HyprColors.accent : Colors.transparent,
+                    color: selected
+                        ? context.hyprPalette.accent
+                        : Colors.transparent,
                     boxShadow: selected
                         ? const <BoxShadow>[
                             BoxShadow(color: Color(0x8A16B7F4), blurRadius: 6),
@@ -273,7 +275,7 @@ class AppLauncherIcon extends StatelessWidget {
       height: size,
       padding: padding,
       decoration: ShapeDecoration(
-        color: selected ? HyprColors.accent : HyprColors.fillStrong,
+        color: selected ? context.hyprPalette.accent : HyprColors.fillStrong,
         shadows: const <BoxShadow>[
           BoxShadow(
             color: Color(0x66000000),

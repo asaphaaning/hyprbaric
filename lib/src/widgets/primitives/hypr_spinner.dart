@@ -4,36 +4,37 @@ import '../hypr_surface.dart';
 
 /// The system's indeterminate progress mark.
 ///
-/// Material's [CircularProgressIndicator] reads its colour from the ambient
-/// [ThemeData], which differs between the bar, the catalog and the web embed,
-/// so the same spinner rendered in three places came out three colours. This
-/// pins the colour and stroke to the design tokens and leaves the ambient
-/// theme out of it.
+/// Uses the shared appearance accent unless a semantic color is supplied.
 class HyprSpinner extends StatelessWidget {
   const HyprSpinner({
     super.key,
     this.size = HyprIconSizes.tiny,
-    this.color = HyprColors.accent,
+    this.color,
     this.strokeWidth = 1.5,
   });
 
   /// The compact mark used inline beside a label.
-  const HyprSpinner.inline({Key? key, Color color = HyprColors.accent})
+  const HyprSpinner.inline({Key? key, Color? color})
     : this(key: key, size: HyprIconSizes.tiny, color: color);
 
   /// The standalone mark used to fill an empty panel body.
-  const HyprSpinner.panel({Key? key, Color color = HyprColors.accent})
+  const HyprSpinner.panel({Key? key, Color? color})
     : this(key: key, size: HyprIconSizes.large, color: color, strokeWidth: 2);
 
   final double size;
-  final Color color;
+
+  /// Optional signal color; otherwise uses the current appearance accent.
+  final Color? color;
   final double strokeWidth;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox.square(
       dimension: size,
-      child: CircularProgressIndicator(strokeWidth: strokeWidth, color: color),
+      child: CircularProgressIndicator(
+        strokeWidth: strokeWidth,
+        color: color ?? context.hyprPalette.accent,
+      ),
     );
   }
 }
