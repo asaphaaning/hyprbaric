@@ -19,10 +19,10 @@ abstract final class HyprColors {
   static const Color popoverTop = Color(0x570B0D12);
   static const Color popoverBottom = Color(0x6B07090D);
   static const Color surfaceSoft = Color(0xB80F1A22);
-  static const Color fill = Color(0x10BC15F4);
+  static const Color fill = Color(0x103882F6);
   static const Color hover = Color(0x0FFFFFFF);
   static const Color hoverStrong = Color(0x14FFFFFF);
-  static const Color fillStrong = Color(0x29BC15F4);
+  static const Color fillStrong = Color(0x293882F6);
   static const Color borderOuter = Color(0x84030A10);
   static const Color border = Color(0x52B4D8E8);
 
@@ -41,8 +41,12 @@ abstract final class HyprColors {
   static const Color wellBorder = Color(0x4D000000);
   static const Color wellShadow = Color(0x7A000000);
 
-  static const Color accent = Color(0xFFBC15F4);
-  static const Color accentSoft = Color(0xFFD557FF);
+  /// Electric blue, the default interactive accent.
+  static const Color accent = Color(0xFF3882F6);
+
+  /// Integer appearance hue corresponding to [accent].
+  static const int accentHue = 218;
+  static const Color accentSoft = Color(0xFF77AAFF);
   static const Color text = Color(0xFFE9F0F6);
   static const Color textMuted = Color(0xD0C3CCD5);
   static const Color textFaint = Color(0xA69AA5AF);
@@ -62,4 +66,40 @@ abstract final class HyprColors {
 
   static const Color dangerHover = Color(0x33E16658);
   static const Color dangerHoverSoft = Color(0x26E16658);
+}
+
+/// Blue illumination of the hardware rocker switches.
+abstract final class HyprIllumination {
+  /// The switch's lit track, fading from bright blue into its shaded edge.
+  static const gradient = LinearGradient(
+    colors: [
+      Color(0xFF0070CC),
+      Color(0xFF0063B8),
+      Color(0xFF004D92),
+      Color(0xFF00396F),
+    ],
+    stops: [0, 0.46, 0.78, 1],
+  );
+
+  /// Soft light cast by the illuminated surface.
+  static const glow = Color(0x66138ADB);
+}
+
+/// Warm illumination shared by amber switches and battery readouts.
+abstract final class HyprAmberLight {
+  /// Cream-colored center of the illuminated switch thumb.
+  static const core = Color(0xFFFFF1D8);
+
+  /// Amber edge of the illuminated switch thumb.
+  static const edge = Color(0xFFFFAF32);
+
+  /// Soft amber halo around illuminated surfaces.
+  static const glow = Color(0x88FF9C12);
+
+  /// A lit cream face shading into amber along its lower edge.
+  static const gradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [core, edge],
+  );
 }

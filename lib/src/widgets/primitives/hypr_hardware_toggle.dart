@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/hypr_motion.dart';
+import '../surfaces/hypr_colors.dart';
 
 /// Hardware-style rocker switch: a sunk track with a raised cap that carries a
 /// centre seam, matching the reference `.mini-toggle` / `.wifi-toggle-switch`.
@@ -21,12 +22,6 @@ class HyprHardwareToggle extends StatelessWidget {
   final double capHeight;
 
   static const Color _trackOff = Color(0xFF060709);
-  static const List<Color> _trackOn = <Color>[
-    Color(0xFF0070CC),
-    Color(0xFF0063B8),
-    Color(0xFF004D92),
-    Color(0xFF00396F),
-  ];
   static const Color _seam = Color(0x80A2A5AA);
 
   @override
@@ -40,19 +35,14 @@ class HyprHardwareToggle extends StatelessWidget {
       child: DecoratedBox(
         decoration: ShapeDecoration(
           color: value ? null : _trackOff,
-          gradient: value
-              ? const LinearGradient(
-                  colors: _trackOn,
-                  stops: <double>[0, 0.46, 0.78, 1],
-                )
-              : null,
+          gradient: value ? HyprIllumination.gradient : null,
           shape: const StadiumBorder(),
           // `0 1px 0 oklch(1 0 0 / 0.055)` under the track.
           shadows: <BoxShadow>[
             const BoxShadow(color: Color(0x0EFFFFFF), offset: Offset(0, 1)),
             if (value)
               const BoxShadow(
-                color: Color(0x66138ADB),
+                color: HyprIllumination.glow,
                 blurRadius: 10,
                 spreadRadius: -3,
                 offset: Offset(0, 3),

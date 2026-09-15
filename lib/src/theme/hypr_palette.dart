@@ -16,8 +16,12 @@ class HyprPalette extends ThemeExtension<HyprPalette> {
 
   factory HyprPalette.fromAppearance(AppearanceStatus appearance) {
     final double hue = appearance.accentHue.toDouble();
-    final Color accent = HSLColor.fromAHSL(1, hue, 0.91, 0.52).toColor();
-    final Color accentSoft = HSLColor.fromAHSL(1, hue, 1, 0.67).toColor();
+    final Color accent = appearance.accentHue == HyprColors.accentHue
+        ? HyprColors.accent
+        : HSLColor.fromAHSL(1, hue, 0.91, 0.52).toColor();
+    final Color accentSoft = appearance.accentHue == HyprColors.accentHue
+        ? HyprColors.accentSoft
+        : HSLColor.fromAHSL(1, hue, 1, 0.67).toColor();
     final double surfaceAlpha = appearance.opacity.clamp(20, 100) / 100;
 
     return HyprPalette(

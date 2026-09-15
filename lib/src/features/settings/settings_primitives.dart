@@ -153,9 +153,10 @@ class SettingsChoice extends StatelessWidget {
     selected: selected,
     child: IntrinsicWidth(
       child: HyprWell(
-        padding: const EdgeInsets.all(3),
+        padding: const EdgeInsets.all(4),
         borderRadius: BorderRadius.circular(10),
         color: HyprPlateFace.ring,
+        borderColor: Colors.transparent,
         shadowColor: Colors.transparent,
         child: HyprInteractionRegion(
           semanticLabel: label,
