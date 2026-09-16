@@ -140,8 +140,9 @@ retain their display-height limit and scroll when needed.
 
 Embedded views use CanvasKit's per-view render surfaces within that single engine,
 so differently sized previews cannot crop each other's canvas. The standalone
-Widgetbook keeps its implicit-view renderer.
-Run `node --test website/scripts/flutter-bootstrap.test.mjs` to check the two bootstrap modes.
+Widgetbook keeps its implicit-view renderer. Leaving the landing page parks those
+views; returning home reattaches them instead of adding a new view per card.
+Run `node --test website/scripts/flutter-bootstrap.test.mjs website/scripts/preview-engine.test.mjs` to check the two bootstrap modes and view parking.
 
 ## Architecture
 

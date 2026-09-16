@@ -434,6 +434,8 @@ class RightCluster extends ConsumerWidget {
             LayerShellDropdown(
               controller: clockController,
               menuRadius: BorderRadius.zero,
+              menuWidth: ClockPanel.width,
+              horizontalAnchor: LayerShellDropdownAnchor.right,
               buttonBuilder:
                   (
                     BuildContext context,

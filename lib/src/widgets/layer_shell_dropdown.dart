@@ -184,9 +184,18 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
       overlayBox: overlayBox,
     );
 
-    final Widget menuContent = RepaintBoundary(
-      child: widget.menuBuilder(context, _controller),
-    );
+    final Widget menuContent =
+        NotificationListener<SizeChangedLayoutNotification>(
+          onNotification: (_) {
+            _scheduleRegionUpdate(_RegionSyncMode.exactMenu);
+            return false;
+          },
+          child: SizeChangedLayoutNotifier(
+            child: RepaintBoundary(
+              child: widget.menuBuilder(context, _controller),
+            ),
+          ),
+        );
     final bool measureTransitionBounds =
         widget.transition == LayerShellDropdownTransition.grow;
     // Each opening owns its measurement key, including same-frame reopens

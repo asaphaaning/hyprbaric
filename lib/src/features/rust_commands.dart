@@ -99,6 +99,16 @@ class _GlobalMenuDismissIntent extends GlobalMenuIntent {
   void send() => GlobalMenuCommandDismiss(address: address).sendSignalToRust();
 }
 
+/// Projects a menu activation for hosts that route it outside the compositor.
+/// Reads, opens, and dismissals have no activated item.
+extension GlobalMenuActivation on GlobalMenuIntent {
+  /// The activated row, or null for other menu operations.
+  GlobalMenuItemId? get activatedItem => switch (this) {
+    _GlobalMenuActivateIntent(:final GlobalMenuItemId item) => item,
+    _ => null,
+  };
+}
+
 sealed class SetupIntent extends RustIntent {
   const SetupIntent();
 

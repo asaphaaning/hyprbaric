@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../bindings/bindings.dart';
+import '../../theme/hypr_motion.dart';
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
 import 'clock_controller.dart';
@@ -13,6 +14,9 @@ class ClockPanel extends StatelessWidget {
     required this.borderRadius,
   });
 
+  /// Width of the calendar popover, including its frame.
+  static const double width = 288;
+
   final ClockViewState status;
   final ValueChanged<CalendarCommand> onCommand;
   final BorderRadius borderRadius;
@@ -21,7 +25,7 @@ class ClockPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return HyprPopoverPanel(
       borderRadius: borderRadius,
-      constraints: const BoxConstraints.tightFor(width: 288),
+      constraints: const BoxConstraints.tightFor(width: width),
       padding: const EdgeInsets.all(16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -109,15 +113,30 @@ class _CalendarNavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      tooltip: label,
+    return HyprInteractionRegion(
+      key: ValueKey<String>('calendar-nav-$label'),
+      semanticLabel: label,
       onPressed: onPressed,
-      style: hyprCompactIconButtonStyle(
-        size: const Size.square(28),
-        radius: 7,
-        foregroundColor: HyprInstrumentColors.secondary,
-      ),
-      icon: Icon(icon, size: 17),
+      builder: (BuildContext context, HyprInteractionState state) {
+        return AnimatedContainer(
+          duration: HyprMotion.hover,
+          curve: HyprMotion.hoverCurve,
+          width: 28,
+          height: 28,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: state.active ? HyprColors.hover : Colors.transparent,
+            borderRadius: BorderRadius.circular(7),
+          ),
+          child: Icon(
+            icon,
+            size: 17,
+            color: state.active
+                ? HyprColors.text
+                : HyprInstrumentColors.secondary,
+          ),
+        );
+      },
     );
   }
 }

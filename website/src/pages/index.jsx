@@ -2,8 +2,10 @@ import {useEffect, useState} from 'react';
 import Link from '@docusaurus/Link';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import Layout from '@theme/Layout';
+import CodeBlock from '@theme/CodeBlock';
 
 import FlutterDemo from '../components/FlutterDemo';
+import PlateLink from '../components/PlateLink';
 import styles from './index.module.css';
 
 const installOptions = [
@@ -69,58 +71,6 @@ const modules = [
   },
 ];
 
-const barWidth = 3840;
-const segment = {
-  left: {offset: 13, width: 768},
-  right: {offset: 3010, width: 818},
-};
-
-function barPart(id, start, end, details) {
-  const cluster = start < 1000 ? 'left' : 'right';
-  const bounds = segment[cluster];
-
-  return {
-    id,
-    ...details,
-    cluster,
-    sourceStart: start,
-    sourceEnd: end,
-    left: `${((start - bounds.offset) / bounds.width) * 100}%`,
-    width: `${((end - start) / bounds.width) * 100}%`,
-  };
-}
-
-const barParts = [
-  barPart('launcher', 23, 64, {label: 'Launcher', title: 'App launcher', text: 'Opens hyprbaric’s searchable desktop-entry launcher.', key: 'Super'}),
-  barPart('previous', 80, 110, {label: 'Workspace step', title: 'Previous workspace', text: 'Moves focus one workspace to the left and dims when no target is available.', key: 'Super + ←'}),
-  barPart('workspaces', 126, 420, {label: 'Workspaces', title: 'Workspace strip', text: 'Roman or numeric indicators keep the active workspace centered in a configurable visible range.', key: 'Super + 1…9'}),
-  barPart('next', 430, 460, {label: 'Workspace step', title: 'Next workspace', text: 'Moves focus one workspace to the right and dims when no target is available.', key: 'Super + →'}),
-  barPart('tray', 3300, 3351, {label: 'Tray', title: 'System tray', text: 'StatusNotifier tray items appear here, each with its own menu.', key: '—'}),
-  barPart('network', 3351, 3398, {label: 'Network', title: 'Network', text: 'Throughput and ping, Wi-Fi networks in range, and interface addresses.', key: 'Super + N'}),
-  barPart('audio', 3398, 3438, {label: 'Volume', title: 'Volume & brightness', text: 'Output and input levels with live meters, and screen brightness.', key: '—'}),
-  barPart('power', 3438, 3477, {label: 'Power', title: 'Battery & power profiles', text: 'Charge level and time remaining, and the active power profile.', key: '—'}),
-  barPart('controls', 3477, 3516, {label: 'Controls', title: 'Controls & toggles', text: 'Colour picking, do not disturb, night light, caffeine, capture, and recording actions.', key: 'Super + S'}),
-  barPart('notifications', 3516, 3568, {label: 'Notifications', title: 'Notification centre', text: 'A compact current-session inbox with per-item dismissal and a clear-all action.', key: 'Super + Shift + D'}),
-  barPart('clock', 3576, 3760, {label: 'Clock', title: 'Date & time', text: 'The current date and time open a full calendar popover on click.', key: '—'}),
-  barPart('session', 3775, 3822, {label: 'Session', title: 'Session actions', text: 'Lock, log out, suspend, reboot, and power off.', key: 'Super + Escape'}),
-];
-
-function CopyButton({value, label = 'Copy'}) {
-  const [copied, setCopied] = useState(false);
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    } catch {
-      setCopied(false);
-    }
-  };
-
-  return <button className={styles.copy} type="button" onClick={copy}>{copied ? 'Copied' : label}</button>;
-}
-
 function InstallCommand() {
   const [selected, setSelected] = useState(installOptions[0]);
   const [open, setOpen] = useState(false);
@@ -140,7 +90,7 @@ function InstallCommand() {
 
   return (
     <div className={styles.installPicker} onClick={(event) => event.stopPropagation()}>
-      <div className={styles.installCommand}>
+      <CodePanel language="bash" title="Install Hyprbaric" controls={(
         <button
           aria-expanded={open}
           className={styles.commandBadge}
@@ -148,10 +98,9 @@ function InstallCommand() {
           type="button">
           <span>{selected.label}</span><span aria-hidden="true">▾</span>
         </button>
-        <span className={styles.commandDivider} />
-        <code><b>$</b> {selected.command}</code>
-        <CopyButton value={selected.command} />
-      </div>
+      )}>
+        {selected.command}
+      </CodePanel>
       <div className={styles.installDetail}>
         <span>{selected.detail}</span>
         <a href="https://github.com/asaphaaning/hyprbaric/releases/latest">Direct downloads →</a>
@@ -178,11 +127,15 @@ function InstallCommand() {
   );
 }
 
-function Terminal({children, title = 'Shell'}) {
+/** A recessed code display using the documentation's Prism and copy controls. */
+function CodePanel({children, title, language, controls}) {
   return (
-    <div className={styles.terminal}>
-      <div className={styles.terminalHeader}><span>{title}</span><CopyButton value={children} /></div>
-      <pre>{children}</pre>
+    <div className={styles.codePanel}>
+      <div className={styles.codePanelHeader}>
+        <span className={styles.codePanelTitle}>{title}</span>
+        {controls ?? <span className={styles.codeLanguage}>{language}</span>}
+      </div>
+      <CodeBlock language={language}>{children}</CodeBlock>
     </div>
   );
 }
@@ -246,110 +199,36 @@ function DesktopPreview({desktop}) {
   );
 }
 
-function BarCloseup() {
-  const [part, setPart] = useState();
-  const leftBar = useBaseUrl('img/reference/bar-seg-a-cut.png');
-  const rightBar = useBaseUrl('img/reference/bar-seg-b-cut.png');
-  const barStrip = useBaseUrl('img/reference/bar-strip.png');
-  const leftParts = barParts.filter((item) => item.cluster === 'left');
-  const rightParts = barParts.filter((item) => item.cluster === 'right');
-
-  const cluster = (name, image, alt, parts) => {
-    const selected = part?.cluster === name ? part : undefined;
-    const maskClass = name === 'left' ? styles.barImageMaskLeft : styles.barImageMaskRight;
-
-    return (
-      <div className={`${styles.barCluster} ${styles[`barCluster${name === 'left' ? 'Left' : 'Right'}`]}`}>
-        <span className={styles.barShadow} />
-        <div className={maskClass}>
-          <img src={image} alt={alt} />
-          <span className={name === 'left' ? styles.clusterFadeLeft : styles.clusterFadeRight} />
-          {part && !selected && <span className={styles.barVeilAll} />}
-          {selected && (
-            <>
-              <span className={styles.barVeilBefore} style={{left: 0, width: selected.left}} />
-              <span className={styles.barVeilAfter} style={{left: `calc(${selected.left} + ${selected.width})`, right: 0}} />
-            </>
-          )}
-        </div>
-        {selected && <span className={styles.barSelection} style={{left: selected.left, width: selected.width}} />}
-        {parts.map((item) => (
-          <button
-            aria-label={item.title}
-            className={styles.hotspot}
-            key={item.id}
-            onBlur={() => setPart(undefined)}
-            onFocus={() => setPart(item)}
-            onMouseEnter={() => setPart(item)}
-            onMouseLeave={() => setPart(undefined)}
-            style={{left: item.left, width: item.width}}
-            type="button"
-          />
-        ))}
-      </div>
-    );
-  };
-
-  const loupeStyle = part ? (() => {
-    const boxWidth = 255;
-    const scale = Math.max(1.05, Math.min(2.3, ((boxWidth - 26) / (part.sourceEnd - part.sourceStart)) * .78));
-    const center = ((part.sourceStart + part.sourceEnd) / 2) * scale;
-    return {
-      backgroundImage: `url(${barStrip})`,
-      backgroundPosition: `${Math.round(boxWidth / 2 - center)}px center`,
-      backgroundSize: `${Math.round(barWidth * scale)}px auto`,
-    };
-  })() : undefined;
-
-  return (
-    <section className={styles.closeup}>
-      <div className={styles.closeupHeading}>
-        <span>The bar, up close</span>
-        <p>Tap or hover an element to see what it does.</p>
-      </div>
-      <div className={styles.barPreview}>
-        {cluster('left', leftBar, 'hyprbaric launcher and workspace cluster', leftParts)}
-        <span className={styles.barBreak}><i /><i /><i /></span>
-        {cluster('right', rightBar, 'hyprbaric controls, clock, and session cluster', rightParts)}
-      </div>
-      <div className={styles.barExplanation}>
-        {part ? (
-          <>
-            <span className={styles.barLoupe} style={loupeStyle} />
-            <div><span>{part.label}</span><strong>{part.title}</strong><p>{part.text}</p></div>
-            <kbd>{part.key}</kbd>
-          </>
-        ) : <div className={styles.barIdle}><span>Idle</span><p>Tap or hover an element on the bar above.</p></div>}
-      </div>
-    </section>
-  );
-}
-
 export default function Home() {
   const desktop = useBaseUrl('img/reference/desktop.png');
-  const config = `[appearance]\nposition = "top"\nopacity = 77\ncorner_radius = 12\naccent_hue = 197\n\n[workspaces]\nindicator_style = "roman"\nclickable = true\nvisible_range = "medium"\n\n[network]\ntraffic_refresh_interval = "1s"\nfull_refresh_interval = "8s"`;
+  const config = `[appearance]\nposition = "top"\nopacity = 77\ncorner_radius = 12\naccent_hue = 218\n\n[workspaces]\nindicator_style = "roman"\nclickable = true\nvisible_range = "medium"\n\n[network]\ntraffic_refresh_interval = "1s"\nfull_refresh_interval = "8s"`;
 
   return (
     <Layout title="hyprbaric" description="A native status bar for Hyprland, built with Flutter and Rust.">
       <main className={styles.page}>
-        <section className={styles.hero}>
+        <section className={styles.hero} id="hero">
           <div className={styles.heroCopy}>
-            <h1>A status bar for Hyprland</h1>
-            <p>Built on Flutter and Rust.</p>
+            <span className={styles.eyebrow}>A status bar for Hyprland</span>
+            <h1>hyprbaric<span aria-hidden="true">.</span></h1>
+            <p>Audio, network, workspaces, and the usual controls in one bar.</p>
             <div className={styles.actions}>
-              <Link className={styles.primaryAction} to="/docs/installation">Install the latest release</Link>
-              <a className={styles.secondaryAction} href="https://github.com/asaphaaning/hyprbaric/releases/latest">Download packages</a>
+              <PlateLink to="/docs/installation" icon="download" primary>Get Hyprbaric</PlateLink>
+              <PlateLink to="#modules" icon="modules">Explore the modules</PlateLink>
             </div>
-            <InstallCommand />
+            <p className={styles.heroNote}>Open source. Built with Flutter and Rust.</p>
           </div>
-          <DesktopPreview desktop={desktop} />
+          <section className={styles.installSection} id="install">
+            <h2>Install</h2>
+            <p>Packages for Debian, Arch, Fedora, and an AppImage for everything else.</p>
+            <InstallCommand />
+            <PlateLink to="/docs/installation" icon="guide">Read the installation guide</PlateLink>
+          </section>
         </section>
 
-        <BarCloseup />
 
         <section className={styles.modules} id="modules">
-          <div className={styles.sectionHeading}><h2>Modules</h2><span /></div>
-          <p>Each module opens its own panel with the readouts and controls for that area.</p>
+          <span className={styles.eyebrow}>Modules</span>
+          <div className={styles.sectionHeading}><h2>What’s in the bar</h2><span /></div>
           <div className={styles.moduleGrid}>
             {modules.map((module) => <ModuleCard key={module.label} module={module} />)}
             <div className={styles.stack}>
@@ -370,20 +249,25 @@ export default function Home() {
               <span className={styles.cardLabel}>Docs</span>
               <h3>Documentation</h3>
               <p>Installation, configuration, keybinds, and the full reference.</p>
-              <Link to="/docs/intro">Browse the docs</Link>
+              <PlateLink to="/docs/intro" icon="guide" primary>Browse the docs</PlateLink>
             </aside>
           </div>
+        </section>
+
+        <section className={styles.desktopSection} id="desktop">
+          <div><h2>On Hyprland</h2><p>A 40px bar at the top of the workspace.</p></div>
+          <DesktopPreview desktop={desktop} />
         </section>
 
         <section className={styles.configuration} id="config">
           <div>
             <span className={styles.cardLabel}>Configuration</span>
-            <h2>Everything lives in one TOML file</h2>
+            <h2>Configuration</h2>
             <p>hyprbaric reads a single TOML file at startup. The settings window edits that same file, leaving your comments and unrelated tables intact.</p>
             <ul><li>Configuration covers appearance, module visibility, workspaces, shortcuts, and the behaviour of each module.</li><li>Timing values, such as refresh intervals and DDC discovery and debounce, have no GUI control.</li><li>A file that fails to parse stops startup rather than falling back to defaults.</li></ul>
-            <Link to="/docs/configuration">Read the configuration guide</Link>
+            <PlateLink to="/docs/configuration" icon="settings">Read the configuration guide</PlateLink>
           </div>
-          <Terminal title="~/.config/hyprbaric/config.toml">{config}</Terminal>
+          <CodePanel language="toml" title="~/.config/hyprbaric/config.toml">{config}</CodePanel>
         </section>
       </main>
     </Layout>

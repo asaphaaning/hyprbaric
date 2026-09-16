@@ -16,7 +16,11 @@ class WorkspaceStrip extends StatelessWidget {
     required this.onNext,
     required this.onSelect,
     required this.resolution,
+    this.visibleWorkspaceIds,
   });
+
+  /// A fixed set for bounded workspace collections; null follows the active workspace.
+  final List<int>? visibleWorkspaceIds;
 
   final WorkspaceStatus status;
   final WorkspaceSettingsStatus settings;
@@ -31,10 +35,9 @@ class WorkspaceStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final int active = resolution.activeWorkspaceId;
-    final List<int> visibleWorkspaces = _visibleWorkspaceRange(
-      active,
-      settings.visibleCount,
-    );
+    final List<int> visibleWorkspaces =
+        visibleWorkspaceIds ??
+        _visibleWorkspaceRange(active, settings.visibleCount);
     return Row(
       key: const ValueKey<String>('workspace-strip'),
       mainAxisSize: MainAxisSize.min,

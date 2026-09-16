@@ -37,6 +37,7 @@ ButtonStyle hyprCompactIconButtonStyle({
   return ButtonStyle(
     visualDensity: VisualDensity.compact,
     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    splashFactory: NoSplash.splashFactory,
     padding: const WidgetStatePropertyAll<EdgeInsetsGeometry>(HyprSpacing.none),
     minimumSize: WidgetStatePropertyAll<Size>(size),
     fixedSize: WidgetStatePropertyAll<Size>(size),

@@ -58,6 +58,20 @@ class HyprInsetBorderPainter extends CustomPainter {
       return;
     }
 
+    if (frame == HyprSurfaceFrame.bar) {
+      final RSuperellipse outline = borderRadius
+          .toRSuperellipse(Offset.zero & size)
+          .deflate(1.5);
+      canvas.drawRSuperellipse(
+        outline,
+        Paint()
+          ..color = const Color(0x2CFFFFFF)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1,
+      );
+      return;
+    }
+
     _drawInsetLine(
       canvas,
       Rect.fromLTWH(1, 1, size.width - 2, 1),

@@ -3,13 +3,14 @@ import Link from '@docusaurus/Link';
 import {useLocation} from '@docusaurus/router';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import SearchBar from '@theme/SearchBar';
+import {usePersistentBar} from '../../components/PersistentBar';
 
 const items = [
   {label: 'Home', to: '/', active: (path, homePath) => path === homePath},
   {label: 'Documentation', to: '/docs/intro', active: (path) => path.includes('/docs/')},
 ];
 
-export default function Navbar() {
+function ClassicHeader() {
   const location = useLocation();
   const logo = useBaseUrl('img/reference/logo.png');
   const homePath = useBaseUrl('/');
@@ -36,4 +37,20 @@ export default function Navbar() {
       </div>
     </header>
   );
+}
+
+function HeaderSlot() {
+  return (
+    <div
+      className="navbar"
+      aria-hidden="true"
+      style={{height: 64, flexShrink: 0, padding: 0, background: 'transparent', boxShadow: 'none'}}
+    />
+  );
+}
+
+/** Reserves the persistent bar's space inside each route's layout. */
+export default function Navbar() {
+  const {visible, loading} = usePersistentBar();
+  return visible || loading ? <HeaderSlot /> : <ClassicHeader />;
 }

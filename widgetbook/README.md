@@ -72,3 +72,38 @@ Pavucontrol footer delegate to the host in production.
 The standalone HTML carries `data-hyprbaric-catalog` so its bootstrap creates an
 implicit Flutter view. The website host has no marker and continues to use the
 shared engine with explicitly attached views.
+
+## Landing-page bar
+
+The navigation experiment from `experiment/landing-full-bar` is adapted in
+`lib/audio/docs_bar_preview.dart`: production workspace, global-menu, title,
+and calendar widgets with website-only navigation and a local documentation
+search index. No compositor or Rust backend is required.
+
+From `website/`, `npm run build:bar-embed` builds its isolated single-view iframe
+and regenerates the index. `npm start` builds and watches both embeds;
+`npm run build` includes both in the production website. The bar uses
+`?view=bar` to select single-view startup, while module previews keep their
+shared multi-view engine and independent rendering surfaces.
+
+Desktop pages reserve the bar's 64-pixel slot and skeleton-load the strip for
+up to ten seconds, then fade the live bar in. If first paint never arrives,
+the HTML header returns. The persistent site root keeps the same iframe alive through documentation and
+back/forward navigation. Smaller viewports and failed startup retain the HTML
+header. The iframe accepts input only within the strip while closed; open
+popups use a viewport-sized dismissal backdrop. Menu geometry also sizes the
+DOM blur beneath each popup. Navigation messages are accepted only from that
+same-origin iframe and only for site routes or the Hyprbaric GitHub repository.
+
+The website composition uses a 10px margin around a 44px rounded bar. Its five
+workspace indicators navigate to the hero, installer, modules, desktop preview,
+and configuration sections; previous/next wrap at the ends. Five module shortcuts
+on the right introduce network, mixer, power, controls, and notifications on
+hover or focus, and open the landing modules section on click. Their glyphs are
+the production Iconsax set (link, sun, flash, setting-5, bell), stroked the same
+way as the bar. The lowercase
+title sits beside search, using global-menu typography and no splash effects.
+
+The host owns the bar fill and page backdrop blur: a translucent neutral charcoal
+fill when CSS backdrop filters are supported, and solid #0e0e0e otherwise.
+The Flutter bar surface is transparent so it cannot obscure that blur.

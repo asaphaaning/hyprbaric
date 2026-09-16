@@ -4,7 +4,14 @@
 (() => {
   const scriptUrl = document.currentScript?.src ?? window.location.href;
   const assetRoot = new URL('./', scriptUrl).href;
-  const embedded = !document.body.hasAttribute('data-hyprbaric-catalog');
+  const barView = new URLSearchParams(window.location.search).get('view') === 'bar';
+  const embedded = !barView && !document.body.hasAttribute('data-hyprbaric-catalog');
+  if (barView) {
+    document.documentElement.style.background = 'transparent';
+    document.body.style.background = 'transparent';
+    document.body.style.margin = '0';
+    document.body.style.overflow = 'hidden';
+  }
   const config = {
     assetBase: assetRoot,
     canvasKitBaseUrl: new URL('canvaskit/', assetRoot).href,

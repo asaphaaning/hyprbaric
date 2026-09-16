@@ -1,0 +1,75 @@
+/* Matches HyprPlateFace's three-stop gradients, flat gasket, and top rim. */
+.plate.plate {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 60px;
+  height: auto;
+  padding: 5px;
+  border: 0;
+  border-radius: 15px;
+  background: #0e0e0e;
+  box-shadow: none;
+  color: #c4ccd9;
+  text-decoration: none;
+  text-align: left;
+  white-space: normal;
+  filter: none;
+  transform: none;
+}
+
+.face {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 13px;
+  min-width: 0;
+  min-height: 50px;
+  padding: 10px 13px;
+  border: 1px solid #0009;
+  border-radius: 10px;
+  background: linear-gradient(#1c1f24, #0e1116 95.5%, #08090c);
+  transition: transform 120ms cubic-bezier(.215, .61, .355, 1);
+}
+
+.face::before {
+  position: absolute;
+  top: 1px;
+  right: 4px;
+  left: 4px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #ffffff1a 10%, #ffffff1a 90%, transparent);
+  content: '';
+  pointer-events: none;
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 27px;
+  height: 27px;
+  border-radius: 8px;
+  background: linear-gradient(#090b0f, #040508);
+  box-shadow: 0 1px 0 #ffffff12;
+  color: var(--accent-pink-soft, #ff62c2);
+}
+
+.icon svg { width: 14px; height: 14px; }
+.label {
+  font: 700 .8125rem/1.4 var(--ifm-font-family-monospace);
+  letter-spacing: .055em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+.chevron { margin-left: auto; padding-left: 8px; color: #919aaf; font-size: 18px; line-height: 1; }
+.primary .label, .primary .icon, .primary .chevron { color: var(--accent-amber-soft, #fff1d8); }
+.plate.plate:hover { background: #0e0e0e; color: #e9f0f6; text-decoration: none; filter: none; }
+.plate.plate:active { box-shadow: none; transform: none; }
+.plate:hover .face { background: linear-gradient(#25282d, #15171c 95.5%, #0c0d0f); }
+.plate:active .face { transform: translateY(1px); background: linear-gradient(#08080a, #111216 10%, #17181d); }
+.plate:active .face::before { opacity: 0; }
+.plate:focus-visible { outline: 2px solid var(--accent-amber-soft, #fff1d8); outline-offset: 4px; }
+@media (prefers-reduced-motion: reduce) { .face { transition: none; } }
+
+.primary .label { text-shadow: 0 0 8px #ff9c1240; }

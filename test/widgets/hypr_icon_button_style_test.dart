@@ -62,6 +62,11 @@ void main() {
 
     expect(style.minimumSize?.resolve(<WidgetState>{}), const Size(28, 26));
     expect(style.fixedSize?.resolve(<WidgetState>{}), const Size(28, 26));
+    expect(
+      style.overlayColor?.resolve(<WidgetState>{WidgetState.pressed}),
+      Colors.transparent,
+    );
+    expect(style.splashFactory, NoSplash.splashFactory);
     final RoundedSuperellipseBorder shape =
         style.shape!.resolve(<WidgetState>{})! as RoundedSuperellipseBorder;
     expect(shape.borderRadius, BorderRadius.circular(7));
