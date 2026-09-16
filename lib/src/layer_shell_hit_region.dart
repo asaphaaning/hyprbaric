@@ -115,6 +115,10 @@ class LayerShellRegionManager {
   LayerShellMenuRegion? _menu;
   Object? _menuOwner;
   bool _captureAllClicks = false;
+
+  /// Current dropdown geometry, also observable by web hosts without native delivery.
+  final ValueNotifier<LayerShellMenuRegion?> menuRegion =
+      ValueNotifier<LayerShellMenuRegion?>(null);
   final Map<String, List<LayerShellMenuRegion>> _ownedRegions =
       <String, List<LayerShellMenuRegion>>{};
   bool _flushInProgress = false;
@@ -137,6 +141,7 @@ class LayerShellRegionManager {
     _menu = null;
     _menuOwner = null;
     _captureAllClicks = false;
+    menuRegion.dispose();
   }
 
   Future<void> updateRegion({
@@ -146,12 +151,8 @@ class LayerShellRegionManager {
     Object? owner,
     String debugLabel = 'layer-shell',
   }) async {
-    if (!_isLinux()) {
-      return;
-    }
-
     if (menuRect == null && _menuOwner != null && _menuOwner != owner) {
-      await _sendMergedRegion(debugLabel);
+      if (_isLinux()) await _sendMergedRegion(debugLabel);
       return;
     }
 
@@ -163,7 +164,8 @@ class LayerShellRegionManager {
           );
     _menuOwner = menuRect == null ? null : owner;
     _captureAllClicks = captureAllClicks;
-    await _sendMergedRegion(debugLabel);
+    menuRegion.value = _menu;
+    if (_isLinux()) await _sendMergedRegion(debugLabel);
   }
 
   Future<void> setPassiveRegions({

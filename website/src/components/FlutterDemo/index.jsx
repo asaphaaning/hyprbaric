@@ -1,7 +1,7 @@
-import {useEffect, useRef, useState} from 'react';
+import {useEffect, useLayoutEffect, useRef, useState} from 'react';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 
-import {loadPreviewEngine} from './previewEngine';
+import {attachPreview, canReusePreview, detachPreview} from './previewEngine';
 
 import styles from './index.module.css';
 
@@ -91,9 +91,14 @@ const SKELETONS = {
  */
 export const PREVIEW_NAMES = Object.keys(SKELETONS);
 
+/** Survives leaving the landing page so a return already knows the embed version. */
+const versionCache = new Map();
+
 function useFlutterPreviewVersion() {
   const versionUrl = useBaseUrl('flutter/previews/version.json');
-  const [state, setState] = useState({version: null, missing: false});
+  const [state, setState] = useState(
+    () => versionCache.get(versionUrl) ?? {version: null, missing: false},
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -104,16 +109,26 @@ function useFlutterPreviewVersion() {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const next = await response.json();
 
-        if (!cancelled) setState({version: String(next.version), missing: false});
+        if (!cancelled) {
+          const version = String(next.version);
+          const resolved = {version, missing: false};
+          versionCache.set(versionUrl, resolved);
+          setState((current) => current.version === version && !current.missing
+            ? current
+            : resolved);
+        }
       } catch (error) {
         // A rebuild replaces these files, so a miss is expected mid-build and
         // the current preview should stay up. A miss with nothing loaded yet
         // means the embed was never built, which the caller has to surface
         // rather than sit on a skeleton forever.
         if (cancelled) return;
-        setState((current) => current.version
-          ? current
-          : {version: null, missing: true});
+        setState((current) => {
+          if (current.version) return current;
+          const missing = {version: null, missing: true};
+          versionCache.set(versionUrl, missing);
+          return missing;
+        });
         console.warn(`[hyprbaric] Flutter previews unavailable at ${versionUrl}.`, error);
       }
     };
@@ -132,6 +147,14 @@ function useFlutterPreviewVersion() {
   return state;
 }
 
+const VIEWPORT_MARGIN_PX = 200;
+
+function isNearViewport(element) {
+  const rect = element.getBoundingClientRect();
+  return rect.bottom >= -VIEWPORT_MARGIN_PX
+    && rect.top <= window.innerHeight + VIEWPORT_MARGIN_PX;
+}
+
 /** Defers work until the element is near the viewport. */
 function useNearViewport(ref) {
   const [near, setNear] = useState(false);
@@ -139,20 +162,39 @@ function useNearViewport(ref) {
   useEffect(() => {
     const element = ref.current;
     if (!element) return undefined;
+
+    let observer;
+    let finished = false;
+    const stop = () => {
+      if (finished) return;
+      finished = true;
+      observer?.disconnect();
+      window.removeEventListener('scroll', mark);
+      window.removeEventListener('resize', mark);
+    };
+    const mark = () => {
+      if (!isNearViewport(element)) return;
+      setNear(true);
+      stop();
+    };
+
     if (typeof IntersectionObserver !== 'function') {
       setNear(true);
       return undefined;
     }
 
-    const observer = new IntersectionObserver((entries) => {
+    observer = new IntersectionObserver((entries) => {
       if (entries.some((entry) => entry.isIntersecting)) {
         setNear(true);
-        observer.disconnect();
+        stop();
       }
-    }, {rootMargin: '200px'});
+    }, {rootMargin: `${VIEWPORT_MARGIN_PX}px`});
 
     observer.observe(element);
-    return () => observer.disconnect();
+    window.addEventListener('scroll', mark, {passive: true});
+    window.addEventListener('resize', mark);
+    mark();
+    return stop;
   }, [ref]);
 
   return near;
@@ -163,53 +205,48 @@ export default function FlutterDemo({className = '', preview = 'mixer'}) {
   const {version, missing} = useFlutterPreviewVersion();
   const host = useRef(null);
   const near = useNearViewport(host);
-  const [status, setStatus] = useState('pending');
+  const bootstrapUrl = version ? `${bootstrapPath}?v=${version}` : '';
+  const [status, setStatus] = useState(
+    () => (bootstrapUrl && canReusePreview(preview, bootstrapUrl) ? 'ready' : 'pending'),
+  );
 
   const Skeleton = SKELETONS[preview] ?? MixerSkeleton;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!version || !near) return undefined;
 
     const element = host.current;
     if (!element) return undefined;
 
     let cancelled = false;
-    let attached = null;
-    let engine = null;
+    const url = `${bootstrapPath}?v=${version}`;
+    if (!canReusePreview(preview, url)) {
+      setStatus('pending');
+    }
 
-    setStatus('pending');
-
-    loadPreviewEngine(`${bootstrapPath}?v=${version}`)
-      .then((app) => {
+    attachPreview({
+      preview,
+      parent: element,
+      bootstrapUrl: url,
+      onReady: (error) => {
         if (cancelled) return;
-        engine = app;
-        attached = app.addView({
-          hostElement: element,
-          initialData: {
-            preview,
-            onReady: (error) => {
-              if (cancelled) return;
-              if (error) {
-                console.error(`[hyprbaric] ${error}: ${preview}`);
-                setStatus('error');
-                return;
-              }
-              setStatus('ready');
-            },
-          },
-        });
-      })
-      .catch((error) => {
+        if (error) {
+          console.error(`[hyprbaric] ${error}: ${preview}`);
+          setStatus('error');
+          return;
+        }
+        setStatus('ready');
+      },
+      onError: (error) => {
         if (cancelled) return;
         console.error('[hyprbaric] Flutter preview engine failed to start.', error);
         setStatus('error');
-      });
+      },
+    }).catch(() => {});
 
     return () => {
       cancelled = true;
-      // Views outlive the React tree unless they are handed back, which leaks
-      // a rendering surface per navigation on a client-routed site.
-      if (engine && attached !== null) engine.removeView(attached);
+      detachPreview(preview);
     };
   }, [bootstrapPath, version, near, preview]);
 
