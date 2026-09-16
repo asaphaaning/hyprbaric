@@ -287,6 +287,8 @@ export 'src/widgets/primitives/hypr_glyph_badge.dart' show HyprGlyphBadge;
 export 'src/widgets/primitives/hypr_hardware_toggle.dart'
     show HyprHardwareToggle;
 export 'src/widgets/primitives/hypr_hover_plate.dart' show HyprHoverPlate;
+export 'src/widgets/primitives/hypr_icon_button_style.dart'
+    show hyprCompactIconButtonStyle;
 export 'src/widgets/primitives/hypr_inline_tag.dart'
     show HyprBracketedTag, HyprInlineTag;
 export 'src/widgets/primitives/hypr_instrument_header.dart';
@@ -322,3 +324,21 @@ export 'src/widgets/workspace_strip.dart'
         WorkspaceNavButton,
         WorkspaceStrip,
         WorkspaceStripPlaceholder;
+
+// Website bar composition and its isolated navigation boundary.
+export 'src/features/rust_commands.dart'
+    show
+        GlobalMenuActivation,
+        GlobalMenuIntent,
+        RustCommandDispatcher,
+        RustIntent,
+        rustCommandDispatcherProvider;
+export 'src/layer_shell_hit_region.dart'
+    show LayerShellMenuRegion, LayerShellRegionManager;
+export 'src/state/layer_shell.dart' show layerShellRegionManagerProvider;
+export 'src/state/bar_config.dart' show BarConfig, barConfigProvider;
+export 'src/widgets/layer_shell_dropdown.dart'
+    show
+        LayerShellDropdown,
+        LayerShellDropdownAnchor,
+        LayerShellDropdownController;

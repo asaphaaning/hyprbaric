@@ -2,6 +2,7 @@ import 'dart:js_interop';
 import 'dart:ui';
 import 'dart:ui_web' as ui_web;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'audio/preview_registry.dart';
@@ -23,6 +24,8 @@ class _EmbedViews extends StatefulWidget {
 }
 
 class _EmbedViewsState extends State<_EmbedViews> with WidgetsBindingObserver {
+  Set<int> _viewIds = <int>{};
+
   @override
   void initState() {
     super.initState();
@@ -35,10 +38,23 @@ class _EmbedViewsState extends State<_EmbedViews> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  /// Adding or removing a view reports a metrics change, which is how a new
-  /// host element finds its way into [ViewCollection].
+  /// Rebuild only when a view is added or removed.
+  ///
+  /// Host-size jitter also reports a metrics change. Rebuilding the collection
+  /// on every twitch remounts every preview's [MaterialApp] in a loop: after
+  /// a client-side return to the landing page, six views attach at once, each
+  /// fights for the latest size, and the cards blink.
   @override
-  void didChangeMetrics() => setState(() {});
+  void didChangeMetrics() {
+    final Set<int> next = WidgetsBinding.instance.platformDispatcher.views
+        .map((FlutterView view) => view.viewId)
+        .toSet();
+    if (setEquals(_viewIds, next)) {
+      return;
+    }
+    _viewIds = next;
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {

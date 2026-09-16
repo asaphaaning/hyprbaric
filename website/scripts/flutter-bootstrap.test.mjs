@@ -11,9 +11,10 @@ for (const catalog of [false, true]) {
   test(catalog ? 'catalog retains its implicit view' : 'embeds use independent render surfaces in one engine', async () => {
     let engineCount = 0;
     const app = {};
-    const window = {};
+    const window = {location: {href: 'http://localhost/flutter/previews/flutter_bootstrap.js', search: ''}};
     vm.runInNewContext(source, {
       URL,
+      URLSearchParams,
       window,
       document: {
         currentScript: {src: 'http://localhost/flutter/previews/flutter_bootstrap.js'},

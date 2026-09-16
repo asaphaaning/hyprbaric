@@ -678,6 +678,7 @@ class _BarViewState extends ConsumerState<_BarView> {
               color: Colors.transparent,
               elevation: 0,
               child: HyprSurface(
+                frame: HyprSurfaceFrame.bar,
                 borderRadius: BorderRadius.circular(
                   barConfig.cornerRadius.toDouble(),
                 ),
