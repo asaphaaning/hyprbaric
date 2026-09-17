@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:hyprbaric/audio_embed.dart';
-import 'package:hyprbaric/src/theme/hypr_material_feedback.dart';
 
 /// Theme shared by the standalone, embedded mixer views.
 final ThemeData embedTheme = _embedTheme();
