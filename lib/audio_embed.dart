@@ -20,5 +20,6 @@ export 'src/bindings/bindings.dart'
         BrightnessStatusAvailable;
 export 'src/features/audio/audio_meter_levels.dart' show AudioMeterLevels;
 export 'src/features/audio/audio_panel.dart' show AudioPanel;
+export 'src/theme/hypr_material_feedback.dart' show instrumentControlsTheme;
 export 'src/theme/hypr_palette.dart' show HyprPalette;
 export 'src/widgets/surfaces/hypr_typography.dart' show HyprTypography;

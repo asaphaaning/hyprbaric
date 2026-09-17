@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../bindings/bindings.dart';
-import '../../theme/hypr_motion.dart';
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
 import 'clock_controller.dart';
