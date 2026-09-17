@@ -187,6 +187,13 @@ export 'src/features/network/network_traffic_ring.dart';
 export 'src/features/power/battery_chip.dart' show BatteryChip;
 export 'src/features/power/power_panel.dart' show PowerPanel;
 export 'src/features/power/power_profile_pad.dart' show PowerProfilePad;
+export 'src/features/rust_commands.dart'
+    show
+        GlobalMenuActivation,
+        GlobalMenuIntent,
+        RustCommandDispatcher,
+        RustIntent,
+        rustCommandDispatcherProvider;
 export 'src/features/session/session_controller.dart' show SessionConfirmChoice;
 export 'src/features/session/session_launcher_content.dart'
     show SessionLauncherCard;
@@ -220,7 +227,11 @@ export 'src/features/tray/tray_strip.dart' show TrayStrip;
 export 'src/features/workspaces/workspace_controller.dart'
     show WorkspaceSettingsController, workspaceSettingsControllerProvider;
 export 'src/hyprbaric.dart' show Hyprbaric;
+export 'src/layer_shell_hit_region.dart'
+    show LayerShellMenuRegion, LayerShellRegionManager;
 export 'src/state/appearance.dart' show defaultAppearanceStatus;
+export 'src/state/bar_config.dart' show BarConfig, barConfigProvider;
+export 'src/state/layer_shell.dart' show layerShellRegionManagerProvider;
 export 'src/state/monitor_workspace.dart' show MonitorWorkspaceResolution;
 export 'src/state/rust_signals/app.dart' show appStatusProvider;
 export 'src/state/rust_signals/appearance.dart' show appearanceStatusProvider;
@@ -258,6 +269,11 @@ export 'src/theme/hypr_material_feedback.dart' show instrumentControlsTheme;
 export 'src/theme/hypr_palette.dart' show HyprPalette;
 export 'src/widgets/center_cluster.dart' show CenterCluster;
 export 'src/widgets/hypr_surface.dart';
+export 'src/widgets/layer_shell_dropdown.dart'
+    show
+        LayerShellDropdown,
+        LayerShellDropdownAnchor,
+        LayerShellDropdownController;
 export 'src/widgets/left_cluster.dart' show LeftCluster;
 export 'src/widgets/notification_panel.dart'
     show NotificationPanel, kNotificationPanelWidth;
@@ -324,21 +340,3 @@ export 'src/widgets/workspace_strip.dart'
         WorkspaceNavButton,
         WorkspaceStrip,
         WorkspaceStripPlaceholder;
-
-// Website bar composition and its isolated navigation boundary.
-export 'src/features/rust_commands.dart'
-    show
-        GlobalMenuActivation,
-        GlobalMenuIntent,
-        RustCommandDispatcher,
-        RustIntent,
-        rustCommandDispatcherProvider;
-export 'src/layer_shell_hit_region.dart'
-    show LayerShellMenuRegion, LayerShellRegionManager;
-export 'src/state/layer_shell.dart' show layerShellRegionManagerProvider;
-export 'src/state/bar_config.dart' show BarConfig, barConfigProvider;
-export 'src/widgets/layer_shell_dropdown.dart'
-    show
-        LayerShellDropdown,
-        LayerShellDropdownAnchor,
-        LayerShellDropdownController;
