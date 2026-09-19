@@ -6,7 +6,7 @@
   min-height: 60px;
   height: auto;
   padding: 5px;
-  border: 1px solid #0009;
+  border: 0;
   border-radius: 15px;
   background: #0e0e0e;
   box-shadow: none;
@@ -67,16 +67,15 @@
 .primary .label, .primary .icon, .primary .chevron { color: var(--accent-amber-soft, #fff1d8); }
 .plate.plate:hover { background: #0e0e0e; color: #e9f0f6; text-decoration: none; filter: none; }
 .plate.plate:active { box-shadow: none; transform: none; }
-.plate:hover .face { background: linear-gradient(#25282d, #15171c 95.5%, #0c0d0f); }
+.plate:hover .face,
+.plate:focus-visible .face { background: linear-gradient(#25282d, #15171c 95.5%, #0c0d0f); }
 .plate:active .face { transform: translateY(1px); background: linear-gradient(#08080a, #111216 10%, #17181d); }
 .plate:active .face::before { opacity: 0; }
-.plate.plate:focus,
-.plate.plate:focus-visible {
+.plate:focus,
+.plate:focus-visible {
   outline: none;
   outline-offset: 0;
-}
-.plate.plate:focus-visible {
-  box-shadow: 0 0 0 2px var(--accent-amber-soft, #fff1d8);
+  box-shadow: none;
 }
 @media (prefers-reduced-motion: reduce) { .face { transition: none; } }
 
