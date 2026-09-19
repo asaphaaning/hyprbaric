@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bindings/bindings.dart';
@@ -28,10 +30,15 @@ final globalMenuStatusProvider = StreamProvider<GlobalMenuStatus>(
 ///
 /// Headings trigger a background snapshot. This map is filled as those rows
 /// arrive, so a heading that opens before its own request returns can still
-/// paint. GTK deletions replace the cached rows too. D-BusMenu rows are read
-/// for each opening and never retained in this cache. Widget disposal leaves
-/// these session-owned snapshots alone; per-heading streams auto-dispose when
-/// their last panel unmounts.
+/// paint. GTK deletions replace the cached rows too.
+///
+/// D-BusMenu rows belong to one opening, not a reusable snapshot. They are
+/// kept only while that heading is [opening], so a reply that beats the
+/// popup's first frame still paints, and a late reply after [forget] cannot
+/// refill the next popup with stale Firefox identifiers.
+///
+/// Heading and flyout close drop rows accepted for that opening. Per-heading
+/// streams auto-dispose when their last panel unmounts.
 final globalMenuSectionCacheProvider =
     NotifierProvider<
       GlobalMenuSectionCache,
@@ -40,15 +47,19 @@ final globalMenuSectionCacheProvider =
 
 class GlobalMenuSectionCache
     extends Notifier<Map<GlobalMenuAddress, GlobalMenuSectionStatus>> {
+  final Set<GlobalMenuAddress> _opening = <GlobalMenuAddress>{};
+
   @override
   Map<GlobalMenuAddress, GlobalMenuSectionStatus> build() {
     ref.listen(globalMenuStatusProvider, (previous, next) {
       if (previous?.value?.session != next.value?.session) {
+        _opening.clear();
         state = const {};
       }
     });
     ref.listen(focusedWindowStatusProvider, (previous, next) {
       if (previous?.value?.address != next.value?.address) {
+        _opening.clear();
         state = const {};
       }
     });
@@ -60,17 +71,42 @@ class GlobalMenuSectionCache
       if (current != status.session) return;
       final focused = ref.read(focusedWindowStatusProvider).value;
       if (focused != null && focused.address != status.session.window) return;
+      final GlobalMenuAddress address = GlobalMenuAddress(
+        session: status.session,
+        section: status.section,
+      );
       // D-BusMenu rows belong to an open, not a reusable snapshot. A late
       // response after dismissal must not repopulate the next popup's cache.
-      if (status.section is GlobalMenuSectionIdDbusMenu) return;
+      if (status.section is GlobalMenuSectionIdDbusMenu &&
+          !_opening.contains(address)) {
+        return;
+      }
       state = <GlobalMenuAddress, GlobalMenuSectionStatus>{
         ...state,
-        GlobalMenuAddress(session: status.session, section: status.section):
-            status,
+        address: status,
       };
     });
     ref.onDispose(subscription.cancel);
     return const <GlobalMenuAddress, GlobalMenuSectionStatus>{};
+  }
+
+  /// Accepts D-BusMenu rows for a heading the bar has just asked to open.
+  ///
+  /// The open request is sent before the overlay's first frame, and a warm
+  /// exporter answers in that gap. Without this, the reply is dropped and the
+  /// popup stays on Loading… until the next focus change.
+  /// Call immediately before dispatching the open-section command.
+  void opening(GlobalMenuAddress section) {
+    _opening.add(section);
+  }
+
+  /// Stops accepting D-BusMenu rows without notifying listeners.
+  ///
+  /// Popup dispose cannot [forget] while the tree is unmounting. Dropping the
+  /// opening mark here means a late reply cannot land. A later open replaces
+  /// whatever rows remain in the cache.
+  void abandon(GlobalMenuAddress section) {
+    _opening.remove(section);
   }
 
   /// Drops rows for a heading that just closed.
@@ -78,8 +114,9 @@ class GlobalMenuSectionCache
   /// Firefox rebuilds native identifiers after a click. Keeping the last
   /// View menu would paint Actual Size as still disabled, and send Zoom In's
   /// old id, until AboutToShow returns.
-  /// Call from a close interaction, never from a widget lifecycle callback.
+  /// Call from a close interaction, including a popup releasing its flyouts.
   void forget(GlobalMenuAddress section) {
+    _opening.remove(section);
     ref.invalidate(globalMenuSectionProvider(section));
     state = <GlobalMenuAddress, GlobalMenuSectionStatus>{...state}
       ..remove(section);
@@ -90,42 +127,60 @@ class GlobalMenuSectionCache
 ///
 /// Prefetch fills [globalMenuSectionCacheProvider] before a heading opens.
 /// The per-heading request still runs so a miss waits on D-Bus instead of
-/// showing an empty panel. This provider reads the cache once and then
-/// follows the section's own stream: watching the whole cache map would
-/// restart every open menu whenever a sibling flyout arrived, which is the
-/// one-row loading flash while moving between Firefox submenus.
+/// showing an empty panel. This provider subscribes first, then seeds from
+/// the cache: watching the whole cache map would restart every open menu
+/// whenever a sibling flyout arrived, which is the one-row loading flash
+/// while moving between Firefox submenus.
 final globalMenuSectionProvider = StreamProvider.autoDispose
-    .family<GlobalMenuSectionStatus, GlobalMenuAddress>((
-      ref,
-      GlobalMenuAddress section,
-    ) async* {
-      final GlobalMenuSectionStatus? cached = ref.read(
-        globalMenuSectionCacheProvider,
-      )[section];
-      var hadItems = cached != null && cached.items.isNotEmpty;
-      if (cached != null && (hadItems || cached.message != null)) {
-        yield cached;
-      }
+    .family<GlobalMenuSectionStatus, GlobalMenuAddress>(_sectionUpdates);
 
-      await for (final signal in GlobalMenuSectionStatus.rustSignalStream) {
-        final GlobalMenuSectionStatus status = signal.message;
-        if (status.session != section.session ||
-            status.section != section.section) {
-          continue;
-        }
-        if (status.items.isEmpty &&
-            status.message == null &&
-            status.section is GlobalMenuSectionIdDbusMenu) {
-          if (hadItems) {
-            continue;
-          }
-          yield status;
-          continue;
-        }
-        hadItems = status.items.isNotEmpty;
-        yield status;
+Stream<GlobalMenuSectionStatus> _sectionUpdates(
+  Ref ref,
+  GlobalMenuAddress section,
+) async* {
+  final StreamController<GlobalMenuSectionStatus> incoming =
+      StreamController<GlobalMenuSectionStatus>();
+  final subscription = GlobalMenuSectionStatus.rustSignalStream.listen((
+    signal,
+  ) {
+    final GlobalMenuSectionStatus status = signal.message;
+    if (status.session != section.session ||
+        status.section != section.section) {
+      return;
+    }
+    if (!incoming.isClosed) {
+      incoming.add(status);
+    }
+  });
+  ref.onDispose(() {
+    unawaited(subscription.cancel());
+    if (!incoming.isClosed) {
+      unawaited(incoming.close());
+    }
+  });
+
+  final GlobalMenuSectionStatus? cached = ref.read(
+    globalMenuSectionCacheProvider,
+  )[section];
+  var hadItems = cached != null && cached.items.isNotEmpty;
+  if (cached != null && (hadItems || cached.message != null)) {
+    yield cached;
+  }
+
+  await for (final GlobalMenuSectionStatus status in incoming.stream) {
+    if (status.items.isEmpty &&
+        status.message == null &&
+        status.section is GlobalMenuSectionIdDbusMenu) {
+      if (hadItems) {
+        continue;
       }
-    });
+      yield status;
+      continue;
+    }
+    hadItems = status.items.isNotEmpty;
+    yield status;
+  }
+}
 
 /// How far the compositor half of the global menu has got.
 final globalMenuIntegrationProvider =

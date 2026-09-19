@@ -199,15 +199,16 @@ class _GlobalMenuSectionPanelState
         _branches.take(depth).any((branch) => branch.section == section)) {
       return;
     }
+    final GlobalMenuAddress address = GlobalMenuAddress(
+      session: widget.session,
+      section: section,
+    );
     setState(() {
       _discardFrom(depth);
       _branches.add(_Branch(section, offset));
     });
-    _dispatcher.dispatch(
-      GlobalMenuIntent.openSection(
-        GlobalMenuAddress(session: widget.session, section: section),
-      ),
-    );
+    _cache.opening(address);
+    _dispatcher.dispatch(GlobalMenuIntent.openSection(address));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _horizontal.hasClients) {
         _horizontal.jumpTo(_horizontal.position.maxScrollExtent);
@@ -227,11 +228,13 @@ class _GlobalMenuSectionPanelState
   void dispose() {
     _linger?.cancel();
     // Section streams auto-dispose when their panels unmount. D-BusMenu rows
-    // are never cached; GTK snapshots belong to the session, not the popup.
-    // Only native popups need explicit release here, deepest first. Mutating
-    // the shared cache during unmount would notify the still-mounted bar.
+    // were accepted only for this opening; GTK snapshots belong to the session.
+    // Native popups are released here, deepest first. The cache cannot be
+    // mutated during unmount, so flyouts are only unmarked as opening: a late
+    // reply cannot land, and a later open replaces whatever rows remain.
     for (final address in _addressesFrom(0)) {
       _dispatcher.dispatch(GlobalMenuIntent.dismiss(address));
+      _cache.abandon(address);
     }
     _horizontal.dispose();
     super.dispose();

@@ -334,6 +334,40 @@ void main() {
     },
   );
 
+  test(
+    'an in-flight D-BusMenu open keeps rows that arrive before the popup listens',
+    () async {
+      final container = ProviderContainer(
+        overrides: [
+          globalMenuStatusProvider.overrideWith(
+            (ref) => Stream.value(_twoHeadings),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      final cache = container.listen(globalMenuSectionCacheProvider, (_, _) {});
+      addTearDown(cache.close);
+      await container.read(globalMenuStatusProvider.future);
+      container
+          .read(globalMenuSectionCacheProvider.notifier)
+          .opening(_address(_file));
+      assignRustSignal['GlobalMenuSectionStatus']!(
+        GlobalMenuSectionStatus(
+          session: _session,
+          section: _file,
+          items: [_item(label: 'New File')],
+        ).bincodeSerialize(),
+        Uint8List(0),
+      );
+      await Future<void>.delayed(Duration.zero);
+      final provider = globalMenuSectionProvider(_address(_file));
+      final subscription = container.listen(provider, (_, _) {});
+      addTearDown(subscription.close);
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(provider).value?.items.single.label, 'New File');
+    },
+  );
+
   testWidgets(
     'window identity refreshes same-app menus but title edits do not',
     (tester) async {
@@ -867,6 +901,61 @@ void main() {
       contains('global_menu_open_section'),
     );
   });
+
+  testWidgets(
+    'a D-BusMenu reply that beats the overlay frame still paints rows',
+    (tester) async {
+      _answerRegionChannel();
+      final dispatcher = _RecordingDispatcher();
+
+      await tester.pumpWidget(
+        _surface(
+          overrides: [
+            rustCommandDispatcherProvider.overrideWith((ref) => dispatcher),
+            globalMenuStatusProvider.overrideWith(
+              (ref) => Stream<GlobalMenuStatus>.value(_twoHeadings),
+            ),
+          ],
+          child: const SizedBox(width: 600, child: GlobalMenuBar()),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('File'), findsOneWidget);
+
+      Future<void> openBeforeRowsArrive() async {
+        final TestGesture pointer = await tester.startGesture(
+          tester.getCenter(find.text('File')),
+        );
+        assignRustSignal['GlobalMenuSectionStatus']!(
+          GlobalMenuSectionStatus(
+            session: _session,
+            section: _file,
+            items: [
+              _item(
+                label: 'New File',
+                activation: const GlobalMenuItemIdDbusMenu(id: 7),
+              ),
+            ],
+          ).bincodeSerialize(),
+          Uint8List(0),
+        );
+        await tester.pumpAndSettle();
+        await pointer.up();
+      }
+
+      await openBeforeRowsArrive();
+      expect(find.text('Loading…'), findsNothing);
+      expect(find.text('New File'), findsOneWidget);
+
+      await tester.tap(find.text('File'));
+      await tester.pumpAndSettle();
+      expect(find.text('New File'), findsNothing);
+
+      await openBeforeRowsArrive();
+      expect(find.text('Loading…'), findsNothing);
+      expect(find.text('New File'), findsOneWidget);
+    },
+  );
 
   testWidgets('closing a heading tells the application the menu is gone', (
     WidgetTester tester,

@@ -147,13 +147,14 @@ class _GlobalMenuBarState extends ConsumerState<GlobalMenuBar> {
       }
     }
 
+    final GlobalMenuAddress address = GlobalMenuAddress(
+      session: session,
+      section: section,
+    );
+    ref.read(globalMenuSectionCacheProvider.notifier).opening(address);
     ref
         .read(rustCommandDispatcherProvider)
-        .dispatch(
-          GlobalMenuIntent.openSection(
-            GlobalMenuAddress(session: session, section: section),
-          ),
-        );
+        .dispatch(GlobalMenuIntent.openSection(address));
     _controllerFor(section).open();
     setState(() => _open = section);
     _focusNode.requestFocus();
