@@ -847,7 +847,7 @@
 .installSection > p { color: #aaa6b6; }
 .installSection .installPicker { max-width: 850px; margin: 28px auto 24px; text-align: left; }
 .installSection > a { font-size: .875rem; }
-.page a:focus-visible, .page button:focus-visible { outline: 2px solid var(--accent-amber-soft); outline-offset: 5px; }
+.page :is(a, button):focus-visible:not(:global([class*='plate'])) { outline: 2px solid var(--accent-amber-soft); outline-offset: 5px; }
 @media (max-width: 1100px) {
   .hero { gap: 26px; grid-template-columns: 1fr 1fr; }
   .heroCopy h1 { font-size: clamp(3rem, 6vw, 4.5rem); }
