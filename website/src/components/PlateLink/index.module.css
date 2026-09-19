@@ -6,7 +6,7 @@
   min-height: 60px;
   height: auto;
   padding: 5px;
-  border: 0;
+  border: 1px solid #0009;
   border-radius: 15px;
   background: #0e0e0e;
   box-shadow: none;
@@ -14,6 +14,7 @@
   text-decoration: none;
   text-align: left;
   white-space: normal;
+  outline: none;
   filter: none;
   transform: none;
 }
@@ -69,7 +70,14 @@
 .plate:hover .face { background: linear-gradient(#25282d, #15171c 95.5%, #0c0d0f); }
 .plate:active .face { transform: translateY(1px); background: linear-gradient(#08080a, #111216 10%, #17181d); }
 .plate:active .face::before { opacity: 0; }
-.plate:focus-visible { outline: 2px solid var(--accent-amber-soft, #fff1d8); outline-offset: 4px; }
+.plate.plate:focus,
+.plate.plate:focus-visible {
+  outline: none;
+  outline-offset: 0;
+}
+.plate.plate:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent-amber-soft, #fff1d8);
+}
 @media (prefers-reduced-motion: reduce) { .face { transition: none; } }
 
 .primary .label { text-shadow: 0 0 8px #ff9c1240; }
