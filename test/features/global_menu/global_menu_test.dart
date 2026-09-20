@@ -368,6 +368,51 @@ void main() {
     },
   );
 
+  for (final section in [
+    _file,
+    const GlobalMenuSectionIdGtk(group: 0, menu: 1),
+  ]) {
+    test('an empty early reply completes loading for $section', () async {
+      final container = ProviderContainer(
+        overrides: [
+          globalMenuStatusProvider.overrideWith(
+            (ref) => Stream.value(_twoHeadings),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      final cache = container.listen(globalMenuSectionCacheProvider, (_, _) {});
+      addTearDown(cache.close);
+      await container.read(globalMenuStatusProvider.future);
+      container
+          .read(globalMenuSectionCacheProvider.notifier)
+          .opening(_address(section));
+
+      void publish(List<GlobalMenuItem> items) =>
+          assignRustSignal['GlobalMenuSectionStatus']!(
+            GlobalMenuSectionStatus(
+              session: _session,
+              section: section,
+              items: items,
+            ).bincodeSerialize(),
+            Uint8List(0),
+          );
+
+      publish([]);
+      await Future<void>.delayed(Duration.zero);
+      final provider = globalMenuSectionProvider(_address(section));
+      final subscription = container.listen(provider, (_, _) {});
+      addTearDown(subscription.close);
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(provider).isLoading, isFalse);
+      expect(container.read(provider).value?.items, isEmpty);
+
+      publish([_item(label: 'Undo')]);
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(provider).value?.items.single.label, 'Undo');
+    });
+  }
+
   testWidgets(
     'window identity refreshes same-app menus but title edits do not',
     (tester) async {
