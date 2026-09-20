@@ -12,7 +12,15 @@ const icons = {
 /** Web navigation counterpart of HyprPlateButton's gasket, face, and icon well. */
 export default function PlateLink({to, icon, children, primary = false}) {
   return (
-    <Link to={to} className={`${styles.plate} ${primary ? styles.primary : ''}`}>
+    <Link
+      to={to}
+      className={`${styles.plate} ${primary ? styles.primary : ''}`}
+      data-plate=""
+      onClick={(event) => {
+        if (typeof to === 'string' && to.startsWith('#')) {
+          event.currentTarget.blur();
+        }
+      }}>
       <span className={styles.face}>
         <span className={styles.icon} aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{icons[icon]}</svg>
