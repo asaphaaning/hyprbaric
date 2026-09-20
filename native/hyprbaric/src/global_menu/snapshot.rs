@@ -49,7 +49,8 @@ impl Snapshot {
     }
 
     /// Labels from the headings Dart was given, so a later open can find the
-    /// live node after Firefox has issued new identifiers.
+    /// live node after Firefox has issued new identifiers. Served submenu paths
+    /// survive heading-only snapshots that no longer contain their parent rows.
     pub(in crate::global_menu) fn path_hint(&self, id: &SectionId) -> Vec<String> {
         for heading in &self.headings.sections {
             if heading.id == *id {
@@ -64,7 +65,10 @@ impl Snapshot {
                 return path;
             }
         }
-        Vec::new()
+        match id {
+            SectionId::DbusMenu { id } => self.paths.get(id).cloned().unwrap_or_default(),
+            SectionId::Gtk { .. } | SectionId::GtkAppMenu { .. } => Vec::new(),
+        }
     }
 
     pub(in crate::global_menu) fn same_labels(left: &Menu, right: &Menu) -> bool {
@@ -399,6 +403,23 @@ mod tests {
         let merged = snapshot.merge(rebuilt_empty_file());
         assert!(merged.section(&file()).is_none());
         assert_eq!(merged.item_path(6), ["File", "Actual Size"]);
+    }
+
+    #[test]
+    fn a_served_submenu_keeps_its_path_after_a_heading_only_refresh() {
+        let mut current = snapshot();
+        let submenu = SectionId::DbusMenu { id: 20 };
+        current.remember(
+            file(),
+            vec![Item {
+                label: "Recent".to_owned(),
+                submenu: Some(submenu.clone()),
+                ..Item::empty()
+            }],
+        );
+
+        let merged = current.merge(rebuilt_empty_file());
+        assert_eq!(merged.path_hint(&submenu), ["File", "Recent"]);
     }
 
     fn toolbar(checked: bool) -> Item {
