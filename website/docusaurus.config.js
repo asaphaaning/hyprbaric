@@ -23,6 +23,32 @@ const config = {
     locales: ['en'],
   },
 
+  plugins: [
+    function flutterWasmIsolation() {
+      const headers = {
+        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Cross-Origin-Embedder-Policy': 'credentialless',
+      };
+
+      return {
+        name: 'flutter-wasm-isolation',
+        configureWebpack(_config, isServer) {
+          if (isServer) {
+            return {};
+          }
+
+          // Multithreaded skwasm (the site bar) needs a cross-origin isolated
+          // document. GitHub Pages cannot send these headers, so production
+          // stays on Flutter's single-threaded Wasm fallback.
+          return {
+            mergeStrategy: {'devServer.headers': 'replace'},
+            devServer: {headers},
+          };
+        },
+      };
+    },
+  ],
+
   presets: [
     [
       'classic',

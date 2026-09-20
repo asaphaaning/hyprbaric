@@ -34,6 +34,7 @@ abstract final class SetupFixtures {
 
   /// The accent wheel the guide offers, mirroring the production overlay.
   static const List<int> accentPresets = <int>[
+    218,
     197,
     238,
     275,
@@ -41,6 +42,5 @@ abstract final class SetupFixtures {
     345,
     25,
     70,
-    145,
   ];
 }

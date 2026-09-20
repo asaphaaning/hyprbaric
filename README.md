@@ -127,11 +127,14 @@ build.
 
 Every preview on the page is a view of one shared Flutter engine, added through
 `app.addView` once `flutter_bootstrap.js` has booted, so the landing page loads
-CanvasKit and the app bundle once rather than once per preview. The preview
-names live in `widgetbook/lib/stories/preview_registry.dart` and are checked
-against the web component by `widgetbook/test/preview_registry_test.dart`. When
-the embed has not been built, the previews say so instead of showing a
-placeholder indefinitely.
+CanvasKit and the app bundle once rather than once per preview. Those previews
+stay on CanvasKit: skwasm still shares one OffscreenCanvas across views and
+crops every card to a single size. The isolated site bar does compile with
+`--wasm`. The preview names live in
+`widgetbook/lib/stories/preview_registry.dart` and are checked against the web
+component by `widgetbook/test/preview_registry_test.dart`. When the embed has
+not been built, the previews say so instead of showing a placeholder
+indefinitely.
 
 Controls measures its complete production panel before the shared preview viewport
 scales it into a landing-page card. Capture, Inspect, Toggles, and Bar settings stay
