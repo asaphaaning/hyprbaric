@@ -1024,9 +1024,11 @@ void main() {
 
   test('setup fixtures cover the default and a tuned first run', () {
     expect(SetupFixtures.appearanceDefault.position, AppearancePosition.top);
+    expect(SetupFixtures.appearanceDefault.accentHue, 218);
     expect(SetupFixtures.appearanceTuned.opacity, 46);
     expect(SetupFixtures.appearanceTuned.accentHue, 310);
     expect(SetupFixtures.accentPresets, hasLength(8));
+    expect(SetupFixtures.accentPresets.first, 218);
     expect(SetupFixtures.workspacesNumeric.visibleCount, 5);
   });
 

@@ -39,6 +39,9 @@ export async function buildBarEmbed({mode = 'release'} = {}) {
         '--output',
         output,
         '--no-web-resources-cdn',
+        // Single-view, so skwasm's shared OffscreenCanvas is fine. The
+        // multi-view landing previews cannot use this flag.
+        '--wasm',
         // The iframe resolves the bundle relative to its own page, so the
         // placeholder base href has to name the deployed directory. This
         // mirrors `baseUrl` in docusaurus.config.js.

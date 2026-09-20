@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:js_interop';
 
 import 'package:flutter/widgets.dart';
@@ -25,7 +26,7 @@ void main() {
   final ValueNotifier<DocsDestination> section = ValueNotifier<DocsDestination>(
     DocsDestination.hero,
   );
-  _listen(
+  _window.addEventListener(
     'message'.toJS,
     ((HostMessage event) {
       if (event.origin != Uri.base.origin || event.source != _parentWindow) {
@@ -71,10 +72,7 @@ void _reportReady() {
       return;
     }
     try {
-      _parentPostMessage(
-        <String, String>{'source': 'hyprbaric-bar-ready'}.jsify(),
-        Uri.base.origin.toJS,
-      );
+      _postToParent(<String, Object?>{'source': 'hyprbaric-bar-ready'});
     } catch (_) {
       // No listening host: the bar itself is unaffected.
     }
@@ -83,19 +81,13 @@ void _reportReady() {
   WidgetsBinding.instance.addPostFrameCallback(tick);
 }
 
-@JS('window.parent.postMessage')
-external JSVoid _parentPostMessage(JSAny? message, JSString targetOrigin);
-
 /// Hands an absolute URL to the hosting page for client-side routing.
 ///
 /// Failures mean there is no host listening (direct visits, tests), in which
 /// case the request is dropped rather than breaking the bar.
 void _postNavigate(String url) {
   try {
-    _parentPostMessage(
-      <String, String>{'source': 'hyprbaric-bar', 'url': url}.jsify(),
-      Uri.base.origin.toJS,
-    );
+    _postToParent(<String, Object?>{'source': 'hyprbaric-bar', 'url': url});
   } catch (_) {
     // No listening host: keep the bar itself usable.
   }
@@ -106,36 +98,51 @@ void _postMenuRect(LayerShellMenuRegion? region) {
   final BorderRadius? radius = region?.radius;
 
   try {
-    _parentPostMessage(
-      <String, Object?>{
-        'source': 'hyprbaric-bar-frost',
-        'rect': rect == null
-            ? null
-            : <String, Object>{
-                'x': rect.left.round(),
-                'y': rect.top.round(),
-                'w': rect.width.round(),
-                'h': rect.height.round(),
-                'r': <int>[
-                  radius?.topLeft.x.round() ?? 0,
-                  radius?.topRight.x.round() ?? 0,
-                  radius?.bottomRight.x.round() ?? 0,
-                  radius?.bottomLeft.x.round() ?? 0,
-                ],
-              },
-      }.jsify(),
-      Uri.base.origin.toJS,
-    );
+    _postToParent(<String, Object?>{
+      'source': 'hyprbaric-bar-frost',
+      'rect': rect == null
+          ? null
+          : <String, Object>{
+              'x': rect.left.round(),
+              'y': rect.top.round(),
+              'w': rect.width.round(),
+              'h': rect.height.round(),
+              'r': <int>[
+                radius?.topLeft.x.round() ?? 0,
+                radius?.topRight.x.round() ?? 0,
+                radius?.bottomRight.x.round() ?? 0,
+                radius?.bottomLeft.x.round() ?? 0,
+              ],
+            },
+    });
   } catch (_) {
     // No listening host: keep the bar itself usable.
   }
 }
 
-@JS('window.addEventListener')
-external void _listen(JSString type, JSFunction listener);
+void _postToParent(Map<String, Object?> payload) {
+  // dart2wasm `jsify()` maps are not structured-cloneable, so postMessage
+  // throws and the host never learns the bar is ready. JSON.parse yields a
+  // plain object on both compilers.
+  _parentWindow.postMessage(
+    _parseJson(jsonEncode(payload).toJS),
+    Uri.base.origin.toJS,
+  );
+}
+
+@JS('JSON.parse')
+external JSAny _parseJson(JSString text);
+
+@JS('window')
+external _DomWindow get _window;
 
 @JS('window.parent')
-external JSObject get _parentWindow;
+external _DomWindow get _parentWindow;
+
+extension type _DomWindow(JSObject _) implements JSObject {
+  external void addEventListener(JSString type, JSFunction listener);
+  external void postMessage(JSAny? message, JSString targetOrigin);
+}
 
 /// The browser message boundary; only same-origin parent messages are accepted.
 extension type HostMessage(JSObject _) implements JSObject {
@@ -150,20 +157,17 @@ extension type HostMessage(JSObject _) implements JSObject {
 /// dropped rather than breaking the bar.
 void _postModuleHint(ModuleHint? hint) {
   try {
-    _parentPostMessage(
-      <String, Object?>{
-        'source': 'hyprbaric-module-hint',
-        'hint': hint == null
-            ? null
-            : <String, Object>{
-                'title': hint.module.title,
-                'description': hint.module.description,
-                'x': hint.rect.center.dx,
-                'bottom': hint.rect.bottom,
-              },
-      }.jsify(),
-      Uri.base.origin.toJS,
-    );
+    _postToParent(<String, Object?>{
+      'source': 'hyprbaric-module-hint',
+      'hint': hint == null
+          ? null
+          : <String, Object>{
+              'title': hint.module.title,
+              'description': hint.module.description,
+              'x': hint.rect.center.dx,
+              'bottom': hint.rect.bottom,
+            },
+    });
   } catch (_) {
     // No listening host: keep the bar itself usable.
   }

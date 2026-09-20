@@ -84,7 +84,9 @@ From `website/`, `npm run build:bar-embed` builds its isolated single-view ifram
 and regenerates the index. `npm start` builds and watches both embeds;
 `npm run build` includes both in the production website. The bar uses
 `?view=bar` to select single-view startup, while module previews keep their
-shared multi-view engine and independent rendering surfaces.
+shared multi-view engine and independent rendering surfaces. The bar embed
+builds with `--wasm`; the multi-view previews cannot, because skwasm still
+shares one OffscreenCanvas across views.
 
 Desktop pages reserve the bar's 64-pixel slot and skeleton-load the strip for
 up to ten seconds, then fade the live bar in. If first paint never arrives,

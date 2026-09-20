@@ -7,7 +7,6 @@ import 'package:hyprbaric/widget_catalog.dart';
 import 'package:riverpod/misc.dart' show Override;
 
 import '../embed/embed_theme.dart';
-import '../use_cases/settings/settings_fixtures.dart';
 import 'docs_search.dart';
 import 'docs_search_fetcher.dart';
 import 'site_module.dart';
@@ -374,7 +373,7 @@ List<Override> docsBarOverrides({
     ),
     _stream(focusedWindowStatusProvider, DocsBarFixtures.focusedWindow),
     _stream(workspaceStatusProvider, DocsBarFixtures.workspace),
-    _stream(appearanceStatusProvider, SettingsFixtures.appearanceDefault),
+    _stream(appearanceStatusProvider, defaultAppearanceStatus),
     ...DocsMenuFixtures.providers(),
   ];
 }
