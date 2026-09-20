@@ -143,7 +143,8 @@ impl State {
     ///
     /// Dart still holds the identifier from the last read. The live node may now
     /// have a different id, so `closed` follows the heading labels: the snapshot's
-    /// hint, then the last served row path, then whatever we announced as open.
+    /// hint, then the last served row path, then the original request address
+    /// recorded in [`Opened::section`].
     pub(in crate::global_menu) fn dismiss_path(&self, id: i32) -> Vec<String> {
         {
             let held = self.held();
@@ -158,7 +159,7 @@ impl State {
         }
         self.opened()
             .iter()
-            .find(|menu| menu.id == id)
+            .find(|menu| menu.section == SectionId::DbusMenu { id } || menu.id == id)
             .map(|menu| menu.path.clone())
             .unwrap_or_default()
     }
@@ -523,6 +524,38 @@ mod tests {
             |_| {},
         )
     }
+    #[test]
+    fn dismissal_uses_the_requested_id_after_the_exporter_rebuilds() {
+        use crate::global_menu::{SectionId, endpoint::Endpoint};
+
+        let live = live();
+        let endpoint = Endpoint::DbusMenu {
+            service: ":1.40".into(),
+            path: "/MenuBar".into(),
+            address: None,
+            xid: None,
+        };
+        live.state.remember_opened(
+            endpoint.clone(),
+            50,
+            vec!["File".into()],
+            SectionId::DbusMenu { id: 1 },
+        );
+        live.state.remember_opened(
+            endpoint,
+            80,
+            vec!["File".into(), "Recent".into()],
+            SectionId::DbusMenu { id: 20 },
+        );
+
+        let path = live.state.dismiss_path(1);
+        assert_eq!(path, ["File"]);
+        let closed = live.state.take_opened(1, &path);
+        assert_eq!(closed.len(), 2);
+        assert_eq!(closed[0].id, 80);
+        assert!(live.state.announced().is_empty());
+    }
+
     #[tokio::test]
     async fn close_waits_for_subscription_cleanup() {
         let mut live = live();
