@@ -7,6 +7,13 @@ const source = (await readFile(new URL('../../widgetbook/web/flutter_bootstrap.j
   .replace('{{flutter_js}}', '')
   .replace('{{flutter_build_config}}', '');
 
+test('the site bar compiles with wasm; multi-view previews stay on canvaskit', async () => {
+  const flutter = await readFile(new URL('./build-flutter-embed.mjs', import.meta.url), 'utf8');
+  const bar = await readFile(new URL('./build-bar-embed.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(flutter, /'--wasm'/);
+  assert.match(bar, /'--wasm'/);
+});
+
 for (const catalog of [false, true]) {
   test(catalog ? 'catalog retains its implicit view' : 'embeds use independent render surfaces in one engine', async () => {
     let engineCount = 0;

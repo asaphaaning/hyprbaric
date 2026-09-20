@@ -34,6 +34,10 @@ export function buildFlutterEmbed({mode = 'release'} = {}) {
         '--output',
         output,
         '--no-web-resources-cdn',
+        // Do not pass `--wasm` here. Skwasm still rasterizes every view through
+        // one OffscreenCanvas, which crops the landing-page previews onto a
+        // single size. CanvasKit's MultiSurfaceRasterizer is what keeps those
+        // views independent.
       ],
       {cwd: widgetbook, stdio: 'inherit'},
     );
