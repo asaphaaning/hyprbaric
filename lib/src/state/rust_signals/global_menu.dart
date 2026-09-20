@@ -131,6 +131,8 @@ class GlobalMenuSectionCache
 /// the cache: watching the whole cache map would restart every open menu
 /// whenever a sibling flyout arrived, which is the one-row loading flash
 /// while moving between Firefox submenus.
+/// An empty cached reply also completes loading; later updates can still
+/// populate the menu when the application finishes building its rows.
 final globalMenuSectionProvider = StreamProvider.autoDispose
     .family<GlobalMenuSectionStatus, GlobalMenuAddress>(_sectionUpdates);
 
@@ -163,7 +165,7 @@ Stream<GlobalMenuSectionStatus> _sectionUpdates(
     globalMenuSectionCacheProvider,
   )[section];
   var hadItems = cached != null && cached.items.isNotEmpty;
-  if (cached != null && (hadItems || cached.message != null)) {
+  if (cached != null) {
     yield cached;
   }
 
