@@ -10,7 +10,7 @@ use tracing::instrument;
 
 use crate::{
     appearance, audio, brightness, global_menu, modules, network, night_light, power, schedule,
-    setup, shortcuts, workspaces,
+    setup, shortcuts, system, workspaces,
 };
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -27,6 +27,7 @@ pub struct Configuration {
     pub schedules: schedule::Configuration,
     pub setup: setup::Configuration,
     pub shortcuts: shortcuts::Configuration,
+    pub system: system::Configuration,
     pub workspaces: workspaces::Configuration,
 }
 

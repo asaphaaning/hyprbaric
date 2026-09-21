@@ -38,6 +38,15 @@ class HyprLevelRamp {
     peakAt: 0.86,
   );
 
+  /// Host occupancy: instrument lavender into amber, then the shared danger red.
+  static const HyprLevelRamp occupancy = HyprLevelRamp(
+    nominal: Color(0xFF8EA0FF),
+    warning: HyprAmberLight.edge,
+    peak: HyprColors.danger,
+    warningAt: 0.72,
+    peakAt: 0.90,
+  );
+
   final Color nominal;
   final Color warning;
   final Color peak;

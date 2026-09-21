@@ -34,4 +34,12 @@ void main() {
     expect(ramp.colorAt(1), HyprColors.lampHot);
     expect(ramp.warningAt, lessThan(HyprLevelRamp.audio.warningAt));
   });
+
+  test('occupancy uses instrument lavender before amber and danger', () {
+    const HyprLevelRamp ramp = HyprLevelRamp.occupancy;
+
+    expect(ramp.colorAt(0), HyprLevelRamp.occupancy.nominal);
+    expect(ramp.colorAt(ramp.warningAt), HyprAmberLight.edge);
+    expect(ramp.colorAt(1), HyprColors.danger);
+  });
 }

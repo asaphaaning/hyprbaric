@@ -12,6 +12,7 @@ impl From<Module> for signals::ModuleId {
             Module::Notifications => Self::Notifications,
             Module::AudioDisplay => Self::AudioDisplay,
             Module::GlobalMenu => Self::GlobalMenu,
+            Module::SystemOccupancy => Self::SystemOccupancy,
         }
     }
 }
@@ -24,6 +25,7 @@ impl From<signals::ModuleId> for Module {
             signals::ModuleId::Notifications => Self::Notifications,
             signals::ModuleId::AudioDisplay => Self::AudioDisplay,
             signals::ModuleId::GlobalMenu => Self::GlobalMenu,
+            signals::ModuleId::SystemOccupancy => Self::SystemOccupancy,
         }
     }
 }

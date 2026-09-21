@@ -17,7 +17,7 @@ use crate::signals::{
     RecordingStatus, ScheduleCommand, ScheduleCommandResult, ScheduleStatus,
     ScreenshotCaptureRequest, ScreenshotCommandResult, SessionActionAvailability, SessionCommand,
     SessionCommandResult, SetupCommand, SetupCommandResult, SetupStatus,
-    ShortcutSettingsCommandResult, ShortcutSettingsRequest, ShortcutSettingsSnapshot,
+    ShortcutSettingsCommandResult, ShortcutSettingsRequest, ShortcutSettingsSnapshot, SystemStatus,
     TrayActivateRequest, TrayMenuItemActivateRequest, TrayMenuStatus, TrayStatus,
     WorkspaceSettingsCommand, WorkspaceSettingsCommandResult, WorkspaceSettingsStatus,
     WorkspaceStatus, WorkspaceSwitch, WorkspaceSwitchKind,
@@ -32,7 +32,7 @@ use crate::{
 use crate::{
     appearance, audio, brightness, caffeine, capabilities, clock, color_picker, global_menu,
     launcher, modules, network, night_light, notifications, portals, power, recording, schedule,
-    screenshot, session, setup, shortcuts, tray, workspaces,
+    screenshot, session, setup, shortcuts, system, tray, workspaces,
 };
 use rinf::RustSignal;
 
@@ -174,6 +174,7 @@ pub(crate) fn publish(output: &Output) {
         Output::ColorPickerReport(report) => send_color_picker_command_result(report),
         Output::Tray(snapshot) => send_tray_signal(snapshot),
         Output::Clock(snapshot) => send_clock_signal(snapshot),
+        Output::System(snapshot) => send_system_signal(snapshot),
         Output::Capabilities(snapshot) => send_capability_signal(snapshot),
         Output::SessionAvailability(availability) => {
             send_session_availability_signal(availability);
@@ -806,6 +807,10 @@ pub(crate) fn send_notification_signal(snapshot: &notifications::Snapshot) {
 
 pub(crate) fn send_clock_signal(snapshot: &clock::Snapshot) {
     ClockStatus::from(snapshot).send_signal_to_dart();
+}
+
+pub(crate) fn send_system_signal(snapshot: &system::Snapshot) {
+    SystemStatus::from(snapshot).send_signal_to_dart();
 }
 
 pub(crate) fn send_capability_signal(snapshot: &capabilities::Snapshot) {
