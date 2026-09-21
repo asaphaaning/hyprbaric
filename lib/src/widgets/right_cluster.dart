@@ -10,6 +10,8 @@ import '../features/network/network_panel.dart';
 import '../features/network/network_traffic_provider.dart';
 import '../features/power/battery_chip.dart';
 import '../features/power/power_panel.dart';
+import '../features/system/system_chip.dart';
+import '../features/system/system_panel.dart';
 import '../features/tray/tray_menu_panel.dart';
 import '../features/tray/tray_strip.dart';
 import '../state/providers.dart';
@@ -22,11 +24,13 @@ class RightCluster extends ConsumerWidget {
   const RightCluster({
     super.key,
     required this.showSystemTray,
+    required this.showSystemOccupancy,
     required this.showNotifications,
     required this.showAudioDisplay,
     required this.networkController,
     required this.audioController,
     required this.powerController,
+    required this.systemController,
     required this.controlsController,
     required this.trayMenuController,
     required this.notificationController,
@@ -39,6 +43,7 @@ class RightCluster extends ConsumerWidget {
     required this.onToggleNetwork,
     required this.onToggleAudio,
     required this.onTogglePower,
+    required this.onToggleSystem,
     required this.onToggleControls,
     required this.onToggleNotifications,
     required this.onToggleClock,
@@ -69,11 +74,13 @@ class RightCluster extends ConsumerWidget {
   });
 
   final bool showSystemTray;
+  final bool showSystemOccupancy;
   final bool showNotifications;
   final bool showAudioDisplay;
   final LayerShellDropdownController networkController;
   final LayerShellDropdownController audioController;
   final LayerShellDropdownController powerController;
+  final LayerShellDropdownController systemController;
   final LayerShellDropdownController controlsController;
   final LayerShellDropdownController trayMenuController;
   final LayerShellDropdownController notificationController;
@@ -86,6 +93,7 @@ class RightCluster extends ConsumerWidget {
   final VoidCallback onToggleNetwork;
   final VoidCallback onToggleAudio;
   final VoidCallback onTogglePower;
+  final VoidCallback onToggleSystem;
   final VoidCallback onToggleControls;
   final VoidCallback onToggleNotifications;
   final VoidCallback onToggleClock;
@@ -126,6 +134,9 @@ class RightCluster extends ConsumerWidget {
     );
     final ClockViewState clockView = ref.watch(clockViewProvider);
     final AsyncValue<PowerStatus> powerStatus = ref.watch(powerStatusProvider);
+    final AsyncValue<SystemStatus> systemStatus = ref.watch(
+      systemStatusProvider,
+    );
 
     return Align(
       alignment: Alignment.centerRight,
@@ -136,9 +147,56 @@ class RightCluster extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             const HyprDivider(),
+            if (showSystemOccupancy)
+              LayerShellDropdown(
+                controller: systemController,
+                menuRadius: SystemPanel.radius,
+                menuWidth: SystemPanel.width,
+                buttonBuilder:
+                    (
+                      BuildContext context,
+                      LayerShellDropdownController controller, {
+                      required bool isOpen,
+                    }) {
+                      return SystemChip(
+                        status: systemStatus.asData?.value,
+                        isOpen: isOpen,
+                        onPressed: onToggleSystem,
+                      );
+                    },
+                menuBuilder:
+                    (
+                      BuildContext context,
+                      LayerShellDropdownController controller,
+                    ) {
+                      return Consumer(
+                        builder:
+                            (
+                              BuildContext context,
+                              WidgetRef ref,
+                              Widget? child,
+                            ) {
+                              return ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxHeight:
+                                      (MediaQuery.sizeOf(context).height -
+                                              ref.watch(barHeightProvider) -
+                                              16)
+                                          .clamp(0.0, double.infinity),
+                                ),
+                                child: SystemPanel(
+                                  borderRadius: SystemPanel.radius,
+                                  status: ref.watch(systemStatusProvider),
+                                ),
+                              );
+                            },
+                      );
+                    },
+              ),
             if (showSystemTray)
               if (trayStatus case final TrayStatus status
                   when status.items.isNotEmpty) ...<Widget>[
+                if (showSystemOccupancy) const HyprDivider(),
                 LayerShellDropdown(
                   controller: trayMenuController,
                   menuRadius: audioRadius,

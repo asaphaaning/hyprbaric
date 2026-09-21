@@ -46,11 +46,7 @@ class AnchoredMenuOverlay extends AnimatedWidget {
       return const SizedBox.shrink();
     }
 
-    final Offset buttonTopLeft = buttonBox.localToGlobal(
-      Offset.zero,
-      ancestor: overlayBox,
-    );
-    final Rect buttonRect = buttonTopLeft & buttonBox.size;
+    final Rect buttonRect = overlayRect(buttonBox, overlayBox);
     final double desiredLeft = switch (anchor) {
       LayerShellDropdownAnchor.left => buttonRect.left,
       LayerShellDropdownAnchor.center => buttonRect.center.dx - (menuWidth / 2),
@@ -173,4 +169,14 @@ class DropdownTransition extends AnimatedWidget {
       ),
     );
   }
+}
+
+/// The painted rectangle of [box] in [overlay] coordinates, including ancestor scales.
+Rect overlayRect(RenderBox box, RenderBox overlay) {
+  final Offset topLeft = box.localToGlobal(Offset.zero, ancestor: overlay);
+  final Offset bottomRight = box.localToGlobal(
+    Offset(box.size.width, box.size.height),
+    ancestor: overlay,
+  );
+  return Rect.fromPoints(topLeft, bottomRight);
 }

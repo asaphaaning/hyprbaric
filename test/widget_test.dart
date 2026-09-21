@@ -344,6 +344,21 @@ PowerStatus _desktopPowerStatus() {
   );
 }
 
+SystemStatus _systemStatus() {
+  return SystemStatus(
+    cpuPercent: 34,
+    cpuHistory: const <int>[12, 18, 22, 28, 34],
+    memoryUsedBytes: Uint64.fromBigInt(BigInt.from(11.2 * 1024 * 1024 * 1024)),
+    memoryTotalBytes: Uint64.fromBigInt(BigInt.from(32 * 1024 * 1024 * 1024)),
+    memoryHistory: const <int>[30, 32, 33, 35],
+    diskUsedBytes: Uint64.fromBigInt(BigInt.from(56)),
+    diskTotalBytes: Uint64.fromBigInt(BigInt.from(100)),
+    uptimeSeconds: Uint64.fromBigInt(BigInt.from(8040)),
+    temperatureCelsius: 58,
+    processCount: 238,
+  );
+}
+
 NotificationStatus _notificationStatus() {
   return NotificationStatus(
     available: true,
@@ -1129,6 +1144,9 @@ void main() {
           powerStatusProvider.overrideWith(
             (ref) => Stream.value(_powerStatus()),
           ),
+          systemStatusProvider.overrideWith(
+            (ref) => Stream.value(_systemStatus()),
+          ),
         ],
         child: _scopedSurface(
           child: SizedBox(
@@ -1136,11 +1154,13 @@ void main() {
             height: 40,
             child: RightCluster(
               showSystemTray: true,
+              showSystemOccupancy: true,
               showNotifications: true,
               showAudioDisplay: true,
               networkController: LayerShellDropdownController(),
               audioController: LayerShellDropdownController(),
               powerController: LayerShellDropdownController(),
+              systemController: LayerShellDropdownController(),
               controlsController: LayerShellDropdownController(),
               trayMenuController: LayerShellDropdownController(),
               notificationController: LayerShellDropdownController(),
@@ -1153,6 +1173,7 @@ void main() {
               onToggleNetwork: () {},
               onToggleAudio: () {},
               onTogglePower: () {},
+              onToggleSystem: () {},
               onToggleControls: () {},
               onToggleNotifications: () {},
               onToggleClock: () {},
@@ -1188,9 +1209,24 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey<String>('tray-strip')), findsOneWidget);
+    final Rect memoryReadout = tester.getRect(find.text('MEM'));
+    final Rect trayStrip = tester.getRect(
+      find.byKey(const ValueKey<String>('tray-strip')),
+    );
+    expect(
+      find.byType(HyprDivider).evaluate().any((Element element) {
+        final Rect divider = tester.getRect(find.byWidget(element.widget));
+        return divider.left >= memoryReadout.right &&
+            divider.right <= trayStrip.left;
+      }),
+      isTrue,
+    );
     expect(find.bySemanticsLabel('Network'), findsOneWidget);
     expect(find.bySemanticsLabel('Audio and display controls'), findsOneWidget);
     expect(find.text('72%'), findsOneWidget);
+    expect(find.text('CPU'), findsOneWidget);
+    expect(find.text('34%'), findsOneWidget);
+    expect(find.text('MEM'), findsOneWidget);
     expect(find.bySemanticsLabel('Notifications, 2 unread'), findsOneWidget);
     expect(find.text('22:58'), findsOneWidget);
     expect(find.bySemanticsLabel('Session actions'), findsOneWidget);
@@ -2152,6 +2188,7 @@ void main() {
                     enabled: true,
                   ),
                   ModuleEntry(module: ModuleId.systemTray, enabled: false),
+                  ModuleEntry(module: ModuleId.systemOccupancy, enabled: false),
                   ModuleEntry(module: ModuleId.notifications, enabled: true),
                   ModuleEntry(module: ModuleId.audioDisplay, enabled: true),
                   ModuleEntry(module: ModuleId.globalMenu, enabled: false),
@@ -2174,6 +2211,7 @@ void main() {
     expect(find.text('Modules'), findsWidgets);
     expect(find.text('Active window title'), findsOneWidget);
     expect(find.text('System tray'), findsOneWidget);
+    expect(find.text('System occupancy'), findsOneWidget);
     expect(find.text('Notifications'), findsOneWidget);
     expect(find.text('Audio & Display'), findsOneWidget);
     expect(find.text('Global menu'), findsOneWidget);
@@ -2181,7 +2219,7 @@ void main() {
       find.byWidgetPredicate(
         (widget) => widget is HyprAmberToggle && !widget.value,
       ),
-      findsNWidgets(2),
+      findsNWidgets(3),
     );
     expect(
       find.byWidgetPredicate(
@@ -2206,6 +2244,7 @@ void main() {
                     enabled: true,
                   ),
                   ModuleEntry(module: ModuleId.systemTray, enabled: true),
+                  ModuleEntry(module: ModuleId.systemOccupancy, enabled: false),
                   ModuleEntry(module: ModuleId.notifications, enabled: true),
                   ModuleEntry(module: ModuleId.audioDisplay, enabled: true),
                   ModuleEntry(module: ModuleId.globalMenu, enabled: true),

@@ -11,7 +11,11 @@ class AudioMeter extends StatelessWidget {
     required this.level,
     required this.accent,
     this.direction = HyprMeterDirection.leftToRight,
+    this.rail = false,
   });
+
+  /// Thickness of the recessed channel ladder, in either orientation.
+  static const double railExtent = 15;
 
   /// Signal strength as a fraction of the meter's range.
   final double level;
@@ -22,11 +26,19 @@ class AudioMeter extends StatelessWidget {
   /// Orientation of the LED ladder.
   final HyprMeterDirection direction;
 
+  /// Recessed LED rail. The channel column uses this; the master strip does not.
+  final bool rail;
+
   @override
   Widget build(BuildContext context) {
     final bool vertical = direction == HyprMeterDirection.bottomToTop;
+    final bool ladder = rail || vertical;
     return SizedBox(
-      height: vertical ? null : 8,
+      height: vertical
+          ? null
+          : ladder
+          ? railExtent
+          : 8,
       child: CustomPaint(
         painter: HyprSegmentedMeterPainter(
           value: level,
@@ -39,11 +51,11 @@ class AudioMeter extends StatelessWidget {
           ),
           segments: 22,
           direction: direction,
-          inset: vertical ? 4.5 : 0.5,
-          gap: vertical ? 1.8 : 2.5,
+          inset: ladder ? 4.5 : 0.5,
+          gap: ladder ? 1.8 : 2.5,
           segmentRadius: 1.3,
           inactiveColor: Color.lerp(const Color(0xFF333B5C), accent, .18)!,
-          trackColor: vertical ? AudioMixerColors.rail : null,
+          trackColor: ladder ? AudioMixerColors.rail : null,
           trackRadius: 4,
           glow: 2,
         ),

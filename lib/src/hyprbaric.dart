@@ -77,6 +77,8 @@ class _BarViewState extends ConsumerState<_BarView> {
       LayerShellDropdownController();
   final LayerShellDropdownController _powerController =
       LayerShellDropdownController();
+  final LayerShellDropdownController _systemController =
+      LayerShellDropdownController();
   final LayerShellDropdownController _controlsController =
       LayerShellDropdownController();
   final LayerShellDropdownController _trayMenuController =
@@ -220,6 +222,9 @@ class _BarViewState extends ConsumerState<_BarView> {
     }
     if (!status.isEnabled(ModuleId.audioDisplay)) {
       _audioController.dismiss();
+    }
+    if (!status.isEnabled(ModuleId.systemOccupancy)) {
+      _systemController.dismiss();
     }
   }
 
@@ -444,6 +449,17 @@ class _BarViewState extends ConsumerState<_BarView> {
     _powerController.open();
   }
 
+  void _toggleSystem() {
+    if (_systemController.isOpen) {
+      _systemController.close();
+      return;
+    }
+    _dismissAppLauncher();
+    _dismissSessionLauncher();
+    _dismissBarPopups();
+    _systemController.open();
+  }
+
   void _toggleControls() {
     if (_controlsController.isOpen) {
       _controlsController.close();
@@ -481,6 +497,7 @@ class _BarViewState extends ConsumerState<_BarView> {
     _notificationController.dismiss();
     _audioController.dismiss();
     _powerController.dismiss();
+    _systemController.dismiss();
     _controlsController.dismiss();
     _trayMenuController.dismiss();
   }
@@ -491,6 +508,7 @@ class _BarViewState extends ConsumerState<_BarView> {
     _notificationController.dismiss();
     _audioController.dismiss();
     _powerController.dismiss();
+    _systemController.dismiss();
     _controlsController.dismiss();
   }
 
@@ -718,6 +736,9 @@ class _BarViewState extends ConsumerState<_BarView> {
                             showSystemTray: modules.isEnabled(
                               ModuleId.systemTray,
                             ),
+                            showSystemOccupancy: modules.isEnabled(
+                              ModuleId.systemOccupancy,
+                            ),
                             showNotifications: modules.isEnabled(
                               ModuleId.notifications,
                             ),
@@ -727,6 +748,7 @@ class _BarViewState extends ConsumerState<_BarView> {
                             networkController: _networkController,
                             audioController: _audioController,
                             powerController: _powerController,
+                            systemController: _systemController,
                             controlsController: _controlsController,
                             trayMenuController: _trayMenuController,
                             notificationController: _notificationController,
@@ -740,6 +762,7 @@ class _BarViewState extends ConsumerState<_BarView> {
                             onToggleNetwork: _toggleNetwork,
                             onToggleAudio: _toggleAudio,
                             onTogglePower: _togglePower,
+                            onToggleSystem: _toggleSystem,
                             onToggleControls: _toggleControls,
                             onToggleNotifications: _toggleNotifications,
                             onToggleClock: _toggleClock,

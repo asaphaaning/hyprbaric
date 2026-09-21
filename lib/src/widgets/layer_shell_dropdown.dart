@@ -425,11 +425,7 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
       );
     }
 
-    final Offset buttonTopLeft = buttonBox.localToGlobal(
-      Offset.zero,
-      ancestor: overlayBox,
-    );
-    final Rect buttonRect = buttonTopLeft & buttonBox.size;
+    final Rect buttonRect = overlayRect(buttonBox, overlayBox);
     final double desiredLeft = _desiredMenuLeft(
       buttonRect: buttonRect,
       menuWidth: widget.menuWidth ?? menuBox.size.width,
@@ -479,11 +475,7 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
       return 0;
     }
 
-    final Offset buttonTopLeft = buttonBox.localToGlobal(
-      Offset.zero,
-      ancestor: overlayBox,
-    );
-    final Rect buttonRect = buttonTopLeft & buttonBox.size;
+    final Rect buttonRect = overlayRect(buttonBox, overlayBox);
     final double centeredLeft = buttonRect.center.dx - (menuWidth / 2);
     final double desiredLeft = _desiredMenuLeft(
       buttonRect: buttonRect,
@@ -505,11 +497,8 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
       return widget.verticalGap;
     }
 
-    final Offset buttonTopLeft = buttonBox.localToGlobal(
-      Offset.zero,
-      ancestor: overlayBox,
-    );
-    final double buttonBottom = buttonTopLeft.dy + buttonBox.size.height;
+    final Rect buttonRect = overlayRect(buttonBox, overlayBox);
+    final double buttonBottom = buttonRect.bottom;
     final double barBottom = _regionManager.barHeight.toDouble();
     return widget.verticalGap + math.max(0, barBottom - buttonBottom);
   }

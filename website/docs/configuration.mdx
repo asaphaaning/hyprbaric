@@ -9,7 +9,7 @@ hyprbaric starts with useful defaults. You can configure it two ways: use the **
 
 Open **Settings** from the bar menu or with the **Bar settings** shortcut (`Super + Shift + C`). Changes made there are applied immediately and persisted to `config.toml`. Manual TOML changes take effect after restarting hyprbaric.
 
-The GUI covers what most people change regularly, across five tabs that map onto TOML tables one for one. The [Settings window](./settings-window) walkthrough documents every control and the table each tab writes. Runtime tuning such as the volume shortcut step, network polling, brightness discovery, and power refresh cadence has no GUI control and is TOML only.
+The GUI covers what most people change regularly, across five tabs that map onto TOML tables one for one. The [Settings window](./settings-window) walkthrough documents every control and the table each tab writes. Runtime tuning such as the volume shortcut step, network polling, brightness discovery, power refresh cadence, and system occupancy polling has no GUI control and is TOML only.
 
 ## Create your config file
 
@@ -57,7 +57,9 @@ Dropping every line but `[workspaces] visible_range = "large"` would still leave
 
 The `[modules.global_menu]` switch is off by default. Turning it on also claims the AppMenu registrar name, which is why Qt applications then export their menus; [Global menu](./global-menu) covers the Firefox prefs, GTK module, and Java agent some applications still need after that.
 
-Twelve tables make up the entire TOML surface. [Configuration surfaces](./configuration-reference#configuration-surfaces) lists them against what each one controls and which settings tab manages it, and the rest of that page covers every key, value, and default.
+`[modules.system_occupancy]` is on by default. Set `enabled = false` to hide the CPU and memory chip to the left of the tray.
+
+Thirteen tables make up the entire TOML surface. [Configuration surfaces](./configuration-reference#configuration-surfaces) lists them against what each one controls and which settings tab manages it, and the rest of that page covers every key, value, and default.
 
 ## What is configured outside TOML
 

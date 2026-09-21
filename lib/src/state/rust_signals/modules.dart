@@ -33,6 +33,7 @@ const ModulesStatus defaultModulesStatus = ModulesStatus(
     // Off until asked for: it takes over application menu bars and needs a
     // compositor plugin, so it is not something to arrive by default.
     ModuleEntry(module: ModuleId.globalMenu, enabled: false),
+    ModuleEntry(module: ModuleId.systemOccupancy, enabled: true),
   ],
 );
 
@@ -60,6 +61,9 @@ extension ModulesStatusView on ModulesStatus {
         return entry.enabled;
       }
     }
-    return true;
+    return switch (module) {
+      ModuleId.globalMenu => false,
+      _ => true,
+    };
   }
 }

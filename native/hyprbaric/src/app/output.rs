@@ -11,7 +11,7 @@ use tokio::sync::broadcast;
 use crate::{
     appearance, audio, brightness, caffeine, capabilities, clock, color_picker, hyprland, launcher,
     modules, network, night_light, notifications, portals, power, recording, schedule, screenshot,
-    session, setup, shortcuts, tray, workspaces,
+    session, setup, shortcuts, system, tray, workspaces,
 };
 
 /// An application value ready for state reduction or transport publication.
@@ -77,6 +77,8 @@ pub enum Output {
     Tray(tray::Snapshot),
     /// Clock state changed.
     Clock(clock::Snapshot),
+    /// System occupancy changed.
+    System(system::Snapshot),
     /// Host capability diagnostics were read.
     Capabilities(capabilities::Snapshot),
     /// Optional desktop-session actions were detected.
@@ -126,6 +128,7 @@ pub struct Subscriptions {
     pub(crate) color_picker_reports: broadcast::Receiver<color_picker::Report>,
     pub(crate) tray: broadcast::Receiver<tray::Snapshot>,
     pub(crate) clock: broadcast::Receiver<clock::Snapshot>,
+    pub(crate) system: broadcast::Receiver<system::Snapshot>,
     pub(crate) setup: broadcast::Receiver<setup::Status>,
     pub(crate) setup_reports: broadcast::Receiver<setup::Report>,
     pub(crate) shortcuts: broadcast::Receiver<shortcuts::Event>,
@@ -199,6 +202,7 @@ impl Subscriptions {
             }
             value = receive(&mut self.tray, "tray") => Output::Tray(value),
             value = receive(&mut self.clock, "clock") => Output::Clock(value),
+            value = receive(&mut self.system, "system") => Output::System(value),
             value = receive(&mut self.setup, "setup") => Output::Setup(value),
             value = receive(&mut self.setup_reports, "setup-report") => {
                 Output::SetupReport(value)

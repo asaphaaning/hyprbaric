@@ -23,9 +23,10 @@ This is the complete configuration surface read by hyprbaric. Every table and fi
 | `[network]` | NetworkManager and traffic refresh cadence. | No |
 | `[brightness]` | Backlight polling and DDC discovery/write policy. | No |
 | `[power]` | Battery and power-profile refresh cadence. | No |
+| `[system]` | CPU, memory, and disk occupancy refresh cadence. | No |
 | `[setup]` | First-run setup-guide persistence and startup policy. | Setup guide |
 
-Nothing outside these twelve tables is read from `config.toml`. An unknown table or key is ignored. A known key with an invalid value stops startup and is logged with the offending path.
+Nothing outside these thirteen tables is read from `config.toml`. An unknown table or key is ignored. A known key with an invalid value stops startup and is logged with the offending path.
 
 For file locations, precedence, and when changes are applied, see [Configuration](./configuration). For the environment variables, capture destinations, and host capabilities that are configured outside TOML, see [Environment and files](./environment) and [Dependencies and capabilities](./dependencies).
 
@@ -66,6 +67,9 @@ enabled = true
 
 [modules.audio_display]
 enabled = true
+
+[modules.system_occupancy]
+enabled = true
 ```
 
 | Table | Key | Default | Effect |
@@ -74,6 +78,7 @@ enabled = true
 | `[modules.system_tray]` | `enabled` | `true` | Shows StatusNotifier tray items. |
 | `[modules.notifications]` | `enabled` | `true` | Shows the notification indicator and center entry point. |
 | `[modules.audio_display]` | `enabled` | `true` | Shows the Audio & Display popup anchor. |
+| `[modules.system_occupancy]` | `enabled` | `true` | Shows the CPU and memory occupancy chip. |
 
 ## Global menu
 
@@ -221,6 +226,9 @@ write_timeout = "5s"
 
 [power]
 refresh_interval = "15s"
+
+[system]
+refresh_interval = "1s"
 ```
 
 | Table | Key | Default | Effect |
@@ -235,6 +243,7 @@ refresh_interval = "15s"
 | `[brightness]` | `ddc_command_timeout` | `"1200ms"` | Bounds one DDC command before it is treated as failed. |
 | `[brightness]` | `write_timeout` | `"5s"` | Backstop for a brightness write that never returns. Without it a stalled backend would silently swallow every later change for that display. |
 | `[power]` | `refresh_interval` | `"15s"` | Refreshes UPower battery and power-profiles-daemon status. |
+| `[system]` | `refresh_interval` | `"1s"` | Refreshes CPU, memory, disk, uptime, temperature, and process occupancy. |
 
 The latency reading in the network panel is a TCP connection to `1.1.1.1:53` with a 350 ms timeout, made once per `full_refresh_interval`. It is not currently configurable, so raise `full_refresh_interval` if you want it to happen less often.
 
@@ -305,7 +314,7 @@ start_hour = 24     # hours are 0..=23
 
 ### Durations
 
-The eight runtime-policy keys take a human-readable duration string. Zero is rejected in every case, because each one drives a timer that must advance.
+The runtime-policy duration keys take a human-readable duration string. Zero is rejected in every case, because each one drives a timer that must advance.
 
 | Accepted | Rejected |
 | --- | --- |

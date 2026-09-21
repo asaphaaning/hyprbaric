@@ -89,6 +89,7 @@ mod tests {
         assert!(source.contains("[modules.system_tray]"));
         assert!(source.contains("[modules.notifications]"));
         assert!(source.contains("[modules.audio_display]"));
+        assert!(source.contains("[modules.system_occupancy]"));
         assert!(source.contains("enabled = false"));
         assert!(!next.enabled(Module::SystemTray));
 

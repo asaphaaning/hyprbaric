@@ -37,6 +37,10 @@ import 'package:hyprbaric_widgetbook/use_cases/settings/settings_subpanel_use_ca
 import 'package:hyprbaric_widgetbook/use_cases/settings/settings_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/setup/setup_fixtures.dart';
 import 'package:hyprbaric_widgetbook/use_cases/setup/setup_guide_use_cases.dart';
+import 'package:hyprbaric_widgetbook/use_cases/system/system_atom_use_cases.dart';
+import 'package:hyprbaric_widgetbook/use_cases/system/system_chip_use_cases.dart';
+import 'package:hyprbaric_widgetbook/use_cases/system/system_fixtures.dart';
+import 'package:hyprbaric_widgetbook/use_cases/system/system_panel_use_cases.dart';
 import 'package:hyprbaric_widgetbook/use_cases/tray/tray_fixtures.dart';
 import 'package:hyprbaric_widgetbook/use_cases/tray/tray_use_cases.dart';
 import 'package:widgetbook/widgetbook.dart';
@@ -418,6 +422,57 @@ void main() {
     expect(laptop.state, PowerBatteryState.discharging);
   });
 
+  test('system fixtures keep the analog reference occupancy', () {
+    final SystemStatus reference = SystemFixtures.reference();
+    expect(reference.cpuPercent, 12);
+    expect(reference.processCount, 238);
+    expect(SystemFixtures.unavailable().message, isNotNull);
+  });
+
+  testWidgets('system chip and panel stories use production widgets', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildReferenceSystemChip),
+      ),
+    );
+    expect(find.byType(SystemChip), findsOneWidget);
+    expect(find.text('CPU'), findsOneWidget);
+    expect(find.text('MEM'), findsOneWidget);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildReferenceSystemPanel),
+      ),
+    );
+    expect(find.byType(SystemPanel), findsOneWidget);
+    expect(find.byType(SystemGauge), findsOneWidget);
+    expect(tester.getSize(find.byType(SystemPanel)).width, SystemPanel.width);
+  });
+
+  testWidgets('system atoms use their production components', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildSystemGaugeStates),
+      ),
+    );
+    expect(find.byType(SystemGauge), findsNWidgets(3));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: catalogTheme,
+        home: Builder(builder: buildSystemMeterRows),
+      ),
+    );
+    expect(find.byType(SystemMeterRow), findsNWidgets(3));
+  });
+
   testWidgets('battery state matrix renders every domain state and desktop', (
     WidgetTester tester,
   ) async {
@@ -550,7 +605,7 @@ void main() {
       SettingsFixtures.appearanceCustom.position,
       AppearancePosition.bottom,
     );
-    expect(SettingsFixtures.modulesFocused.entries, hasLength(5));
+    expect(SettingsFixtures.modulesFocused.entries, hasLength(6));
     expect(SettingsFixtures.workspacesNumeric.visibleCount, 9);
     expect(
       SettingsFixtures.nightLightUnavailable,
@@ -1326,6 +1381,7 @@ void main() {
         'Notifications',
         'Rows',
         'Surfaces',
+        'System',
       ]),
     );
     expect(
@@ -1342,6 +1398,7 @@ void main() {
         'Power',
         'Settings',
         'Setup',
+        'System',
         'Tray',
       ]),
     );

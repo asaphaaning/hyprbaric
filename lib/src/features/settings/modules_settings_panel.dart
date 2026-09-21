@@ -63,6 +63,11 @@ const List<_ModuleRowData> _moduleRows = <_ModuleRowData>[
     subtitle: 'Show StatusNotifier items.',
   ),
   _ModuleRowData(
+    module: ModuleId.systemOccupancy,
+    label: 'System occupancy',
+    subtitle: 'Show CPU and memory occupancy.',
+  ),
+  _ModuleRowData(
     module: ModuleId.notifications,
     label: 'Notifications',
     subtitle: 'Show notification center.',
