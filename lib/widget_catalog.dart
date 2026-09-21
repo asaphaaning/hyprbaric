@@ -123,6 +123,7 @@ export 'src/bindings/bindings.dart'
         ShortcutSettingsCommandResult,
         ShortcutSettingsRow,
         ShortcutSettingsSnapshot,
+        SystemStatus,
         TrayIcon,
         TrayIconKind,
         TrayItem,
@@ -222,6 +223,22 @@ export 'src/features/setup/setup_guide_overlay.dart'
     show SetupGuideCard, SetupGuideOverlay;
 export 'src/features/setup/setup_guide_state.dart'
     show SetupLaunch, SetupStep, setupGuideAutomaticHostProvider;
+export 'src/features/system/system_chip.dart' show SystemChip;
+export 'src/features/system/system_formatting.dart'
+    show
+        cpuHistory,
+        cpuRatio,
+        diskRatio,
+        formatCpuPercent,
+        formatDiskPercent,
+        formatMemoryPanel,
+        memoryHistory,
+        memoryRatio;
+export 'src/features/system/system_gauge.dart' show SystemGauge;
+export 'src/features/system/system_icon.dart' show SystemIcon, SystemSymbol;
+export 'src/features/system/system_meter.dart' show SystemMeterRow, SystemStat;
+export 'src/features/system/system_panel.dart' show SystemPanel;
+export 'src/features/system/system_sparkline.dart' show SystemSparkline;
 export 'src/features/tray/tray_menu_panel.dart' show TrayMenuPanel;
 export 'src/features/tray/tray_strip.dart' show TrayStrip;
 export 'src/features/workspaces/workspace_controller.dart'
@@ -260,6 +277,7 @@ export 'src/state/rust_signals/shortcuts.dart'
     show
         shortcutSettingsCommandResultProvider,
         shortcutSettingsSnapshotProvider;
+export 'src/state/rust_signals/system.dart' show systemStatusProvider;
 export 'src/state/rust_signals/tray.dart'
     show trayMenuStatusProvider, trayStatusProvider;
 export 'src/state/rust_signals/workspace_settings.dart'

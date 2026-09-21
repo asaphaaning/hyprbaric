@@ -21,6 +21,7 @@ pub struct Configuration {
     notifications: ModuleSettings,
     audio_display: ModuleSettings,
     global_menu: ModuleSettings,
+    system_occupancy: ModuleSettings,
 }
 
 /// Shared module visibility runtime handle.
@@ -41,6 +42,7 @@ impl Default for Configuration {
             notifications: ModuleSettings::ENABLED,
             audio_display: ModuleSettings::ENABLED,
             global_menu: ModuleSettings::DISABLED,
+            system_occupancy: ModuleSettings::ENABLED,
         }
     }
 }
@@ -57,6 +59,7 @@ impl Configuration {
             Module::Notifications => self.notifications,
             Module::AudioDisplay => self.audio_display,
             Module::GlobalMenu => self.global_menu,
+            Module::SystemOccupancy => self.system_occupancy,
         }
     }
 
@@ -98,6 +101,10 @@ impl Configuration {
             },
             Module::GlobalMenu => Self {
                 global_menu: self.global_menu.with_enabled(enabled),
+                ..self
+            },
+            Module::SystemOccupancy => Self {
+                system_occupancy: self.system_occupancy.with_enabled(enabled),
                 ..self
             },
         }
@@ -171,6 +178,7 @@ mod tests {
 
         assert!(config.enabled(Module::SystemTray));
         assert!(!config.enabled(Module::GlobalMenu));
+        assert!(config.enabled(Module::SystemOccupancy));
     }
 
     #[test]
@@ -188,6 +196,9 @@ enabled = false
 
 [audio_display]
 enabled = true
+
+[system_occupancy]
+enabled = false
 "#,
         )
         .expect("module config should parse");
@@ -196,6 +207,22 @@ enabled = true
         assert!(config.enabled(Module::SystemTray));
         assert!(!config.enabled(Module::Notifications));
         assert!(config.enabled(Module::AudioDisplay));
+        assert!(!config.enabled(Module::SystemOccupancy));
+    }
+
+    #[test]
+    fn omitted_occupancy_stays_on() {
+        let config = toml::from_str::<Configuration>(
+            r#"
+[system_tray]
+enabled = true
+"#,
+        )
+        .expect("partial module config should parse");
+
+        assert!(config.enabled(Module::SystemTray));
+        assert!(config.enabled(Module::SystemOccupancy));
+        assert!(!config.enabled(Module::GlobalMenu));
     }
 
     #[test]
@@ -209,5 +236,6 @@ enabled = true
         assert!(!config.enabled(Module::SystemTray));
         assert!(config.enabled(Module::Notifications));
         assert!(config.enabled(Module::AudioDisplay));
+        assert!(config.enabled(Module::SystemOccupancy));
     }
 }

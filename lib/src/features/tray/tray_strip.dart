@@ -154,6 +154,10 @@ const ColorFilter _trayGrayscale = ColorFilter.matrix(<double>[
 class _TrayIcon extends StatelessWidget {
   const _TrayIcon({required this.icon});
 
+  /// Optical match for [HyprIconSizes.bar]. Tray art is full-bleed, so it
+  /// sits a little under that em size.
+  static const double extent = 14.5;
+
   final TrayIcon icon;
 
   @override
@@ -162,26 +166,26 @@ class _TrayIcon extends StatelessWidget {
 
     switch (icon.kind) {
       case TrayIconKind.none:
-        return Icon(Icons.apps_rounded, size: 13, color: tint);
+        return Icon(Icons.apps_rounded, size: _TrayIcon.extent, color: tint);
       case TrayIconKind.themePath:
         final String? path = icon.path;
         if (path == null || path.isEmpty) {
-          return Icon(Icons.apps_rounded, size: 13, color: tint);
+          return Icon(Icons.apps_rounded, size: _TrayIcon.extent, color: tint);
         }
         return _ThemedTrayIcon(path: path, tint: tint);
       case TrayIconKind.pngBytes:
         final List<int>? bytes = icon.pngBytes;
         if (bytes == null || bytes.isEmpty) {
-          return Icon(Icons.apps_rounded, size: 13, color: tint);
+          return Icon(Icons.apps_rounded, size: _TrayIcon.extent, color: tint);
         }
         return Image.memory(
           Uint8List.fromList(bytes),
-          width: 13,
-          height: 13,
+          width: _TrayIcon.extent,
+          height: _TrayIcon.extent,
           gaplessPlayback: true,
           filterQuality: FilterQuality.medium,
           errorBuilder: (_, _, _) =>
-              Icon(Icons.apps_rounded, size: 13, color: tint),
+              Icon(Icons.apps_rounded, size: _TrayIcon.extent, color: tint),
         );
     }
   }
@@ -195,21 +199,25 @@ class _ThemedTrayIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Widget fallback = Icon(Icons.apps_rounded, size: 13, color: tint);
+    final Widget fallback = Icon(
+      Icons.apps_rounded,
+      size: _TrayIcon.extent,
+      color: tint,
+    );
 
     if (path.toLowerCase().endsWith('.svg')) {
       return hyprLocalSvg(
         path: path,
-        width: 13,
-        height: 13,
+        width: _TrayIcon.extent,
+        height: _TrayIcon.extent,
         fallback: fallback,
       );
     }
 
     return hyprLocalImage(
       path: path,
-      width: 13,
-      height: 13,
+      width: _TrayIcon.extent,
+      height: _TrayIcon.extent,
       fallback: fallback,
       filterQuality: FilterQuality.medium,
       gaplessPlayback: true,

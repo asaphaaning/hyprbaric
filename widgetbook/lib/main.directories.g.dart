@@ -73,6 +73,12 @@ import 'package:hyprbaric_widgetbook/use_cases/settings/settings_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_settings_settings_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/setup/setup_guide_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_setup_setup_guide_use_cases;
+import 'package:hyprbaric_widgetbook/use_cases/system/system_atom_use_cases.dart'
+    as _hyprbaric_widgetbook_use_cases_system_system_atom_use_cases;
+import 'package:hyprbaric_widgetbook/use_cases/system/system_chip_use_cases.dart'
+    as _hyprbaric_widgetbook_use_cases_system_system_chip_use_cases;
+import 'package:hyprbaric_widgetbook/use_cases/system/system_panel_use_cases.dart'
+    as _hyprbaric_widgetbook_use_cases_system_system_panel_use_cases;
 import 'package:hyprbaric_widgetbook/use_cases/tray/tray_use_cases.dart'
     as _hyprbaric_widgetbook_use_cases_tray_tray_use_cases;
 import 'package:widgetbook/widgetbook.dart' as _widgetbook;
@@ -1086,6 +1092,61 @@ final directories = <_widgetbook.WidgetbookNode>[
         ],
       ),
       _widgetbook.WidgetbookFolder(
+        name: 'System',
+        children: [
+          _widgetbook.WidgetbookComponent(
+            name: 'SystemGauge',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Interactive needle',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_system_system_atom_use_cases
+                        .buildInteractiveSystemGauge,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Needle positions',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_system_system_atom_use_cases
+                        .buildSystemGaugeStates,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'SystemIcon',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Symbols',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_system_system_atom_use_cases
+                        .buildSystemSymbols,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'SystemMeterRow',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Meter rows',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_system_system_atom_use_cases
+                        .buildSystemMeterRows,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'SystemSparkline',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Sparklines',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_system_system_atom_use_cases
+                        .buildSystemSparklines,
+              ),
+            ],
+          ),
+        ],
+      ),
+      _widgetbook.WidgetbookFolder(
         name: 'Toasts',
         children: [
           _widgetbook.WidgetbookComponent(
@@ -1908,6 +1969,93 @@ final directories = <_widgetbook.WidgetbookNode>[
                 builder:
                     _hyprbaric_widgetbook_use_cases_setup_setup_guide_use_cases
                         .buildSetupDesktopOverlay,
+              ),
+            ],
+          ),
+        ],
+      ),
+      _widgetbook.WidgetbookFolder(
+        name: 'System',
+        children: [
+          _widgetbook.WidgetbookComponent(
+            name: 'SystemChip',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'High load',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_system_system_chip_use_cases
+                        .buildHighSystemChip,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Idle',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_system_system_chip_use_cases
+                        .buildIdleSystemChip,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Measuring',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_system_system_chip_use_cases
+                        .buildMeasuringSystemChip,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Open',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_system_system_chip_use_cases
+                        .buildOpenSystemChip,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Reference',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_system_system_chip_use_cases
+                        .buildReferenceSystemChip,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'SystemPanel',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Chip and popover',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_system_system_panel_use_cases
+                        .buildSystemChipAndPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'High load',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_system_system_panel_use_cases
+                        .buildHighSystemPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Idle',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_system_system_panel_use_cases
+                        .buildIdleSystemPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Interactive',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_system_system_panel_use_cases
+                        .buildInteractiveSystemPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Loading',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_system_system_panel_use_cases
+                        .buildLoadingSystemPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Reference',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_system_system_panel_use_cases
+                        .buildReferenceSystemPanel,
+              ),
+              _widgetbook.WidgetbookUseCase(
+                name: 'Unavailable',
+                builder:
+                    _hyprbaric_widgetbook_use_cases_system_system_panel_use_cases
+                        .buildUnavailableSystemPanel,
               ),
             ],
           ),

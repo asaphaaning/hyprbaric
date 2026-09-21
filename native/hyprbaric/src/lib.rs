@@ -29,6 +29,7 @@ mod setup;
 mod shortcuts;
 mod signals;
 mod supervision;
+mod system;
 mod telemetry;
 mod transport;
 mod tray;

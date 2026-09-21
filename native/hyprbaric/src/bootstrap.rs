@@ -10,7 +10,7 @@ use tracing::instrument;
 use crate::{
     appearance, audio, brightness, caffeine, capabilities, clock, color_picker, config, hyprland,
     launcher, modules, network, night_light, notifications, portals, power, recording, schedule,
-    screenshot, session, setup, shortcuts, tray, workspaces,
+    screenshot, session, setup, shortcuts, system, tray, workspaces,
 };
 use crate::{
     appearance::Snapshot as AppearanceSnapshot,
@@ -31,6 +31,7 @@ use crate::{
     schedule::Snapshot as ScheduleSnapshot,
     screenshot::Handle as ScreenshotHandle,
     setup::Status as SetupStatus,
+    system::Snapshot as SystemSnapshot,
     tray::Snapshot as TraySnapshot,
     workspaces::Snapshot as WorkspaceSettingsSnapshot,
 };
@@ -62,6 +63,7 @@ pub(crate) struct Components {
     session: session::Handle,
     shortcuts: shortcuts::Handle,
     setup: setup::Handle,
+    system: system::Handle,
 }
 
 /// A fully bootstrapped application and its coherent initial UI projection.
@@ -90,6 +92,7 @@ pub struct Initial {
     recording: RecordingSnapshot,
     tray: TraySnapshot,
     clock: ClockSnapshot,
+    system: SystemSnapshot,
     capabilities: CapabilitySnapshot,
     session_availability: session::Availability,
     setup: SetupStatus,
@@ -124,6 +127,7 @@ impl Initial {
             Output::Recording(self.recording),
             Output::Tray(self.tray),
             Output::Clock(self.clock),
+            Output::System(self.system),
             Output::Capabilities(self.capabilities),
             Output::SessionAvailability(self.session_availability),
             Output::Setup(self.setup),
@@ -199,6 +203,9 @@ impl Components {
         let (clock, initial_clock) = clock::Clock::bootstrap();
         log_bootstrap_phase("clock", phase_started.elapsed());
         let phase_started = Instant::now();
+        let (system, initial_system) = system::Monitor::bootstrap(&config.system).await;
+        log_bootstrap_phase("system", phase_started.elapsed());
+        let phase_started = Instant::now();
         let (setup, initial_setup) = setup::Guide::bootstrap(&config.setup);
         log_bootstrap_phase("setup", phase_started.elapsed());
         let phase_started = Instant::now();
@@ -256,6 +263,7 @@ impl Components {
                 session,
                 shortcuts,
                 setup,
+                system,
             },
             Initial {
                 desktop: initial_desktop,
@@ -274,6 +282,7 @@ impl Components {
                 recording: initial_recording,
                 tray: initial_tray,
                 clock: initial_clock,
+                system: initial_system,
                 capabilities: initial_capabilities,
                 session_availability,
                 setup: initial_setup,
@@ -318,6 +327,7 @@ impl Components {
             color_picker_reports: self.color_picker.subscribe_results(),
             tray,
             clock: self.clock.subscribe(),
+            system: self.system.subscribe(),
             setup: self.setup.subscribe(),
             setup_reports: self.setup.subscribe_results(),
             shortcuts: self.shortcuts.subscribe(),

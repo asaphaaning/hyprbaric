@@ -10,6 +10,7 @@ pub enum Module {
     Notifications,
     AudioDisplay,
     GlobalMenu,
+    SystemOccupancy,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
@@ -64,9 +65,10 @@ impl ModuleSettings {
 }
 
 impl Module {
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::ActiveWindowTitle,
         Self::SystemTray,
+        Self::SystemOccupancy,
         Self::Notifications,
         Self::AudioDisplay,
         Self::GlobalMenu,
@@ -76,6 +78,7 @@ impl Module {
         match self {
             Self::ActiveWindowTitle => "active_window_title",
             Self::SystemTray => "system_tray",
+            Self::SystemOccupancy => "system_occupancy",
             Self::Notifications => "notifications",
             Self::AudioDisplay => "audio_display",
             Self::GlobalMenu => "global_menu",
@@ -85,8 +88,8 @@ impl Module {
     /// Whether the module is on for someone who has never configured it.
     ///
     /// Modules show by default because showing one costs nothing. The global
-    /// menu is the exception: it takes ownership of the desktop's menu bar and
-    /// needs a compositor plugin, so it waits to be asked for.
+    /// menu waits to be asked for, because it takes ownership of the desktop's
+    /// menu bar.
     pub const fn default_enabled(self) -> bool {
         !matches!(self, Self::GlobalMenu)
     }
