@@ -37,11 +37,11 @@ class SystemPanel extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
               child: HyprInstrumentHeader(
                 title: 'System',
-                icon: const SystemIcon(
+                icon: SystemIcon(
                   SystemSymbol.cpu,
                   color: HyprInstrumentColors.secondary,
                 ),

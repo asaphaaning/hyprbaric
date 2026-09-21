@@ -224,6 +224,16 @@ export 'src/features/setup/setup_guide_overlay.dart'
 export 'src/features/setup/setup_guide_state.dart'
     show SetupLaunch, SetupStep, setupGuideAutomaticHostProvider;
 export 'src/features/system/system_chip.dart' show SystemChip;
+export 'src/features/system/system_formatting.dart'
+    show
+        cpuHistory,
+        cpuRatio,
+        diskRatio,
+        formatCpuPercent,
+        formatDiskPercent,
+        formatMemoryPanel,
+        memoryHistory,
+        memoryRatio;
 export 'src/features/system/system_gauge.dart' show SystemGauge;
 export 'src/features/system/system_icon.dart' show SystemIcon, SystemSymbol;
 export 'src/features/system/system_meter.dart' show SystemMeterRow, SystemStat;
@@ -263,11 +273,11 @@ export 'src/state/rust_signals/power.dart' show powerStatusProvider;
 export 'src/state/rust_signals/recording.dart' show recordingStatusProvider;
 export 'src/state/rust_signals/schedule.dart' show scheduleStatusProvider;
 export 'src/state/rust_signals/setup.dart' show setupStatusProvider;
-export 'src/state/rust_signals/system.dart' show systemStatusProvider;
 export 'src/state/rust_signals/shortcuts.dart'
     show
         shortcutSettingsCommandResultProvider,
         shortcutSettingsSnapshotProvider;
+export 'src/state/rust_signals/system.dart' show systemStatusProvider;
 export 'src/state/rust_signals/tray.dart'
     show trayMenuStatusProvider, trayStatusProvider;
 export 'src/state/rust_signals/workspace_settings.dart'

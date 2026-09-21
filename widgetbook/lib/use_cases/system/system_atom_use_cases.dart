@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hyprbaric/src/features/system/system_formatting.dart';
 import 'package:hyprbaric/widget_catalog.dart';
 import 'package:widgetbook/widgetbook.dart';
 import 'package:widgetbook_annotation/widgetbook_annotation.dart';

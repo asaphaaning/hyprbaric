@@ -6,7 +6,6 @@ import 'package:hyprbaric/src/features/system/system_chip.dart';
 import 'package:hyprbaric/src/features/system/system_formatting.dart';
 import 'package:hyprbaric/src/features/system/system_gauge.dart';
 import 'package:hyprbaric/src/features/system/system_panel.dart';
-import 'package:hyprbaric/src/widgets/hypr_surface.dart';
 
 void main() {
   test('cpu and memory chip labels match the bar readout', () {
