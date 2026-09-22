@@ -3,9 +3,12 @@
 use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 
 use freedesktop_desktop_entry::get_languages_from_env;
-use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{
+    Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher,
+    event::{AccessKind, AccessMode, MetadataKind, ModifyKind},
+};
 use tokio::{
-    sync::{RwLock, broadcast, mpsc},
+    sync::{RwLock, broadcast, watch},
     task,
     time::{Instant, sleep},
 };
@@ -148,7 +151,7 @@ impl Launcher {
 
         let launcher = Arc::clone(self);
         tokio::spawn(async move {
-            let (tx, mut rx) = mpsc::unbounded_channel::<notify::Result<Event>>();
+            let (tx, mut rx) = watch::channel(());
             let watcher = match create_watcher(tx, &launcher.watch_targets) {
                 Ok(watcher) => watcher,
                 Err(error) => {
@@ -157,7 +160,7 @@ impl Launcher {
                 }
             };
 
-            while rx.recv().await.is_some() {
+            while rx.changed().await.is_ok() {
                 let deadline = Instant::now() + WATCH_DEBOUNCE;
                 let timer = sleep_until(deadline);
                 tokio::pin!(timer);
@@ -165,16 +168,9 @@ impl Launcher {
                 loop {
                     tokio::select! {
                         _ = &mut timer => break,
-                        event = rx.recv() => {
-                            let Some(event) = event else {
+                        changed = rx.changed() => {
+                            if changed.is_err() {
                                 return;
-                            };
-                            if event.is_ok() {
-                                timer.as_mut().reset(Instant::now() + WATCH_DEBOUNCE);
-                                continue;
-                            }
-                            if let Err(error) = event {
-                                tracing::warn!("App-launcher watcher error: {error}");
                             }
                             timer.as_mut().reset(Instant::now() + WATCH_DEBOUNCE);
                         }
@@ -228,12 +224,19 @@ impl Launcher {
 }
 
 fn create_watcher(
-    tx: mpsc::UnboundedSender<notify::Result<Event>>,
+    tx: watch::Sender<()>,
     targets: &[WatchTarget],
 ) -> Result<RecommendedWatcher, Error> {
     let mut watcher = RecommendedWatcher::new(
-        move |event| {
-            let _ = tx.send(event);
+        move |event| match event {
+            Ok(event) if event_changes_index(&event) => {
+                tx.send_replace(());
+            }
+            Err(error) => {
+                tracing::warn!("App-launcher watcher error: {error}");
+                tx.send_replace(());
+            }
+            _ => {}
         },
         Config::default(),
     )
@@ -255,6 +258,149 @@ fn create_watcher(
     Ok(watcher)
 }
 
+fn event_changes_index(event: &Event) -> bool {
+    if event.need_rescan() {
+        return true;
+    }
+
+    match event.kind {
+        EventKind::Access(AccessKind::Close(AccessMode::Write)) => true,
+        EventKind::Access(_)
+        | EventKind::Modify(ModifyKind::Metadata(MetadataKind::AccessTime)) => false,
+        EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) | EventKind::Any => true,
+        EventKind::Other => false,
+    }
+}
+
 fn sleep_until(deadline: Instant) -> tokio::time::Sleep {
     sleep(deadline.saturating_duration_since(Instant::now()))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        fs::{self, OpenOptions},
+        io::{self, Write},
+        path::PathBuf,
+        time::{Duration, SystemTime, UNIX_EPOCH},
+    };
+
+    use notify::{
+        Event, EventKind,
+        event::{
+            AccessKind, AccessMode, CreateKind, DataChange, Flag, MetadataKind, ModifyKind,
+            RemoveKind,
+        },
+    };
+    use tokio::{sync::watch, time::timeout};
+
+    use super::{WATCH_DEBOUNCE, WatchTarget, create_watcher, event_changes_index};
+
+    #[test]
+    fn reads_do_not_invalidate_the_desktop_index() {
+        for kind in [
+            EventKind::Access(AccessKind::Open(AccessMode::Any)),
+            EventKind::Access(AccessKind::Open(AccessMode::Read)),
+            EventKind::Access(AccessKind::Read),
+            EventKind::Access(AccessKind::Close(AccessMode::Read)),
+            EventKind::Modify(ModifyKind::Metadata(MetadataKind::AccessTime)),
+        ] {
+            assert!(!event_changes_index(&Event::new(kind)), "{kind:?}");
+        }
+    }
+
+    #[test]
+    fn writes_and_lost_events_invalidate_the_desktop_index() {
+        for kind in [
+            EventKind::Create(CreateKind::File),
+            EventKind::Create(CreateKind::Folder),
+            EventKind::Modify(ModifyKind::Data(DataChange::Any)),
+            EventKind::Access(AccessKind::Close(AccessMode::Write)),
+            EventKind::Remove(RemoveKind::File),
+            EventKind::Any,
+        ] {
+            assert!(event_changes_index(&Event::new(kind)), "{kind:?}");
+        }
+
+        assert!(event_changes_index(
+            &Event::new(EventKind::Other).set_flag(Flag::Rescan)
+        ));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[tokio::test]
+    async fn opening_desktop_files_does_not_trigger_a_rebuild()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let directory = TemporaryDirectory::new()?;
+        let target = WatchTarget {
+            path: directory.0.clone(),
+            recursive: true,
+        };
+        let (tx, mut changes) = watch::channel(());
+        let watcher = create_watcher(tx, &[target])?;
+        let desktop_file = directory.0.join("hyprbaric-watch-test.desktop");
+
+        fs::write(
+            &desktop_file,
+            b"[Desktop Entry]\nType=Application\nName=Watch Test\n",
+        )?;
+        timeout(Duration::from_secs(2), changes.changed()).await??;
+        drain_changes(&mut changes).await;
+
+        for _ in 0..10 {
+            let _ = fs::read(&desktop_file)?;
+        }
+        assert!(
+            timeout(WATCH_DEBOUNCE * 3, changes.changed())
+                .await
+                .is_err()
+        );
+
+        let mut file = OpenOptions::new().append(true).open(&desktop_file)?;
+        file.write_all(b"Comment=Updated\n")?;
+        drop(file);
+        timeout(Duration::from_secs(2), changes.changed()).await??;
+        drain_changes(&mut changes).await;
+
+        let renamed = directory.0.join("renamed-watch-test.desktop");
+        fs::rename(&desktop_file, &renamed)?;
+        timeout(Duration::from_secs(2), changes.changed()).await??;
+        drain_changes(&mut changes).await;
+
+        fs::remove_file(&renamed)?;
+        timeout(Duration::from_secs(2), changes.changed()).await??;
+        drop(watcher);
+        Ok(())
+    }
+
+    #[cfg(target_os = "linux")]
+    async fn drain_changes(changes: &mut watch::Receiver<()>) {
+        while matches!(timeout(WATCH_DEBOUNCE, changes.changed()).await, Ok(Ok(()))) {}
+    }
+
+    #[cfg(target_os = "linux")]
+    struct TemporaryDirectory(PathBuf);
+
+    #[cfg(target_os = "linux")]
+    impl TemporaryDirectory {
+        fn new() -> io::Result<Self> {
+            let unique = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map_err(io::Error::other)?
+                .as_nanos();
+            let path = std::env::temp_dir().join(format!(
+                "hyprbaric-launcher-watch-{}-{unique}",
+                std::process::id()
+            ));
+            fs::create_dir(&path)?;
+            Ok(Self(path))
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    impl Drop for TemporaryDirectory {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
 }

@@ -52,6 +52,17 @@ jobs:
           flutter analyze
           flutter test
 
+      - name: Verify native input regions
+        run: |
+          mkdir -p build/native-tests
+          c++ -std=c++14 -O2 -Wall -Wextra -Werror \
+            -I"$FLUTTER_ROOT/bin/cache/artifacts/engine/linux-x64" \
+            linux/runner/hit_region_geometry.cc \
+            linux/runner/hit_region_geometry_test.cc \
+            -o build/native-tests/hit_region_geometry_test \
+            $(pkg-config --cflags --libs gtk+-3.0)
+          build/native-tests/hit_region_geometry_test
+
       - name: Verify Rust
         run: |
           cargo fmt --all -- --check
