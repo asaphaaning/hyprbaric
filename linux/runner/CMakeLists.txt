@@ -9,6 +9,7 @@ project(runner LANGUAGES CXX)
 add_executable(${BINARY_NAME}
   "main.cc"
   "hit_region.cc"
+  "hit_region_geometry.cc"
   "layer_shell_host.cc"
   "monitor.cc"
   "my_application.cc"
@@ -34,6 +35,22 @@ target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::WAYLAND_CLIENT)
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 
 if(BUILD_TESTING)
+  add_executable(hit_region_geometry_test
+    "hit_region_geometry.cc"
+    "hit_region_geometry_test.cc"
+  )
+  apply_standard_settings(hit_region_geometry_test)
+  # Geometry uses the generated protocol types, but needs no Flutter engine.
+  target_include_directories(hit_region_geometry_test PRIVATE
+    "${FLUTTER_MANAGED_DIR}/ephemeral"
+  )
+  add_dependencies(hit_region_geometry_test flutter_assemble)
+  target_link_libraries(hit_region_geometry_test PRIVATE PkgConfig::GTK)
+  add_test(
+    NAME hit_region_geometry_test
+    COMMAND hit_region_geometry_test
+  )
+
   add_executable(native_window_visibility_test
     "native_window_visibility_test.cc"
   )
