@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
@@ -34,19 +35,19 @@ class SystemGauge extends StatefulWidget {
 class _SystemGaugeState extends State<SystemGauge>
     with SingleTickerProviderStateMixin {
   late final Ticker _ticker;
+  late final ValueNotifier<double> _position;
   Duration? _previousTick;
-  double _position = 0;
   double _velocity = 0;
 
   double get _target => widget.ratio.clamp(0, 1).toDouble();
 
   bool get _settled =>
-      (_target - _position).abs() < 0.0005 && _velocity.abs() < 0.001;
+      (_target - _position.value).abs() < 0.0005 && _velocity.abs() < 0.001;
 
   @override
   void initState() {
     super.initState();
-    _position = _target;
+    _position = ValueNotifier(_target);
     _ticker = createTicker(_onTick);
   }
 
@@ -64,7 +65,7 @@ class _SystemGaugeState extends State<SystemGauge>
 
   void _followTarget() {
     if (MediaQuery.disableAnimationsOf(context)) {
-      _position = _target;
+      _position.value = _target;
       _velocity = 0;
       _ticker.stop();
       return;
@@ -88,30 +89,27 @@ class _SystemGaugeState extends State<SystemGauge>
       0.032,
     );
     final ({double position, double velocity}) next = NeedleMotion.step(
-      position: _position,
+      position: _position.value,
       velocity: _velocity,
       target: _target,
       dt: dt,
     );
     if ((_target - next.position).abs() < 0.0005 &&
         next.velocity.abs() < 0.001) {
-      setState(() {
-        _position = _target;
-        _velocity = 0;
-      });
+      _position.value = _target;
+      _velocity = 0;
       _ticker.stop();
       return;
     }
 
-    setState(() {
-      _position = next.position;
-      _velocity = next.velocity;
-    });
+    _position.value = next.position;
+    _velocity = next.velocity;
   }
 
   @override
   void dispose() {
     _ticker.dispose();
+    _position.dispose();
     super.dispose();
   }
 
@@ -120,21 +118,74 @@ class _SystemGaugeState extends State<SystemGauge>
     return SizedBox(
       width: widget.width,
       height: widget.height,
-      child: CustomPaint(
-        painter: _GaugePainter(
-          ratio: _position.clamp(0, 1).toDouble(),
-          label: widget.label,
-        ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          const RepaintBoundary(
+            child: CustomPaint(painter: _GaugeFacePainter()),
+          ),
+          RepaintBoundary(
+            child: CustomPaint(painter: _GaugeMotionPainter(_position)),
+          ),
+          RepaintBoundary(
+            child: CustomPaint(painter: _GaugeChromePainter(widget.label)),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _GaugePainter extends CustomPainter {
-  const _GaugePainter({required this.ratio, required this.label});
+const _gaugeArt = _GaugeArt();
 
-  final double ratio;
+class _GaugeFacePainter extends CustomPainter {
+  const _GaugeFacePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) => _gaugeArt.paintFace(canvas, size);
+
+  @override
+  bool shouldRepaint(covariant _GaugeFacePainter oldDelegate) => false;
+}
+
+class _GaugeMotionPainter extends CustomPainter {
+  _GaugeMotionPainter(this.position) : super(repaint: position);
+
+  final ValueListenable<double> position;
+
+  @override
+  void paint(Canvas canvas, Size size) =>
+      _gaugeArt.paintMotion(canvas, size, position.value);
+
+  @override
+  bool shouldRepaint(covariant _GaugeMotionPainter oldDelegate) =>
+      oldDelegate.position != position;
+}
+
+class _GaugeChromePainter extends CustomPainter {
+  const _GaugeChromePainter(this.label);
+
   final String label;
+
+  @override
+  void paint(Canvas canvas, Size size) =>
+      _gaugeArt.paintChrome(canvas, size, label);
+
+  @override
+  bool shouldRepaint(covariant _GaugeChromePainter oldDelegate) =>
+      oldDelegate.label != label;
+}
+
+class _GaugeArt {
+  const _GaugeArt();
+
+  static const Size _faceSize = Size(320, 204);
+  static final RRect _face = RRect.fromRectAndRadius(
+    const Rect.fromLTWH(1, 1, 318, 202),
+    const Radius.circular(26),
+  );
+  static const Offset _pivot = Offset(160, 350);
+  static const double _radius = 282;
 
   /// A concealed pivot gives the scale its shallow instrument arc.
   static const double _startAngle = 246 * math.pi / 180;
@@ -144,29 +195,48 @@ class _GaugePainter extends CustomPainter {
   static const Color _needle = Color(0xFFFF6414);
   static const Color _scale = Color(0x506F625B);
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    // All artwork shares one coordinate system, including the hidden pivot.
+  void paintFace(Canvas canvas, Size size) {
     canvas.save();
-    canvas.scale(size.width / 320, size.height / 204);
-    const Size faceSize = Size(320, 204);
-    final RRect face = RRect.fromRectAndRadius(
-      const Rect.fromLTWH(1, 1, 318, 202),
-      const Radius.circular(26),
-    );
-    const Offset pivot = Offset(160, 350);
-    const double radius = 282;
-
-    canvas.save();
-    canvas.clipRRect(face);
-    _paintGlass(canvas, faceSize, pivot);
-    _paintScale(canvas, faceSize, pivot, radius);
-    _paintNeedle(canvas, pivot, radius);
-    _paintCentre(canvas, pivot, radius);
-    _paintCorners(canvas, faceSize);
-    _paintReflection(canvas, faceSize);
+    canvas.scale(size.width / _faceSize.width, size.height / _faceSize.height);
+    canvas.clipRRect(_face);
+    _paintGlass(canvas, _faceSize, _pivot);
+    _paintScale(canvas, _faceSize, _pivot, _radius);
     canvas.restore();
-    _paintRim(canvas, face);
+  }
+
+  void paintMotion(Canvas canvas, Size size, double ratio) {
+    canvas.save();
+    canvas.scale(size.width / _faceSize.width, size.height / _faceSize.height);
+    canvas.clipRRect(_face);
+    _paintNeedle(canvas, _pivot, _radius, ratio);
+    _paintReadout(
+      canvas,
+      origin: const Offset(28, 0),
+      alignRight: false,
+      size: _faceSize,
+      caption: 'USAGE',
+      value: '${(ratio * 100).round()}%',
+    );
+    canvas.restore();
+  }
+
+  void paintChrome(Canvas canvas, Size size, String label) {
+    canvas.save();
+    canvas.scale(size.width / _faceSize.width, size.height / _faceSize.height);
+    canvas.save();
+    canvas.clipRRect(_face);
+    _paintCentre(canvas, _pivot, label);
+    _paintReadout(
+      canvas,
+      origin: Offset.zero,
+      alignRight: true,
+      size: _faceSize,
+      caption: 'MAX',
+      value: '100%',
+    );
+    _paintReflection(canvas, _faceSize);
+    canvas.restore();
+    _paintRim(canvas, _face);
     canvas.restore();
   }
 
@@ -316,7 +386,7 @@ class _GaugePainter extends CustomPainter {
     }
   }
 
-  void _paintNeedle(Canvas canvas, Offset pivot, double radius) {
+  void _paintNeedle(Canvas canvas, Offset pivot, double radius, double ratio) {
     final double angle = _startAngle + _sweepAngle * AnalogLevel.sweep(ratio);
     final Offset tip = pivot + _direction(angle) * (radius + 12);
     canvas.drawLine(
@@ -338,7 +408,7 @@ class _GaugePainter extends CustomPainter {
     );
   }
 
-  void _paintCentre(Canvas canvas, Offset pivot, double radius) {
+  void _paintCentre(Canvas canvas, Offset pivot, String label) {
     final TextPainter title = _text(
       label,
       HyprInstrumentText.body.copyWith(
@@ -351,25 +421,6 @@ class _GaugePainter extends CustomPainter {
     title.paint(
       canvas,
       Offset(pivot.dx - title.width / 2, 133 - title.height / 2),
-    );
-  }
-
-  void _paintCorners(Canvas canvas, Size size) {
-    _paintReadout(
-      canvas,
-      origin: const Offset(28, 0),
-      alignRight: false,
-      size: size,
-      caption: 'USAGE',
-      value: '${(ratio * 100).round()}%',
-    );
-    _paintReadout(
-      canvas,
-      origin: Offset.zero,
-      alignRight: true,
-      size: size,
-      caption: 'MAX',
-      value: '100%',
     );
   }
 
@@ -425,10 +476,5 @@ class _GaugePainter extends CustomPainter {
       text: TextSpan(text: value, style: style),
       textDirection: TextDirection.ltr,
     )..layout();
-  }
-
-  @override
-  bool shouldRepaint(covariant _GaugePainter oldDelegate) {
-    return oldDelegate.ratio != ratio || oldDelegate.label != label;
   }
 }
