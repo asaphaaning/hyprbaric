@@ -3,7 +3,6 @@
 #ifdef GDK_WINDOWING_WAYLAND
 #include <gdk/gdkwayland.h>
 #endif
-#include <algorithm>
 
 namespace {
 gboolean hit_region_rect_equals(const cairo_rectangle_int_t &lhs,
@@ -134,43 +133,6 @@ RoundedRegionRect rounded_region_from_native(
   };
 }
 
-void fill_rounded_region(cairo_t *cr, const RoundedRegionRect &region) {
-  if (region.rect.width <= 0 || region.rect.height <= 0) {
-    return;
-  }
-
-  const double x = static_cast<double>(region.rect.x);
-  const double y = static_cast<double>(region.rect.y);
-  const double region_width = static_cast<double>(region.rect.width);
-  const double region_height = static_cast<double>(region.rect.height);
-  const double tl = region.radius_top_left;
-  const double tr = region.radius_top_right;
-  const double br = region.radius_bottom_right;
-  const double bl = region.radius_bottom_left;
-
-  cairo_new_path(cr);
-  cairo_move_to(cr, x + tl, y);
-  cairo_line_to(cr, x + region_width - tr, y);
-  if (tr > 0) {
-    cairo_arc(cr, x + region_width - tr, y + tr, tr, -G_PI_2, 0.0);
-  }
-  cairo_line_to(cr, x + region_width, y + region_height - br);
-  if (br > 0) {
-    cairo_arc(cr, x + region_width - br, y + region_height - br, br, 0.0,
-              G_PI_2);
-  }
-  cairo_line_to(cr, x + bl, y + region_height);
-  if (bl > 0) {
-    cairo_arc(cr, x + bl, y + region_height - bl, bl, G_PI_2, G_PI);
-  }
-  cairo_line_to(cr, x, y + tl);
-  if (tl > 0) {
-    cairo_arc(cr, x + tl, y + tl, tl, G_PI, 3.0 * G_PI_2);
-  }
-  cairo_close_path(cr);
-  cairo_fill(cr);
-}
-
 gboolean flush_hit_region_idle(gpointer user_data) {
   GtkWindow *window = GTK_WINDOW(user_data);
   NativeWindowState *state = native_window_state_from_window(window);
@@ -213,47 +175,11 @@ gboolean hyprbaric_hit_region_apply(NativeWindowState *state) {
     return TRUE;
   }
 
-  const int clamped_bar_height =
-      std::max(0, std::min(region_state.bar_height, height));
-
-  cairo_surface_t *surface =
-      cairo_image_surface_create(CAIRO_FORMAT_A8, width, height);
-  cairo_t *cr = cairo_create(surface);
-
-  cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
-  cairo_paint(cr);
-
-  cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-  cairo_set_antialias(cr, CAIRO_ANTIALIAS_NONE);
-
-  if (region_state.capture_all_clicks) {
-    cairo_rectangle(cr, 0.0, 0.0, static_cast<double>(width),
-                    static_cast<double>(height));
-  } else {
-    const int bar_y = region_state.bar_edge ==
-                              HYPRBARIC_NATIVE_LAYER_SHELL_BAR_EDGE_BOTTOM
-                          ? height - clamped_bar_height
-                          : 0;
-    cairo_rectangle(cr, 0.0, static_cast<double>(bar_y),
-                    static_cast<double>(width),
-                    static_cast<double>(clamped_bar_height));
-  }
-  cairo_fill(cr);
-
-  if (region_state.has_menu) {
-    fill_rounded_region(cr, region_state.menu);
-  }
-
-  for (const RoundedRegionRect &region : region_state.regions) {
-    fill_rounded_region(cr, region);
-  }
-
-  cairo_region_t *region = gdk_cairo_region_create_from_surface(surface);
+  cairo_region_t *region = hyprbaric_hit_region_build(region_state, width, height);
+  g_debug("hyprbaric::hit_region: applying %d rectangles to %dx%d logical window",
+          cairo_region_num_rectangles(region), width, height);
   apply_regions(state, region);
-
   cairo_region_destroy(region);
-  cairo_destroy(cr);
-  cairo_surface_destroy(surface);
 
   state->last_applied_hit_region_state = region_state;
   state->last_applied_region_width = width;
