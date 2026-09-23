@@ -8,11 +8,20 @@ import 'src/bindings/bindings.dart';
 import 'src/hyprbaric.dart';
 import 'src/layer_shell_controller.dart';
 import 'src/state/layer_shell.dart';
+import 'src/state/rust_signals/network.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final networkStatusFeed = NetworkStatusFeed();
   await initializeRust(assignRustSignal);
-  runWidget(const ProviderScope(child: _HyprbaricViews()));
+  runWidget(
+    ProviderScope(
+      overrides: [
+        networkStatusFeedProvider.overrideWithValue(networkStatusFeed),
+      ],
+      child: const _HyprbaricViews(),
+    ),
+  );
 }
 
 class _HyprbaricViews extends StatefulWidget {

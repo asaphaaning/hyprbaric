@@ -13,6 +13,17 @@ started collector has an empty unrecorded arc. The fixed visual scales are
 60 Mbps download and 10 Mbps upload. The numeric readouts remain accurate above
 those scales. Histories retain idle observations and survive popover closure.
 
+At startup, the app routes RINF `NetworkStatus` through an app-owned feed before
+Rust begins publishing. It retains only the latest snapshot when no panel or
+history consumer is listening; an open consumer receives that snapshot and then
+every live observation, including repeated idle values. Closing all consumers
+does not queue hidden full-status updates for replay on the next opening.
+Previously recorded traffic history remains available, but time without an
+active collector is not fabricated as freshly observed history.
+If Riverpod pauses a panel subscription rather than cancelling it, the feed
+coalesces observations during that pause and sends only the newest snapshot on
+resume. An active collector still receives every observation in order.
+
 Traffic and byte totals aggregate non-loopback system interfaces. Totals are
 system counters, not daily usage, and virtual interfaces may count traffic also
 seen on a physical interface. Latency is the existing best-effort reachability

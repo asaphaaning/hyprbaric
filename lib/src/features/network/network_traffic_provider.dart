@@ -8,7 +8,7 @@ import 'network_traffic_history.dart';
 
 /// Raw observations preserve cadence even when the visible status is unchanged.
 final networkTrafficUpdatesProvider = Provider<Stream<NetworkStatus>>(
-  (ref) => networkStatusUpdates(),
+  (ref) => ref.watch(networkStatusFeedProvider).updates(),
 );
 
 /// Collects measured history across popover openings, without synthetic fill.
