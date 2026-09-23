@@ -2,7 +2,9 @@
 //!
 //! [`Monitor`] reads CPU, memory, disk, uptime, temperature, and process
 //! counts from Linux host files. Domain types live in [`domain`]; `/proc` and
-//! `statvfs` stay in [`host`]. RINF projections live in [`signal`].
+//! `statvfs` stay in [`host`]. The host keeps one selected temperature input
+//! between observations and periodically rediscovers sensors. RINF projections
+//! live in [`signal`].
 //!
 //! ```text
 //! Monitor --poll--> host::{cpu,memory,disk,...} --parse--> Snapshot
@@ -25,7 +27,7 @@ use tracing::instrument;
 
 use crate::config::Cadence;
 
-use self::host::Tick;
+use self::host::{Thermometer, Tick};
 
 pub use domain::{Bytes, Celsius, Cpu, Disk, Memory, Percent, Snapshot, Trace, Usage};
 
@@ -60,9 +62,14 @@ pub struct Monitor {
     latest: Mutex<State>,
 }
 
+/// Last published values and host sampling state for one monitor.
 struct State {
+    /// Last snapshot delivered to subscribers.
     last: Snapshot,
+    /// Previous aggregate CPU counter for delta calculation.
     tick: Option<Tick>,
+    /// Selected temperature source, shared across observations.
+    thermometer: Thermometer,
 }
 
 impl Monitor {
@@ -75,13 +82,20 @@ impl Monitor {
             })
             .ok();
         sleep(FIRST_SAMPLE).await;
-        let (initial, tick) = observe(first_tick, Cpu::measuring(), Trace::empty());
+        let mut thermometer = Thermometer::default();
+        let (initial, tick) = observe(
+            first_tick,
+            Cpu::measuring(),
+            Trace::empty(),
+            &mut thermometer,
+        );
 
         let (events, _) = broadcast::channel(16);
         let monitor = Arc::new(Self {
             events,
             latest: Mutex::new(State {
                 tick,
+                thermometer,
                 last: initial.clone(),
             }),
         });
@@ -102,7 +116,7 @@ impl Monitor {
             Snapshot::Ready { cpu, memory, .. } => (cpu.clone(), memory.history.clone()),
             Snapshot::Unavailable { .. } => (Cpu::measuring(), Trace::empty()),
         };
-        let (snapshot, tick) = observe(state.tick, cpu, memory_history);
+        let (snapshot, tick) = observe(state.tick, cpu, memory_history, &mut state.thermometer);
 
         if snapshot == state.last {
             state.tick = tick;
@@ -116,7 +130,12 @@ impl Monitor {
 }
 
 #[instrument(name = "system::observe", skip_all)]
-fn observe(previous: Option<Tick>, cpu: Cpu, memory_history: Trace) -> (Snapshot, Option<Tick>) {
+fn observe(
+    previous: Option<Tick>,
+    cpu: Cpu,
+    memory_history: Trace,
+    thermometer: &mut Thermometer,
+) -> (Snapshot, Option<Tick>) {
     let later = host::cpu_tick()
         .inspect_err(|error| {
             tracing::debug!(%error, "CPU occupancy is still measuring");
@@ -156,7 +175,7 @@ fn observe(previous: Option<Tick>, cpu: Cpu, memory_history: Trace) -> (Snapshot
             memory,
             disk: host::disk(),
             uptime,
-            temperature: host::temperature(),
+            temperature: thermometer.sample(),
             processes,
         },
         tick,

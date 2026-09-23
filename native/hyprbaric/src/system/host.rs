@@ -9,8 +9,8 @@ use std::{
     fs,
     io::{self, ErrorKind},
     os::unix::ffi::OsStrExt,
-    path::Path,
-    time::Duration,
+    path::{Path, PathBuf},
+    time::{Duration, Instant},
 };
 
 use tracing::instrument;
@@ -74,16 +74,201 @@ pub(super) fn disk() -> Disk {
     }
 }
 
-/// Reads a CPU package temperature when a known sensor is present.
-#[instrument(name = "system::host::temperature")]
-pub(super) fn temperature() -> Option<Celsius> {
-    read_hwmon_temperature()
-        .inspect_err(|error| {
-            tracing::debug!(%error, "hwmon CPU temperature is unavailable");
-        })
-        .ok()
-        .flatten()
-        .or_else(read_thermal_zone_temperature)
+/// A cached CPU temperature source, periodically checked for better sensors.
+///
+/// Only the selected input is read between probes. A failed input triggers
+/// immediate discovery, while an absent sensor is retried after thirty seconds.
+pub(super) struct Thermometer {
+    /// Cached source and discovery age.
+    selection: Selection,
+    /// Hwmon discovery root.
+    hwmon: PathBuf,
+    /// Thermal-zone fallback root.
+    thermal: PathBuf,
+}
+
+/// The last discovery result and the time it was checked.
+enum Selection {
+    /// No discovery has run yet.
+    Unprobed,
+    /// No readable CPU sensor was found at the last check.
+    Missing { checked: Instant },
+    /// A sensor was found and is read directly between checks.
+    Ready { sensor: Sensor, checked: Instant },
+}
+
+/// One readable temperature input at the Linux host boundary.
+struct Sensor {
+    /// Sysfs input whose contents are millidegrees Celsius.
+    input: PathBuf,
+}
+
+/// A discoverable input, ranked before any temperature value is read.
+struct Candidate {
+    /// Input path to test if higher-ranked inputs fail.
+    sensor: Sensor,
+    /// CPU-focused chip names outrank ACPI and unrelated devices.
+    chip_rank: u8,
+    /// Package labels outrank generic channels within one chip.
+    channel_rank: u8,
+}
+
+const SENSOR_RECHECK: Duration = Duration::from_secs(30);
+
+impl Default for Thermometer {
+    fn default() -> Self {
+        Self::with_roots("/sys/class/hwmon", "/sys/class/thermal")
+    }
+}
+
+impl Thermometer {
+    fn with_roots(hwmon: impl Into<PathBuf>, thermal: impl Into<PathBuf>) -> Self {
+        Self {
+            selection: Selection::Unprobed,
+            hwmon: hwmon.into(),
+            thermal: thermal.into(),
+        }
+    }
+
+    /// Reads the selected CPU sensor, reprobing if it fails or becomes stale.
+    #[instrument(name = "system::host::temperature", skip(self))]
+    pub(super) fn sample(&mut self) -> Option<Celsius> {
+        self.sample_at(Instant::now())
+    }
+
+    fn sample_at(&mut self, now: Instant) -> Option<Celsius> {
+        match &self.selection {
+            Selection::Ready { sensor, checked }
+                if now.saturating_duration_since(*checked) < SENSOR_RECHECK =>
+            {
+                if let Some(value) = sensor.read() {
+                    return Some(value);
+                }
+            }
+            Selection::Missing { checked }
+                if now.saturating_duration_since(*checked) < SENSOR_RECHECK =>
+            {
+                return None;
+            }
+            Selection::Unprobed | Selection::Ready { .. } | Selection::Missing { .. } => {}
+        }
+
+        self.probe(now)
+    }
+
+    #[instrument(name = "system::host::temperature_probe", skip(self, now))]
+    fn probe(&mut self, now: Instant) -> Option<Celsius> {
+        let mut candidates = self.hwmon_candidates();
+        candidates.extend(self.thermal_candidates());
+        candidates.sort_by(|left, right| {
+            (right.chip_rank, right.channel_rank)
+                .cmp(&(left.chip_rank, left.channel_rank))
+                .then_with(|| left.sensor.input.cmp(&right.sensor.input))
+        });
+
+        for candidate in candidates {
+            if let Some(value) = candidate.sensor.read() {
+                tracing::debug!(path = %candidate.sensor.input.display(), "Selected CPU temperature sensor");
+                self.selection = Selection::Ready {
+                    sensor: candidate.sensor,
+                    checked: now,
+                };
+                return Some(value);
+            }
+        }
+
+        self.selection = Selection::Missing { checked: now };
+        None
+    }
+
+    fn hwmon_candidates(&self) -> Vec<Candidate> {
+        let entries = match fs::read_dir(&self.hwmon) {
+            Ok(entries) => entries,
+            Err(error) if error.kind() == ErrorKind::NotFound => return Vec::new(),
+            Err(error) => {
+                tracing::debug!(error = %Error::Temperature(error), "Could not discover hwmon temperature sensors");
+                return Vec::new();
+            }
+        };
+
+        let mut candidates = Vec::new();
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let name = fs::read_to_string(path.join("name")).unwrap_or_default();
+            let chip_rank = sensor_rank(name.trim());
+            candidates.extend(temp_candidates(&path, chip_rank));
+        }
+        candidates
+    }
+
+    fn thermal_candidates(&self) -> Vec<Candidate> {
+        let Ok(zones) = fs::read_dir(&self.thermal) else {
+            return Vec::new();
+        };
+        let mut candidates = Vec::new();
+        for entry in zones.flatten() {
+            let path = entry.path();
+            if !entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with("thermal_zone")
+            {
+                continue;
+            }
+            let Ok(kind) = fs::read_to_string(path.join("type")) else {
+                continue;
+            };
+            if matches!(kind.trim(), "x86_pkg_temp" | "cpu-thermal" | "soc_thermal") {
+                candidates.push(Candidate {
+                    sensor: Sensor {
+                        input: path.join("temp"),
+                    },
+                    chip_rank: 0,
+                    channel_rank: 0,
+                });
+            }
+        }
+        candidates
+    }
+}
+
+impl Sensor {
+    fn read(&self) -> Option<Celsius> {
+        let raw = fs::read_to_string(&self.input).ok()?;
+        let millidegrees = raw.trim().parse::<i64>().ok()?;
+        Celsius::from_millidegrees(millidegrees)
+    }
+}
+
+fn temp_candidates(hwmon: &Path, chip_rank: u8) -> Vec<Candidate> {
+    let Ok(entries) = fs::read_dir(hwmon) else {
+        return Vec::new();
+    };
+    let mut candidates = Vec::new();
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if !name.starts_with("temp") || !name.ends_with("_input") {
+            continue;
+        }
+        let label = name.replace("_input", "_label");
+        let label = fs::read_to_string(hwmon.join(label)).unwrap_or_default();
+        let channel_rank = if label_is_package(label.trim()) {
+            2
+        } else if name == "temp1_input" {
+            1
+        } else {
+            0
+        };
+        candidates.push(Candidate {
+            sensor: Sensor {
+                input: entry.path(),
+            },
+            chip_rank,
+            channel_rank,
+        });
+    }
+    candidates
 }
 
 impl Tick {
@@ -203,78 +388,6 @@ fn root_volume() -> Result<Disk, Error> {
     })
 }
 
-fn read_hwmon_temperature() -> Result<Option<Celsius>, Error> {
-    let mut best: Option<(u8, Celsius)> = None;
-    let hwmon = match fs::read_dir("/sys/class/hwmon") {
-        Ok(entries) => entries,
-        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(None),
-        Err(error) => return Err(Error::Temperature(error)),
-    };
-
-    for entry in hwmon {
-        let entry = entry.map_err(Error::Temperature)?;
-        let path = entry.path();
-        let name = fs::read_to_string(path.join("name")).unwrap_or_default();
-        let rank = sensor_rank(name.trim());
-        let Some(celsius) = read_temp_input(&path) else {
-            continue;
-        };
-        match best {
-            Some((current, _)) if rank <= current => {}
-            _ => best = Some((rank, celsius)),
-        }
-    }
-
-    Ok(best.map(|(_, celsius)| celsius))
-}
-
-fn read_thermal_zone_temperature() -> Option<Celsius> {
-    let zones = fs::read_dir("/sys/class/thermal").ok()?;
-    for entry in zones.flatten() {
-        let path = entry.path();
-        let name = path.file_name()?.to_string_lossy();
-        if !name.starts_with("thermal_zone") {
-            continue;
-        }
-        let kind = fs::read_to_string(path.join("type")).ok()?;
-        if !matches!(kind.trim(), "x86_pkg_temp" | "cpu-thermal" | "soc_thermal") {
-            continue;
-        }
-        let raw = fs::read_to_string(path.join("temp")).ok()?;
-        let millidegrees = raw.trim().parse::<i64>().ok()?;
-        if let Some(celsius) = Celsius::from_millidegrees(millidegrees) {
-            return Some(celsius);
-        }
-    }
-    None
-}
-
-fn read_temp_input(hwmon: &Path) -> Option<Celsius> {
-    let mut preferred = None;
-    let mut fallback = None;
-    let entries = fs::read_dir(hwmon).ok()?;
-    for entry in entries.flatten() {
-        let name = entry.file_name();
-        let name = name.to_string_lossy();
-        if !name.starts_with("temp") || !name.ends_with("_input") {
-            continue;
-        }
-        let raw = fs::read_to_string(entry.path()).ok()?;
-        let millidegrees = raw.trim().parse::<i64>().ok()?;
-        let Some(celsius) = Celsius::from_millidegrees(millidegrees) else {
-            continue;
-        };
-        let label = name.replace("_input", "_label");
-        let label = fs::read_to_string(hwmon.join(label)).unwrap_or_default();
-        if label_is_package(label.trim()) || name == "temp1_input" {
-            preferred = Some(celsius);
-        } else {
-            fallback = Some(celsius);
-        }
-    }
-    preferred.or(fallback)
-}
-
 fn label_is_package(label: &str) -> bool {
     let lowered = label.to_ascii_lowercase();
     lowered.contains("tctl") || lowered.contains("package") || lowered.contains("cpu")
@@ -290,9 +403,14 @@ fn sensor_rank(name: &str) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
+    use std::{
+        fs,
+        path::PathBuf,
+        sync::atomic::{AtomicU64, Ordering},
+        time::{Duration, Instant},
+    };
 
-    use super::{Tick, parse_meminfo, parse_uptime};
+    use super::{Thermometer, Tick, parse_meminfo, parse_uptime};
     use crate::system::domain::{Trace, Usage};
 
     #[test]
@@ -333,6 +451,132 @@ mod tests {
         assert_eq!(
             parse_uptime("8024.12 12345.67\n").expect("uptime should parse"),
             Duration::from_secs(8024)
+        );
+    }
+
+    static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(0);
+
+    struct Fixture {
+        root: PathBuf,
+    }
+
+    impl Fixture {
+        fn new() -> Self {
+            let root = std::env::temp_dir().join(format!(
+                "hyprbaric-temperature-{}-{}",
+                std::process::id(),
+                NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed)
+            ));
+            fs::create_dir_all(&root).expect("fixture root");
+            Self { root }
+        }
+
+        fn write(&self, path: &str, contents: &str) {
+            let file = self.root.join(path);
+            fs::create_dir_all(file.parent().expect("fixture parent")).expect("fixture directory");
+            fs::write(file, contents).expect("fixture file");
+        }
+
+        fn thermometer(&self) -> Thermometer {
+            Thermometer::with_roots(self.root.join("hwmon"), self.root.join("thermal"))
+        }
+    }
+
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            fs::remove_dir_all(&self.root).expect("remove fixture");
+        }
+    }
+
+    #[test]
+    fn selected_cpu_sensor_is_reused_until_periodic_discovery() {
+        let fixture = Fixture::new();
+        fixture.write("hwmon/nvme/name", "nvme\n");
+        fixture.write("hwmon/nvme/temp1_input", "30000\n");
+        fixture.write("hwmon/cpu/name", "k10temp\n");
+        fixture.write("hwmon/cpu/temp1_input", "55000\n");
+        fixture.write("hwmon/cpu/temp2_label", "Tctl\n");
+        fixture.write("hwmon/cpu/temp2_input", "61000\n");
+
+        let now = Instant::now();
+        let mut thermometer = fixture.thermometer();
+        assert_eq!(
+            thermometer.sample_at(now).map(|value| value.as_f64()),
+            Some(61.0)
+        );
+
+        fixture.write("hwmon/cpu/temp2_input", "62000\n");
+        fixture.write("hwmon/cpu/temp1_label", "CPU Package\n");
+        assert_eq!(
+            thermometer
+                .sample_at(now + Duration::from_secs(1))
+                .map(|value| value.as_f64()),
+            Some(62.0)
+        );
+        assert_eq!(
+            thermometer
+                .sample_at(now + Duration::from_secs(31))
+                .map(|value| value.as_f64()),
+            Some(55.0)
+        );
+    }
+
+    #[test]
+    fn unreadable_selected_sensor_reprobes_immediately() {
+        let fixture = Fixture::new();
+        fixture.write("hwmon/cpu/name", "k10temp\n");
+        fixture.write("hwmon/cpu/temp1_input", "55000\n");
+        let now = Instant::now();
+        let mut thermometer = fixture.thermometer();
+        assert_eq!(
+            thermometer.sample_at(now).map(|value| value.as_f64()),
+            Some(55.0)
+        );
+
+        fs::remove_file(fixture.root.join("hwmon/cpu/temp1_input"))
+            .expect("remove selected sensor");
+        fixture.write("hwmon/cpu/temp2_label", "Tctl\n");
+        fixture.write("hwmon/cpu/temp2_input", "60000\n");
+        assert_eq!(
+            thermometer
+                .sample_at(now + Duration::from_secs(1))
+                .map(|value| value.as_f64()),
+            Some(60.0)
+        );
+    }
+
+    #[test]
+    fn missing_sensor_is_retried_after_discovery_interval() {
+        let fixture = Fixture::new();
+        let now = Instant::now();
+        let mut thermometer = fixture.thermometer();
+        assert_eq!(thermometer.sample_at(now), None);
+
+        fixture.write("thermal/thermal_zone0/type", "cpu-thermal\n");
+        fixture.write("thermal/thermal_zone0/temp", "42000\n");
+        assert_eq!(thermometer.sample_at(now + Duration::from_secs(1)), None);
+        assert_eq!(
+            thermometer
+                .sample_at(now + Duration::from_secs(31))
+                .map(|value| value.as_f64()),
+            Some(42.0)
+        );
+    }
+
+    #[test]
+    fn invalid_high_priority_input_falls_back_to_a_valid_sensor() {
+        let fixture = Fixture::new();
+        fixture.write("hwmon/cpu/name", "k10temp\n");
+        fixture.write("hwmon/cpu/temp1_input", "not a temperature\n");
+        fixture.write("hwmon/acpi/name", "acpitz\n");
+        fixture.write("hwmon/acpi/temp1_input", "44000\n");
+
+        let mut thermometer = fixture.thermometer();
+        assert_eq!(
+            thermometer
+                .sample_at(Instant::now())
+                .map(|value| value.as_f64()),
+            Some(44.0)
         );
     }
 }
