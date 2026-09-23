@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' as foundation;
 import 'package:flutter/material.dart';
 
 import '../../bindings/bindings.dart';
@@ -32,6 +33,7 @@ class TrayStrip extends StatelessWidget {
       children: <Widget>[
         for (final TrayItem item in status.items)
           Padding(
+            key: ValueKey<String>(item.id),
             padding: const EdgeInsets.symmetric(horizontal: 1),
             child: _TrayCell(
               item: item,
@@ -151,7 +153,7 @@ const ColorFilter _trayGrayscale = ColorFilter.matrix(<double>[
   0,
 ]);
 
-class _TrayIcon extends StatelessWidget {
+class _TrayIcon extends StatefulWidget {
   const _TrayIcon({required this.icon});
 
   /// Optical match for [HyprIconSizes.bar]. Tray art is full-bleed, so it
@@ -161,27 +163,61 @@ class _TrayIcon extends StatelessWidget {
   final TrayIcon icon;
 
   @override
+  State<_TrayIcon> createState() => _TrayIconState();
+}
+
+class _TrayIconState extends State<_TrayIcon> {
+  Uint8List? _pngBytes;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncPngBytes();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TrayIcon oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncPngBytes();
+  }
+
+  void _syncPngBytes() {
+    final List<int>? bytes = widget.icon.kind == TrayIconKind.pngBytes
+        ? widget.icon.pngBytes
+        : null;
+    if (bytes == null || bytes.isEmpty) {
+      _pngBytes = null;
+    } else if (!foundation.listEquals(_pngBytes, bytes)) {
+      _pngBytes = Uint8List.fromList(bytes);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final Color tint = HyprColors.textMuted;
 
-    switch (icon.kind) {
+    switch (widget.icon.kind) {
       case TrayIconKind.none:
         return Icon(Icons.apps_rounded, size: _TrayIcon.extent, color: tint);
       case TrayIconKind.themePath:
-        final String? path = icon.path;
+        final String? path = widget.icon.path;
         if (path == null || path.isEmpty) {
           return Icon(Icons.apps_rounded, size: _TrayIcon.extent, color: tint);
         }
         return _ThemedTrayIcon(path: path, tint: tint);
       case TrayIconKind.pngBytes:
-        final List<int>? bytes = icon.pngBytes;
-        if (bytes == null || bytes.isEmpty) {
+        final Uint8List? bytes = _pngBytes;
+        if (bytes == null) {
           return Icon(Icons.apps_rounded, size: _TrayIcon.extent, color: tint);
         }
         return Image.memory(
-          Uint8List.fromList(bytes),
+          bytes,
           width: _TrayIcon.extent,
           height: _TrayIcon.extent,
+          cacheWidth:
+              (_TrayIcon.extent * MediaQuery.devicePixelRatioOf(context))
+                  .ceil()
+                  .clamp(1, 1 << 16),
           gaplessPlayback: true,
           filterQuality: FilterQuality.medium,
           errorBuilder: (_, _, _) =>

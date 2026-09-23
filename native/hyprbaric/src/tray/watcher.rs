@@ -216,6 +216,7 @@ fn snapshot_from_items(
         .collect::<Vec<_>>();
     remaining.sort_by(|left, right| left.id.as_str().cmp(right.id.as_str()));
     ordered.extend(remaining);
+    icons.retain(|address| lock.contains_key(address));
 
     Snapshot {
         items: ordered,
@@ -239,7 +240,7 @@ fn normalize_item(address: &str, item: &StatusNotifierItem, icons: &mut icons::I
         title: display_title(item),
         description: display_description(item.tool_tip.as_ref()),
         status: status(item.status),
-        icon: icons::resolve(item, icons),
+        icon: icons::resolve(address, item, icons),
     }
 }
 
