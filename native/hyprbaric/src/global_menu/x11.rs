@@ -3,7 +3,7 @@
 //! The compositor companion knows the X11 id, while GTK advertises its
 //! D-Bus menu on that X11 window. Some GTK modules do not register with
 //! Canonical's AppMenu registrar, so these properties are the remaining link.
-use super::endpoint::Endpoint;
+use super::endpoint::{ActionGroup, Endpoint};
 use std::{process::Stdio, time::Duration};
 use tokio::{process::Command, time::timeout};
 use zbus::{names::BusName, zvariant::ObjectPath};
@@ -107,9 +107,14 @@ impl<'a> Properties<'a> {
             service: service.to_owned(),
             path: path.to_owned(),
             app_menu_path: menubar.and(app_menu).map(str::to_owned),
-            application_path: valid_path(self.application).map(str::to_owned),
-            window_path: valid_path(self.window).map(str::to_owned),
-            unity_path: valid_path(self.unity).map(str::to_owned),
+            action_groups: [
+                ActionGroup::at("app", valid_path(self.application).map(str::to_owned)),
+                ActionGroup::at("win", valid_path(self.window).map(str::to_owned)),
+                ActionGroup::at("unity", valid_path(self.unity).map(str::to_owned)),
+            ]
+            .into_iter()
+            .flatten()
+            .collect(),
             xid: Some(xid),
         })
     }
@@ -134,19 +139,19 @@ _UNITY_OBJECT_PATH = "/org/appmenu/gtk/window/1"
             .endpoint("0xabc", 14680725)
             .expect("GTK endpoint");
         assert!(matches!(
-            endpoint,
+            &endpoint,
             Endpoint::Gtk {
                 address: Some(address),
                 service,
                 path,
-                unity_path: Some(unity_path),
                 xid: Some(14680725),
                 ..
             } if address == "0xabc"
                 && service == ":1.579"
                 && path == "/org/appmenu/gtk/window/1"
-                && unity_path == path
         ));
+        assert_eq!(endpoint.action_path("unity"), Some(endpoint.path()));
+        assert_eq!(endpoint.action_paths(), vec![endpoint.path()]);
     }
 
     #[test]
