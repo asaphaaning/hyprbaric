@@ -27,6 +27,13 @@ pub(super) struct Index {
     fallback_directories: Option<Vec<IconDirectory>>,
     pixmap_directories: Vec<IconDirectory>,
     cache: HashMap<String, Option<PathBuf>>,
+    encoded_pixmaps: HashMap<String, EncodedPixmap>,
+}
+
+/// Last pixmap and PNG for one notifier address.
+struct EncodedPixmap {
+    source: IconPixmap,
+    png: Vec<u8>,
 }
 
 impl Index {
@@ -56,7 +63,37 @@ impl Index {
             fallback_directories: None,
             pixmap_directories,
             cache: HashMap::new(),
+            encoded_pixmaps: HashMap::new(),
         }
+    }
+
+    fn encode(&mut self, address: &str, pixmap: &IconPixmap) -> Result<Vec<u8>, Error> {
+        if let Some(cached) = self.encoded_pixmaps.get(address)
+            && cached.source == *pixmap
+        {
+            return Ok(cached.png.clone());
+        }
+
+        let png = encode_pixmap(pixmap)?;
+        tracing::debug!(
+            address,
+            width = pixmap.width,
+            height = pixmap.height,
+            "Encoded tray pixmap"
+        );
+        self.encoded_pixmaps.insert(
+            address.to_owned(),
+            EncodedPixmap {
+                source: pixmap.clone(),
+                png: png.clone(),
+            },
+        );
+        Ok(png)
+    }
+
+    /// Releases cached pixmaps when their notifier leaves the tray.
+    pub(super) fn retain(&mut self, mut contains: impl FnMut(&str) -> bool) {
+        self.encoded_pixmaps.retain(|address, _| contains(address));
     }
 
     fn resolve(&mut self, icon: &str) -> Option<PathBuf> {
@@ -129,9 +166,10 @@ impl Index {
 }
 
 /// Resolves a notifier item's display icon.
-pub(super) fn resolve(item: &StatusNotifierItem, icons: &mut Index) -> Icon {
+pub(super) fn resolve(address: &str, item: &StatusNotifierItem, icons: &mut Index) -> Icon {
     if item.status == NotifierStatus::NeedsAttention {
         if let Some(icon) = resolve_icon(
+            address,
             item.attention_icon_name.as_deref(),
             item.attention_icon_pixmap.as_deref(),
             icons,
@@ -141,12 +179,14 @@ pub(super) fn resolve(item: &StatusNotifierItem, icons: &mut Index) -> Icon {
     }
 
     resolve_icon(
+        address,
         item.icon_name.as_deref(),
         item.icon_pixmap.as_deref(),
         icons,
     )
     .or_else(|| {
         resolve_icon(
+            address,
             item.overlay_icon_name.as_deref(),
             item.overlay_icon_pixmap.as_deref(),
             icons,
@@ -156,6 +196,7 @@ pub(super) fn resolve(item: &StatusNotifierItem, icons: &mut Index) -> Icon {
 }
 
 fn resolve_icon(
+    address: &str,
     icon_name: Option<&str>,
     icon_pixmap: Option<&[IconPixmap]>,
     icons: &mut Index,
@@ -171,7 +212,7 @@ fn resolve_icon(
 
     icon_pixmap
         .and_then(best_pixmap)
-        .and_then(|pixmap| encode_pixmap(pixmap).ok())
+        .and_then(|pixmap| icons.encode(address, pixmap).ok())
         .map(|bytes| Icon::Png {
             bytes,
             symbolic: false,
@@ -461,7 +502,7 @@ fn icon_size_score(component: &str) -> i32 {
 mod tests {
     use system_tray::item::IconPixmap;
 
-    use super::encode_pixmap;
+    use super::{Index, encode_pixmap};
     use crate::tray::Error;
 
     #[test]
@@ -493,5 +534,42 @@ mod tests {
                 actual: 2
             }
         ));
+    }
+
+    #[test]
+    fn encoded_pixmap_tracks_content_and_notifier_lifetime() {
+        let mut icons = Index {
+            primary_directories: Vec::new(),
+            fallback_directories: None,
+            pixmap_directories: Vec::new(),
+            cache: Default::default(),
+            encoded_pixmaps: Default::default(),
+        };
+        let first = IconPixmap {
+            width: 1,
+            height: 1,
+            pixels: vec![0xFF, 0x11, 0x22, 0x33],
+        };
+
+        let original = icons.encode(":1.10", &first).expect("valid pixmap");
+        let cached = icons.encoded_pixmaps[":1.10"].png.as_ptr();
+        assert_eq!(
+            icons.encode(":1.10", &first).expect("cached pixmap"),
+            original
+        );
+        assert_eq!(icons.encoded_pixmaps[":1.10"].png.as_ptr(), cached);
+
+        let changed = IconPixmap {
+            pixels: vec![0xFF, 0x44, 0x55, 0x66],
+            ..first
+        };
+        let replacement = icons.encode(":1.10", &changed).expect("changed pixmap");
+        assert_ne!(replacement, original);
+        assert_eq!(icons.encoded_pixmaps[":1.10"].source, changed);
+
+        icons.encode(":1.11", &changed).expect("other notifier");
+        icons.retain(|address| address == ":1.11");
+        assert!(!icons.encoded_pixmaps.contains_key(":1.10"));
+        assert!(icons.encoded_pixmaps.contains_key(":1.11"));
     }
 }
