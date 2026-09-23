@@ -76,9 +76,6 @@ pub(in crate::global_menu) struct PluginEndpoint {
     #[serde(default)]
     pub(in crate::global_menu) window_path: Option<String>,
     #[serde(default)]
-    #[serde(rename = "unity_path")]
-    pub(in crate::global_menu) legacy_actions_path: Option<String>,
-    #[serde(default)]
     pub(in crate::global_menu) xid: Option<u32>,
     #[serde(default)]
     pub(in crate::global_menu) parent: Option<String>,
@@ -101,7 +98,6 @@ impl From<PluginEndpoint> for Endpoint {
                 action_groups: [
                     ActionGroup::at("app", row.application_path),
                     ActionGroup::at("win", row.window_path),
-                    ActionGroup::at("unity", row.legacy_actions_path),
                 ]
                 .into_iter()
                 .flatten()

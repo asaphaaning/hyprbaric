@@ -8,13 +8,18 @@ use std::{process::Stdio, time::Duration};
 use tokio::{process::Command, time::timeout};
 use zbus::{names::BusName, zvariant::ObjectPath};
 
+/// Legacy appmenu-gtk-module protocol names for an action namespace.
+/// These describe an X11 property and action prefix, not an application.
+const LEGACY_ACTION_PROPERTY: &str = "_UNITY_OBJECT_PATH";
+const LEGACY_ACTION_SCOPE: &str = "unity";
+
 const PROPERTIES: &[&str] = &[
     "_GTK_UNIQUE_BUS_NAME",
     "_GTK_MENUBAR_OBJECT_PATH",
     "_GTK_APP_MENU_OBJECT_PATH",
     "_GTK_APPLICATION_OBJECT_PATH",
     "_GTK_WINDOW_OBJECT_PATH",
-    "_UNITY_OBJECT_PATH",
+    LEGACY_ACTION_PROPERTY,
 ];
 
 /// Looks up a GTK menu on one XWayland window after registrar discovery misses.
@@ -62,7 +67,7 @@ struct Properties<'a> {
     app_menu: Option<&'a str>,
     application: Option<&'a str>,
     window: Option<&'a str>,
-    unity: Option<&'a str>,
+    legacy_actions: Option<&'a str>,
 }
 
 impl<'a> Properties<'a> {
@@ -87,7 +92,9 @@ impl<'a> Properties<'a> {
                 "_GTK_APP_MENU_OBJECT_PATH" => properties.app_menu = Some(value),
                 "_GTK_APPLICATION_OBJECT_PATH" => properties.application = Some(value),
                 "_GTK_WINDOW_OBJECT_PATH" => properties.window = Some(value),
-                "_UNITY_OBJECT_PATH" => properties.unity = Some(value),
+                name if name == LEGACY_ACTION_PROPERTY => {
+                    properties.legacy_actions = Some(value);
+                }
                 _ => {}
             }
         }
@@ -110,7 +117,10 @@ impl<'a> Properties<'a> {
             action_groups: [
                 ActionGroup::at("app", valid_path(self.application).map(str::to_owned)),
                 ActionGroup::at("win", valid_path(self.window).map(str::to_owned)),
-                ActionGroup::at("unity", valid_path(self.unity).map(str::to_owned)),
+                ActionGroup::at(
+                    LEGACY_ACTION_SCOPE,
+                    valid_path(self.legacy_actions).map(str::to_owned),
+                ),
             ]
             .into_iter()
             .flatten()

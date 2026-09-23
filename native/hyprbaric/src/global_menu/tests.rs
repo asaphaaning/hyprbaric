@@ -449,12 +449,11 @@ fn a_gtk_record_keeps_a_separate_application_menu_path() {
 #[test]
 fn gtk_action_scopes_follow_exported_paths() {
     let decoded = endpoint(
-        r#"{"kind":"gtk","service":":1.10","path":"/menus/menubar","application_path":"/actions/app","window_path":"/actions/shared","unity_path":"/actions/shared"}"#,
+        r#"{"kind":"gtk","service":":1.10","path":"/menus/menubar","application_path":"/actions/app","window_path":"/actions/shared"}"#,
     );
 
     assert_eq!(decoded.action_path("app"), Some("/actions/app"));
     assert_eq!(decoded.action_path("win"), Some("/actions/shared"));
-    assert_eq!(decoded.action_path("unity"), Some("/actions/shared"));
     assert_eq!(
         decoded.action_paths(),
         vec!["/actions/app", "/actions/shared"]
