@@ -37,6 +37,7 @@ optdepends=(
   'xdg-user-dirs: user directory resolution'
   'power-profiles-daemon: power profile controls'
   'upower: power status'
+  'xorg-xprop: GTK global menus exported through XWayland window properties'
 )
 source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz")
 sha256sums=('SKIP')

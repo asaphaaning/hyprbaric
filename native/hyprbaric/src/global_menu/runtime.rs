@@ -167,14 +167,23 @@ async fn check_focus(window: &WindowId) -> Result<(), Error> {
 #[cfg(test)]
 mod tests {
     use super::{Endpoint, Error, Runtime, WindowId};
+    use crate::global_menu::endpoint::ActionGroup;
     fn endpoint(window: &str) -> Endpoint {
         Endpoint::Gtk {
             address: None,
             service: ":1.42".into(),
             path: "/Menu".into(),
             app_menu_path: None,
-            application_path: Some("/App".into()),
-            window_path: Some(window.into()),
+            action_groups: vec![
+                ActionGroup {
+                    scope: "app".into(),
+                    path: "/App".into(),
+                },
+                ActionGroup {
+                    scope: "win".into(),
+                    path: window.into(),
+                },
+            ],
             xid: None,
         }
     }

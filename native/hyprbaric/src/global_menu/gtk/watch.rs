@@ -12,7 +12,7 @@ use crate::global_menu::{
     snapshot::{Exporter, Snapshot},
 };
 use client::{gtk_actions, gtk_describe, gtk_menus, gtk_menus_at};
-use futures_util::{FutureExt, StreamExt};
+use futures_util::{FutureExt, StreamExt, stream};
 use std::future::pending;
 use tokio::sync::watch;
 use tree::{gtk_tree, prepend_gtk_app_menu};
@@ -107,22 +107,20 @@ pub(in crate::global_menu) async fn run(
         Some(proxy) => Some(proxy.receive_changed().await.map_err(Error::GtkLayout)?),
         None => None,
     };
-    let app = match endpoint.application_path() {
-        Some(path) => gtk_actions(&connection, endpoint, path).await.ok(),
-        None => None,
-    };
-    let win = match endpoint.window_path() {
-        Some(path) => gtk_actions(&connection, endpoint, path).await.ok(),
-        None => None,
-    };
-    let mut app_changed = match &app {
-        Some(proxy) => proxy.receive_changed().await.ok(),
-        None => None,
-    };
-    let mut win_changed = match &win {
-        Some(proxy) => proxy.receive_changed().await.ok(),
-        None => None,
-    };
+    let mut action_proxies = Vec::new();
+    for path in endpoint.action_paths() {
+        if let Ok(proxy) = gtk_actions(&connection, endpoint, path).await {
+            action_proxies.push(proxy);
+        }
+    }
+    let mut action_streams = Vec::new();
+    for proxy in &action_proxies {
+        if let Ok(changed) = proxy.receive_changed().await {
+            action_streams.push(changed);
+        }
+    }
+    let mut actions_changed =
+        (!action_streams.is_empty()).then(|| stream::select_all(action_streams));
     let mut menus = GtkSubscription::start(menus).await?;
     let mut app_menus = match app_menus {
         Some(proxy) => Some(GtkSubscription::start(proxy).await?),
@@ -168,8 +166,7 @@ pub(in crate::global_menu) async fn run(
                         menu.changed(signal.args().map_err(Error::GtkLayout)?.changes()).await?;
                     }
                 }
-                _ = recv(&mut app_changed) => {}
-                _ = recv(&mut win_changed) => {}
+                _ = recv(&mut actions_changed) => {}
             }
             // Coalesce bursts without losing the ordered positional splices.
             tokio::time::sleep(DEBOUNCE).await;
@@ -184,8 +181,7 @@ pub(in crate::global_menu) async fn run(
                         .await?;
                 }
             }
-            while let Some(Some(_)) = next_optional(&mut app_changed).now_or_never() {}
-            while let Some(Some(_)) = next_optional(&mut win_changed).now_or_never() {}
+            while let Some(Some(_)) = next_optional(&mut actions_changed).now_or_never() {}
             if *current.borrow() != epoch {
                 return Ok(());
             }

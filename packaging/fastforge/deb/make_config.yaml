@@ -40,3 +40,4 @@ recommended_dependencies:
   - libgtk-3-bin
   - power-profiles-daemon
   - upower
+  - x11-utils
