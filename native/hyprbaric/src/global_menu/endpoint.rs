@@ -2,6 +2,28 @@
 use super::registrar;
 use serde::Deserialize;
 
+/// An action namespace published by a GTK menu exporter.
+///
+/// Menu items name actions as `scope.name`; the exporter supplies the D-Bus
+/// object that owns each scope. Several scopes may share one object.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(in crate::global_menu) struct ActionGroup {
+    /// Prefix before the action name's first dot.
+    pub(in crate::global_menu) scope: String,
+    /// D-Bus object exporting actions in this scope.
+    pub(in crate::global_menu) path: String,
+}
+
+impl ActionGroup {
+    /// Keeps a published path only when the exporter provided one.
+    pub(in crate::global_menu) fn at(scope: &str, path: Option<String>) -> Option<Self> {
+        path.filter(|path| !path.is_empty()).map(|path| Self {
+            scope: scope.to_owned(),
+            path,
+        })
+    }
+}
+
 /// One companion row, in the shape of the protocol it speaks.
 ///
 /// The plugin JSON is a tagged bag. That is decoded into this enum immediately,
@@ -21,8 +43,8 @@ pub(in crate::global_menu) enum Endpoint {
         path: String,
         /// Set only when GTK published both a menubar and a distinct app menu.
         app_menu_path: Option<String>,
-        application_path: Option<String>,
-        window_path: Option<String>,
+        /// Action scopes and their exporter-owned D-Bus object paths.
+        action_groups: Vec<ActionGroup>,
         xid: Option<u32>,
     },
     /// Wayland address joined to an X11 window, with no menu of its own.
@@ -73,8 +95,13 @@ impl From<PluginEndpoint> for Endpoint {
                 service: row.service,
                 path: row.path,
                 app_menu_path: row.app_menu_path.filter(|path| !path.is_empty()),
-                application_path: row.application_path,
-                window_path: row.window_path,
+                action_groups: [
+                    ActionGroup::at("app", row.application_path),
+                    ActionGroup::at("win", row.window_path),
+                ]
+                .into_iter()
+                .flatten()
+                .collect(),
                 xid: row.xid,
             },
             EndpointKind::X11 => Self::X11 {
@@ -161,20 +188,31 @@ impl Endpoint {
         }
     }
 
-    pub(in crate::global_menu) fn application_path(&self) -> Option<&str> {
+    /// Action scopes advertised by this GTK endpoint.
+    pub(in crate::global_menu) fn action_groups(&self) -> &[ActionGroup] {
         match self {
-            Self::Gtk {
-                application_path, ..
-            } => application_path.as_deref(),
-            Self::DbusMenu { .. } | Self::X11 { .. } | Self::Parent { .. } => None,
+            Self::Gtk { action_groups, .. } => action_groups,
+            Self::DbusMenu { .. } | Self::X11 { .. } | Self::Parent { .. } => &[],
         }
     }
 
-    pub(in crate::global_menu) fn window_path(&self) -> Option<&str> {
-        match self {
-            Self::Gtk { window_path, .. } => window_path.as_deref(),
-            Self::DbusMenu { .. } | Self::X11 { .. } | Self::Parent { .. } => None,
+    /// D-Bus object that owns an action prefix.
+    pub(in crate::global_menu) fn action_path(&self, scope: &str) -> Option<&str> {
+        self.action_groups()
+            .iter()
+            .find(|group| group.scope == scope)
+            .map(|group| group.path.as_str())
+    }
+
+    /// Distinct action objects, even when several scopes share a path.
+    pub(in crate::global_menu) fn action_paths(&self) -> Vec<&str> {
+        let mut paths = Vec::new();
+        for group in self.action_groups() {
+            if !paths.contains(&group.path.as_str()) {
+                paths.push(group.path.as_str());
+            }
         }
+        paths
     }
 }
 

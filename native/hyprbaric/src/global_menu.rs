@@ -30,6 +30,7 @@ mod registrar;
 mod runtime;
 mod session;
 mod snapshot;
+mod x11;
 
 pub use domain::{Item, ItemId, ItemKind, Menu, Section, SectionId, Update};
 pub use error::Error;

@@ -7,7 +7,7 @@ use super::{
     dbusmenu::tree::{at_path, dbusmenu_tree, destination, items_from, path_to, resolve_section},
     dbusmenu::{DbusMenuEvent, Node},
     discovery::{lineage, menu_for_address, unique_unaddressed},
-    endpoint::Endpoint,
+    endpoint::{ActionGroup, Endpoint},
     gtk,
     gtk::{
         client::{GtkGroup, GtkLink},
@@ -444,6 +444,29 @@ fn a_gtk_record_keeps_a_separate_application_menu_path() {
 
     assert_eq!(decoded.path(), "/menus/menubar");
     assert_eq!(decoded.app_menu_path(), Some("/menus/appmenu"));
+}
+
+#[test]
+fn gtk_action_scopes_follow_exported_paths() {
+    let decoded = endpoint(
+        r#"{"kind":"gtk","service":":1.10","path":"/menus/menubar","application_path":"/actions/app","window_path":"/actions/shared"}"#,
+    );
+
+    assert_eq!(decoded.action_path("app"), Some("/actions/app"));
+    assert_eq!(decoded.action_path("win"), Some("/actions/shared"));
+    assert_eq!(
+        decoded.action_paths(),
+        vec!["/actions/app", "/actions/shared"]
+    );
+
+    let mut decoded = decoded;
+    if let Endpoint::Gtk { action_groups, .. } = &mut decoded {
+        action_groups.push(ActionGroup {
+            scope: "vendor".into(),
+            path: "/actions/vendor".into(),
+        });
+    }
+    assert_eq!(decoded.action_path("vendor"), Some("/actions/vendor"));
 }
 
 #[test]
