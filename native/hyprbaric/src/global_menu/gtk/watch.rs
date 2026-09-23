@@ -115,11 +115,19 @@ pub(in crate::global_menu) async fn run(
         Some(path) => gtk_actions(&connection, endpoint, path).await.ok(),
         None => None,
     };
+    let unity = match endpoint.unity_path() {
+        Some(path) => gtk_actions(&connection, endpoint, path).await.ok(),
+        None => None,
+    };
     let mut app_changed = match &app {
         Some(proxy) => proxy.receive_changed().await.ok(),
         None => None,
     };
     let mut win_changed = match &win {
+        Some(proxy) => proxy.receive_changed().await.ok(),
+        None => None,
+    };
+    let mut unity_changed = match &unity {
         Some(proxy) => proxy.receive_changed().await.ok(),
         None => None,
     };
@@ -170,6 +178,7 @@ pub(in crate::global_menu) async fn run(
                 }
                 _ = recv(&mut app_changed) => {}
                 _ = recv(&mut win_changed) => {}
+                _ = recv(&mut unity_changed) => {}
             }
             // Coalesce bursts without losing the ordered positional splices.
             tokio::time::sleep(DEBOUNCE).await;
@@ -186,6 +195,7 @@ pub(in crate::global_menu) async fn run(
             }
             while let Some(Some(_)) = next_optional(&mut app_changed).now_or_never() {}
             while let Some(Some(_)) = next_optional(&mut win_changed).now_or_never() {}
+            while let Some(Some(_)) = next_optional(&mut unity_changed).now_or_never() {}
             if *current.borrow() != epoch {
                 return Ok(());
             }

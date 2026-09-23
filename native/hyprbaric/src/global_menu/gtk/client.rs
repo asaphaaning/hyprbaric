@@ -100,8 +100,9 @@ pub(in crate::global_menu) async fn gtk_menus_at<'a>(
 
 /// Activates a GTK action on whichever object group owns its scope.
 ///
-/// GTK splits its actions between the application and the window, and the
-/// prefix on the action name says which one to ask. The menu item's `target`
+/// GTK splits its actions between the application and the window. Legacy
+/// menu modules additionally publish `unity.` actions. The action prefix
+/// selects the object path. The menu item's `target`
 /// is the Activate parameter; without it the array is empty, which is how
 /// GLib's action exporter treats a parameterless activation.
 pub(in crate::global_menu) async fn gtk_activate(
@@ -118,6 +119,7 @@ pub(in crate::global_menu) async fn gtk_activate(
     let path = match scope {
         "app" => endpoint.application_path(),
         "win" => endpoint.window_path(),
+        "unity" => endpoint.unity_path(),
         _ => None,
     }
     .ok_or_else(|| Error::UnscopedGtkAction {
@@ -148,30 +150,25 @@ pub(in crate::global_menu) async fn gtk_describe(
     endpoint: &Endpoint,
 ) -> super::Actions {
     let mut actions = super::Actions::default();
-    gtk_describe_at(
-        &mut actions,
-        connection,
-        endpoint,
-        endpoint.application_path(),
-        "app",
-    )
-    .await;
-    gtk_describe_at(
-        &mut actions,
-        connection,
-        endpoint,
-        endpoint.window_path(),
-        "win",
-    )
-    .await;
-    gtk_describe_at(
-        &mut actions,
-        connection,
-        endpoint,
-        Some(endpoint.path()),
-        "",
-    )
-    .await;
+    let mut groups: Vec<(&str, Vec<&str>)> = Vec::new();
+    for (path, scope) in [
+        (endpoint.application_path(), "app"),
+        (endpoint.window_path(), "win"),
+        (endpoint.unity_path(), "unity"),
+        (Some(endpoint.path()), ""),
+    ] {
+        let Some(path) = path.filter(|path| !path.is_empty()) else {
+            continue;
+        };
+        if let Some((_, scopes)) = groups.iter_mut().find(|(known, _)| *known == path) {
+            scopes.push(scope);
+        } else {
+            groups.push((path, vec![scope]));
+        }
+    }
+    for (path, scopes) in groups {
+        gtk_describe_at(&mut actions, connection, endpoint, path, &scopes).await;
+    }
     actions
 }
 
@@ -179,17 +176,13 @@ pub(in crate::global_menu) async fn gtk_describe_at(
     actions: &mut super::Actions,
     connection: &zbus::Connection,
     endpoint: &Endpoint,
-    path: Option<&str>,
-    scope: &str,
+    path: &str,
+    scopes: &[&str],
 ) {
-    let Some(path) = path.filter(|path| !path.is_empty()) else {
-        return;
-    };
-
     let proxy = match gtk_actions(connection, endpoint, path).await {
         Ok(proxy) => proxy,
         Err(error) => {
-            tracing::debug!(%error, path, scope, "Could not open the GTK action group");
+            tracing::debug!(%error, path, ?scopes, "Could not open the GTK action group");
             return;
         }
     };
@@ -197,26 +190,28 @@ pub(in crate::global_menu) async fn gtk_describe_at(
     let descriptions = match proxy.describe_all().await {
         Ok(descriptions) => descriptions,
         Err(error) => {
-            tracing::debug!(%error, path, scope, "Could not describe GTK actions");
+            tracing::debug!(%error, path, ?scopes, "Could not describe GTK actions");
             return;
         }
     };
 
-    actions.mark_described(scope);
+    for scope in scopes {
+        actions.mark_described(scope);
+    }
     for (name, description) in descriptions {
-        let scoped = if scope.is_empty() {
-            name
-        } else {
-            format!("{scope}.{name}")
-        };
-        actions.insert(
-            scoped,
-            super::Action::from_description(
-                description.enabled,
-                description.parameter_type,
-                description.state,
-            ),
+        let action = super::Action::from_description(
+            description.enabled,
+            description.parameter_type,
+            description.state,
         );
+        for scope in scopes {
+            let scoped = if scope.is_empty() {
+                name.clone()
+            } else {
+                format!("{scope}.{name}")
+            };
+            actions.insert(scoped, action.clone());
+        }
     }
 }
 

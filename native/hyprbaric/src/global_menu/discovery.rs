@@ -1,5 +1,5 @@
 //! Resolve a focused window through companion facts, parents, and registrar entries.
-use super::{Error, endpoint::Endpoint, registrar};
+use super::{Error, endpoint::Endpoint, registrar, x11};
 use hyprland::{data::Client, prelude::HyprDataActiveOptional};
 use std::{
     collections::{HashMap, HashSet},
@@ -46,6 +46,20 @@ pub(in crate::global_menu) async fn focused_endpoint() -> Result<Endpoint, Error
                 "Resolved the window through the AppMenu registrar"
             );
             return Ok(Endpoint::from_registrar(window.to_owned(), registration));
+        }
+
+        if let Some(xid) = xid
+            && let Some(endpoint) = x11::gtk_endpoint(window, xid).await
+        {
+            tracing::debug!(
+                focused = %address,
+                %window,
+                xid,
+                service = %endpoint.service(),
+                path = %endpoint.path(),
+                "Resolved the XWayland window through its GTK menu properties"
+            );
+            return Ok(endpoint);
         }
     }
 

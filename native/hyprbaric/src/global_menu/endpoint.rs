@@ -23,6 +23,8 @@ pub(in crate::global_menu) enum Endpoint {
         app_menu_path: Option<String>,
         application_path: Option<String>,
         window_path: Option<String>,
+        /// Legacy GTK modules export `unity.` actions at this object path.
+        unity_path: Option<String>,
         xid: Option<u32>,
     },
     /// Wayland address joined to an X11 window, with no menu of its own.
@@ -54,6 +56,8 @@ pub(in crate::global_menu) struct PluginEndpoint {
     #[serde(default)]
     pub(in crate::global_menu) window_path: Option<String>,
     #[serde(default)]
+    pub(in crate::global_menu) unity_path: Option<String>,
+    #[serde(default)]
     pub(in crate::global_menu) xid: Option<u32>,
     #[serde(default)]
     pub(in crate::global_menu) parent: Option<String>,
@@ -75,6 +79,7 @@ impl From<PluginEndpoint> for Endpoint {
                 app_menu_path: row.app_menu_path.filter(|path| !path.is_empty()),
                 application_path: row.application_path,
                 window_path: row.window_path,
+                unity_path: row.unity_path,
                 xid: row.xid,
             },
             EndpointKind::X11 => Self::X11 {
@@ -173,6 +178,13 @@ impl Endpoint {
     pub(in crate::global_menu) fn window_path(&self) -> Option<&str> {
         match self {
             Self::Gtk { window_path, .. } => window_path.as_deref(),
+            Self::DbusMenu { .. } | Self::X11 { .. } | Self::Parent { .. } => None,
+        }
+    }
+
+    pub(in crate::global_menu) fn unity_path(&self) -> Option<&str> {
+        match self {
+            Self::Gtk { unity_path, .. } => unity_path.as_deref(),
             Self::DbusMenu { .. } | Self::X11 { .. } | Self::Parent { .. } => None,
         }
     }

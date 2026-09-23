@@ -175,6 +175,7 @@ mod tests {
             app_menu_path: None,
             application_path: Some("/App".into()),
             window_path: Some(window.into()),
+            unity_path: None,
             xid: None,
         }
     }
