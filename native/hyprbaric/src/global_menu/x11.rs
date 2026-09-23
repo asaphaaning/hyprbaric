@@ -8,19 +8,8 @@ use std::{process::Stdio, time::Duration};
 use tokio::{process::Command, time::timeout};
 use zbus::{names::BusName, zvariant::ObjectPath};
 
-/// Legacy appmenu-gtk-module protocol names for an action namespace.
-/// These describe an X11 property and action prefix, not an application.
-const LEGACY_ACTION_PROPERTY: &str = "_UNITY_OBJECT_PATH";
-const LEGACY_ACTION_SCOPE: &str = "unity";
-
-const PROPERTIES: &[&str] = &[
-    "_GTK_UNIQUE_BUS_NAME",
-    "_GTK_MENUBAR_OBJECT_PATH",
-    "_GTK_APP_MENU_OBJECT_PATH",
-    "_GTK_APPLICATION_OBJECT_PATH",
-    "_GTK_WINDOW_OBJECT_PATH",
-    LEGACY_ACTION_PROPERTY,
-];
+const MAX_PROPERTY_OUTPUT: usize = 128 * 1024;
+const MAX_ACTION_GROUPS: usize = 16;
 
 /// Looks up a GTK menu on one XWayland window after registrar discovery misses.
 ///
@@ -33,8 +22,7 @@ pub(super) async fn gtk_endpoint(address: &str, xid: u32) -> Option<Endpoint> {
         Duration::from_millis(300),
         command
             .kill_on_drop(true)
-            .args(["-notype", "-id", &xid.to_string()])
-            .args(PROPERTIES)
+            .args(["-notype", "-len", "1024", "-id", &xid.to_string()])
             .stdin(Stdio::null())
             .output(),
     )
@@ -55,8 +43,13 @@ pub(super) async fn gtk_endpoint(address: &str, xid: u32) -> Option<Endpoint> {
         }
     };
 
-    let properties = std::str::from_utf8(&output.stdout).ok()?;
-    Properties::parse(properties).endpoint(address, xid)
+    if output.stdout.len() > MAX_PROPERTY_OUTPUT {
+        tracing::debug!("X11 property response exceeded the menu discovery limit");
+        return None;
+    }
+
+    let properties = String::from_utf8_lossy(&output.stdout);
+    Properties::parse(&properties).endpoint(address, xid)
 }
 
 /// Only the values that describe a GTK menu and its action groups.
@@ -67,7 +60,7 @@ struct Properties<'a> {
     app_menu: Option<&'a str>,
     application: Option<&'a str>,
     window: Option<&'a str>,
-    legacy_actions: Option<&'a str>,
+    additional_actions: Vec<(String, &'a str)>,
 }
 
 impl<'a> Properties<'a> {
@@ -92,12 +85,19 @@ impl<'a> Properties<'a> {
                 "_GTK_APP_MENU_OBJECT_PATH" => properties.app_menu = Some(value),
                 "_GTK_APPLICATION_OBJECT_PATH" => properties.application = Some(value),
                 "_GTK_WINDOW_OBJECT_PATH" => properties.window = Some(value),
-                name if name == LEGACY_ACTION_PROPERTY => {
-                    properties.legacy_actions = Some(value);
+                name => {
+                    if let Some(scope) = action_scope(name)
+                        && valid_path(Some(value)).is_some()
+                    {
+                        properties.additional_actions.push((scope, value));
+                    }
                 }
-                _ => {}
             }
         }
+        properties
+            .additional_actions
+            .sort_unstable_by(|left, right| left.0.cmp(&right.0));
+        properties.additional_actions.truncate(MAX_ACTION_GROUPS);
         properties
     }
 
@@ -109,25 +109,41 @@ impl<'a> Properties<'a> {
         let app_menu = valid_path(self.app_menu);
         let path = menubar.or(app_menu)?;
 
+        let mut action_groups = [
+            ActionGroup::at("app", valid_path(self.application).map(str::to_owned)),
+            ActionGroup::at("win", valid_path(self.window).map(str::to_owned)),
+        ]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+        action_groups.extend(
+            self.additional_actions
+                .into_iter()
+                .filter_map(|(scope, path)| {
+                    ActionGroup::at(&scope, valid_path(Some(path)).map(str::to_owned))
+                }),
+        );
+
         Some(Endpoint::Gtk {
             address: Some(address.to_owned()),
             service: service.to_owned(),
             path: path.to_owned(),
             app_menu_path: menubar.and(app_menu).map(str::to_owned),
-            action_groups: [
-                ActionGroup::at("app", valid_path(self.application).map(str::to_owned)),
-                ActionGroup::at("win", valid_path(self.window).map(str::to_owned)),
-                ActionGroup::at(
-                    LEGACY_ACTION_SCOPE,
-                    valid_path(self.legacy_actions).map(str::to_owned),
-                ),
-            ]
-            .into_iter()
-            .flatten()
-            .collect(),
+            action_groups,
             xid: Some(xid),
         })
     }
+}
+
+/// A simple `_NAME_OBJECT_PATH` property advertises the `name.` action scope.
+/// GTK's menu, application, and window properties are handled above instead.
+fn action_scope(name: &str) -> Option<String> {
+    let scope = name.strip_prefix('_')?.strip_suffix("_OBJECT_PATH")?;
+    (!scope.is_empty()
+        && scope
+            .bytes()
+            .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit()))
+    .then(|| scope.to_ascii_lowercase())
 }
 
 fn valid_path(path: Option<&str>) -> Option<&str> {
@@ -140,10 +156,13 @@ mod tests {
 
     #[test]
     fn xwayland_gtk_properties_resolve_unity_menu_and_actions() {
-        let output = r#"_GTK_UNIQUE_BUS_NAME = ":1.579"
+        let output = r#"WM_STATE:
+        window state: Normal
+_NET_WM_ICON =
+_GTK_UNIQUE_BUS_NAME = ":1.579"
 _GTK_MENUBAR_OBJECT_PATH = "/org/appmenu/gtk/window/1"
-_GTK_APP_MENU_OBJECT_PATH:  no such atom on any window.
 _UNITY_OBJECT_PATH = "/org/appmenu/gtk/window/1"
+WM_CLASS = "unity-editor", "Unity-editor"
 "#;
         let endpoint = Properties::parse(output)
             .endpoint("0xabc", 14680725)
@@ -162,6 +181,37 @@ _UNITY_OBJECT_PATH = "/org/appmenu/gtk/window/1"
         ));
         assert_eq!(endpoint.action_path("unity"), Some(endpoint.path()));
         assert_eq!(endpoint.action_paths(), vec![endpoint.path()]);
+    }
+
+    #[test]
+    fn additional_action_scopes_follow_published_property_names() {
+        let output = r#"_GTK_UNIQUE_BUS_NAME = ":1.42"
+_GTK_MENUBAR_OBJECT_PATH = "/menus/main"
+_VENDOR_OBJECT_PATH = "/actions/vendor"
+_OTHER_OBJECT_PATH = "/actions/other"
+_VENDOR_EXTRA_OBJECT_PATH = "/actions/ignored"
+_NOT_AN_ACTION_OBJECT_PATH = "invalid"
+"#;
+        let endpoint = Properties::parse(output)
+            .endpoint("0xabc", 42)
+            .expect("GTK endpoint");
+
+        assert_eq!(endpoint.action_path("vendor"), Some("/actions/vendor"));
+        assert_eq!(endpoint.action_path("other"), Some("/actions/other"));
+        assert_eq!(endpoint.action_path("vendor_extra"), None);
+        assert_eq!(endpoint.action_path("not_an_action"), None);
+
+        let reordered = r#"_OTHER_OBJECT_PATH = "/actions/other"
+_GTK_MENUBAR_OBJECT_PATH = "/menus/main"
+_VENDOR_OBJECT_PATH = "/actions/vendor"
+_GTK_UNIQUE_BUS_NAME = ":1.42"
+"#;
+        assert_eq!(
+            endpoint,
+            Properties::parse(reordered)
+                .endpoint("0xabc", 42)
+                .expect("GTK endpoint")
+        );
     }
 
     #[test]
