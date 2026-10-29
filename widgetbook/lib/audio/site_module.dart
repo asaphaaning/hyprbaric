@@ -25,7 +25,7 @@ enum SiteModule {
   power(
     'Battery & power profiles',
     'Charge level, time remaining, and the active power profile.',
-    Iconsax.flash_circle_copy,
+    Iconsax.flash_1_copy,
   ),
 
   /// Desktop capture and quick toggles.

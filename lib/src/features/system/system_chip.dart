@@ -1,12 +1,18 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
 import '../../widgets/primitives/primitives.dart';
 import 'system_formatting.dart';
-import 'system_icon.dart';
 
 /// Compact CPU and memory readout that opens the system instrument.
+/// Memory shares the occupancy bands with its own teal nominal tint.
+final HyprLevelRamp _memoryRamp = HyprLevelRamp.occupancy.withNominal(
+  const Color(0xFF20DCD0),
+);
+
 class SystemChip extends StatelessWidget {
   const SystemChip({
     super.key,
@@ -51,18 +57,17 @@ class SystemChip extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   _Readout(
-                    symbol: SystemSymbol.cpu,
                     label: 'CPU',
                     value: formatCpuPercent(status),
+                    ratio: cpuRatio(status),
+                    ramp: HyprLevelRamp.occupancy,
                   ),
-                  const HyprDivider(
-                    height: 18,
-                    margin: EdgeInsets.symmetric(horizontal: 6),
-                  ),
+                  const SizedBox(width: HyprSpacing.xxl),
                   _Readout(
-                    symbol: SystemSymbol.memory,
                     label: 'MEM',
                     value: formatMemoryChip(status),
+                    ratio: memoryRatio(status),
+                    ramp: _memoryRamp,
                   ),
                 ],
               ),
@@ -76,25 +81,25 @@ class SystemChip extends StatelessWidget {
 
 class _Readout extends StatelessWidget {
   const _Readout({
-    required this.symbol,
     required this.label,
     required this.value,
+    required this.ratio,
+    required this.ramp,
   });
 
-  final SystemSymbol symbol;
   final String label;
   final String value;
+
+  /// Occupancy from 0 to 1, drawn as the ring's arc.
+  final double ratio;
+  final HyprLevelRamp ramp;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        SystemIcon(
-          symbol,
-          color: HyprColors.textMuted,
-          size: HyprIconSizes.bar,
-        ),
+        _LoadRing(ratio: ratio, ramp: ramp),
         const SizedBox(width: HyprSpacing.lg),
         Text(
           label,
@@ -109,7 +114,7 @@ class _Readout extends StatelessWidget {
         Text(
           value,
           style: HyprTypography.barMono.copyWith(
-            color: HyprColors.textMuted,
+            color: HyprColors.text,
             fontSize: HyprTypography.size(11.5),
             fontWeight: FontWeight.w600,
           ),
@@ -117,4 +122,72 @@ class _Readout extends StatelessWidget {
       ],
     );
   }
+}
+
+/// A small ring whose arc eases to the current occupancy, tinted by load.
+class _LoadRing extends StatelessWidget {
+  const _LoadRing({required this.ratio, required this.ramp});
+
+  final double ratio;
+  final HyprLevelRamp ramp;
+
+  @override
+  Widget build(BuildContext context) {
+    final double target = ratio.clamp(0.0, 1.0);
+    return RepaintBoundary(
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(end: target),
+        duration: HyprMotion.loadRing,
+        curve: HyprMotion.plateCurve,
+        builder: (BuildContext context, double value, Widget? child) =>
+            CustomPaint(
+              size: const Size.square(_LoadRingPainter.diameter),
+              painter: _LoadRingPainter(
+                ratio: value,
+                color: ramp.colorAt(value),
+              ),
+            ),
+      ),
+    );
+  }
+}
+
+class _LoadRingPainter extends CustomPainter {
+  const _LoadRingPainter({required this.ratio, required this.color});
+
+  static const double diameter = 16;
+  static const double stroke = 2;
+
+  final double ratio;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Rect ring = (Offset.zero & size).deflate(stroke);
+    canvas.drawOval(
+      ring,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..color = const Color(0x1FFFFFFF),
+    );
+    if (ratio <= 0) {
+      return;
+    }
+    canvas.drawArc(
+      ring,
+      -math.pi / 2,
+      2 * math.pi * ratio,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeCap = StrokeCap.round
+        ..color = color,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_LoadRingPainter oldDelegate) =>
+      oldDelegate.ratio != ratio || oldDelegate.color != color;
 }
