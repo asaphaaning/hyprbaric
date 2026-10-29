@@ -9,6 +9,7 @@ import '../state/providers.dart';
 import '../theme/hypr_motion.dart';
 import 'layer_shell_dropdown_model.dart';
 import 'layer_shell_dropdown_overlay.dart';
+import 'popover_handoff.dart';
 
 export 'layer_shell_dropdown_model.dart';
 
@@ -34,6 +35,7 @@ class LayerShellDropdown extends ConsumerStatefulWidget {
     this.verticalGap = 8,
     this.menuOffset = Offset.zero,
     this.onClosed,
+    this.handoff = LayerShellDropdownHandoff.none,
   });
 
   final LayerShellDropdownController? controller;
@@ -52,6 +54,10 @@ class LayerShellDropdown extends ConsumerStatefulWidget {
   /// Called whenever the menu leaves the screen, including a dismissal from
   /// the barrier, so an owner tracking which menu is open stays in step.
   final VoidCallback? onClosed;
+
+  /// Whether switching between this and another [LayerShellDropdownHandoff.morph]
+  /// dropdown glides one shared shell between them.
+  final LayerShellDropdownHandoff handoff;
   final Duration animationDuration;
   final Curve animationCurve;
   final LayerShellDropdownTransition transition;
@@ -102,10 +108,21 @@ class LayerShellDropdownController {
 
 /// Internal state that manages the overlay and hit-region updates.
 class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late LayerShellDropdownController _controller;
   late final LayerShellRegionManager _regionManager;
   late final AnimationController _animationController;
+  late final AnimationController _handoffController;
+  late final PopoverHandoff _handoff;
+
+  /// The shell this dropdown is gliding in from another popover.
+  PopoverMorph? _arrival;
+
+  /// The successor's shell this dropdown's contents are clearing out of.
+  PopoverMorph? _exit;
+
+  /// Whether the overlay is only painting its departing contents.
+  bool _leaving = false;
   final Object _regionOwner = Object();
   final LayerLink _buttonLayerLink = LayerLink();
   final GlobalKey _buttonKey = GlobalKey();
@@ -122,6 +139,11 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
     _controller = widget.controller ?? LayerShellDropdownController();
     _controller._attach(this);
     _regionManager = ref.read(layerShellRegionManagerProvider);
+    _handoff = ref.read(popoverHandoffProvider);
+    _handoffController = AnimationController(
+      vsync: this,
+      duration: HyprMotion.handoff,
+    );
     _animationController =
         AnimationController(vsync: this, duration: widget.animationDuration)
           ..value = 1
@@ -156,12 +178,17 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
         debugLabel: 'dropdown-disposed',
       ),
     );
+    _endArrival();
     _animationController.dispose();
     _removeOverlay();
+    _handoffController.dispose();
     super.dispose();
   }
 
   void _open() {
+    if (_leaving) {
+      _removeOverlay();
+    }
     if (_isOpen || _overlayEntry != null) {
       return;
     }
@@ -198,17 +225,28 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
         );
     final bool measureTransitionBounds =
         widget.transition == LayerShellDropdownTransition.grow;
+    final bool handsOff = widget.handoff == LayerShellDropdownHandoff.morph;
     // Each opening owns its measurement key, including same-frame reopens
     // while the previous entry is still waiting to unmount.
     final menuKey = GlobalKey();
     _menuKey = menuKey;
-    final Widget transitionChild = measureTransitionBounds
-        ? menuContent
-        : KeyedSubtree(key: menuKey, child: menuContent);
 
     _overlayEntry = OverlayEntry(
       builder: (BuildContext overlayContext) {
         final double barHeight = _regionManager.barHeight.toDouble();
+        final Widget hostedContent = handsOff
+            ? PopoverHandoffHost(
+                morph: _exit ?? _arrival,
+                role: _exit == null
+                    ? PopoverMorphRole.arriving
+                    : PopoverMorphRole.departing,
+                overlay: overlayState,
+                child: menuContent,
+              )
+            : menuContent;
+        final Widget transitionChild = measureTransitionBounds
+            ? hostedContent
+            : KeyedSubtree(key: menuKey, child: hostedContent);
         return Positioned.fill(
           child: Stack(
             children: <Widget>[
@@ -217,9 +255,12 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
                 right: 0,
                 bottom: 0,
                 left: 0,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onTap: _controller.close,
+                child: IgnorePointer(
+                  ignoring: _leaving,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: _controller.close,
+                  ),
                 ),
               ),
               if (widget.menuWidth case final double menuWidth)
@@ -234,6 +275,7 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
                   menuWidth: menuWidth,
                   barHeight: barHeight,
                   verticalGap: widget.verticalGap,
+                  clip: !handsOff,
                   menuKey: measureTransitionBounds ? menuKey : null,
                   child: transitionChild,
                 )
@@ -255,6 +297,7 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
                       transition: widget.transition,
                       transitionAlignment: widget.transitionAlignment,
                       revealAlignment: _revealAlignment,
+                      clip: !handsOff,
                       child: transitionChild,
                     ),
                   ),
@@ -265,7 +308,15 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
       },
     );
 
-    overlayState.insert(_overlayEntry!);
+    final PopoverDeparture? departure = handsOff ? _handoff.claim() : null;
+    if (departure != null) {
+      _beginArrival(departure, buttonBox: buttonBox, overlayBox: overlayBox);
+      // Beneath the departing contents, so they clear out over the new shell.
+      overlayState.insert(_overlayEntry!, below: departure.entry);
+    } else {
+      // Opening from a closed bar is instant; motion is for switching.
+      overlayState.insert(_overlayEntry!);
+    }
     setState(() {
       _isOpen = true;
     });
@@ -305,12 +356,14 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
     if (!_isOpen && !_animationController.isAnimating) {
       return;
     }
+    // Closing into a closed bar is instant, like opening from one.
     setState(() {
       _isOpen = false;
     });
     widget.onClosed?.call();
     _animationController.stop();
     _animationController.value = 0.0;
+    _endArrival();
     _removeOverlay();
     _scheduleRegionUpdate(_RegionSyncMode.barOnly);
   }
@@ -319,6 +372,16 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
     if (!_isOpen &&
         _overlayEntry == null &&
         !_animationController.isAnimating) {
+      return;
+    }
+    if (_leaving) {
+      // Already clearing out; its handoff, or the end of this frame, removes it.
+      return;
+    }
+    if (_isOpen &&
+        !_leaving &&
+        widget.handoff == LayerShellDropdownHandoff.morph &&
+        _depart()) {
       return;
     }
     if (mounted) {
@@ -331,13 +394,130 @@ class _LayerShellDropdownState extends ConsumerState<LayerShellDropdown>
     widget.onClosed?.call();
     _animationController.stop();
     _animationController.value = 0.0;
+    _endArrival();
     _removeOverlay();
     _scheduleRegionUpdate(_RegionSyncMode.barOnly);
   }
 
+  /// Glides in from [departure]'s frame and button to this dropdown's own.
+  void _beginArrival(
+    PopoverDeparture departure, {
+    required RenderBox buttonBox,
+    required RenderBox overlayBox,
+  }) {
+    final PopoverMorph morph = PopoverMorph(
+      animation: _handoffController,
+      from: departure.frame,
+      fromRadius: departure.radius,
+      fromAnchor: departure.anchor,
+      toAnchor: overlayRect(buttonBox, overlayBox),
+    );
+    departure.follow(morph);
+    _runArrival(morph, HyprMotion.handoff);
+  }
+
+  void _runArrival(PopoverMorph morph, Duration duration) {
+    _arrival = morph;
+    _handoffController
+      ..duration = duration
+      ..value = 0
+      ..forward().whenCompleteOrCancel(() {
+        if (identical(_arrival, morph)) {
+          _endArrival();
+          _overlayEntry?.markNeedsBuild();
+        }
+      });
+  }
+
+  /// Settles or abandons the current arrival, releasing its predecessor.
+  void _endArrival() {
+    final PopoverMorph? morph = _arrival;
+    if (morph == null) {
+      return;
+    }
+    _arrival = null;
+    _handoffController.stop();
+    morph.end();
+  }
+
+  /// Leaves while offering this dropdown's place to a successor.
+  ///
+  /// The overlay stays mounted, inert, until the end of the frame. A
+  /// successor that claims it drives its contents out through the shared
+  /// shell; otherwise it is removed exactly as a plain dismissal would.
+  bool _depart() {
+    final OverlayEntry? entry = _overlayEntry;
+    final Rect? frame = _arrival?.frame ?? _measureMenuFrame();
+    final Rect? anchor = _measureButton();
+    if (entry == null || frame == null || anchor == null) {
+      return false;
+    }
+
+    _endArrival();
+    setState(() {
+      _isOpen = false;
+    });
+    widget.onClosed?.call();
+    _leaving = true;
+    entry.markNeedsBuild();
+    _scheduleRegionUpdate(_RegionSyncMode.barOnly);
+    _handoff.offer(
+      PopoverDeparture(
+        frame: frame,
+        radius: widget.menuRadius,
+        anchor: anchor,
+        entry: entry,
+        onClaimed: (PopoverMorph morph) {
+          if (!identical(_overlayEntry, entry)) {
+            return;
+          }
+          _exit = morph;
+          entry.markNeedsBuild();
+          morph.onEnd(() {
+            if (identical(_overlayEntry, entry)) {
+              _removeOverlay();
+            }
+          });
+        },
+        onDeclined: () {
+          if (identical(_overlayEntry, entry)) {
+            _removeOverlay();
+          }
+        },
+      ),
+    );
+    return true;
+  }
+
+  Rect? _measureMenuFrame() {
+    final RenderBox? menuBox =
+        _menuKey?.currentContext?.findRenderObject() as RenderBox?;
+    final RenderBox? overlayBox = _overlayBox();
+    if (menuBox == null || overlayBox == null || !menuBox.hasSize) {
+      return null;
+    }
+    return overlayRect(menuBox, overlayBox);
+  }
+
+  Rect? _measureButton() {
+    final RenderBox? buttonBox =
+        _buttonKey.currentContext?.findRenderObject() as RenderBox?;
+    final RenderBox? overlayBox = _overlayBox();
+    if (buttonBox == null || overlayBox == null) {
+      return null;
+    }
+    return overlayRect(buttonBox, overlayBox);
+  }
+
+  RenderBox? _overlayBox() =>
+      Overlay.of(context, rootOverlay: true).context.findRenderObject()
+          as RenderBox?;
+
   void _removeOverlay() {
     final entry = _overlayEntry;
     _overlayEntry = null;
+    _leaving = false;
+    _exit = null;
     _menuKey = null;
     _pendingRegionMode = null;
     _menuOffsetX = 0;

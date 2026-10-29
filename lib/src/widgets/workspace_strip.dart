@@ -38,7 +38,8 @@ class WorkspaceStrip extends StatelessWidget {
     final List<int> visibleWorkspaces =
         visibleWorkspaceIds ??
         _visibleWorkspaceRange(active, settings.visibleCount);
-    return Row(
+    final HyprPalette palette = context.hyprPalette;
+    final Widget strip = Row(
       key: const ValueKey<String>('workspace-strip'),
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
@@ -49,17 +50,21 @@ class WorkspaceStrip extends StatelessWidget {
         ),
         const SizedBox(width: HyprSpacing.xl),
         for (final int index in visibleWorkspaces) ...<Widget>[
-          WorkspaceButton(
-            key: ValueKey<String>('workspace-indicator-$index'),
-            label: _workspaceIndicatorLabel(
-              index,
-              status,
-              settings,
-              resolution,
-            ),
+          HyprPlateSlot(
+            key: ValueKey<String>('workspace-slot-$index'),
             active: !resolution.isSpecial && index == active,
-            occupied: status.occupiedWorkspaceIds.contains(index),
-            onPressed: settings.clickable ? () => onSelect(index) : null,
+            child: WorkspaceButton(
+              key: ValueKey<String>('workspace-indicator-$index'),
+              label: _workspaceIndicatorLabel(
+                index,
+                status,
+                settings,
+                resolution,
+              ),
+              active: !resolution.isSpecial && index == active,
+              occupied: status.occupiedWorkspaceIds.contains(index),
+              onPressed: settings.clickable ? () => onSelect(index) : null,
+            ),
           ),
           if (index != visibleWorkspaces.last)
             const SizedBox(width: HyprSpacing.md),
@@ -71,6 +76,19 @@ class WorkspaceStrip extends StatelessWidget {
           onPressed: onNext,
         ),
       ],
+    );
+    // One accent plate glides between workspaces instead of each button
+    // lighting its own.
+    return HyprPlateTrack(
+      style: HyprPlateStyle(
+        fill: palette.fill,
+        border: palette.accentSoft.withValues(alpha: 0.40),
+        borderWidth: 1,
+        radius: HyprRadii.compact,
+        glow: palette.accentSoft.withValues(alpha: 0.13),
+        glowBlur: 8,
+      ),
+      child: strip,
     );
   }
 }
@@ -143,7 +161,9 @@ class WorkspaceButton extends StatelessWidget {
     final bool occupied = this.occupied;
     final HyprPalette palette = context.hyprPalette;
     final Color foreground = active ? palette.accentSoft : HyprColors.textFaint;
-    final BorderSide border = active
+    // Under a track the gliding plate marks the active workspace.
+    final bool lit = active && !HyprPlateTrack.isPresent(context);
+    final BorderSide border = lit
         ? BorderSide(
             color: palette.accentSoft.withValues(alpha: 0.40),
             width: 1,
@@ -151,10 +171,10 @@ class WorkspaceButton extends StatelessWidget {
         : BorderSide.none;
     final List<BoxShadow> shadows = <BoxShadow>[
       BoxShadow(
-        color: active
+        color: lit
             ? palette.accentSoft.withValues(alpha: 0.13)
             : Colors.transparent,
-        blurRadius: active ? 8 : 0,
+        blurRadius: lit ? 8 : 0,
         spreadRadius: 0,
       ),
     ];
@@ -189,7 +209,7 @@ class WorkspaceButton extends StatelessWidget {
             width: 31,
             height: 18,
             decoration: ShapeDecoration(
-              color: active ? palette.fill : Colors.transparent,
+              color: lit ? palette.fill : Colors.transparent,
               shadows: shadows,
               shape: RoundedSuperellipseBorder(
                 borderRadius: BorderRadius.circular(

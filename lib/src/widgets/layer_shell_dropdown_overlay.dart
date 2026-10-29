@@ -20,6 +20,7 @@ class AnchoredMenuOverlay extends AnimatedWidget {
     required this.menuWidth,
     required this.barHeight,
     required this.verticalGap,
+    this.clip = true,
     required this.child,
   }) : super(listenable: animation);
 
@@ -34,6 +35,9 @@ class AnchoredMenuOverlay extends AnimatedWidget {
   final double menuWidth;
   final double barHeight;
   final double verticalGap;
+
+  /// Whether the transition clips the menu to its own box.
+  final bool clip;
   final Widget child;
 
   @override
@@ -68,6 +72,7 @@ class AnchoredMenuOverlay extends AnimatedWidget {
           animationCurve: animationCurve,
           transition: transition,
           transitionAlignment: transitionAlignment,
+          clip: clip,
           child: child,
         ),
       ),
@@ -84,6 +89,7 @@ class DropdownTransition extends AnimatedWidget {
     required this.transitionAlignment,
     required this.child,
     this.revealAlignment = Alignment.topCenter,
+    this.clip = true,
   }) : super(listenable: animation);
 
   final Animation<double> animation;
@@ -98,6 +104,10 @@ class DropdownTransition extends AnimatedWidget {
   /// is an edge puts it somewhere its owner then has to correct it away from,
   /// and makes it slide whenever its width changes.
   final Alignment revealAlignment;
+
+  /// Whether the menu is clipped to its box. A popover handing its shell to
+  /// another paints that shell beyond its own box while it travels.
+  final bool clip;
 
   final Widget child;
 
@@ -116,6 +126,7 @@ class DropdownTransition extends AnimatedWidget {
     return Opacity(
       opacity: progress.clamp(0.0, 1.0),
       child: ClipRect(
+        clipBehavior: clip ? Clip.hardEdge : Clip.none,
         child: Align(
           alignment: revealAlignment,
           heightFactor: heightFactor,
@@ -151,6 +162,7 @@ class DropdownTransition extends AnimatedWidget {
     return Opacity(
       opacity: opacityProgress,
       child: ClipRect(
+        clipBehavior: clip ? Clip.hardEdge : Clip.none,
         child: Align(
           alignment: transitionAlignment,
           widthFactor: factor,

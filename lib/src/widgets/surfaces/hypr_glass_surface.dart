@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../popover_handoff.dart';
+
 import 'hypr_colors.dart';
 import 'hypr_inset_border.dart';
 import 'hypr_surface_frame.dart';
@@ -35,7 +37,11 @@ class HyprGlassSurface extends StatelessWidget {
   Widget build(BuildContext context) {
     final List<BoxShadow>? frameShadows = _frameShadows(shadow);
     if (frame == HyprSurfaceFrame.popover) {
-      return _buildPopover(frameShadows);
+      return _buildPopover(
+        context,
+        frameShadows,
+        PopoverMorphScope.surfaceFrameOf(context),
+      );
     }
 
     return DecoratedBox(
@@ -82,7 +88,16 @@ class HyprGlassSurface extends StatelessWidget {
   /// the same shape. A [ShapeDecoration] stroke would pad the child by the
   /// border width and keep the original radii, so the clip and the ring stop
   /// nesting at the corner apex and leave a pale fringe.
-  Widget _buildPopover(List<BoxShadow>? frameShadows) {
+  ///
+  /// During a popover handoff the arriving surface paints the travelling
+  /// shell instead of its resting outline and clips its contents to it; the
+  /// departing surface paints no glass and only clips.
+  Widget _buildPopover(
+    BuildContext context,
+    List<BoxShadow>? frameShadows,
+    PopoverMorphFrame? morph,
+  ) {
+    final bool paintsGlass = morph?.paintsGlass ?? true;
     return DecoratedBox(
       decoration: ShapeDecoration(
         shape: RoundedSuperellipseBorder(borderRadius: borderRadius),
@@ -93,44 +108,54 @@ class HyprGlassSurface extends StatelessWidget {
         children: <Widget>[
           Positioned.fill(
             child: CustomPaint(
-              painter: _PopoverFillPainter(
-                color: color,
-                gradient: gradient,
-                borderRadius: borderRadius,
-              ),
+              painter: paintsGlass
+                  ? _PopoverFillPainter(
+                      color: color,
+                      gradient: gradient,
+                      borderRadius: borderRadius,
+                      morph: morph,
+                    )
+                  : null,
             ),
           ),
           ClipRSuperellipse(
             borderRadius: borderRadius,
+            clipper: morph == null ? null : _MorphClipper(morph, borderRadius),
             clipBehavior: Clip.hardEdge,
             child: Material(
               color: Colors.transparent,
-              child: Stack(
-                fit: StackFit.passthrough,
-                children: <Widget>[
-                  child,
-                  if (inset)
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: HyprInsetBorder(
-                          borderRadius: borderRadius,
-                          borderColor: borderColor,
-                          frame: frame,
+              child: PopoverMorphScope.consume(
+                context,
+                Stack(
+                  fit: StackFit.passthrough,
+                  children: <Widget>[
+                    child,
+                    if (inset)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: HyprInsetBorder(
+                            borderRadius: borderRadius,
+                            borderColor: borderColor,
+                            frame: frame,
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
           Positioned.fill(
             child: IgnorePointer(
               child: CustomPaint(
-                painter: _PopoverRingPainter(
-                  borderRadius: borderRadius,
-                  innerColor: borderColor,
-                  outerColor: HyprColors.popupOuterRing,
-                ),
+                painter: paintsGlass
+                    ? _PopoverRingPainter(
+                        borderRadius: borderRadius,
+                        innerColor: borderColor,
+                        outerColor: HyprColors.popupOuterRing,
+                        morph: morph,
+                      )
+                    : null,
               ),
             ),
           ),
@@ -138,6 +163,21 @@ class HyprGlassSurface extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Clips popover contents to the shell travelling through a handoff.
+class _MorphClipper extends CustomClipper<RSuperellipse> {
+  _MorphClipper(this.morph, this.borderRadius) : super(reclip: morph.repaint);
+
+  final PopoverMorphFrame morph;
+  final BorderRadius borderRadius;
+
+  @override
+  RSuperellipse getClip(Size size) => morph.shape(borderRadius);
+
+  @override
+  bool shouldReclip(covariant _MorphClipper oldClipper) =>
+      oldClipper.morph != morph || oldClipper.borderRadius != borderRadius;
 }
 
 List<BoxShadow>? _frameShadows(bool shadow) {
@@ -156,15 +196,19 @@ List<BoxShadow>? _frameShadows(bool shadow) {
 }
 
 class _PopoverFillPainter extends CustomPainter {
-  const _PopoverFillPainter({
+  _PopoverFillPainter({
     required this.color,
     required this.gradient,
     required this.borderRadius,
-  });
+    this.morph,
+  }) : super(repaint: morph?.repaint);
 
   final Color color;
   final Gradient? gradient;
   final BorderRadius borderRadius;
+
+  /// The handoff shell painted instead of the resting outline.
+  final PopoverMorphFrame? morph;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -172,12 +216,14 @@ class _PopoverFillPainter extends CustomPainter {
       return;
     }
 
-    final RSuperellipse shape = borderRadius
-        .resolve(TextDirection.ltr)
-        .toRSuperellipse(Offset.zero & size);
+    final PopoverMorphFrame? morph = this.morph;
+    final Rect frame = morph?.localFrame() ?? Offset.zero & size;
+    final RSuperellipse shape =
+        morph?.shape(borderRadius) ??
+        borderRadius.resolve(TextDirection.ltr).toRSuperellipse(frame);
     final Paint paint = Paint()..color = color;
     if (gradient != null) {
-      paint.shader = gradient!.createShader(Offset.zero & size);
+      paint.shader = gradient!.createShader(frame);
     }
     canvas.drawRSuperellipse(shape, paint);
   }
@@ -186,22 +232,27 @@ class _PopoverFillPainter extends CustomPainter {
   bool shouldRepaint(covariant _PopoverFillPainter oldDelegate) {
     return oldDelegate.color != color ||
         oldDelegate.gradient != gradient ||
-        oldDelegate.borderRadius != borderRadius;
+        oldDelegate.borderRadius != borderRadius ||
+        oldDelegate.morph != morph;
   }
 }
 
 /// Dark outer ring and light inner hairline, both offset from the same
 /// [RSuperellipse] as the fill.
 class _PopoverRingPainter extends CustomPainter {
-  const _PopoverRingPainter({
+  _PopoverRingPainter({
     required this.borderRadius,
     required this.innerColor,
     required this.outerColor,
-  });
+    this.morph,
+  }) : super(repaint: morph?.repaint);
 
   final BorderRadius borderRadius;
   final Color innerColor;
   final Color outerColor;
+
+  /// The handoff shell traced instead of the resting outline.
+  final PopoverMorphFrame? morph;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -209,9 +260,11 @@ class _PopoverRingPainter extends CustomPainter {
       return;
     }
 
-    final RSuperellipse shape = borderRadius
-        .resolve(TextDirection.ltr)
-        .toRSuperellipse(Offset.zero & size);
+    final RSuperellipse shape =
+        morph?.shape(borderRadius) ??
+        borderRadius
+            .resolve(TextDirection.ltr)
+            .toRSuperellipse(Offset.zero & size);
     _fillRing(canvas, outer: shape, inner: shape.deflate(1), color: outerColor);
     _fillRing(
       canvas,
@@ -238,6 +291,7 @@ class _PopoverRingPainter extends CustomPainter {
   bool shouldRepaint(covariant _PopoverRingPainter oldDelegate) {
     return oldDelegate.borderRadius != borderRadius ||
         oldDelegate.innerColor != innerColor ||
-        oldDelegate.outerColor != outerColor;
+        oldDelegate.outerColor != outerColor ||
+        oldDelegate.morph != morph;
   }
 }

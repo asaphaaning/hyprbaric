@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
+import '../../widgets/popover_handoff.dart';
 import '../../widgets/primitives/primitives.dart';
 import 'system_console.dart';
 import 'system_formatting.dart';
@@ -37,61 +38,70 @@ class SystemPanel extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
-              child: HyprInstrumentHeader(
-                title: 'System',
-                icon: SystemIcon(
-                  SystemSymbol.cpu,
-                  color: HyprInstrumentColors.secondary,
+            const PopoverStaggerItem(
+              index: 0,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+                child: HyprInstrumentHeader(
+                  title: 'System',
+                  icon: SystemIcon(
+                    SystemSymbol.cpu,
+                    color: HyprInstrumentColors.secondary,
+                  ),
                 ),
               ),
             ),
             if (unavailable)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-                child: HyprEmptyState(
-                  message:
-                      snapshot?.message ?? 'System occupancy is unavailable',
-                  symbol: 'SYSTEM',
+              PopoverStaggerItem(
+                index: 1,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                  child: HyprEmptyState(
+                    message:
+                        snapshot?.message ?? 'System occupancy is unavailable',
+                    symbol: 'SYSTEM',
+                  ),
                 ),
               )
             else ...<Widget>[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Expanded(child: SystemGauge(ratio: cpuRatio(snapshot))),
-                    const SizedBox(width: 16),
-                    SizedBox(
-                      width: 168,
-                      child: Column(
-                        children: <Widget>[
-                          SystemMeterRow(
-                            symbol: SystemSymbol.cpu,
-                            label: 'CPU',
-                            value: formatCpuPercent(snapshot),
-                            ratio: cpuRatio(snapshot),
-                          ),
-                          const SizedBox(height: 16),
-                          SystemMeterRow(
-                            symbol: SystemSymbol.memory,
-                            label: 'Memory',
-                            value: formatMemoryPanel(snapshot),
-                            ratio: memoryRatio(snapshot),
-                          ),
-                          const SizedBox(height: 16),
-                          SystemMeterRow(
-                            symbol: SystemSymbol.disk,
-                            label: 'Disk',
-                            value: formatDiskPercent(snapshot),
-                            ratio: diskRatio(snapshot),
-                          ),
-                        ],
+              PopoverStaggerItem(
+                index: 1,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Expanded(child: SystemGauge(ratio: cpuRatio(snapshot))),
+                      const SizedBox(width: 16),
+                      SizedBox(
+                        width: 168,
+                        child: Column(
+                          children: <Widget>[
+                            SystemMeterRow(
+                              symbol: SystemSymbol.cpu,
+                              label: 'CPU',
+                              value: formatCpuPercent(snapshot),
+                              ratio: cpuRatio(snapshot),
+                            ),
+                            const SizedBox(height: 16),
+                            SystemMeterRow(
+                              symbol: SystemSymbol.memory,
+                              label: 'Memory',
+                              value: formatMemoryPanel(snapshot),
+                              ratio: memoryRatio(snapshot),
+                            ),
+                            const SizedBox(height: 16),
+                            SystemMeterRow(
+                              symbol: SystemSymbol.disk,
+                              label: 'Disk',
+                              value: formatDiskPercent(snapshot),
+                              ratio: diskRatio(snapshot),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               const Padding(
