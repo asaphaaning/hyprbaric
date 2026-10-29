@@ -99,6 +99,11 @@ GtkWindow *hyprbaric_create_window(GtkApplication *application,
 FlView *hyprbaric_create_view(GtkWindow *window, char **dart_entrypoint_args) {
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_enable_impeller(project, TRUE);
+  // The merged UI/GTK thread delays the engine's 60 Hz vsync timer behind
+  // GTK's own drawing, pacing animations near 45 fps. A dedicated UI thread
+  // keeps frame callbacks on time.
+  fl_dart_project_set_ui_thread_policy(
+      project, FL_UI_THREAD_POLICY_RUN_ON_SEPARATE_THREAD);
   g_message("hyprbaric::renderer: Impeller enabled");
   fl_dart_project_set_dart_entrypoint_arguments(project, dart_entrypoint_args);
 

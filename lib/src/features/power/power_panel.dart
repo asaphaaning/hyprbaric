@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
+import '../../widgets/popover_handoff.dart';
 import '../../widgets/primitives/primitives.dart';
 import 'power_console.dart';
 import 'power_formatting.dart';
@@ -38,50 +39,61 @@ class PowerPanel extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _Header(status: snapshot, loading: status.isLoading),
+            PopoverStaggerItem(
+              index: 0,
+              child: _Header(status: snapshot, loading: status.isLoading),
+            ),
             if (snapshot?.batteryPresent == true) ...[
-              _BatteryStage(status: snapshot),
-              PowerBay(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: PowerMetric(
-                        icon: PowerSymbol.power,
-                        value: formatPowerRate(snapshot?.powerRateWatts),
-                        label: 'POWER',
-                      ),
-                    ),
-                    const _Separator(),
-                    Expanded(
-                      child: PowerMetric(
-                        icon: PowerSymbol.voltage,
-                        value: formatVoltage(snapshot?.voltage),
-                        label: 'VOLTAGE',
-                      ),
-                    ),
-                    const _Separator(),
-                    Expanded(
-                      child: PowerMetric(
-                        icon: PowerSymbol.temperature,
-                        value: formatTemperature(snapshot?.temperatureCelsius),
-                        label: 'TEMP',
-                      ),
-                    ),
-                    const _Separator(),
-                    Expanded(
-                      child: PowerMetric(
-                        icon: PowerSymbol.battery,
-                        value: batteryStateLabel(
-                          snapshot?.state ?? PowerBatteryState.unknown,
+              PopoverStaggerItem(
+                index: 1,
+                child: _BatteryStage(status: snapshot),
+              ),
+              PopoverStaggerItem(
+                index: 2,
+                child: PowerBay(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: PowerMetric(
+                          icon: PowerSymbol.power,
+                          value: formatPowerRate(snapshot?.powerRateWatts),
+                          label: 'POWER',
                         ),
-                        label: 'STATUS',
                       ),
-                    ),
-                  ],
+                      const _Separator(),
+                      Expanded(
+                        child: PowerMetric(
+                          icon: PowerSymbol.voltage,
+                          value: formatVoltage(snapshot?.voltage),
+                          label: 'VOLTAGE',
+                        ),
+                      ),
+                      const _Separator(),
+                      Expanded(
+                        child: PowerMetric(
+                          icon: PowerSymbol.temperature,
+                          value: formatTemperature(
+                            snapshot?.temperatureCelsius,
+                          ),
+                          label: 'TEMP',
+                        ),
+                      ),
+                      const _Separator(),
+                      Expanded(
+                        child: PowerMetric(
+                          icon: PowerSymbol.battery,
+                          value: batteryStateLabel(
+                            snapshot?.state ?? PowerBatteryState.unknown,
+                          ),
+                          label: 'STATUS',
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -91,34 +103,42 @@ class PowerPanel extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      'POWER PROFILE',
-                      style: PowerConsole.label.copyWith(
-                        color: PowerConsole.text,
-                        fontSize: 13,
-                        letterSpacing: 1.1,
+                    PopoverStaggerItem(
+                      index: 3,
+                      child: Text(
+                        'POWER PROFILE',
+                        style: PowerConsole.label.copyWith(
+                          color: PowerConsole.text,
+                          fontSize: 13,
+                          letterSpacing: 1.1,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        for (final profile in PowerProfile.values) ...[
-                          Expanded(
-                            child: PowerProfilePad(
-                              profile: profile,
-                              active: snapshot?.activeProfile == profile,
-                              enabled:
-                                  snapshot?.availableProfiles.contains(
-                                    profile,
-                                  ) ??
-                                  false,
-                              onPressed: onSetProfile,
-                            ),
-                          ),
-                          if (profile != PowerProfile.values.last)
-                            const SizedBox(width: 10),
-                        ],
-                      ],
+                    PopoverStaggerItem(
+                      index: 4,
+                      child: HyprPlateTrack(
+                        child: Row(
+                          children: [
+                            for (final profile in PowerProfile.values) ...[
+                              Expanded(
+                                child: PowerProfilePad(
+                                  profile: profile,
+                                  active: snapshot?.activeProfile == profile,
+                                  enabled:
+                                      snapshot?.availableProfiles.contains(
+                                        profile,
+                                      ) ??
+                                      false,
+                                  onPressed: onSetProfile,
+                                ),
+                              ),
+                              if (profile != PowerProfile.values.last)
+                                const SizedBox(width: 10),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),

@@ -522,6 +522,11 @@ ShortcutSettingsSnapshot _shortcutSettingsSnapshot({
   );
 }
 
+/// The bar clock, whose digits roll individually.
+Finder _rollingTime(String time) => find.byWidgetPredicate(
+  (Widget widget) => widget is HyprRollingText && widget.text == time,
+);
+
 Widget _scopedSurface({required Widget child}) {
   return ProviderScope(
     child: MaterialApp(
@@ -1228,7 +1233,7 @@ void main() {
     expect(find.text('34%'), findsOneWidget);
     expect(find.text('MEM'), findsOneWidget);
     expect(find.bySemanticsLabel('Notifications, 2 unread'), findsOneWidget);
-    expect(find.text('22:58'), findsOneWidget);
+    expect(_rollingTime('22:58'), findsOneWidget);
     expect(find.bySemanticsLabel('Session actions'), findsOneWidget);
     _expectStrokedIconsaxGlyph(tester, Iconsax.link_copy);
     _expectStrokedIconsaxGlyph(tester, Iconsax.notification_bing_copy);
@@ -1651,16 +1656,16 @@ void main() {
     );
     await tester.pump();
 
-    final Finder timeFinder = find.text('22:58');
-    final Text timeText = tester.widget<Text>(timeFinder);
+    final Finder timeFinder = _rollingTime('22:58');
+    final HyprRollingText timeText = tester.widget<HyprRollingText>(timeFinder);
     final Text dateText = tester.widget<Text>(find.text('Wed, Apr 22'));
     expect(timeFinder, findsOneWidget);
     expect(find.text('Wed, Apr 22'), findsOneWidget);
-    expect(timeText.style?.fontFamily, HyprTypography.monoFamily);
-    expect(timeText.style?.fontSize, HyprTypography.size(13));
-    expect(timeText.style?.fontWeight, FontWeight.w600);
-    expect(timeText.style?.letterSpacing, 0.13);
-    expect(timeText.style?.height, 1);
+    expect(timeText.style.fontFamily, HyprTypography.monoFamily);
+    expect(timeText.style.fontSize, HyprTypography.size(13));
+    expect(timeText.style.fontWeight, FontWeight.w600);
+    expect(timeText.style.letterSpacing, 0.13);
+    expect(timeText.style.height, 1);
     expect(dateText.style?.fontFamily, HyprTypography.uiFamily);
     expect(dateText.style?.fontSize, HyprTypography.size(12));
     expect(dateText.style?.fontWeight, FontWeight.w500);
@@ -1697,7 +1702,7 @@ void main() {
     clock.add(_clockStatus());
     await tester.pump();
 
-    await tester.tap(find.text('22:58'));
+    await tester.tap(_rollingTime('22:58'));
     await tester.pumpAndSettle();
 
     expect(find.text('April 2026'), findsOneWidget);
@@ -4811,7 +4816,8 @@ void main() {
 
     hotkeys.add(_shortcut(1, const HotkeyEventToggleControls()));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
+    // The popover shrinks back into its button before leaving.
+    await tester.pumpAndSettle();
 
     expect(find.text('CAPTURE'), findsNothing);
   });

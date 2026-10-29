@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
+import '../../widgets/primitives/primitives.dart';
 import 'system_formatting.dart';
 import 'system_icon.dart';
 
@@ -20,22 +21,23 @@ class SystemChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool plated = HyprPlateTrack.isPresent(context);
     return Semantics(
       button: true,
       label:
           'System, CPU ${formatCpuPercent(status)}, memory ${formatMemoryChip(status)}',
       child: Material(
-        color: isOpen ? HyprColors.hoverStrong : Colors.transparent,
+        color: isOpen && !plated ? HyprColors.hoverStrong : Colors.transparent,
         shape: RoundedSuperellipseBorder(
           borderRadius: BorderRadius.circular(HyprRadii.row),
-          side: isOpen
+          side: isOpen && !plated
               ? const BorderSide(color: HyprColors.border, width: 1.1)
               : BorderSide.none,
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onPressed,
-          hoverColor: HyprColors.hover,
+          hoverColor: plated ? Colors.transparent : HyprColors.hover,
           splashColor: Colors.transparent,
           highlightColor: Colors.transparent,
           customBorder: RoundedSuperellipseBorder(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../bindings/bindings.dart';
+import '../../widgets/popover_handoff.dart';
 import '../../widgets/primitives/primitives.dart';
 import 'audio_channel_strip.dart';
 import 'audio_chrome.dart';
@@ -111,15 +112,18 @@ class AudioMixerStage extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        CustomPaint(
-          painter: const _BrightnessDeckPainter(),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(27, 13, 25, 22),
-            child: BrightnessControl(
-              status: brightnessStatus,
-              loading: brightnessLoading,
-              presentation: BrightnessControlPresentation.console,
-              onSetBrightness: onSetBrightness,
+        PopoverStaggerItem(
+          index: 1,
+          child: CustomPaint(
+            painter: const _BrightnessDeckPainter(),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(27, 13, 25, 22),
+              child: BrightnessControl(
+                status: brightnessStatus,
+                loading: brightnessLoading,
+                presentation: BrightnessControlPresentation.console,
+                onSetBrightness: onSetBrightness,
+              ),
             ),
           ),
         ),
@@ -130,13 +134,16 @@ class AudioMixerStage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
                 Expanded(
-                  child: AudioChannelStrip(
-                    channel: AudioMixerChannel.output,
-                    endpoint: output,
-                    fallbackName: 'No output device',
-                    onSetVolume: onSetVolume,
-                    onSetMuted: onSetMuted,
-                    meterLevel: meterLevels?.output,
+                  child: PopoverStaggerItem(
+                    index: 2,
+                    child: AudioChannelStrip(
+                      channel: AudioMixerChannel.output,
+                      endpoint: output,
+                      fallbackName: 'No output device',
+                      onSetVolume: onSetVolume,
+                      onSetMuted: onSetMuted,
+                      meterLevel: meterLevels?.output,
+                    ),
                   ),
                 ),
                 const VerticalDivider(
@@ -145,13 +152,16 @@ class AudioMixerStage extends StatelessWidget {
                   color: AudioMixerColors.divider,
                 ),
                 Expanded(
-                  child: AudioChannelStrip(
-                    channel: AudioMixerChannel.input,
-                    endpoint: input,
-                    fallbackName: 'No input device',
-                    onSetVolume: onSetVolume,
-                    onSetMuted: onSetMuted,
-                    meterLevel: meterLevels?.input,
+                  child: PopoverStaggerItem(
+                    index: 3,
+                    child: AudioChannelStrip(
+                      channel: AudioMixerChannel.input,
+                      endpoint: input,
+                      fallbackName: 'No input device',
+                      onSetVolume: onSetVolume,
+                      onSetMuted: onSetMuted,
+                      meterLevel: meterLevels?.input,
+                    ),
                   ),
                 ),
               ],

@@ -1,9 +1,13 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../bindings/bindings.dart';
 import 'hypr_surface.dart';
 import 'notification_panel_parts.dart';
+import 'popover_handoff.dart';
 
 /// Width of the notification centre.
 ///
@@ -12,7 +16,7 @@ import 'notification_panel_parts.dart';
 /// the layer-shell slot silently clamps away.
 const double kNotificationPanelWidth = 450;
 
-class NotificationPanel extends StatelessWidget {
+class NotificationPanel extends StatefulWidget {
   const NotificationPanel({
     super.key,
     required this.borderRadius,
@@ -31,12 +35,51 @@ class NotificationPanel extends StatelessWidget {
   final VoidCallback onClearAll;
 
   @override
+  State<NotificationPanel> createState() => _NotificationPanelState();
+}
+
+class _NotificationPanelState extends State<NotificationPanel> {
+  /// Rows are sliding away ahead of a clear-all; any new snapshot settles it.
+  bool _clearing = false;
+
+  @override
+  void didUpdateWidget(NotificationPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.status != widget.status) {
+      _clearing = false;
+    }
+  }
+
+  void _clearAll(List<NotificationEntry> entries) {
+    if (entries.isEmpty || _clearing) {
+      widget.onClearAll();
+      return;
+    }
+    setState(() => _clearing = true);
+    final int staggered = math.min(
+      entries.length,
+      NotificationList.staggeredRows,
+    );
+    unawaited(
+      Future<void>.delayed(
+        HyprMotion.leave + HyprMotion.leaveStagger * staggered,
+        () {
+          if (mounted && _clearing) {
+            widget.onClearAll();
+          }
+        },
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final AsyncValue<NotificationStatus> status = widget.status;
     final NotificationStatus? snapshot = status.asData?.value;
     final List<NotificationEntry> entries = snapshot?.entries ?? const [];
 
     return HyprInstrumentSurface(
-      borderRadius: borderRadius,
+      borderRadius: widget.borderRadius,
       child: ConstrainedBox(
         constraints: const BoxConstraints(
           minWidth: kNotificationPanelWidth,
@@ -49,12 +92,15 @@ class NotificationPanel extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              NotificationHeader(
-                // Clearing depends on retained entries, even when DND zeroes
-                // the backend's unread badge.
-                count: entries.length,
-                unreadCount: snapshot?.unreadCount ?? 0,
-                onClearAll: onClearAll,
+              PopoverStaggerItem(
+                index: 0,
+                child: NotificationHeader(
+                  // Clearing depends on retained entries, even when DND zeroes
+                  // the backend's unread badge.
+                  count: entries.length,
+                  unreadCount: snapshot?.unreadCount ?? 0,
+                  onClearAll: () => _clearAll(entries),
+                ),
               ),
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
@@ -69,6 +115,7 @@ class NotificationPanel extends StatelessWidget {
   }
 
   Widget _body(NotificationStatus? snapshot, List<NotificationEntry> entries) {
+    final AsyncValue<NotificationStatus> status = widget.status;
     if (snapshot == null) {
       return NotificationPlaceholder(
         label: status.hasError ? 'Notifications unavailable' : 'Loading',
@@ -92,7 +139,14 @@ class NotificationPanel extends StatelessWidget {
       );
     }
     return Flexible(
-      child: NotificationList(entries: entries, onDismiss: onDismiss),
+      child: PopoverStaggerItem(
+        index: 1,
+        child: NotificationList(
+          entries: entries,
+          onDismiss: widget.onDismiss,
+          clearing: _clearing,
+        ),
+      ),
     );
   }
 }

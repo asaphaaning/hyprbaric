@@ -14,6 +14,10 @@ ButtonStyle hyprCompactIconButtonStyle({
   Color activeBackgroundColor = HyprColors.hoverStrong,
   Color activeBorderColor = HyprColors.border,
   double activeBorderWidth = 1.2,
+
+  /// A [HyprPlateTrack] paints this button's active and hover plates, so the
+  /// button itself keeps only its foreground states.
+  bool plated = false,
 }) {
   final Color idleForeground = danger
       ? const Color(0xFFFF7B70)
@@ -56,13 +60,16 @@ ButtonStyle hyprCompactIconButtonStyle({
       return idleForeground;
     }),
     side: WidgetStatePropertyAll<BorderSide>(
-      active
+      active && !plated
           ? BorderSide(color: resolvedActiveBorder, width: activeBorderWidth)
           : BorderSide.none,
     ),
     backgroundColor: WidgetStateProperty.resolveWith<Color?>((
       Set<WidgetState> states,
     ) {
+      if (plated) {
+        return Colors.transparent;
+      }
       if (active) {
         return resolvedActiveBackground;
       }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../bindings/bindings.dart';
+import '../../widgets/popover_handoff.dart';
 import 'audio_mixer_layout.dart';
 import 'audio_output_menu.dart';
 import 'audio_output_selection.dart' as selection;
@@ -123,13 +124,16 @@ class _AudioOutputPickerState extends State<AudioOutputPicker> {
                     canRequestFocus: widget.onSelected != null,
                     child: Semantics(
                       expanded: _expanded,
-                      child: AudioMixerHeader(
-                        output: widget.output,
-                        description: widget.description,
-                        expanded: _expanded,
-                        onSelectOutput: widget.onSelected == null
-                            ? null
-                            : _toggle,
+                      child: PopoverStaggerItem(
+                        index: 0,
+                        child: AudioMixerHeader(
+                          output: widget.output,
+                          description: widget.description,
+                          expanded: _expanded,
+                          onSelectOutput: widget.onSelected == null
+                              ? null
+                              : _toggle,
+                        ),
                       ),
                     ),
                   ),

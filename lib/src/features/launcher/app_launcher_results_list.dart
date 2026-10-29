@@ -67,19 +67,39 @@ class _AppLauncherResultsListState extends State<AppLauncherResultsList> {
             label: sectionLabel,
             count: readyResults.entries.length,
           ),
-          for (int index = 0; index < readyResults.entries.length; index++)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: AppLauncherResultTile(
-                entry: readyResults.entries[index],
-                iconPath:
-                    readyResults.entries[index].iconPath ??
-                    widget.iconPathsByEntryId[readyResults.entries[index].id],
-                selected: index == widget.selectedIndex,
-                onSelect: () => widget.onSelect(index),
-                onLaunch: () => widget.onLaunch(readyResults.entries[index]),
-              ),
+          // The selection glides between results as the keyboard or pointer
+          // moves it.
+          HyprPlateTrack(
+            style: AppLauncherResultTile.selectionPlate,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                for (
+                  int index = 0;
+                  index < readyResults.entries.length;
+                  index++
+                )
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: HyprPlateSlot(
+                      active: index == widget.selectedIndex,
+                      child: AppLauncherResultTile(
+                        entry: readyResults.entries[index],
+                        iconPath:
+                            readyResults.entries[index].iconPath ??
+                            widget.iconPathsByEntryId[readyResults
+                                .entries[index]
+                                .id],
+                        selected: index == widget.selectedIndex,
+                        onSelect: () => widget.onSelect(index),
+                        onLaunch: () =>
+                            widget.onLaunch(readyResults.entries[index]),
+                      ),
+                    ),
+                  ),
+              ],
             ),
+          ),
         ],
       ),
     );
@@ -152,8 +172,19 @@ class AppLauncherResultTile extends StatelessWidget {
   final VoidCallback onSelect;
   final VoidCallback onLaunch;
 
+  /// The selection plate, painted by the results list's track.
+  static const HyprPlateStyle selectionPlate = HyprPlateStyle(
+    radius: HyprRadii.compact,
+    border: HyprColors.popupStroke,
+    borderWidth: 1,
+    gradient: LinearGradient(
+      colors: <Color>[Color(0x1A16B7F4), Color(0x06FFFFFF)],
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
+    final bool lit = selected && !HyprPlateTrack.isPresent(context);
     return HyprInteractiveTile(
       key: ValueKey<String>('app-launcher-entry-${entry.id}'),
       selected: selected,
@@ -176,7 +207,7 @@ class AppLauncherResultTile extends StatelessWidget {
           duration: HyprMotion.hover,
           curve: HyprMotion.hoverCurve,
           decoration: ShapeDecoration(
-            gradient: selected
+            gradient: lit
                 ? const LinearGradient(
                     colors: <Color>[Color(0x1A16B7F4), Color(0x06FFFFFF)],
                   )
@@ -186,7 +217,7 @@ class AppLauncherResultTile extends StatelessWidget {
             shape: RoundedSuperellipseBorder(
               borderRadius: HyprRadii.compactRadius,
               side: BorderSide(
-                color: selected ? HyprColors.popupStroke : Colors.transparent,
+                color: lit ? HyprColors.popupStroke : Colors.transparent,
               ),
             ),
           ),

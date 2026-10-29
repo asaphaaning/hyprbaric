@@ -7,9 +7,13 @@ import '../features/clock/clock_controller.dart';
 import 'hypr_surface.dart';
 import 'primitives/primitives.dart';
 
-ButtonStyle barIconActionButtonStyle({required bool isOpen}) {
+ButtonStyle barIconActionButtonStyle({
+  required bool isOpen,
+  bool plated = false,
+}) {
   return hyprCompactIconButtonStyle(
     active: isOpen,
+    plated: plated,
     size: HyprIconSizes.barButton,
     radius: HyprRadii.panel,
   );
@@ -45,7 +49,10 @@ class BarIconActionButton extends StatelessWidget {
       label: label,
       child: IconButton(
         onPressed: onPressed,
-        style: barIconActionButtonStyle(isOpen: isOpen),
+        style: barIconActionButtonStyle(
+          isOpen: isOpen,
+          plated: HyprPlateTrack.isPresent(context),
+        ),
         icon: BarGlyphIcon(icon: icon, size: HyprIconSizes.bar),
       ),
     );
@@ -119,7 +126,10 @@ class AudioDisplayButton extends StatelessWidget {
       label: 'Audio and display controls',
       child: IconButton(
         onPressed: onPressed,
-        style: barIconActionButtonStyle(isOpen: isOpen),
+        style: barIconActionButtonStyle(
+          isOpen: isOpen,
+          plated: HyprPlateTrack.isPresent(context),
+        ),
         icon: Builder(
           builder: (BuildContext context) {
             final Color glyphColor =
@@ -173,7 +183,10 @@ class NotificationButton extends StatelessWidget {
           IconButton(
             key: const ValueKey<String>('notifications-button'),
             onPressed: onPressed,
-            style: barIconActionButtonStyle(isOpen: isOpen),
+            style: barIconActionButtonStyle(
+              isOpen: isOpen,
+              plated: HyprPlateTrack.isPresent(context),
+            ),
             icon: BarGlyphIcon(
               icon: showBadge
                   ? Iconsax.notification_bing_copy
@@ -224,23 +237,24 @@ class ClockButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool plated = HyprPlateTrack.isPresent(context);
     final String timeLabel = status.timeLabel;
     final String dateLabel = status.dateLabel;
     return Semantics(
       button: true,
       label: '$dateLabel, $timeLabel',
       child: Material(
-        color: isOpen ? HyprColors.hoverStrong : Colors.transparent,
+        color: isOpen && !plated ? HyprColors.hoverStrong : Colors.transparent,
         shape: RoundedSuperellipseBorder(
           borderRadius: BorderRadius.circular(HyprRadii.row),
-          side: isOpen
+          side: isOpen && !plated
               ? const BorderSide(color: HyprColors.border, width: 1.2)
               : BorderSide.none,
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onPressed,
-          hoverColor: HyprColors.hover,
+          hoverColor: plated ? Colors.transparent : HyprColors.hover,
           splashColor: Colors.transparent,
           highlightColor: Colors.transparent,
           customBorder: RoundedSuperellipseBorder(
@@ -265,7 +279,7 @@ class ClockButton extends StatelessWidget {
                     child: SizedBox.square(dimension: HyprSpacing.xs),
                   ),
                   const SizedBox(width: HyprSpacing.xxl),
-                  Text(timeLabel, style: HyprTypography.clockTime),
+                  HyprRollingText(timeLabel, style: HyprTypography.clockTime),
                 ],
               ),
             ),

@@ -25,7 +25,8 @@ class HyprAmberToggle extends StatelessWidget {
       ),
     ),
     child: AnimatedAlign(
-      duration: const Duration(milliseconds: 160),
+      duration: HyprMotion.knob,
+      curve: HyprMotion.knobCurve,
       alignment: value ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         width: 18,

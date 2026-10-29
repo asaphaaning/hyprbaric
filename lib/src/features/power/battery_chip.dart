@@ -3,6 +3,7 @@ import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
+import '../../widgets/primitives/primitives.dart';
 import '../../widgets/right_cluster_buttons.dart';
 import 'power_colors.dart';
 import 'power_formatting.dart';
@@ -21,6 +22,7 @@ class BatteryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool plated = HyprPlateTrack.isPresent(context);
     final bool batteryPresent = status?.batteryPresent ?? false;
     final int percentage = status?.percentage?.clamp(0, 100) ?? 0;
     return Semantics(
@@ -29,17 +31,17 @@ class BatteryChip extends StatelessWidget {
           ? 'Battery ${formatBatteryPercent(status)}'
           : 'Power profile',
       child: Material(
-        color: isOpen ? HyprColors.hoverStrong : Colors.transparent,
+        color: isOpen && !plated ? HyprColors.hoverStrong : Colors.transparent,
         shape: RoundedSuperellipseBorder(
           borderRadius: BorderRadius.circular(HyprRadii.row),
-          side: isOpen
+          side: isOpen && !plated
               ? const BorderSide(color: HyprColors.border, width: 1.1)
               : BorderSide.none,
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onPressed,
-          hoverColor: HyprColors.hover,
+          hoverColor: plated ? Colors.transparent : HyprColors.hover,
           splashColor: Colors.transparent,
           highlightColor: Colors.transparent,
           customBorder: RoundedSuperellipseBorder(
