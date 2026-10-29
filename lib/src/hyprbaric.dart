@@ -17,6 +17,7 @@ import 'widgets/center_cluster.dart';
 import 'widgets/hypr_surface.dart';
 import 'widgets/layer_shell_dropdown.dart';
 import 'widgets/left_cluster.dart';
+import 'widgets/primitives/primitives.dart';
 import 'widgets/right_cluster.dart';
 import 'widgets/transient_overlays.dart';
 
@@ -692,109 +693,126 @@ class _BarViewState extends ConsumerState<_BarView> {
               : Alignment.topCenter,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Material(
-              color: Colors.transparent,
-              elevation: 0,
-              child: HyprSurface(
-                frame: HyprSurfaceFrame.bar,
-                borderRadius: BorderRadius.circular(
-                  barConfig.cornerRadius.toDouble(),
-                ),
-                color: palette.surfaceStrong,
-                borderColor: HyprColors.borderOuter,
-                shadow: false,
-                blur: 16,
-                child: SizedBox(
-                  height: barHeight,
-                  width: double.infinity,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: LeftCluster(
-                            logoKey: _appLauncherAnchorKey,
-                            appLauncherOpen: _appLauncherController.isOpen,
-                            onToggleAppLauncher: _toggleAppLauncher,
-                            showGlobalMenu: modules.isEnabled(
-                              ModuleId.globalMenu,
+            child: HyprEntrance(
+              offset: Offset(0, barConfig.isBottom ? 18 : -18),
+              child: Material(
+                color: Colors.transparent,
+                elevation: 0,
+                child: HyprSurface(
+                  frame: HyprSurfaceFrame.bar,
+                  borderRadius: BorderRadius.circular(
+                    barConfig.cornerRadius.toDouble(),
+                  ),
+                  color: palette.surfaceStrong,
+                  borderColor: HyprColors.borderOuter,
+                  shadow: false,
+                  blur: 16,
+                  child: SizedBox(
+                    height: barHeight,
+                    width: double.infinity,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: HyprEntrance(
+                              delay: HyprMotion.entranceLeft,
+                              offset: const Offset(-10, 0),
+                              child: LeftCluster(
+                                logoKey: _appLauncherAnchorKey,
+                                appLauncherOpen: _appLauncherController.isOpen,
+                                onToggleAppLauncher: _toggleAppLauncher,
+                                showGlobalMenu: modules.isEnabled(
+                                  ModuleId.globalMenu,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: modules.isEnabled(ModuleId.activeWindowTitle)
-                                ? const CenterCluster(
-                                    maxWidth: _centerClusterMaxWidth,
-                                  )
-                                : const SizedBox.shrink(),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child:
+                                  modules.isEnabled(ModuleId.activeWindowTitle)
+                                  ? const HyprEntrance(
+                                      delay: HyprMotion.entranceCenter,
+                                      child: CenterCluster(
+                                        maxWidth: _centerClusterMaxWidth,
+                                      ),
+                                    )
+                                  : const SizedBox.shrink(),
+                            ),
                           ),
-                        ),
-                        Expanded(
-                          child: RightCluster(
-                            showSystemTray: modules.isEnabled(
-                              ModuleId.systemTray,
+                          Expanded(
+                            child: HyprEntrance(
+                              delay: HyprMotion.entranceRight,
+                              offset: const Offset(10, 0),
+                              child: RightCluster(
+                                showSystemTray: modules.isEnabled(
+                                  ModuleId.systemTray,
+                                ),
+                                showSystemOccupancy: modules.isEnabled(
+                                  ModuleId.systemOccupancy,
+                                ),
+                                showNotifications: modules.isEnabled(
+                                  ModuleId.notifications,
+                                ),
+                                showAudioDisplay: modules.isEnabled(
+                                  ModuleId.audioDisplay,
+                                ),
+                                networkController: _networkController,
+                                audioController: _audioController,
+                                powerController: _powerController,
+                                systemController: _systemController,
+                                controlsController: _controlsController,
+                                trayMenuController: _trayMenuController,
+                                notificationController: _notificationController,
+                                clockController: _clockController,
+                                powerButtonAnchorKey: _powerButtonAnchorKey,
+                                networkRadius: _networkRadius,
+                                audioRadius: _audioRadius,
+                                clockCardRadius: _clockCardRadius,
+                                sessionLauncherOpen:
+                                    _sessionLauncherController.isOpen,
+                                onToggleNetwork: _toggleNetwork,
+                                onToggleAudio: _toggleAudio,
+                                onTogglePower: _togglePower,
+                                onToggleSystem: _toggleSystem,
+                                onToggleControls: _toggleControls,
+                                onToggleNotifications: _toggleNotifications,
+                                onToggleClock: _toggleClock,
+                                onToggleSessionLauncher: _toggleSessionLauncher,
+                                onSetNetworkWifiEnabled: _setNetworkWifiEnabled,
+                                onConnectNetwork: _connectNetwork,
+                                onOpenNetworkSettings: _openNetworkSettings,
+                                onSetAudioVolume: _setAudioVolume,
+                                onSetAudioMuted: _setAudioMuted,
+                                onSelectAudioOutput: ref
+                                    .read(audioControllerProvider.notifier)
+                                    .selectOutput,
+                                onSetBrightness: _setBrightnessFromPanel,
+                                onOpenAudioMixer: _openAudioMixer,
+                                onSetPowerProfile: _setPowerProfile,
+                                onCaptureScreenshot: _captureScreenshot,
+                                onPickColor: _pickColor,
+                                onToggleRecording: _toggleRecording,
+                                onOpenSettings: _openSettingsModal,
+                                onControlToast: _showControlToast,
+                                onActivateTrayItem: _activateTrayItem,
+                                onOpenTrayContextMenu: _openTrayContextMenu,
+                                onActivateTrayMenuItem: _activateTrayMenuItem,
+                                onDismissNotification: _dismissNotification,
+                                onClearNotifications: _clearNotifications,
+                                onSetDoNotDisturb: _setDoNotDisturb,
+                                onSetNightLight: _setNightLight,
+                                onSetCaffeine: _setCaffeine,
+                                onClockCommand: _sendClockCalendarCommand,
+                              ),
                             ),
-                            showSystemOccupancy: modules.isEnabled(
-                              ModuleId.systemOccupancy,
-                            ),
-                            showNotifications: modules.isEnabled(
-                              ModuleId.notifications,
-                            ),
-                            showAudioDisplay: modules.isEnabled(
-                              ModuleId.audioDisplay,
-                            ),
-                            networkController: _networkController,
-                            audioController: _audioController,
-                            powerController: _powerController,
-                            systemController: _systemController,
-                            controlsController: _controlsController,
-                            trayMenuController: _trayMenuController,
-                            notificationController: _notificationController,
-                            clockController: _clockController,
-                            powerButtonAnchorKey: _powerButtonAnchorKey,
-                            networkRadius: _networkRadius,
-                            audioRadius: _audioRadius,
-                            clockCardRadius: _clockCardRadius,
-                            sessionLauncherOpen:
-                                _sessionLauncherController.isOpen,
-                            onToggleNetwork: _toggleNetwork,
-                            onToggleAudio: _toggleAudio,
-                            onTogglePower: _togglePower,
-                            onToggleSystem: _toggleSystem,
-                            onToggleControls: _toggleControls,
-                            onToggleNotifications: _toggleNotifications,
-                            onToggleClock: _toggleClock,
-                            onToggleSessionLauncher: _toggleSessionLauncher,
-                            onSetNetworkWifiEnabled: _setNetworkWifiEnabled,
-                            onConnectNetwork: _connectNetwork,
-                            onOpenNetworkSettings: _openNetworkSettings,
-                            onSetAudioVolume: _setAudioVolume,
-                            onSetAudioMuted: _setAudioMuted,
-                            onSelectAudioOutput: ref
-                                .read(audioControllerProvider.notifier)
-                                .selectOutput,
-                            onSetBrightness: _setBrightnessFromPanel,
-                            onOpenAudioMixer: _openAudioMixer,
-                            onSetPowerProfile: _setPowerProfile,
-                            onCaptureScreenshot: _captureScreenshot,
-                            onPickColor: _pickColor,
-                            onToggleRecording: _toggleRecording,
-                            onOpenSettings: _openSettingsModal,
-                            onControlToast: _showControlToast,
-                            onActivateTrayItem: _activateTrayItem,
-                            onOpenTrayContextMenu: _openTrayContextMenu,
-                            onActivateTrayMenuItem: _activateTrayMenuItem,
-                            onDismissNotification: _dismissNotification,
-                            onClearNotifications: _clearNotifications,
-                            onSetDoNotDisturb: _setDoNotDisturb,
-                            onSetNightLight: _setNightLight,
-                            onSetCaffeine: _setCaffeine,
-                            onClockCommand: _sendClockCalendarCommand,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

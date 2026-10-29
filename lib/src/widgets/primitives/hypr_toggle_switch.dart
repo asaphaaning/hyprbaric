@@ -61,7 +61,9 @@ class HyprToggleSwitch extends StatelessWidget {
           ),
         ),
       ),
-      child: Align(
+      child: AnimatedAlign(
+        duration: HyprMotion.knob,
+        curve: HyprMotion.knobCurve,
         alignment: value ? Alignment.centerRight : Alignment.centerLeft,
         child: DecoratedBox(
           decoration: BoxDecoration(

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../bindings/bindings.dart';
 import '../../layer_shell_controller.dart';
 import '../../state/layer_shell.dart';
+import '../../widgets/popover_handoff.dart';
 import '../../widgets/primitives/primitives.dart';
 import 'network_connection_views.dart';
 import 'network_console.dart';
@@ -276,253 +277,274 @@ class NetworkPanelState extends ConsumerState<NetworkPanel> {
                 child: NetworkTrafficBacklight(
                   child: Column(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(18, 9, 12, 2),
-                        child: HyprInstrumentHeader(
-                          title: 'Network',
-                          icon: const NetworkTopologyIcon(),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                widget.status.isLoading
-                                    ? 'LOADING'
-                                    : online
-                                    ? 'ONLINE'
-                                    : 'OFFLINE',
-                                style: NetworkConsole.label.copyWith(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w400,
+                      PopoverStaggerItem(
+                        index: 0,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(18, 9, 12, 2),
+                          child: HyprInstrumentHeader(
+                            title: 'Network',
+                            icon: const NetworkTopologyIcon(),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  widget.status.isLoading
+                                      ? 'LOADING'
+                                      : online
+                                      ? 'ONLINE'
+                                      : 'OFFLINE',
+                                  style: NetworkConsole.label.copyWith(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w400,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                tooltip: 'Network options',
-                                onPressed: widget.onOpenSettings,
-                                icon: const Icon(Icons.more_horiz_rounded),
-                                iconSize: 19,
-                                color: NetworkConsole.accent,
-                                visualDensity: VisualDensity.compact,
-                              ),
-                            ],
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  tooltip: 'Network options',
+                                  onPressed: widget.onOpenSettings,
+                                  icon: const Icon(Icons.more_horiz_rounded),
+                                  iconSize: 19,
+                                  color: NetworkConsole.accent,
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                      NetworkTrafficRing(history: widget.history ?? _history),
-                      _TrafficTotals(traffic: status?.traffic),
+                      PopoverStaggerItem(
+                        index: 1,
+                        child: NetworkTrafficRing(
+                          history: widget.history ?? _history,
+                        ),
+                      ),
+                      PopoverStaggerItem(
+                        index: 2,
+                        child: _TrafficTotals(traffic: status?.traffic),
+                      ),
                     ],
                   ),
                 ),
               ),
-              DecoratedBox(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0x22474A59),
-                      Color(0x102B2F3B),
-                      Color(0x263E3C53),
-                    ],
+              PopoverStaggerItem(
+                index: 3,
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0x22474A59),
+                        Color(0x102B2F3B),
+                        Color(0x263E3C53),
+                      ],
+                    ),
                   ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(11, 11, 11, 6),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      NetworkTabs(
-                        selected: _tab,
-                        onSelected: (tab) => setState(() {
-                          _tab = tab;
-                          _navigate(const WifiOverview());
-                        }),
-                      ),
-                      const SizedBox(height: 17),
-                      if (_tab != NetworkTab.wifi)
-                        NetworkProfileView(
-                          onDisconnect:
-                              widget.onDisconnect ??
-                              ref
-                                  .read(networkControllerProvider.notifier)
-                                  .disconnect,
-                          tab: _tab,
-                          interfaces: status?.interfaces ?? const [],
-                          onSettings: widget.onOpenSettings,
-                        )
-                      else if (status?.devicePresent == false)
-                        const NetworkCard(child: Text('No Wi-Fi device found.'))
-                      else
-                        switch (_page) {
-                          WifiOverview() => NetworkWifiOverview(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(11, 11, 11, 6),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        NetworkTabs(
+                          selected: _tab,
+                          onSelected: (tab) => setState(() {
+                            _tab = tab;
+                            _navigate(const WifiOverview());
+                          }),
+                        ),
+                        const SizedBox(height: 17),
+                        if (_tab != NetworkTab.wifi)
+                          NetworkProfileView(
                             onDisconnect:
                                 widget.onDisconnect ??
                                 ref
                                     .read(networkControllerProvider.notifier)
                                     .disconnect,
-                            onAutoConnect:
-                                widget.onAutoConnect ??
-                                ref
-                                    .read(networkControllerProvider.notifier)
-                                    .setAutoConnect,
-                            status: status,
-                            enabled: enabled,
-                            onToggle: () {
-                              setState(() {
-                                _pendingWifiEnabled = !enabled;
-                                if (enabled) _navigate(const WifiOverview());
-                              });
-                              widget.onSetWifiEnabled(!enabled);
-                            },
-                            onChoose: () =>
-                                setState(() => _navigate(const WifiChoosing())),
+                            tab: _tab,
+                            interfaces: status?.interfaces ?? const [],
                             onSettings: widget.onOpenSettings,
-                          ),
-                          WifiChoosing() => NetworkChooser(
-                            networks: enabled
-                                ? status?.networks ?? const []
-                                : const [],
-                            scanning: status?.scanning ?? false,
-                            onSelect: _choose,
-                            onScan:
-                                widget.onScan ??
-                                ref
-                                    .read(networkControllerProvider.notifier)
-                                    .scan,
-                            onOther: () =>
-                                setState(() => _navigate(const WifiOther())),
-                            onBack: () =>
-                                setState(() => _navigate(const WifiOverview())),
-                          ),
-                          WifiOther() => NetworkJoinForm(
-                            result: widget.latestResult,
-                            activeSsid: status?.activeSsid,
-                            onJoin:
-                                widget.onJoin ??
-                                ref
-                                    .read(networkControllerProvider.notifier)
-                                    .join,
-                            onCancel: () =>
-                                setState(() => _navigate(const WifiChoosing())),
-                            onConnected: () =>
-                                setState(() => _navigate(const WifiOverview())),
-                          ),
-                          WifiCredentials(:final entry, :final error) =>
-                            NetworkPasswordPrompt(
-                              ssid: entry.ssid,
-                              controller: _passwordController,
-                              focusNode: _passwordFocusNode,
-                              showPassword: _showPassword,
-                              connecting: false,
-                              errorMessage: error,
-                              onToggleVisibility: () => setState(
-                                () => _showPassword = !_showPassword,
+                          )
+                        else if (status?.devicePresent == false)
+                          const NetworkCard(
+                            child: Text('No Wi-Fi device found.'),
+                          )
+                        else
+                          switch (_page) {
+                            WifiOverview() => NetworkWifiOverview(
+                              onDisconnect:
+                                  widget.onDisconnect ??
+                                  ref
+                                      .read(networkControllerProvider.notifier)
+                                      .disconnect,
+                              onAutoConnect:
+                                  widget.onAutoConnect ??
+                                  ref
+                                      .read(networkControllerProvider.notifier)
+                                      .setAutoConnect,
+                              status: status,
+                              enabled: enabled,
+                              onToggle: () {
+                                setState(() {
+                                  _pendingWifiEnabled = !enabled;
+                                  if (enabled) _navigate(const WifiOverview());
+                                });
+                                widget.onSetWifiEnabled(!enabled);
+                              },
+                              onChoose: () => setState(
+                                () => _navigate(const WifiChoosing()),
                               ),
+                              onSettings: widget.onOpenSettings,
+                            ),
+                            WifiChoosing() => NetworkChooser(
+                              networks: enabled
+                                  ? status?.networks ?? const []
+                                  : const [],
+                              scanning: status?.scanning ?? false,
+                              onSelect: _choose,
+                              onScan:
+                                  widget.onScan ??
+                                  ref
+                                      .read(networkControllerProvider.notifier)
+                                      .scan,
+                              onOther: () =>
+                                  setState(() => _navigate(const WifiOther())),
+                              onBack: () => setState(
+                                () => _navigate(const WifiOverview()),
+                              ),
+                            ),
+                            WifiOther() => NetworkJoinForm(
+                              result: widget.latestResult,
+                              activeSsid: status?.activeSsid,
+                              onJoin:
+                                  widget.onJoin ??
+                                  ref
+                                      .read(networkControllerProvider.notifier)
+                                      .join,
                               onCancel: () => setState(
                                 () => _navigate(const WifiChoosing()),
                               ),
-                              onSubmit: () => _submit(entry),
+                              onConnected: () => setState(
+                                () => _navigate(const WifiOverview()),
+                              ),
                             ),
-                          WifiFailure(:final entry, :final message) =>
-                            NetworkCard(
+                            WifiCredentials(:final entry, :final error) =>
+                              NetworkPasswordPrompt(
+                                ssid: entry.ssid,
+                                controller: _passwordController,
+                                focusNode: _passwordFocusNode,
+                                showPassword: _showPassword,
+                                connecting: false,
+                                errorMessage: error,
+                                onToggleVisibility: () => setState(
+                                  () => _showPassword = !_showPassword,
+                                ),
+                                onCancel: () => setState(
+                                  () => _navigate(const WifiChoosing()),
+                                ),
+                                onSubmit: () => _submit(entry),
+                              ),
+                            WifiFailure(:final entry, :final message) =>
+                              NetworkCard(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      message,
+                                      style: NetworkConsole.body.copyWith(
+                                        color: const Color(0xFFFFAC97),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        NetworkAction(
+                                          label: 'Back',
+                                          onPressed: () => setState(
+                                            () =>
+                                                _navigate(const WifiChoosing()),
+                                          ),
+                                        ),
+                                        NetworkAction(
+                                          label: 'Try again',
+                                          primary: true,
+                                          onPressed: () => _choose(entry),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            WifiJoining(:final entry) => NetworkCard(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    message,
+                                    'Connecting to ${entry.ssid}…',
                                     style: NetworkConsole.body.copyWith(
-                                      color: const Color(0xFFFFAC97),
+                                      color: NetworkConsole.text,
                                     ),
                                   ),
+                                  const SizedBox(height: 12),
+                                  const LinearProgressIndicator(
+                                    minHeight: 2,
+                                    color: NetworkConsole.downloadText,
+                                    backgroundColor: NetworkConsole.line,
+                                  ),
                                   const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      NetworkAction(
-                                        label: 'Back',
-                                        onPressed: () => setState(
-                                          () => _navigate(const WifiChoosing()),
-                                        ),
-                                      ),
-                                      NetworkAction(
-                                        label: 'Try again',
-                                        primary: true,
-                                        onPressed: () => _choose(entry),
-                                      ),
-                                    ],
+                                  NetworkAction(
+                                    label: 'Back to networks',
+                                    onPressed: () => setState(
+                                      () => _navigate(const WifiChoosing()),
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                          WifiJoining(:final entry) => NetworkCard(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Connecting to ${entry.ssid}…',
-                                  style: NetworkConsole.body.copyWith(
-                                    color: NetworkConsole.text,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                const LinearProgressIndicator(
-                                  minHeight: 2,
-                                  color: NetworkConsole.downloadText,
-                                  backgroundColor: NetworkConsole.line,
-                                ),
-                                const SizedBox(height: 8),
-                                NetworkAction(
-                                  label: 'Back to networks',
-                                  onPressed: () => setState(
-                                    () => _navigate(const WifiChoosing()),
-                                  ),
-                                ),
-                              ],
+                          },
+                        if (message != null)
+                          Padding(
+                            padding: const EdgeInsets.all(9),
+                            child: Text(
+                              message,
+                              style: NetworkConsole.body.copyWith(
+                                color: const Color(0xFFFFAC97),
+                              ),
                             ),
                           ),
-                        },
-                      if (message != null)
-                        Padding(
-                          padding: const EdgeInsets.all(9),
-                          child: Text(
-                            message,
-                            style: NetworkConsole.body.copyWith(
-                              color: const Color(0xFFFFAC97),
-                            ),
-                          ),
+                        const SizedBox(height: 4),
+                        const Divider(
+                          height: 1,
+                          thickness: .5,
+                          color: NetworkConsole.line,
                         ),
-                      const SizedBox(height: 4),
-                      const Divider(
-                        height: 1,
-                        thickness: .5,
-                        color: NetworkConsole.line,
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: NetworkAction(
-                              label: _tab == NetworkTab.vpn
-                                  ? 'Import profile'
-                                  : 'Add connection',
-                              icon: Icons.add_rounded,
-                              compact: true,
-                              onPressed: widget.onOpenSettings,
-                            ),
-                          ),
-                          Expanded(
-                            child: Align(
-                              alignment: Alignment.centerRight,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
                               child: NetworkAction(
-                                label: 'Network Settings',
-                                trailing: Icons.north_east_rounded,
+                                label: _tab == NetworkTab.vpn
+                                    ? 'Import profile'
+                                    : 'Add connection',
+                                icon: Icons.add_rounded,
                                 compact: true,
                                 onPressed: widget.onOpenSettings,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: NetworkAction(
+                                  label: 'Network Settings',
+                                  trailing: Icons.north_east_rounded,
+                                  compact: true,
+                                  onPressed: widget.onOpenSettings,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

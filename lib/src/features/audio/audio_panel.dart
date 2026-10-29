@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
+import '../../widgets/popover_handoff.dart';
 import 'audio_chrome.dart';
 import 'audio_meter_levels.dart';
 import 'audio_mixer_layout.dart';
@@ -91,11 +92,20 @@ class AudioPanel extends StatelessWidget {
                   onSetBrightness: onSetBrightness,
                   meterLevels: meterLevels,
                 ),
-                AudioMasterRail(
-                  output: output,
-                  meterLevel: meterLevels?.output,
+                PopoverStaggerItem(
+                  index: 4,
+                  child: AudioMasterRail(
+                    output: output,
+                    meterLevel: meterLevels?.output,
+                  ),
                 ),
-                AudioMixerFooter(input: input, onOpenMixer: onOpenMixer),
+                PopoverStaggerItem(
+                  index: 5,
+                  child: AudioMixerFooter(
+                    input: input,
+                    onOpenMixer: onOpenMixer,
+                  ),
+                ),
                 if (status.isLoading)
                   const Padding(
                     padding: EdgeInsets.fromLTRB(

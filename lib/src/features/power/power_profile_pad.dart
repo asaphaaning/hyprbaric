@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../bindings/bindings.dart';
+import '../../theme/hypr_motion.dart';
 import '../../widgets/primitives/primitives.dart';
 import 'power_console.dart';
 import 'power_formatting.dart';
@@ -18,6 +19,18 @@ class PowerProfilePad extends StatelessWidget {
   final bool active;
   final bool enabled;
   final ValueChanged<PowerProfile> onPressed;
+
+  /// The selection plate in a profile's own colour, so it shifts hue as it
+  /// glides between profiles.
+  static HyprPlateStyle plateStyle(Color color) => HyprPlateStyle(
+    fill: color.withValues(alpha: .08),
+    border: color,
+    borderWidth: 1.2,
+    radius: 12,
+    glow: color.withValues(alpha: .22),
+    glowBlur: 10,
+  );
+
   @override
   Widget build(BuildContext context) {
     final color = switch (profile) {
@@ -30,76 +43,89 @@ class PowerProfilePad extends StatelessWidget {
       PowerProfile.balanced => Icons.bar_chart,
       PowerProfile.performance => Icons.speed,
     };
-    return RepaintBoundary(
-      child: HyprInteractiveTile(
-        semanticLabel: '${profileLabel(profile)} power profile',
-        enabled: enabled,
-        selected: active,
-        onPressed: () => onPressed(profile),
-        height: 112,
-        borderRadius: BorderRadius.circular(12),
-        color: const Color(0x30101420),
-        hoverColor: const Color(0x50364050),
-        selectedColor: color.withValues(alpha: .08),
-        borderColor: const Color(0x60414C69),
-        selectedBorderColor: color,
-        hoverBorderColor: color.withValues(alpha: .6),
-        pressedScale: .985,
-        shadowsBuilder: (_) => active
-            ? [
-                BoxShadow(
-                  color: color.withValues(alpha: .22),
-                  blurRadius: 10,
-                  blurStyle: BlurStyle.outer,
+    // Under a track the gliding plate marks the selection.
+    final bool plated = HyprPlateTrack.isPresent(context);
+    final bool lit = active && !plated;
+    return HyprPlateSlot(
+      active: active,
+      style: plateStyle(color),
+      child: RepaintBoundary(
+        child: HyprInteractiveTile(
+          semanticLabel: '${profileLabel(profile)} power profile',
+          enabled: enabled,
+          selected: lit,
+          onPressed: () => onPressed(profile),
+          height: 112,
+          borderRadius: BorderRadius.circular(12),
+          color: const Color(0x30101420),
+          hoverColor: const Color(0x50364050),
+          selectedColor: color.withValues(alpha: .08),
+          borderColor: const Color(0x60414C69),
+          selectedBorderColor: color,
+          hoverBorderColor: color.withValues(alpha: .6),
+          pressedScale: .985,
+          shadowsBuilder: (_) => lit
+              ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: .22),
+                    blurRadius: 10,
+                    blurStyle: BlurStyle.outer,
+                  ),
+                ]
+              : [],
+          builder: (context, state) => Opacity(
+            opacity: enabled ? 1 : .42,
+            child: Stack(
+              children: [
+                Positioned(
+                  left: 9,
+                  right: 9,
+                  bottom: 6,
+                  height: 51,
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween<double>(end: active ? 1 : 0),
+                    duration: HyprMotion.profileBars,
+                    builder: (context, lift, _) => CustomPaint(
+                      painter: _ProfileSpectrum(profile, color, lift),
+                    ),
+                  ),
                 ),
-              ]
-            : [],
-        builder: (context, state) => Opacity(
-          opacity: enabled ? 1 : .42,
-          child: Stack(
-            children: [
-              Positioned(
-                left: 9,
-                right: 9,
-                bottom: 6,
-                height: 51,
-                child: CustomPaint(painter: _ProfileSpectrum(profile, color)),
-              ),
-              Positioned(
-                left: 12,
-                top: 12,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(icon, color: color, size: 26),
-                    const SizedBox(height: 3),
-                    Text(
-                      profileLabel(profile).toUpperCase(),
-                      style: PowerConsole.value.copyWith(
-                        fontSize: 13.5,
-                        letterSpacing: .6,
+                Positioned(
+                  left: 12,
+                  top: 12,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(icon, color: color, size: 26),
+                      const SizedBox(height: 3),
+                      Text(
+                        profileLabel(profile).toUpperCase(),
+                        style: PowerConsole.value.copyWith(
+                          fontSize: 13.5,
+                          letterSpacing: .6,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      profileSubtitle(profile).toUpperCase(),
-                      style: PowerConsole.label.copyWith(fontSize: 10.5),
-                    ),
-                  ],
+                      const SizedBox(height: 2),
+                      Text(
+                        profileSubtitle(profile).toUpperCase(),
+                        style: PowerConsole.label.copyWith(fontSize: 10.5),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Positioned(
-                top: 12,
-                right: 12,
-                child: Icon(
-                  active
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_unchecked,
-                  size: 19,
-                  color: active ? color : const Color(0xFF475170),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: Icon(
+                    active
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    size: 19,
+                    color: active ? color : const Color(0xFF475170),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -108,9 +134,21 @@ class PowerProfilePad extends StatelessWidget {
 }
 
 class _ProfileSpectrum extends CustomPainter {
-  const _ProfileSpectrum(this.profile, this.color);
+  const _ProfileSpectrum(this.profile, this.color, this.lift);
   final PowerProfile profile;
   final Color color;
+
+  /// How far the selected profile's bars have risen, from 0 to 1. Bars rise
+  /// one after another from the left, overshooting slightly.
+  final double lift;
+
+  double _rise(int index, int count) {
+    const double spread = .45;
+    final double start = spread * index / (count - 1);
+    final double local = ((lift - start) / (1 - spread)).clamp(0.0, 1.0);
+    return HyprMotion.entranceCurve.transform(local);
+  }
+
   double height(double fraction) => switch (profile) {
     PowerProfile.saver => .08 + .42 * math.exp(-fraction * 4),
     PowerProfile.balanced =>
@@ -132,7 +170,10 @@ class _ProfileSpectrum extends CustomPainter {
     for (var index = 0; index < 17; index++) {
       final fraction = index / 16;
       final barHeight =
-          size.height * height(fraction) * (.75 + .15 * math.sin(index * 1.7));
+          size.height *
+          height(fraction) *
+          (.75 + .15 * math.sin(index * 1.7)) *
+          (.55 + .45 * _rise(index, 17));
       final rect = Rect.fromLTWH(
         index * size.width / 17 + 1,
         size.height - barHeight,
@@ -173,5 +214,7 @@ class _ProfileSpectrum extends CustomPainter {
 
   @override
   bool shouldRepaint(_ProfileSpectrum oldDelegate) =>
-      profile != oldDelegate.profile || color != oldDelegate.color;
+      profile != oldDelegate.profile ||
+      color != oldDelegate.color ||
+      lift != oldDelegate.lift;
 }

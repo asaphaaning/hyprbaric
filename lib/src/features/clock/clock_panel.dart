@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../bindings/bindings.dart';
 import '../../widgets/hypr_surface.dart';
+import '../../widgets/popover_handoff.dart';
 import '../../widgets/primitives/primitives.dart';
 import 'clock_controller.dart';
 
@@ -30,23 +31,32 @@ class ClockPanel extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          const HyprInstrumentHeader(
-            title: 'Calendar',
-            icon: Icon(Icons.calendar_month_outlined),
+          const PopoverStaggerItem(
+            index: 0,
+            child: HyprInstrumentHeader(
+              title: 'Calendar',
+              icon: Icon(Icons.calendar_month_outlined),
+            ),
           ),
           const HyprSectionBreak(before: 14, after: 12),
-          _CalendarHeader(
-            monthLabel: status.monthLabel,
-            onPrevious: () => onCommand(CalendarCommand.previousMonth),
-            onToday: () => onCommand(CalendarCommand.today),
-            onNext: () => onCommand(CalendarCommand.nextMonth),
+          PopoverStaggerItem(
+            index: 1,
+            child: _CalendarHeader(
+              monthLabel: status.monthLabel,
+              onPrevious: () => onCommand(CalendarCommand.previousMonth),
+              onToday: () => onCommand(CalendarCommand.today),
+              onNext: () => onCommand(CalendarCommand.nextMonth),
+            ),
           ),
           const SizedBox(height: 10),
-          _CalendarGrid(days: status.days),
+          PopoverStaggerItem(index: 2, child: _CalendarGrid(days: status.days)),
           const HyprSectionBreak(before: 12, after: 12),
-          _CalendarFooter(
-            weekNumber: status.weekNumber,
-            utcOffset: status.utcOffset,
+          PopoverStaggerItem(
+            index: 3,
+            child: _CalendarFooter(
+              weekNumber: status.weekNumber,
+              utcOffset: status.utcOffset,
+            ),
           ),
         ],
       ),

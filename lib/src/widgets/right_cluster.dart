@@ -18,6 +18,7 @@ import '../state/providers.dart';
 import 'hypr_surface.dart';
 import 'layer_shell_dropdown.dart';
 import 'notification_panel.dart';
+import 'primitives/primitives.dart';
 import 'right_cluster_buttons.dart';
 
 class RightCluster extends ConsumerWidget {
@@ -143,25 +144,122 @@ class RightCluster extends ConsumerWidget {
       child: FittedBox(
         fit: BoxFit.scaleDown,
         alignment: Alignment.centerRight,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            const HyprDivider(),
-            if (showSystemOccupancy)
+        // One plate marks the open popover's button and slides to the next
+        // one; a quieter plate follows the pointer between buttons.
+        child: HyprPlateTrack(
+          hoverStyle: HyprPlateStyle.hover,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const HyprDivider(),
+              if (showSystemOccupancy)
+                LayerShellDropdown(
+                  controller: systemController,
+                  handoff: LayerShellDropdownHandoff.morph,
+                  menuRadius: SystemPanel.radius,
+                  menuWidth: SystemPanel.width,
+                  buttonBuilder:
+                      (
+                        BuildContext context,
+                        LayerShellDropdownController controller, {
+                        required bool isOpen,
+                      }) {
+                        return HyprPlateSlot(
+                          active: isOpen,
+                          child: SystemChip(
+                            status: systemStatus.asData?.value,
+                            isOpen: isOpen,
+                            onPressed: onToggleSystem,
+                          ),
+                        );
+                      },
+                  menuBuilder:
+                      (
+                        BuildContext context,
+                        LayerShellDropdownController controller,
+                      ) {
+                        return Consumer(
+                          builder:
+                              (
+                                BuildContext context,
+                                WidgetRef ref,
+                                Widget? child,
+                              ) {
+                                return ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxHeight:
+                                        (MediaQuery.sizeOf(context).height -
+                                                ref.watch(barHeightProvider) -
+                                                16)
+                                            .clamp(0.0, double.infinity),
+                                  ),
+                                  child: SystemPanel(
+                                    borderRadius: SystemPanel.radius,
+                                    status: ref.watch(systemStatusProvider),
+                                  ),
+                                );
+                              },
+                        );
+                      },
+                ),
+              if (showSystemTray)
+                if (trayStatus case final TrayStatus status
+                    when status.items.isNotEmpty) ...<Widget>[
+                  if (showSystemOccupancy) const HyprDivider(),
+                  LayerShellDropdown(
+                    controller: trayMenuController,
+                    menuRadius: audioRadius,
+                    menuWidth: 300,
+                    horizontalAnchor: LayerShellDropdownAnchor.right,
+                    transition: LayerShellDropdownTransition.grow,
+                    buttonBuilder:
+                        (
+                          BuildContext context,
+                          LayerShellDropdownController controller, {
+                          required bool isOpen,
+                        }) {
+                          return TrayStrip(
+                            status: status,
+                            onActivate: onActivateTrayItem,
+                            onContextMenu: onOpenTrayContextMenu,
+                          );
+                        },
+                    menuBuilder:
+                        (
+                          BuildContext context,
+                          LayerShellDropdownController controller,
+                        ) {
+                          return TrayMenuPanel(
+                            menu: trayMenuStatus,
+                            borderRadius: audioRadius,
+                            onActivateItem: (String itemId, int menuItemId) {
+                              onActivateTrayMenuItem(itemId, menuItemId);
+                              controller.close();
+                            },
+                          );
+                        },
+                  ),
+                  const HyprDivider(),
+                ],
               LayerShellDropdown(
-                controller: systemController,
-                menuRadius: SystemPanel.radius,
-                menuWidth: SystemPanel.width,
+                controller: networkController,
+                handoff: LayerShellDropdownHandoff.morph,
+                menuRadius: NetworkPanel.radius,
+                menuWidth: NetworkPanel.width,
                 buttonBuilder:
                     (
                       BuildContext context,
                       LayerShellDropdownController controller, {
                       required bool isOpen,
                     }) {
-                      return SystemChip(
-                        status: systemStatus.asData?.value,
-                        isOpen: isOpen,
-                        onPressed: onToggleSystem,
+                      return HyprPlateSlot(
+                        active: isOpen,
+                        child: BarIconActionButton(
+                          label: 'Network',
+                          icon: Iconsax.link_copy,
+                          isOpen: isOpen,
+                          onPressed: onToggleNetwork,
+                        ),
                       );
                     },
                 menuBuilder:
@@ -184,35 +282,44 @@ class RightCluster extends ConsumerWidget {
                                               16)
                                           .clamp(0.0, double.infinity),
                                 ),
-                                child: SystemPanel(
-                                  borderRadius: SystemPanel.radius,
-                                  status: ref.watch(systemStatusProvider),
+                                child: NetworkPanel(
+                                  history: ref.watch(
+                                    networkTrafficHistoryProvider,
+                                  ),
+                                  borderRadius: NetworkPanel.radius,
+                                  status: ref.watch(networkStatusProvider),
+                                  latestResult: ref
+                                      .watch(networkCommandResultProvider)
+                                      .asData
+                                      ?.value,
+                                  onSetWifiEnabled: onSetNetworkWifiEnabled,
+                                  onConnect: onConnectNetwork,
+                                  onOpenSettings: onOpenNetworkSettings,
                                 ),
                               );
                             },
                       );
                     },
               ),
-            if (showSystemTray)
-              if (trayStatus case final TrayStatus status
-                  when status.items.isNotEmpty) ...<Widget>[
-                if (showSystemOccupancy) const HyprDivider(),
+              if (showAudioDisplay) ...<Widget>[
+                const SizedBox(width: 4),
                 LayerShellDropdown(
-                  controller: trayMenuController,
-                  menuRadius: audioRadius,
-                  menuWidth: 300,
-                  horizontalAnchor: LayerShellDropdownAnchor.right,
-                  transition: LayerShellDropdownTransition.grow,
+                  controller: audioController,
+                  handoff: LayerShellDropdownHandoff.morph,
+                  menuRadius: AudioPanel.radius,
+                  menuWidth: AudioPanel.width,
                   buttonBuilder:
                       (
                         BuildContext context,
                         LayerShellDropdownController controller, {
                         required bool isOpen,
                       }) {
-                        return TrayStrip(
-                          status: status,
-                          onActivate: onActivateTrayItem,
-                          onContextMenu: onOpenTrayContextMenu,
+                        return HyprPlateSlot(
+                          active: isOpen,
+                          child: AudioDisplayButton(
+                            isOpen: isOpen,
+                            onPressed: onToggleAudio,
+                          ),
                         );
                       },
                   menuBuilder:
@@ -220,85 +327,65 @@ class RightCluster extends ConsumerWidget {
                         BuildContext context,
                         LayerShellDropdownController controller,
                       ) {
-                        return TrayMenuPanel(
-                          menu: trayMenuStatus,
-                          borderRadius: audioRadius,
-                          onActivateItem: (String itemId, int menuItemId) {
-                            onActivateTrayMenuItem(itemId, menuItemId);
-                            controller.close();
-                          },
-                        );
-                      },
-                ),
-                const HyprDivider(),
-              ],
-            LayerShellDropdown(
-              controller: networkController,
-              menuRadius: NetworkPanel.radius,
-              menuWidth: NetworkPanel.width,
-              buttonBuilder:
-                  (
-                    BuildContext context,
-                    LayerShellDropdownController controller, {
-                    required bool isOpen,
-                  }) {
-                    return BarIconActionButton(
-                      label: 'Network',
-                      icon: Iconsax.link_copy,
-                      isOpen: isOpen,
-                      onPressed: onToggleNetwork,
-                    );
-                  },
-              menuBuilder:
-                  (
-                    BuildContext context,
-                    LayerShellDropdownController controller,
-                  ) {
-                    return Consumer(
-                      builder:
-                          (BuildContext context, WidgetRef ref, Widget? child) {
-                            return ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxHeight:
+                        return Consumer(
+                          builder:
+                              (
+                                BuildContext context,
+                                WidgetRef ref,
+                                Widget? child,
+                              ) {
+                                final double availableHeight =
                                     (MediaQuery.sizeOf(context).height -
                                             ref.watch(barHeightProvider) -
                                             16)
-                                        .clamp(0.0, double.infinity),
-                              ),
-                              child: NetworkPanel(
-                                history: ref.watch(
-                                  networkTrafficHistoryProvider,
-                                ),
-                                borderRadius: NetworkPanel.radius,
-                                status: ref.watch(networkStatusProvider),
-                                latestResult: ref
-                                    .watch(networkCommandResultProvider)
-                                    .asData
-                                    ?.value,
-                                onSetWifiEnabled: onSetNetworkWifiEnabled,
-                                onConnect: onConnectNetwork,
-                                onOpenSettings: onOpenNetworkSettings,
-                              ),
-                            );
-                          },
-                    );
-                  },
-            ),
-            if (showAudioDisplay) ...<Widget>[
+                                        .clamp(0.0, double.infinity);
+                                return ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxHeight: availableHeight,
+                                  ),
+                                  child: AudioPanel(
+                                    status: ref.watch(audioStatusProvider),
+                                    brightnessStatus: ref.watch(
+                                      brightnessStatusProvider,
+                                    ),
+                                    onSetVolume: onSetAudioVolume,
+                                    onSetMuted: onSetAudioMuted,
+                                    onSelectOutput: onSelectAudioOutput,
+                                    commandResult: ref
+                                        .watch(audioCommandResultProvider)
+                                        .asData
+                                        ?.value,
+                                    onSetBrightness: onSetBrightness,
+                                    onOpenMixer: () {
+                                      onOpenAudioMixer();
+                                      controller.dismiss();
+                                    },
+                                  ),
+                                );
+                              },
+                        );
+                      },
+                ),
+              ],
               const SizedBox(width: 4),
               LayerShellDropdown(
-                controller: audioController,
-                menuRadius: AudioPanel.radius,
-                menuWidth: AudioPanel.width,
+                controller: powerController,
+                handoff: LayerShellDropdownHandoff.morph,
+                menuRadius: audioRadius,
+                menuWidth: PowerPanel.width,
                 buttonBuilder:
                     (
                       BuildContext context,
                       LayerShellDropdownController controller, {
                       required bool isOpen,
                     }) {
-                      return AudioDisplayButton(
-                        isOpen: isOpen,
-                        onPressed: onToggleAudio,
+                      return HyprPlateSlot(
+                        active: isOpen,
+                        child: BatteryChip(
+                          status: powerStatus.asData?.value,
+                          isOpen: isOpen,
+                          onPressed: onTogglePower,
+                        ),
                       );
                     },
                 menuBuilder:
@@ -313,143 +400,143 @@ class RightCluster extends ConsumerWidget {
                               WidgetRef ref,
                               Widget? child,
                             ) {
-                              final double availableHeight =
-                                  (MediaQuery.sizeOf(context).height -
-                                          ref.watch(barHeightProvider) -
-                                          16)
-                                      .clamp(0.0, double.infinity);
-                              return ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  maxHeight: availableHeight,
-                                ),
-                                child: AudioPanel(
-                                  status: ref.watch(audioStatusProvider),
-                                  brightnessStatus: ref.watch(
-                                    brightnessStatusProvider,
-                                  ),
-                                  onSetVolume: onSetAudioVolume,
-                                  onSetMuted: onSetAudioMuted,
-                                  onSelectOutput: onSelectAudioOutput,
-                                  commandResult: ref
-                                      .watch(audioCommandResultProvider)
-                                      .asData
-                                      ?.value,
-                                  onSetBrightness: onSetBrightness,
-                                  onOpenMixer: () {
-                                    onOpenAudioMixer();
-                                    controller.dismiss();
-                                  },
+                              return PowerPanel(
+                                borderRadius: audioRadius,
+                                status: ref.watch(powerStatusProvider),
+                                latestResult: ref
+                                    .watch(powerCommandResultProvider)
+                                    .asData
+                                    ?.value,
+                                onSetProfile: onSetPowerProfile,
+                              );
+                            },
+                      );
+                    },
+              ),
+              LayerShellDropdown(
+                controller: controlsController,
+                handoff: LayerShellDropdownHandoff.morph,
+                menuRadius: audioRadius,
+                menuWidth: 432,
+                buttonBuilder:
+                    (
+                      BuildContext context,
+                      LayerShellDropdownController controller, {
+                      required bool isOpen,
+                    }) {
+                      return HyprPlateSlot(
+                        active: isOpen,
+                        child: BarIconActionButton(
+                          label: 'Controls',
+                          icon: Iconsax.setting_5_copy,
+                          isOpen: isOpen,
+                          onPressed: onToggleControls,
+                        ),
+                      );
+                    },
+                menuBuilder:
+                    (
+                      BuildContext context,
+                      LayerShellDropdownController controller,
+                    ) {
+                      return Consumer(
+                        builder:
+                            (
+                              BuildContext context,
+                              WidgetRef ref,
+                              Widget? child,
+                            ) {
+                              final NotificationStatus? liveNotificationStatus =
+                                  ref.watch(currentNotificationStatusProvider);
+                              final NightLightStatus? nightLightStatus = ref
+                                  .watch(nightLightStatusProvider)
+                                  .asData
+                                  ?.value;
+                              final CaffeineStatus? caffeineStatus = ref
+                                  .watch(caffeineStatusProvider)
+                                  .asData
+                                  ?.value;
+                              final RecordingStatus? recordingStatus = ref
+                                  .watch(recordingStatusProvider)
+                                  .asData
+                                  ?.value;
+                              return ControlsPanel(
+                                borderRadius: audioRadius,
+                                onCaptureScreenshot: onCaptureScreenshot,
+                                onPickColor: onPickColor,
+                                onToggleRecording: onToggleRecording,
+                                onOpenSettings: onOpenSettings,
+                                onToast: onControlToast,
+                                dndEnabled:
+                                    liveNotificationStatus?.dndEnabled ?? false,
+                                onSetDoNotDisturb: onSetDoNotDisturb,
+                                nightLightStatus: nightLightStatus,
+                                onSetNightLight: onSetNightLight,
+                                caffeineStatus: caffeineStatus,
+                                onSetCaffeine: onSetCaffeine,
+                                recordingStatus: recordingStatus,
+                                shortcutLabels: ref.watch(
+                                  shortcutLabelsProvider,
                                 ),
                               );
                             },
                       );
                     },
               ),
-            ],
-            const SizedBox(width: 4),
-            LayerShellDropdown(
-              controller: powerController,
-              menuRadius: audioRadius,
-              menuWidth: PowerPanel.width,
-              buttonBuilder:
-                  (
-                    BuildContext context,
-                    LayerShellDropdownController controller, {
-                    required bool isOpen,
-                  }) {
-                    return BatteryChip(
-                      status: powerStatus.asData?.value,
-                      isOpen: isOpen,
-                      onPressed: onTogglePower,
-                    );
-                  },
-              menuBuilder:
-                  (
-                    BuildContext context,
-                    LayerShellDropdownController controller,
-                  ) {
-                    return Consumer(
-                      builder:
-                          (BuildContext context, WidgetRef ref, Widget? child) {
-                            return PowerPanel(
-                              borderRadius: audioRadius,
-                              status: ref.watch(powerStatusProvider),
-                              latestResult: ref
-                                  .watch(powerCommandResultProvider)
-                                  .asData
-                                  ?.value,
-                              onSetProfile: onSetPowerProfile,
-                            );
-                          },
-                    );
-                  },
-            ),
-            LayerShellDropdown(
-              controller: controlsController,
-              menuRadius: audioRadius,
-              menuWidth: 432,
-              buttonBuilder:
-                  (
-                    BuildContext context,
-                    LayerShellDropdownController controller, {
-                    required bool isOpen,
-                  }) {
-                    return BarIconActionButton(
-                      label: 'Controls',
-                      icon: Iconsax.setting_5_copy,
-                      isOpen: isOpen,
-                      onPressed: onToggleControls,
-                    );
-                  },
-              menuBuilder:
-                  (
-                    BuildContext context,
-                    LayerShellDropdownController controller,
-                  ) {
-                    return Consumer(
-                      builder:
-                          (BuildContext context, WidgetRef ref, Widget? child) {
-                            final NotificationStatus? liveNotificationStatus =
-                                ref.watch(currentNotificationStatusProvider);
-                            final NightLightStatus? nightLightStatus = ref
-                                .watch(nightLightStatusProvider)
-                                .asData
-                                ?.value;
-                            final CaffeineStatus? caffeineStatus = ref
-                                .watch(caffeineStatusProvider)
-                                .asData
-                                ?.value;
-                            final RecordingStatus? recordingStatus = ref
-                                .watch(recordingStatusProvider)
-                                .asData
-                                ?.value;
-                            return ControlsPanel(
-                              borderRadius: audioRadius,
-                              onCaptureScreenshot: onCaptureScreenshot,
-                              onPickColor: onPickColor,
-                              onToggleRecording: onToggleRecording,
-                              onOpenSettings: onOpenSettings,
-                              onToast: onControlToast,
-                              dndEnabled:
-                                  liveNotificationStatus?.dndEnabled ?? false,
-                              onSetDoNotDisturb: onSetDoNotDisturb,
-                              nightLightStatus: nightLightStatus,
-                              onSetNightLight: onSetNightLight,
-                              caffeineStatus: caffeineStatus,
-                              onSetCaffeine: onSetCaffeine,
-                              recordingStatus: recordingStatus,
-                              shortcutLabels: ref.watch(shortcutLabelsProvider),
-                            );
-                          },
-                    );
-                  },
-            ),
-            if (showNotifications) ...<Widget>[
-              const SizedBox(width: 4),
+              if (showNotifications) ...<Widget>[
+                const SizedBox(width: 4),
+                LayerShellDropdown(
+                  controller: notificationController,
+                  handoff: LayerShellDropdownHandoff.morph,
+                  menuRadius: audioRadius,
+                  menuWidth: kNotificationPanelWidth,
+                  horizontalAnchor: LayerShellDropdownAnchor.right,
+                  buttonBuilder:
+                      (
+                        BuildContext context,
+                        LayerShellDropdownController controller, {
+                        required bool isOpen,
+                      }) {
+                        return HyprPlateSlot(
+                          active: isOpen,
+                          child: NotificationButton(
+                            unreadCount: notificationStatus?.unreadCount ?? 0,
+                            isOpen: isOpen,
+                            onPressed: onToggleNotifications,
+                          ),
+                        );
+                      },
+                  menuBuilder:
+                      (
+                        BuildContext context,
+                        LayerShellDropdownController controller,
+                      ) {
+                        return Consumer(
+                          builder:
+                              (
+                                BuildContext context,
+                                WidgetRef ref,
+                                Widget? child,
+                              ) {
+                                return NotificationPanel(
+                                  borderRadius: audioRadius,
+                                  status: ref.watch(
+                                    currentNotificationSignalProvider,
+                                  ),
+                                  onDismiss: onDismissNotification,
+                                  onClearAll: onClearNotifications,
+                                );
+                              },
+                        );
+                      },
+                ),
+              ],
+              const HyprDivider(height: 18),
               LayerShellDropdown(
-                controller: notificationController,
-                menuRadius: audioRadius,
-                menuWidth: kNotificationPanelWidth,
+                controller: clockController,
+                handoff: LayerShellDropdownHandoff.morph,
+                menuRadius: clockCardRadius,
+                menuWidth: ClockPanel.width,
                 horizontalAnchor: LayerShellDropdownAnchor.right,
                 buttonBuilder:
                     (
@@ -457,10 +544,13 @@ class RightCluster extends ConsumerWidget {
                       LayerShellDropdownController controller, {
                       required bool isOpen,
                     }) {
-                      return NotificationButton(
-                        unreadCount: notificationStatus?.unreadCount ?? 0,
-                        isOpen: isOpen,
-                        onPressed: onToggleNotifications,
+                      return HyprPlateSlot(
+                        active: isOpen,
+                        child: ClockButton(
+                          status: clockView,
+                          isOpen: isOpen,
+                          onPressed: onToggleClock,
+                        ),
                       );
                     },
                 menuBuilder:
@@ -475,63 +565,25 @@ class RightCluster extends ConsumerWidget {
                               WidgetRef ref,
                               Widget? child,
                             ) {
-                              return NotificationPanel(
-                                borderRadius: audioRadius,
-                                status: ref.watch(
-                                  currentNotificationSignalProvider,
-                                ),
-                                onDismiss: onDismissNotification,
-                                onClearAll: onClearNotifications,
+                              return ClockPanel(
+                                status: ref.watch(clockViewProvider),
+                                onCommand: onClockCommand,
+                                borderRadius: clockCardRadius,
                               );
                             },
                       );
                     },
               ),
-            ],
-            const HyprDivider(height: 18),
-            LayerShellDropdown(
-              controller: clockController,
-              menuRadius: BorderRadius.zero,
-              menuWidth: ClockPanel.width,
-              horizontalAnchor: LayerShellDropdownAnchor.right,
-              buttonBuilder:
-                  (
-                    BuildContext context,
-                    LayerShellDropdownController controller, {
-                    required bool isOpen,
-                  }) {
-                    return ClockButton(
-                      status: clockView,
-                      isOpen: isOpen,
-                      onPressed: onToggleClock,
-                    );
-                  },
-              menuBuilder:
-                  (
-                    BuildContext context,
-                    LayerShellDropdownController controller,
-                  ) {
-                    return Consumer(
-                      builder:
-                          (BuildContext context, WidgetRef ref, Widget? child) {
-                            return ClockPanel(
-                              status: ref.watch(clockViewProvider),
-                              onCommand: onClockCommand,
-                              borderRadius: clockCardRadius,
-                            );
-                          },
-                    );
-                  },
-            ),
-            const HyprDivider(),
-            KeyedSubtree(
-              key: powerButtonAnchorKey,
-              child: PowerButton(
-                isOpen: sessionLauncherOpen,
-                onPressed: onToggleSessionLauncher,
+              const HyprDivider(),
+              KeyedSubtree(
+                key: powerButtonAnchorKey,
+                child: PowerButton(
+                  isOpen: sessionLauncherOpen,
+                  onPressed: onToggleSessionLauncher,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

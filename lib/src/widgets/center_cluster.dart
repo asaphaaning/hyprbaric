@@ -51,7 +51,17 @@ class _WindowTitleChip extends StatelessWidget {
             child: Center(
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: titleMaxWidth),
-                child: _WindowTitleText(display: display),
+                // A different app turns the whole title over; the same
+                // app with a new window title flips only its subtitle.
+                child: HyprFlip(
+                  flipKey: display.isHidden
+                      ? null
+                      : (
+                          display.appName,
+                          display.appName == null ? display.title : null,
+                        ),
+                  child: _WindowTitleText(display: display),
+                ),
               ),
             ),
           );
@@ -115,12 +125,16 @@ class _WindowTitleText extends StatelessWidget {
           ),
           Flexible(
             flex: 2,
-            child: _TrailingFadeMask(
-              child: Text(
-                subtitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: HyprTypography.barMono,
+            child: HyprFlip(
+              flipKey: subtitle,
+              distance: HyprMotion.flipDistance * .7,
+              child: _TrailingFadeMask(
+                child: Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: HyprTypography.barMono,
+                ),
               ),
             ),
           ),

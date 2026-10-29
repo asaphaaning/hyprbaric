@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../bindings/bindings.dart';
+import '../../theme/hypr_motion.dart';
 import '../../widgets/primitives/primitives.dart';
 import 'network_console.dart';
 import 'network_entry_state.dart';
@@ -26,60 +27,60 @@ class NetworkTabs extends StatelessWidget {
         borderRadius: BorderRadius.circular(25),
         border: Border.all(color: const Color(0x88515D82), width: .6),
       ),
-      child: Row(
-        children: [
-          for (final tab in NetworkTab.values)
-            Expanded(
-              child: Semantics(
-                selected: tab == selected,
-                child: HyprInteractionRegion(
-                  semanticLabel: switch (tab) {
-                    NetworkTab.wifi => 'Wi-Fi',
-                    NetworkTab.ethernet => 'Ethernet',
-                    NetworkTab.vpn => 'VPN',
-                  },
-                  onPressed: () => onSelected(tab),
-                  builder: (context, state) => AnimatedContainer(
-                    duration: const Duration(milliseconds: 120),
-                    curve: Curves.easeOutCubic,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: tab == selected
-                            ? const [Color(0xFFE0DEFF), Color(0xFF9A9FD8)]
-                            : state.hovered || state.pressed
-                            ? const [Color(0x22565682), Color(0x22565682)]
-                            : const [Color(0x00E0DEFF), Color(0x009A9FD8)],
-                      ),
-                      border: Border.all(
-                        color: tab == selected
-                            ? const Color(0xAACECFFF)
-                            : const Color(0x00CECFFF),
-                        width: .5,
-                      ),
-                    ),
-                    child: AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 120),
-                      curve: Curves.easeOutCubic,
-                      style: NetworkConsole.label.copyWith(
-                        color: tab == selected
-                            ? const Color(0xFF101529)
-                            : NetworkConsole.accent,
-                      ),
-                      child: Text(switch (tab) {
-                        NetworkTab.wifi => 'WI-FI',
-                        NetworkTab.ethernet => 'ETHERNET',
+      // The selected pill glides between tabs; a faint one follows hover.
+      child: HyprPlateTrack(
+        style: const HyprPlateStyle(
+          radius: 20,
+          border: Color(0xAACECFFF),
+          borderWidth: .5,
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFE0DEFF), Color(0xFF9A9FD8)],
+          ),
+        ),
+        hoverStyle: const HyprPlateStyle(
+          radius: 20,
+          fill: Color(0x22565682),
+          borderWidth: 0,
+        ),
+        child: Row(
+          children: [
+            for (final tab in NetworkTab.values)
+              Expanded(
+                child: HyprPlateSlot(
+                  active: tab == selected,
+                  child: Semantics(
+                    selected: tab == selected,
+                    child: HyprInteractionRegion(
+                      semanticLabel: switch (tab) {
+                        NetworkTab.wifi => 'Wi-Fi',
+                        NetworkTab.ethernet => 'Ethernet',
                         NetworkTab.vpn => 'VPN',
-                      }),
+                      },
+                      onPressed: () => onSelected(tab),
+                      builder: (context, state) => Align(
+                        child: AnimatedDefaultTextStyle(
+                          duration: HyprMotion.plateHover,
+                          curve: Curves.easeOutCubic,
+                          style: NetworkConsole.label.copyWith(
+                            color: tab == selected
+                                ? const Color(0xFF101529)
+                                : NetworkConsole.accent,
+                          ),
+                          child: Text(switch (tab) {
+                            NetworkTab.wifi => 'WI-FI',
+                            NetworkTab.ethernet => 'ETHERNET',
+                            NetworkTab.vpn => 'VPN',
+                          }),
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     ),
   );
