@@ -1255,7 +1255,7 @@ void main() {
       expect(find.text('SAV'), findsNothing);
       expect(find.text('BAL'), findsNothing);
       expect(find.text('PRF'), findsNothing);
-      _expectStrokedIconsaxGlyph(tester, Iconsax.flash_circle_copy);
+      _expectStrokedIconsaxGlyph(tester, Iconsax.flash_1_copy);
     },
   );
 
