@@ -3389,11 +3389,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('MIXER'), findsNothing);
-    expect(
-      find.byKey(const ValueKey<String>('bar-volume-knob-icon')),
-      findsOneWidget,
-    );
-    expect(_iconsaxGlyphFinder(Iconsax.volume_high_copy), findsNothing);
+    expect(_iconsaxGlyphFinder(Iconsax.volume_high_copy), findsOneWidget);
     expect(_iconsaxGlyphFinder(Iconsax.sun_1_copy), findsNothing);
 
     await tester.tap(find.bySemanticsLabel('Audio and display controls'));

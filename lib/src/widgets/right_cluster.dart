@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 import '../bindings/bindings.dart';
+import '../features/audio/audio_chrome.dart';
 import '../features/audio/audio_panel.dart';
 import '../features/clock/clock_panel.dart';
 import '../features/controls/controls_panel.dart';
@@ -319,6 +320,14 @@ class RightCluster extends ConsumerWidget {
                           child: AudioDisplayButton(
                             isOpen: isOpen,
                             onPressed: onToggleAudio,
+                            muted:
+                                ref
+                                    .watch(audioStatusProvider)
+                                    .asData
+                                    ?.value
+                                    .output
+                                    ?.muted ??
+                                false,
                           ),
                         );
                       },
