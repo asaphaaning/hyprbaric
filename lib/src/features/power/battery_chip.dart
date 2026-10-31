@@ -74,7 +74,7 @@ class BatteryChip extends StatelessWidget {
                   : SizedBox(
                       width: HyprIconSizes.barButton.width,
                       child: const IconTheme(
-                        data: IconThemeData(color: HyprColors.textMuted),
+                        data: IconThemeData(color: HyprColors.text),
                         child: Center(
                           child: BarGlyphIcon(
                             icon: Iconsax.flash_1_copy,

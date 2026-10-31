@@ -13,6 +13,7 @@ ButtonStyle barIconActionButtonStyle({
 }) {
   return hyprCompactIconButtonStyle(
     active: isOpen,
+    foregroundColor: HyprColors.text,
     plated: plated,
     size: HyprIconSizes.barButton,
     radius: HyprRadii.panel,
@@ -71,8 +72,7 @@ class BarGlyphIcon extends StatelessWidget {
       return Icon(icon, size: size);
     }
 
-    final Color glyphColor =
-        IconTheme.of(context).color ?? HyprColors.textMuted;
+    final Color glyphColor = IconTheme.of(context).color ?? HyprColors.text;
     final TextStyle glyphStyle = TextStyle(
       inherit: false,
       color: glyphColor,
@@ -84,7 +84,7 @@ class BarGlyphIcon extends StatelessWidget {
     final Paint strokePaint = Paint()
       ..color = glyphColor.withValues(alpha: glyphColor.a * 0.9)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.58;
+      ..strokeWidth = 0.25;
     return SizedBox.square(
       key: _iconsaxGlyphKey(icon),
       dimension: size,

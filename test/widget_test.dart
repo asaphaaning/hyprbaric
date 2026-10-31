@@ -169,8 +169,8 @@ List<Text> _expectStrokedIconsaxGlyph(WidgetTester tester, IconData icon) {
   expect(glyphs.length, greaterThanOrEqualTo(2));
   final Paint? stroke = glyphs.first.style?.foreground;
   expect(stroke?.style, PaintingStyle.stroke);
-  expect(stroke?.strokeWidth, greaterThan(0.4));
-  expect(glyphs.last.style?.color, HyprColors.textMuted);
+  expect(stroke?.strokeWidth, greaterThan(0.2));
+  expect(glyphs.last.style?.color, HyprColors.text);
   return glyphs;
 }
 
