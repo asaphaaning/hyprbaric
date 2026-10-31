@@ -23,11 +23,7 @@ impl Devices {
     /// Reads the current audio snapshot.
     #[instrument(skip(self), err)]
     pub(super) async fn read_snapshot(self) -> Result<Snapshot, Error> {
-        let output = self.read_endpoint(EndpointKind::Output).await.ok();
-        let input = self.read_endpoint(EndpointKind::Input).await.ok();
-        if output.is_none() && input.is_none() {
-            return Err(Error::Unavailable);
-        }
+        let (output, input) = self.read_endpoints().await?;
 
         let outputs = match self.read_outputs().await {
             Ok(devices) => output_choices(
@@ -44,6 +40,44 @@ impl Devices {
             input,
             outputs,
         })
+    }
+
+    /// Reads only the default endpoints, keeping an earlier device list.
+    ///
+    /// `pw-dump` serializes the whole PipeWire graph, which a volume or mute
+    /// change cannot alter. When the default output moved, the earlier list's
+    /// selection is stale, so this falls back to a full read.
+    #[instrument(skip(self, previous), err)]
+    pub(super) async fn read_endpoints_into(self, previous: &Snapshot) -> Result<Snapshot, Error> {
+        let Snapshot::Available {
+            output: previous_output,
+            outputs,
+            ..
+        } = previous
+        else {
+            return self.read_snapshot().await;
+        };
+        let (output, input) = self.read_endpoints().await?;
+        let default_id =
+            |endpoint: &Option<Endpoint>| endpoint.as_ref().and_then(|device| device.id.clone());
+        if default_id(&output) != default_id(previous_output) {
+            return self.read_snapshot().await;
+        }
+
+        Ok(Snapshot::Available {
+            output,
+            input,
+            outputs: outputs.clone(),
+        })
+    }
+
+    async fn read_endpoints(self) -> Result<(Option<Endpoint>, Option<Endpoint>), Error> {
+        let output = self.read_endpoint(EndpointKind::Output).await.ok();
+        let input = self.read_endpoint(EndpointKind::Input).await.ok();
+        if output.is_none() && input.is_none() {
+            return Err(Error::Unavailable);
+        }
+        Ok((output, input))
     }
 
     #[instrument(name = "audio::read_outputs", skip(self), err)]

@@ -7,14 +7,18 @@ mod backend;
 mod domain;
 mod signal;
 
-use std::{process::Stdio, sync::Arc, time::Duration};
+use std::{
+    process::Stdio,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use serde::Deserialize;
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command as ProcessCommand,
     sync::broadcast,
-    time::{interval, sleep},
+    time::{Instant, interval, timeout_at},
 };
 use tracing::instrument;
 
@@ -68,6 +72,17 @@ pub struct Control {
     events: broadcast::Sender<Snapshot>,
     results: broadcast::Sender<Report>,
     devices: Devices,
+    /// Last published snapshot, reused by endpoint-only refreshes.
+    latest: Arc<Mutex<Snapshot>>,
+}
+
+/// How much of the audio state an event can have changed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum Scope {
+    /// Volume or mute on an existing device.
+    Endpoints,
+    /// Devices, cards or the default endpoint changed.
+    Full,
 }
 
 impl Control {
@@ -86,8 +101,9 @@ impl Control {
             events,
             results,
             devices,
+            latest: Arc::new(Mutex::new(initial_snapshot.clone())),
         });
-        spawn_poll(Arc::clone(&control), initial_snapshot.clone());
+        spawn_poll(Arc::clone(&control));
         spawn_event_watch(Arc::clone(&control));
 
         (control, initial_snapshot)
@@ -109,7 +125,7 @@ impl Control {
         let command = PublicCommand::SetVolume { kind, volume };
         let result = self.devices.set_volume(kind, volume).await;
         self.send_report(command, result);
-        self.refresh().await;
+        self.refresh(Scope::Endpoints).await;
     }
 
     /// Sets mute state for an endpoint class.
@@ -118,7 +134,7 @@ impl Control {
         let command = PublicCommand::SetMuted { kind, muted };
         let result = self.devices.set_muted(kind, muted).await;
         self.send_report(command, result);
-        self.refresh().await;
+        self.refresh(Scope::Endpoints).await;
     }
 
     /// Selects a playback device and publishes its confirmed default state.
@@ -126,16 +142,34 @@ impl Control {
     pub async fn select_output(&self, id: OutputId) {
         let result = self.devices.select_output(&id).await;
         self.send_report(PublicCommand::SelectOutput { id }, result);
-        self.refresh().await;
+        self.refresh(Scope::Full).await;
     }
 
     #[instrument(skip(self))]
-    async fn refresh(&self) {
-        self.send_snapshot(self.devices.read_snapshot().await);
+    async fn refresh(&self, scope: Scope) {
+        let snapshot = match scope {
+            Scope::Full => self.devices.read_snapshot().await,
+            Scope::Endpoints => {
+                let previous = self.latest_snapshot();
+                self.devices.read_endpoints_into(&previous).await
+            }
+        };
+        self.send_snapshot(snapshot);
+    }
+
+    fn latest_snapshot(&self) -> Snapshot {
+        self.latest.lock().map_or_else(
+            |poisoned| poisoned.into_inner().clone(),
+            |latest| latest.clone(),
+        )
     }
 
     fn send_snapshot(&self, snapshot: Result<Snapshot, Error>) {
         let snapshot = snapshot.unwrap_or_else(|error| Snapshot::unavailable(error.to_string()));
+        match self.latest.lock() {
+            Ok(mut latest) => latest.clone_from(&snapshot),
+            Err(poisoned) => poisoned.into_inner().clone_from(&snapshot),
+        }
         drop(self.events.send(snapshot));
     }
 
@@ -152,21 +186,18 @@ impl Control {
 }
 
 #[instrument(skip_all)]
-fn spawn_poll(control: Handle, initial_snapshot: Snapshot) {
-    let events = control.events.clone();
-    let devices = control.devices;
+fn spawn_poll(control: Handle) {
     tokio::spawn(async move {
-        let mut previous = initial_snapshot;
         let mut ticker = interval(REFRESH_INTERVAL);
         loop {
             ticker.tick().await;
-            let snapshot = devices
+            let snapshot = control
+                .devices
                 .read_snapshot()
                 .await
                 .unwrap_or_else(|error| Snapshot::unavailable(error.to_string()));
-            if snapshot != previous {
-                drop(events.send(snapshot.clone()));
-                previous = snapshot;
+            if snapshot != control.latest_snapshot() {
+                control.send_snapshot(Ok(snapshot));
             }
         }
     });
@@ -195,27 +226,63 @@ fn spawn_event_watch(control: Handle) {
         };
         let mut lines = BufReader::new(stdout).lines();
         loop {
-            match lines.next_line().await {
-                Ok(Some(line)) if is_audio_event(&line) => {
-                    sleep(EVENT_DEBOUNCE).await;
-                    control.refresh().await;
-                }
-                Ok(Some(_)) => {}
+            let scope = match lines.next_line().await {
+                Ok(Some(line)) => match event_scope(&line) {
+                    Some(scope) => scope,
+                    None => continue,
+                },
                 Ok(None) => return,
                 Err(error) => {
                     tracing::warn!("Audio event watch failed: {error}");
                     return;
                 }
+            };
+
+            // A volume drag or a playing stream emits bursts of events. Fold
+            // every line that lands inside the debounce window into a single
+            // refresh instead of queueing one process round-trip per line.
+            let deadline = Instant::now() + EVENT_DEBOUNCE;
+            let mut scope = scope;
+            let mut closed = false;
+            loop {
+                match timeout_at(deadline, lines.next_line()).await {
+                    Err(_elapsed) => break,
+                    Ok(Ok(Some(line))) => {
+                        if let Some(next) = event_scope(&line) {
+                            scope = scope.max(next);
+                        }
+                    }
+                    Ok(Ok(None)) => {
+                        closed = true;
+                        break;
+                    }
+                    Ok(Err(error)) => {
+                        tracing::warn!("Audio event watch failed: {error}");
+                        closed = true;
+                        break;
+                    }
+                }
+            }
+            control.refresh(scope).await;
+            if closed {
+                return;
             }
         }
     });
 }
 
-fn is_audio_event(line: &str) -> bool {
-    line.contains("sink")
-        || line.contains("source")
-        || line.contains("server")
-        || line.contains("card")
+/// Classifies one `pactl subscribe` line.
+///
+/// Per-application streams (`sink-input`, `source-output`) and clients do not
+/// touch the default endpoints or the device list, and a playing browser tab
+/// emits them continuously, so they are ignored.
+fn event_scope(line: &str) -> Option<Scope> {
+    let target = line.split(" on ").nth(1)?.split_whitespace().next()?;
+    match target {
+        "sink" | "source" if line.contains("'change'") => Some(Scope::Endpoints),
+        "sink" | "source" | "server" | "card" => Some(Scope::Full),
+        _ => None,
+    }
 }
 
 /// An audio runtime or boundary error.
@@ -268,7 +335,40 @@ pub enum Error {
 
 #[cfg(test)]
 mod tests {
-    use super::{Configuration, VolumeStep};
+    use super::{Configuration, Scope, VolumeStep, event_scope};
+
+    #[test]
+    fn stream_events_do_not_refresh() {
+        assert_eq!(event_scope("Event 'change' on sink-input #84"), None);
+        assert_eq!(event_scope("Event 'new' on source-output #12"), None);
+        assert_eq!(event_scope("Event 'change' on client #7"), None);
+    }
+
+    #[test]
+    fn endpoint_changes_skip_device_discovery() {
+        assert_eq!(
+            event_scope("Event 'change' on sink #55"),
+            Some(Scope::Endpoints)
+        );
+        assert_eq!(
+            event_scope("Event 'change' on source #56"),
+            Some(Scope::Endpoints)
+        );
+    }
+
+    #[test]
+    fn device_and_default_changes_refresh_everything() {
+        assert_eq!(event_scope("Event 'new' on sink #90"), Some(Scope::Full));
+        assert_eq!(
+            event_scope("Event 'remove' on source #91"),
+            Some(Scope::Full)
+        );
+        assert_eq!(
+            event_scope("Event 'change' on server #-1"),
+            Some(Scope::Full)
+        );
+        assert_eq!(event_scope("Event 'change' on card #3"), Some(Scope::Full));
+    }
 
     #[test]
     fn config_defaults_volume_step_to_five_percent() {
