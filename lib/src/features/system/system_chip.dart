@@ -124,27 +124,62 @@ class _Readout extends StatelessWidget {
   }
 }
 
-/// A small ring whose arc eases to the current occupancy, tinted by load.
-class _LoadRing extends StatelessWidget {
+/// A small ring whose arc follows the current occupancy, tinted by load.
+///
+/// Readings arrive every second and each animated frame recomposites the
+/// whole bar surface, so only a real swing eases; ordinary jitter snaps in
+/// a single frame and the bar stays idle between readings.
+class _LoadRing extends StatefulWidget {
   const _LoadRing({required this.ratio, required this.ramp});
+
+  /// Arc resolution. One step is under a pixel of the ring's circumference,
+  /// so sample jitter within a step does not repaint at all.
+  static const double steps = 64;
+
+  /// Smallest change, as a fraction of the ring, that eases instead of
+  /// snapping.
+  static const double sweep = 0.1;
 
   final double ratio;
   final HyprLevelRamp ramp;
 
+  static double quantize(double ratio) =>
+      (ratio.clamp(0.0, 1.0) * steps).round() / steps;
+
+  @override
+  State<_LoadRing> createState() => _LoadRingState();
+}
+
+class _LoadRingState extends State<_LoadRing> {
+  late double _target = _LoadRing.quantize(widget.ratio);
+  Duration _duration = Duration.zero;
+
+  @override
+  void didUpdateWidget(_LoadRing oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final double next = _LoadRing.quantize(widget.ratio);
+    if (next == _target) {
+      return;
+    }
+    _duration = (next - _target).abs() >= _LoadRing.sweep
+        ? HyprMotion.loadRing
+        : Duration.zero;
+    _target = next;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final double target = ratio.clamp(0.0, 1.0);
     return RepaintBoundary(
       child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(end: target),
-        duration: HyprMotion.loadRing,
+        tween: Tween<double>(end: _target),
+        duration: _duration,
         curve: HyprMotion.plateCurve,
         builder: (BuildContext context, double value, Widget? child) =>
             CustomPaint(
               size: const Size.square(_LoadRingPainter.diameter),
               painter: _LoadRingPainter(
                 ratio: value,
-                color: ramp.colorAt(value),
+                color: widget.ramp.colorAt(value),
               ),
             ),
       ),
