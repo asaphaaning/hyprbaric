@@ -133,11 +133,9 @@ class RightCluster extends ConsumerWidget {
     final TrayMenuStatus? trayMenuStatus = ref.watch(
       currentTrayMenuStatusProvider,
     );
-    final ClockViewState clockView = ref.watch(clockViewProvider);
-    final AsyncValue<PowerStatus> powerStatus = ref.watch(powerStatusProvider);
-    final AsyncValue<SystemStatus> systemStatus = ref.watch(
-      systemStatusProvider,
-    );
+    // Live readouts (system every second, power, clock) are watched by the
+    // chips that show them, so a sample repaints one chip instead of
+    // rebuilding every button, dropdown and the plate track.
 
     return Align(
       alignment: Alignment.centerRight,
@@ -166,10 +164,22 @@ class RightCluster extends ConsumerWidget {
                       }) {
                         return HyprPlateSlot(
                           active: isOpen,
-                          child: SystemChip(
-                            status: systemStatus.asData?.value,
-                            isOpen: isOpen,
-                            onPressed: onToggleSystem,
+                          child: Consumer(
+                            builder:
+                                (
+                                  BuildContext context,
+                                  WidgetRef ref,
+                                  Widget? child,
+                                ) {
+                                  return SystemChip(
+                                    status: ref
+                                        .watch(systemStatusProvider)
+                                        .asData
+                                        ?.value,
+                                    isOpen: isOpen,
+                                    onPressed: onToggleSystem,
+                                  );
+                                },
                           ),
                         );
                       },
@@ -381,10 +391,22 @@ class RightCluster extends ConsumerWidget {
                     }) {
                       return HyprPlateSlot(
                         active: isOpen,
-                        child: BatteryChip(
-                          status: powerStatus.asData?.value,
-                          isOpen: isOpen,
-                          onPressed: onTogglePower,
+                        child: Consumer(
+                          builder:
+                              (
+                                BuildContext context,
+                                WidgetRef ref,
+                                Widget? child,
+                              ) {
+                                return BatteryChip(
+                                  status: ref
+                                      .watch(powerStatusProvider)
+                                      .asData
+                                      ?.value,
+                                  isOpen: isOpen,
+                                  onPressed: onTogglePower,
+                                );
+                              },
                         ),
                       );
                     },
@@ -546,10 +568,19 @@ class RightCluster extends ConsumerWidget {
                     }) {
                       return HyprPlateSlot(
                         active: isOpen,
-                        child: ClockButton(
-                          status: clockView,
-                          isOpen: isOpen,
-                          onPressed: onToggleClock,
+                        child: Consumer(
+                          builder:
+                              (
+                                BuildContext context,
+                                WidgetRef ref,
+                                Widget? child,
+                              ) {
+                                return ClockButton(
+                                  status: ref.watch(clockViewProvider),
+                                  isOpen: isOpen,
+                                  onPressed: onToggleClock,
+                                );
+                              },
                         ),
                       );
                     },
