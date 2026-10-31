@@ -41,6 +41,37 @@ void main() {
     expect(find.text('35%'), findsOneWidget);
   });
 
+  testWidgets('the load rings settle between one-second readings', (
+    WidgetTester tester,
+  ) async {
+    Widget chip(int cpu, double memoryGib) => MaterialApp(
+      home: Scaffold(
+        body: SystemChip(
+          status: _status(cpu: cpu, memoryGib: memoryGib),
+          isOpen: false,
+          onPressed: () {},
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(chip(34, 11.2));
+    await tester.pumpAndSettle();
+
+    // Jitter within one arc step leaves both rings at rest.
+    await tester.pumpWidget(chip(35, 11.21));
+    expect(tester.binding.hasScheduledFrame, isFalse);
+
+    // An ordinary step snaps in one frame.
+    await tester.pumpWidget(chip(40, 11.4));
+    expect(tester.binding.hasScheduledFrame, isFalse);
+
+    // A real swing eases, then stops well before the next reading.
+    await tester.pumpWidget(chip(60, 16));
+    expect(tester.binding.hasScheduledFrame, isTrue);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(tester.binding.hasScheduledFrame, isFalse);
+  });
+
   testWidgets('the popover keeps the analog gauge and occupancy meters', (
     WidgetTester tester,
   ) async {

@@ -20,8 +20,9 @@ abstract final class HyprMotion {
   static const Duration plate = HyprDurations.plate;
   static const Duration flip = HyprDurations.flip;
 
-  /// A load ring easing to a new reading.
-  static const Duration loadRing = Duration(milliseconds: 1200);
+  /// A load ring easing to a new reading. Readings arrive every second, so
+  /// the ease must finish well inside that interval or the bar never idles.
+  static const Duration loadRing = Duration(milliseconds: 360);
 
   /// A dismissed row sliding away and closing its gap.
   static const Duration leave = Duration(milliseconds: 460);
