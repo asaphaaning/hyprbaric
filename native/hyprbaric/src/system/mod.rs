@@ -36,6 +36,46 @@ pub type Handle = Arc<Monitor>;
 
 const FIRST_SAMPLE: Duration = Duration::from_millis(80);
 
+/// Refreshes between process-count and root-filesystem reads.
+///
+/// Counting processes walks every `/proc` entry and the disk read is a
+/// `statvfs`; neither moves fast enough to need per-second sampling, and only
+/// the open panel shows them.
+const SLOW_READING_EVERY: u8 = 5;
+
+/// Readings that change slowly, reused between their refreshes.
+struct SlowReadings {
+    disk: Disk,
+    processes: u32,
+    /// Refreshes left before the next read.
+    remaining: u8,
+}
+
+impl SlowReadings {
+    fn read() -> Self {
+        Self {
+            disk: host::disk(),
+            processes: host::processes().unwrap_or_else(|error| {
+                tracing::debug!(%error, "Process count is unavailable");
+                0
+            }),
+            remaining: SLOW_READING_EVERY - 1,
+        }
+    }
+
+    /// Returns the cached readings, re-reading them once they have aged out.
+    fn sample(slot: &mut Option<Self>) -> (Disk, u32) {
+        let readings = match slot {
+            Some(readings) if readings.remaining > 0 => {
+                readings.remaining -= 1;
+                readings
+            }
+            _ => slot.insert(Self::read()),
+        };
+        (readings.disk, readings.processes)
+    }
+}
+
 /// System occupancy polling policy.
 ///
 /// ```toml
@@ -70,6 +110,8 @@ struct State {
     tick: Option<Tick>,
     /// Selected temperature source, shared across observations.
     thermometer: Thermometer,
+    /// Disk and process count, read every [`SLOW_READING_EVERY`] refreshes.
+    slow: Option<SlowReadings>,
 }
 
 impl Monitor {
@@ -83,11 +125,13 @@ impl Monitor {
             .ok();
         sleep(FIRST_SAMPLE).await;
         let mut thermometer = Thermometer::default();
+        let mut slow = None;
         let (initial, tick) = observe(
             first_tick,
             Cpu::measuring(),
             Trace::empty(),
             &mut thermometer,
+            &mut slow,
         );
 
         let (events, _) = broadcast::channel(16);
@@ -96,6 +140,7 @@ impl Monitor {
             latest: Mutex::new(State {
                 tick,
                 thermometer,
+                slow,
                 last: initial.clone(),
             }),
         });
@@ -116,7 +161,13 @@ impl Monitor {
             Snapshot::Ready { cpu, memory, .. } => (cpu.clone(), memory.history.clone()),
             Snapshot::Unavailable { .. } => (Cpu::measuring(), Trace::empty()),
         };
-        let (snapshot, tick) = observe(state.tick, cpu, memory_history, &mut state.thermometer);
+        let State {
+            tick: previous,
+            thermometer,
+            slow,
+            ..
+        } = &mut *state;
+        let (snapshot, tick) = observe(*previous, cpu, memory_history, thermometer, slow);
 
         if snapshot == state.last {
             state.tick = tick;
@@ -135,6 +186,7 @@ fn observe(
     cpu: Cpu,
     memory_history: Trace,
     thermometer: &mut Thermometer,
+    slow: &mut Option<SlowReadings>,
 ) -> (Snapshot, Option<Tick>) {
     let later = host::cpu_tick()
         .inspect_err(|error| {
@@ -164,16 +216,13 @@ fn observe(
         tracing::debug!(%error, "System uptime is unavailable");
         Duration::ZERO
     });
-    let processes = host::processes().unwrap_or_else(|error| {
-        tracing::debug!(%error, "Process count is unavailable");
-        0
-    });
+    let (disk, processes) = SlowReadings::sample(slow);
 
     (
         Snapshot::Ready {
             cpu,
             memory,
-            disk: host::disk(),
+            disk,
             uptime,
             temperature: thermometer.sample(),
             processes,
