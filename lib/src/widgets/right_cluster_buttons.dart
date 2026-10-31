@@ -114,10 +114,14 @@ class AudioDisplayButton extends StatelessWidget {
     super.key,
     required this.isOpen,
     required this.onPressed,
+    this.muted = false,
   });
 
   final bool isOpen;
   final VoidCallback onPressed;
+
+  /// Whether the default output is muted, shown as a crossed-out speaker.
+  final bool muted;
 
   @override
   Widget build(BuildContext context) {
@@ -130,12 +134,9 @@ class AudioDisplayButton extends StatelessWidget {
           isOpen: isOpen,
           plated: HyprPlateTrack.isPresent(context),
         ),
-        icon: Builder(
-          builder: (BuildContext context) {
-            final Color glyphColor =
-                IconTheme.of(context).color ?? HyprColors.textMuted;
-            return BarVolumeKnobIcon(color: glyphColor);
-          },
+        icon: BarGlyphIcon(
+          icon: muted ? Iconsax.volume_slash_copy : Iconsax.volume_high_copy,
+          size: HyprIconSizes.bar,
         ),
       ),
     );
